@@ -9,3 +9,11 @@ summary: A MongoDB operator charm
 series:
   - focal
 
+storage:
+  mongodb:
+    type: filesystem
+    location: /data/db
+
+peers:
+  mongodb:
+    interface: mongodb
