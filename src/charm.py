@@ -10,9 +10,10 @@ from urllib.request import urlopen
 
 from ops.charm import CharmBase
 from ops.main import main
-from ops.model import BlockedStatus, MaintenanceStatus, WaitingStatus, ActiveStatus
+from ops.model import BlockedStatus, MaintenanceStatus, WaitingStatus, ActiveStatus, Relation
 from charms.operator_libs_linux.v0 import apt
 from mongoserver import MongoDB, MONGODB_PORT
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +24,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
-
-        # TODO enable config for MongoDB port
         self.port = MONGODB_PORT
 
         self.framework.observe(self.on.install, self._on_install)
@@ -32,7 +31,14 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.framework.observe(self.on.start, self._on_start)
 
     def _on_install(self, _: ops.charm.InstallEvent) -> None:
-        """Install prerequisites for the application"""
+        """Handle the install event (fired on startup)
+        Handles the startup install event -- installs updates the apt cache, installs mongoDB
+        Args:
+            _ (ops.charm.InstallEvent): The install event that fired.
+        Returns:
+            None: None
+        """
+
         self.unit.status = MaintenanceStatus("installing MongoDB")
         self._add_mongodb_org_repository()
         self._install_apt_packages(["mongodb-org"])
@@ -50,19 +56,24 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.unit.status = WaitingStatus("Waiting to start MongoDB")
 
     def _on_config_changed(self, _: ops.charm.ConfigChangedEvent) -> None:
-        # TODO use this to configure options from user as according to spec doc
-
-        # update mongo configurations based on user preferences 
-        # TODO update dbPath and replSetName to be configurable options
+        """Event handler for configuration changed events.
+        Args:
+            _ (ops.charm.ConfigChangedEvent): The configuration changed event
+        Returns:
+            None: None
+        """
+        # TODO
+        # - update existing mongo configurations based on user preferences 
+        # - add additional configurations as according to spec doc
         with open("/etc/mongod.conf") as mongo_config_file:
             mongo_config = yaml.safe_load(mongo_config_file)
             
         machineIP = str(self.model.get_binding(PEER).network.bind_address)
         bindIPs = "localhost,"+machineIP
         mongo_config["net"]["bindIp"] = bindIPs
-        # mongo_config["storage"]["dbPath"] = "/data/db"
         if "replication" not in mongo_config:
             mongo_config["replication"] = {}
+        
         mongo_config["replication"]["replSetName"] = "rs0"
         with open('/etc/mongod.conf', 'w') as mongo_config_file:
             yaml.dump(mongo_config, mongo_config_file)
@@ -70,13 +81,18 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.unit.status = ops.model.ActiveStatus()
 
     def _on_start(self, event: ops.charm.StartEvent) -> None:
+        """Enables MongoDB service and initializes replica set
+        Args:
+            event (ops.charm.StartEvent): The triggering start event 
+        Returns:
+            None: None
+        """
         logger.debug("Running on_start")
         if not self.unit.is_leader():
             return
 
         # start mongo service
         self._open_port_tcp(self.port)
-        
         self.unit.status = MaintenanceStatus("enabling MongoDB")
         try:
             logger.debug("enabling mongodb")
@@ -89,12 +105,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         if not self.mongo.is_ready():
             self.unit.status = WaitingStatus("Waiting for MongoDB Service")
-            event.defer()
             return
 
-
-        import time
-        time.sleep(20)
         # initialize replica set
         self.unit.status = MaintenanceStatus("initializing MongoDB replicaset")
         logger.debug("initalizing replica set")
@@ -104,8 +116,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self.peers.data[self.app][
                 "replica_set_hosts"] = json.dumps(self.unit_ips)
         except Exception as e:
-            logger.info("Deferring on_start since : error={}".format(e))
-            event.defer()
+            logger.error("Error initializing replica sets in _on_start: error={}".format(e))
+            self.unit.status = BlockedStatus("failed to initialize replicasets")
             return
 
         self.unit.status = ActiveStatus("MongoDB started")
@@ -124,6 +136,12 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             raise BlockedStatusException(f"failed to open port {port}")
 
     def _add_mongodb_org_repository(self) -> None:
+        """Adds mongoDB repo to container
+        Args:
+            None: None
+        Returns:
+            None: None
+        """
         repositories = apt.RepositoryMapping()
 
         # Get GPG key
@@ -148,7 +166,12 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 return
 
     def _install_apt_packages(self, packages: list):
-        """Simple wrapper around 'apt-get install -y"""
+        """Installs package(s) to container
+        Args:
+            packages (list): list of packages to install
+        Returns:
+            None: None
+        """
         try:
             logger.debug("updating apt cache")
             apt.update()
@@ -174,11 +197,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     @property
     def unit_ips(self) -> list:
-        """Returns private ips of all units responsible for mongodb
-        Args:
-            None: None 
+        """Retrieve IP addressses associated with mongoDB application
         Returns:
-            List: str
+            list (str): IP address associated with mongoDB application
         """
         peer_addresses = [
           str(self.peers.data[unit].get("private_address"))
@@ -186,7 +207,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         ]
 
         self_address = str(self.model.get_binding(PEER).network.bind_address)
-        logger.error("current addr %s", self_address)  
+        logger.debug("this machines address %s", self_address)  
         addresses = []
         if peer_addresses:
             addresses.extend(peer_addresses)
@@ -194,10 +215,12 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         return addresses
     
     @property
-    def config(self):
-        """Configuration for MongoDB replica set with authentication.
+    def config(self) -> dict:
+        """Retrieve config options for mongo
+        Returns:
+            dict: Config options for mogno
         """
-         # TODO parameterize remaining config options
+        # TODO parameterize remaining config options
         config = {
             "app_name": self.model.app.name,
             "replica_set_name": "rs0", 
@@ -210,15 +233,19 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         return config
 
     @property
-    def mongo(self):
+    def mongo(self) -> MongoDB:
         """Fetch the MongoDB server interface object.
+        Args: None
+        Returns:
+            MongoDB: server interface object
         """
-        # TODO enable config options for MongoDB
         return MongoDB(self.config)
 
     @property
-    def root_password(self):
-        """MongoDB root password.
+    def root_password(self) -> str:
+        """Retrieve password for mongo and generatre one if necessar
+        Returns:
+            str: password for mongo application
         """
         root_password = None
         peers = self.peers
@@ -232,7 +259,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         return root_password
 
     @property
-    def peers(self):
+    def peers(self) -> Optional[Relation]:
         """Fetch the peer relation
         Returns:
              A :class:`ops.model.Relation` object representing

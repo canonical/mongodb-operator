@@ -33,7 +33,7 @@ class MongoDB():
         subprocess.check_call(["systemctl", "enable", "mongod.service"])
         subprocess.check_call(["systemctl", "restart", "mongod.service"])
 
-    def client(self):
+    def client(self) -> MongoClient:
         """Construct a client for the MongoDB database.
 
         The timeout for all queries using this client object is 1 sec.
@@ -44,11 +44,12 @@ class MongoDB():
         return MongoClient(self.replica_set_uri(), serverSelectionTimeoutMS=1000)
     
     @retry(stop=stop_after_delay(20))
-    def is_ready(self):
+    def is_ready(self) -> bool:
         """Is the MongoDB server ready to services requests.
-
+        Args:
+            None
         Returns:
-            True if services is ready False otherwise.
+            bool: True if services is ready False otherwise.
         """
         ready = False
         client = self.client()
@@ -56,19 +57,20 @@ class MongoDB():
             client.server_info()
             ready = True
         except ServerSelectionTimeoutError as e:
-            # TODO change this back to debug
-            logger.error("mongodb service is not ready yet. %s",e)
+            logger.debug("mongodb service is not ready yet. %s",e)
             client.close()
             raise e
         finally:
             client.close()
         return ready
 
-    def initialize_replica_set(self, hosts: list):
+    def initialize_replica_set(self, hosts: list) -> None:
         """Initialize the MongoDB replica set.
 
         Args:
             hosts: a list of peer host addresses
+        Returns:
+            None: None       
         """
         config = {
             "_id": self.replica_set_name,
@@ -84,7 +86,7 @@ class MongoDB():
         finally:
             client.close()
 
-    def replica_set_uri(self, credentials=None):
+    def replica_set_uri(self, credentials=None) -> str:
         """Construct a replica set URI.
 
         Args:
@@ -102,6 +104,7 @@ class MongoDB():
             password = self.root_password
             username = "root"
 
+        # TODO add password configuration in future patch
         #uri = "mongodb://{}:{}@".format(
         #    username,
         #    password)
@@ -110,18 +113,18 @@ class MongoDB():
         for i, host in enumerate(self.unit_ips):
             if i:
                 uri += ","
-            # TODO remove once able to use actual host
-            # host = "localhost"
             uri += "{}:{}".format(host, self.port)
-        uri += "/"#admin"
-        logger.error("uri %s",uri)
+        uri += "/"
+        logger.debug("uri %s",uri)
         return uri
 
     @staticmethod
-    def new_password():
+    def new_password() -> str:
         """Generate a random password string.
+        Args: None
+
         Returns:
-           A random password string.
+           str A random password string.
         """
         choices = string.ascii_letters + string.digits
         pwd = "".join([secrets.choice(choices) for i in range(16)])
