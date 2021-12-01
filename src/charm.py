@@ -12,6 +12,7 @@ from ops.charm import CharmBase
 from ops.main import main
 from ops.model import BlockedStatus, MaintenanceStatus, WaitingStatus, ActiveStatus, Relation
 from charms.operator_libs_linux.v0 import apt
+from charms.operator_libs_linux.v0.systemd import service_restart, service_resume
 from mongoserver import MongoDB, MONGODB_PORT
 from typing import Optional
 
@@ -96,8 +97,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.unit.status = MaintenanceStatus("enabling MongoDB")
         try:
             logger.debug("enabling mongodb")
-            subprocess.check_call(["systemctl", "enable", "mongod.service"])
-            subprocess.check_call(["systemctl", "restart", "mongod.service"])
+            service_resume("mongod.service")
+            service_restart("mongod.service")
         except subprocess.CalledProcessError as e:
             logger.error("failed to enable mongo error: %s", e)
             self.unit.status = BlockedStatus("failed to enable mongo")
@@ -105,6 +106,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         if not self.mongo.is_ready():
             self.unit.status = WaitingStatus("Waiting for MongoDB Service")
+            event.defer()
             return
 
         # initialize replica set

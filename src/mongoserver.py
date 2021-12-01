@@ -2,7 +2,7 @@ import secrets
 import string
 import subprocess
 
-from tenacity import retry, stop_after_delay
+from tenacity import retry, retry_if_result, stop_after_delay, wait_exponential
 from pymongo import MongoClient
 from pymongo.errors import AutoReconnect, ServerSelectionTimeoutError
 import logging
@@ -38,12 +38,17 @@ class MongoDB():
 
         The timeout for all queries using this client object is 1 sec.
 
-        Retruns:
+        Returns:
             A pymongo :class:`MongoClient` object.
         """
         return MongoClient(self.replica_set_uri(), serverSelectionTimeoutMS=1000)
     
-    @retry(stop=stop_after_delay(20))
+    def is_false(value) -> bool:
+        """ returns true if value is False
+        """
+        return not value
+
+    @retry(retry=retry_if_result(is_false), wait=wait_exponential(multiplier=1, min=1, max=20))
     def is_ready(self) -> bool:
         """Is the MongoDB server ready to services requests.
         Args:
@@ -54,12 +59,11 @@ class MongoDB():
         ready = False
         client = self.client()
         try:
+            #self.try_server_info(client)
             client.server_info()
             ready = True
         except ServerSelectionTimeoutError as e:
             logger.debug("mongodb service is not ready yet. %s",e)
-            client.close()
-            raise e
         finally:
             client.close()
         return ready

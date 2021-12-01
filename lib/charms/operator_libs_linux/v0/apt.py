@@ -124,7 +124,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 3
+LIBPATCH = 4
 
 
 VALID_SOURCE_TYPES = ("deb", "deb-src")
@@ -206,9 +206,13 @@ class DebianPackage:
         Returns:
           A boolean reflecting equality
         """
-        return isinstance(other, self.__class__) and (self._name, self._version.number) == (
-            other._name,
-            other._version.number,
+        return (
+            isinstance(other, self.__class__)
+            and (
+                self._name,
+                self._version.number,
+            )
+            == (other._name, other._version.number)
         )
 
     def __hash__(self):
@@ -222,12 +226,18 @@ class DebianPackage:
     def __str__(self):
         """A human-readable representation of the package."""
         return "<{}: {}-{}.{} -- {}>".format(
-            self.__class__.__name__, self._name, self._version, self._arch, str(self._state)
+            self.__class__.__name__,
+            self._name,
+            self._version,
+            self._arch,
+            str(self._state),
         )
 
     @staticmethod
     def _apt(
-        command: str, package_names: Union[str, List], optargs: Optional[List[str]] = None
+        command: str,
+        package_names: Union[str, List],
+        optargs: Optional[List[str]] = None,
     ) -> None:
         """Wrap package management commands for Debian/Ubuntu systems.
 
@@ -472,7 +482,11 @@ class DebianPackage:
 
             epoch, split_version = DebianPackage._get_epoch_from_version(vals["Version"])
             pkg = DebianPackage(
-                vals["Package"], split_version, epoch, vals["Architecture"], PackageState.Available
+                vals["Package"],
+                split_version,
+                epoch,
+                vals["Architecture"],
+                PackageState.Available,
             )
 
             if pkg.arch == arch and (version == "" or str(pkg.version) == version):
@@ -752,7 +766,9 @@ def add_package(
 
 
 def _add(
-    name: str, version: Optional[str] = "", arch: Optional[str] = ""
+    name: str,
+    version: Optional[str] = "",
+    arch: Optional[str] = "",
 ) -> Tuple[Union[DebianPackage, str], bool]:
     """Adds a package.
 
@@ -1015,7 +1031,12 @@ class DebianRepository:
         """
         # Use the same gpg command for both Xenial and Bionic
         cmd = ["gpg", "--with-colons", "--with-fingerprint"]
-        ps = subprocess.run(cmd, stdout=PIPE, stderr=PIPE, input=key_material)
+        ps = subprocess.run(
+            cmd,
+            stdout=PIPE,
+            stderr=PIPE,
+            input=key_material,
+        )
         out, err = ps.stdout.decode(), ps.stderr.decode()
         if "gpg: no valid OpenPGP data found." in err:
             raise GPGKeyError("Invalid GPG key material provided")
@@ -1241,6 +1262,7 @@ class RepositoryMapping(Mapping):
         new_filename = (
             f"{DebianRepository.prefix_from_uri(repo.uri)}-{repo.release.replace('/', '-')}.list"
         )
+
         fname = repo.filename or new_filename
 
         options = repo.options if repo.options else {}
