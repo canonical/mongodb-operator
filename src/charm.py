@@ -155,7 +155,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             return
 
         # Add the repository if it doesn't already exist
-        if "https://repo.mongodb.org/apt/ubuntu" not in repositories:
+        repo_name = "deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"
+        if repo_name not in repositories:
             try:
                 line = "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/5.0 multiverse"
                 repo = apt.DebianRepository.from_repo_line(line)
@@ -177,14 +178,10 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         try:
             logger.debug("updating apt cache")
             apt.update()
-        except subprocess.TimeoutExpired as e:
-            logger.exception(f"failed to update apt cache, TimeoutExpired", exc_info=e)
+        except subprocess.CalledProcessError as e:
+            logger.exception(f"failed to update apt cache, CalledProcessError", exc_info=e)
             self.unit.status = BlockedStatus("Failed to update apt cache")
             event.defer()
-            return
-        except Exception as e:
-            logger.exception(f"failed to update apt cache", exc_info=e)
-            self.unit.status = BlockedStatus("Failed to update apt cache")
             return
 
         try:
