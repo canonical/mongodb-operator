@@ -9,7 +9,6 @@ import subprocess
 from subprocess import check_call
 from urllib.request import urlopen
 
-from ops.charm import CharmBase
 from ops.main import main
 from ops.model import BlockedStatus, MaintenanceStatus, WaitingStatus, ActiveStatus, Relation
 from charms.operator_libs_linux.v0 import apt
@@ -20,6 +19,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 PEER = "mongodb"
+
 
 class MongodbOperatorCharm(ops.charm.CharmBase):
     """Charm the service."""
@@ -46,14 +46,14 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         try:
             mongo_path = subprocess.check_output(["which", "mongod"]).decode().strip()
             if not mongo_path == "/usr/bin/mongod":
-                logger.error("wrong mongodb path found %s want /usr/bin/mongod",mongo_path)
+                logger.error("wrong mongodb path found %s want /usr/bin/mongod", mongo_path)
                 self.unit.status = BlockedStatus("wrong mongod path")
                 return
         except subprocess.CalledProcessError as e:
-            logger.error("failed to verify mongod installation %s",e)
+            logger.error("failed to verify mongod installation %s", e)
             self.unit.status = BlockedStatus("failed to verify mongod installation")
             return
-        
+
     def _on_config_changed(self, _: ops.charm.ConfigChangedEvent) -> None:
         """Event handler for configuration changed events.
         Args:
@@ -62,19 +62,19 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             None: None
         """
         # TODO
-        # - update existing mongo configurations based on user preferences 
+        # - update existing mongo configurations based on user preferences
         # - add additional configurations as according to spec doc
         with open("/etc/mongod.conf") as mongo_config_file:
             mongo_config = yaml.safe_load(mongo_config_file)
-            
+
         machineIP = str(self.model.get_binding(PEER).network.bind_address)
-        bindIPs = "localhost,"+machineIP
+        bindIPs = "localhost," + machineIP
         mongo_config["net"]["bindIp"] = bindIPs
         if "replication" not in mongo_config:
             mongo_config["replication"] = {}
-        
+
         mongo_config["replication"]["replSetName"] = "rs0"
-        with open('/etc/mongod.conf', 'w') as mongo_config_file:
+        with open("/etc/mongod.conf", "w") as mongo_config_file:
             yaml.dump(mongo_config, mongo_config_file)
 
         self.unit.status = ops.model.ActiveStatus()
@@ -113,13 +113,12 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         try:
             logger.debug("initialzing replica set for these IPs %s", self.unit_ips)
             self.mongo.initialize_replica_set(self.unit_ips)
-            self.peers.data[self.app][
-                "replica_set_hosts"] = json.dumps(self.unit_ips)
+            self.peers.data[self.app]["replica_set_hosts"] = json.dumps(self.unit_ips)
         except Exception as e:
             logger.error("Error initializing replica sets in _on_start: error={}".format(e))
             self.unit.status = BlockedStatus("failed to initialize replicasets")
             return
-        
+
         self.unit.status = ActiveStatus("MongoDB started")
 
     def _open_port_tcp(self, port: int) -> None:
@@ -198,18 +197,17 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             list (str): IP address associated with mongoDB application
         """
         peer_addresses = [
-          str(self.peers.data[unit].get("private_address"))
-          for unit in self.peers.units
+            str(self.peers.data[unit].get("private_address")) for unit in self.peers.units
         ]
 
         self_address = str(self.model.get_binding(PEER).network.bind_address)
-        logger.debug("this machines address %s", self_address)  
+        logger.debug("this machines address %s", self_address)
         addresses = []
         if peer_addresses:
             addresses.extend(peer_addresses)
         addresses.append(self_address)
         return addresses
-    
+
     @property
     def config(self) -> dict:
         """Retrieve config options for mongo
@@ -219,12 +217,12 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # TODO parameterize remaining config options
         config = {
             "app_name": self.model.app.name,
-            "replica_set_name": "rs0", 
+            "replica_set_name": "rs0",
             "num_peers": 1,
             "port": self.port,
             "root_password": "password",
             "security_key": "",
-            "unit_ips": self.unit_ips
+            "unit_ips": self.unit_ips,
         }
         return config
 
@@ -245,6 +243,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
              the peer relation.
         """
         return self.model.get_relation(PEER)
+
 
 if __name__ == "__main__":
     main(MongodbOperatorCharm)

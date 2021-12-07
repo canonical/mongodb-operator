@@ -28,5 +28,3 @@ def patch_network_get(private_address="10.1.157.116") -> Callable:
         }
 
     return patch("ops.testing._TestingModelBackend.network_get", network_get)
-
-

@@ -1,10 +1,11 @@
+# Copyright 2021 Canonical Ltd
+# See LICENSE file for licensing details.
+
 import secrets
 import string
-import subprocess
 
 from tenacity import retry, stop_after_attempt, wait_exponential, RetryError
 from pymongo import MongoClient
-from pymongo.errors import AutoReconnect, ServerSelectionTimeoutError
 import logging
 
 
@@ -15,15 +16,14 @@ logger = logging.getLogger(__name__)
 MONGODB_PORT = 27017
 
 
-class MongoDB():
-
+class MongoDB:
     def __init__(self, config):
-        self.app_name = config['app_name']
-        self.replica_set_name = config['replica_set_name']
-        self.num_peers = config['num_peers']
-        self.port = config['port']
-        self.root_password = config['root_password']
-        self.unit_ips = config['unit_ips']
+        self.app_name = config["app_name"]
+        self.replica_set_name = config["replica_set_name"]
+        self.num_peers = config["num_peers"]
+        self.port = config["port"]
+        self.root_password = config["root_password"]
+        self.unit_ips = config["unit_ips"]
 
     def client(self) -> MongoClient:
         """Construct a client for the MongoDB database.
@@ -34,9 +34,8 @@ class MongoDB():
             A pymongo :class:`MongoClient` object.
         """
         return MongoClient(self.replica_set_uri(), serverSelectionTimeoutMS=1000)
-    
-    @retry(stop=stop_after_attempt(5),
-            wait=wait_exponential(multiplier=1, min=2, max=30))
+
+    @retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=1, min=2, max=30))
     def check_server_info(self, client: MongoClient):
         """Repeatly checks to see if the server is ready, timing out after 20 tries
         Args:
@@ -60,7 +59,7 @@ class MongoDB():
             self.check_server_info(client)
             ready = True
         except RetryError as e:
-            logger.debug("mongodb service is not ready yet. %s",e)
+            logger.debug("mongodb service is not ready yet. %s", e)
         finally:
             client.close()
         return ready
@@ -77,7 +76,7 @@ class MongoDB():
             "_id": self.replica_set_name,
             "members": [{"_id": i, "host": h} for i, h in enumerate(hosts)],
         }
-        logger.debug("setting up replica set with these options %s",config)
+        logger.debug("setting up replica set with these options %s", config)
         client = self.client()
         try:
             client.admin.command("replSetInitiate", config)
@@ -106,17 +105,17 @@ class MongoDB():
             username = "root"
 
         # TODO add password configuration in future patch
-        #uri = "mongodb://{}:{}@".format(
+        # uri = "mongodb://{}:{}@".format(
         #    username,
         #    password)
-        
+
         uri = "mongodb://"
         for i, host in enumerate(self.unit_ips):
             if i:
                 uri += ","
             uri += "{}:{}".format(host, self.port)
         uri += "/"
-        logger.debug("uri %s",uri)
+        logger.debug("uri %s", uri)
         return uri
 
     @staticmethod
