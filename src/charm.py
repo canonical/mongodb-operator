@@ -222,7 +222,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             "replica_set_name": "rs0", 
             "num_peers": 1,
             "port": self.port,
-            "root_password": self.root_password,
+            "root_password": "password",
             "security_key": "",
             "unit_ips": self.unit_ips
         }
@@ -237,23 +237,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         """
         return MongoDB(self.config)
 
-    @property
-    def root_password(self) -> str:
-        """Retrieve password for mongo and generatre one if necessar
-        Returns:
-            str: password for mongo application
-        """
-        return "pass"
-        """
-        root_password = None
-        data = self.peers.data[peers.app]
-        root_password = data.get('root_password', None)
-
-        if root_password is None:
-            root_password = MongoDB.new_password()
-
-        return root_password
-        """
     @property
     def peers(self) -> Optional[Relation]:
         """Fetch the peer relation
