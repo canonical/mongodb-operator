@@ -2,7 +2,7 @@ import secrets
 import string
 import subprocess
 
-from tenacity import retry, retry_if_result, stop_after_delay, wait_exponential
+from tenacity import retry, stop_after_attempt, wait_exponential, RetryError
 from pymongo import MongoClient
 from pymongo.errors import AutoReconnect, ServerSelectionTimeoutError
 import logging
@@ -25,14 +25,6 @@ class MongoDB():
         self.root_password = config['root_password']
         self.unit_ips = config['unit_ips']
 
-    def enable(self) -> None:
-        """Enable the mongoDB service via systemd.
-        Returns:
-            None: None
-        """
-        subprocess.check_call(["systemctl", "enable", "mongod.service"])
-        subprocess.check_call(["systemctl", "restart", "mongod.service"])
-
     def client(self) -> MongoClient:
         """Construct a client for the MongoDB database.
 
@@ -43,12 +35,18 @@ class MongoDB():
         """
         return MongoClient(self.replica_set_uri(), serverSelectionTimeoutMS=1000)
     
-    def is_false(value) -> bool:
-        """ returns true if value is False
+    @retry(stop=stop_after_attempt(5),
+            wait=wait_exponential(multiplier=1, min=2, max=30))
+    def check_server_info(self, client: MongoClient):
+        """Repeatly checks to see if the server is ready, timing out after 20 tries
+        Args:
+            client: MongoClient client to check for server info
+        Returns
+            client.server_info information about the server 
         """
-        return not value
+        client = self.client()
+        return client.server_info()
 
-    @retry(retry=retry_if_result(is_false), wait=wait_exponential(multiplier=1, min=1, max=20))
     def is_ready(self) -> bool:
         """Is the MongoDB server ready to services requests.
         Args:
@@ -59,10 +57,9 @@ class MongoDB():
         ready = False
         client = self.client()
         try:
-            #self.try_server_info(client)
-            client.server_info()
+            self.check_server_info(client)
             ready = True
-        except ServerSelectionTimeoutError as e:
+        except RetryError as e:
             logger.debug("mongodb service is not ready yet. %s",e)
         finally:
             client.close()

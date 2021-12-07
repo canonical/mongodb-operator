@@ -6,6 +6,7 @@ import json
 import logging
 import ops.charm
 import subprocess
+from subprocess import check_call
 from urllib.request import urlopen
 
 from ops.charm import CharmBase
@@ -39,7 +40,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         Returns:
             None: None
         """
-
         self.unit.status = MaintenanceStatus("installing MongoDB")
         self._add_mongodb_org_repository()
         self._install_apt_packages(["mongodb-org"])
@@ -54,8 +54,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self.unit.status = BlockedStatus("failed to verify mongod installation")
             return
         
-        self.unit.status = WaitingStatus("Waiting to start MongoDB")
-
     def _on_config_changed(self, _: ops.charm.ConfigChangedEvent) -> None:
         """Event handler for configuration changed events.
         Args:
@@ -121,7 +119,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             logger.error("Error initializing replica sets in _on_start: error={}".format(e))
             self.unit.status = BlockedStatus("failed to initialize replicasets")
             return
-
+        
         self.unit.status = ActiveStatus("MongoDB started")
 
     def _open_port_tcp(self, port: int) -> None:
@@ -132,7 +130,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             None: None
         """
         try:
-            subprocess.check_call(["open-port", f"{port}/TCP"])
+            check_call(["open-port", f"{port}/TCP"])
         except subprocess.CalledProcessError as e:
             logger.exception(f"failed opening port {port}", exc_info=e)
             raise BlockedStatusException(f"failed to open port {port}")
@@ -181,7 +179,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         except subprocess.CalledProcessError as e:
             logger.exception(f"failed to update apt cache, CalledProcessError", exc_info=e)
             self.unit.status = BlockedStatus("Failed to update apt cache")
-            event.defer()
             return
 
         try:
@@ -246,9 +243,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         Returns:
             str: password for mongo application
         """
+        return "pass"
+        """
         root_password = None
-        peers = self.peers
-
         data = self.peers.data[peers.app]
         root_password = data.get('root_password', None)
 
@@ -256,7 +253,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             root_password = MongoDB.new_password()
 
         return root_password
-
+        """
     @property
     def peers(self) -> Optional[Relation]:
         """Fetch the peer relation
