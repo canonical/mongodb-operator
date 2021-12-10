@@ -18,8 +18,6 @@ MONGO_CONFIG = {
 
 
 class TestMongoServer(unittest.TestCase):
-    pass
-
     def test_client_returns_mongo_client_instance(self):
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
@@ -61,7 +59,7 @@ class TestMongoServer(unittest.TestCase):
 
         hosts = {}
         for i in range(config["num_peers"]):
-            hosts["i"] = "host{}".format(i)
+            hosts[i] = "host{}".format(i)
 
         mongo.initialize_replica_set(hosts)
         mock_client.admin.command.assert_called()

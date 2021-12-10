@@ -11,19 +11,19 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# We expect the mongodb container to use the
+# We expect the MongoDB container to use the
 # default ports
 MONGODB_PORT = 27017
 
 
 class MongoDB:
     def __init__(self, config):
-        self.app_name = config["app_name"]
-        self.replica_set_name = config["replica_set_name"]
-        self.num_peers = config["num_peers"]
-        self.port = config["port"]
-        self.root_password = config["root_password"]
-        self.unit_ips = config["unit_ips"]
+        self._app_name = config["app_name"]
+        self._replica_set_name = config["replica_set_name"]
+        self._num_peers = config["num_peers"]
+        self._port = config["port"]
+        self._root_password = config["root_password"]
+        self._unit_ips = config["unit_ips"]
 
     def client(self) -> MongoClient:
         """Construct a client for the MongoDB database.
@@ -31,23 +31,25 @@ class MongoDB:
         The timeout for all queries using this client object is 1 sec.
 
         Returns:
-            A pymongo :class:`MongoClient` object.
+            A pymongo `MongoClient` object.
         """
         return MongoClient(self.replica_set_uri(), serverSelectionTimeoutMS=1000)
 
-    @retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=1, min=2, max=30))
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=30))
     def check_server_info(self, client: MongoClient):
-        """Repeatly checks to see if the server is ready, timing out after 20 tries
+        """Repeatly checks to see if the server is ready, timing out after 10 tries.
+
         Args:
-            client: MongoClient client to check for server info
-        Returns
-            client.server_info information about the server 
+            client: MongoClient client to check for server info.
+        Returns:
+            client.server_info information about the server.
         """
         client = self.client()
         return client.server_info()
 
     def is_ready(self) -> bool:
         """Is the MongoDB server ready to services requests.
+
         Args:
             None
         Returns:
@@ -59,7 +61,7 @@ class MongoDB:
             self.check_server_info(client)
             ready = True
         except RetryError as e:
-            logger.debug("mongodb service is not ready yet. %s", e)
+            logger.debug("mongod.service is not ready yet. %s", e)
         finally:
             client.close()
         return ready
@@ -68,12 +70,10 @@ class MongoDB:
         """Initialize the MongoDB replica set.
 
         Args:
-            hosts: a list of peer host addresses
-        Returns:
-            None: None       
+            hosts: a list of peer host addresses.
         """
         config = {
-            "_id": self.replica_set_name,
+            "_id": self._replica_set_name,
             "members": [{"_id": i, "host": h} for i, h in enumerate(hosts)],
         }
         logger.debug("setting up replica set with these options %s", config)
@@ -91,7 +91,7 @@ class MongoDB:
 
         Args:
             credentials: an optional dictionary with keys "username"
-            and "password"
+            and "password".
 
         Returns:
             A string URI that may be used to access the MongoDB
@@ -101,7 +101,7 @@ class MongoDB:
             password = credentials["password"]
             username = credentials["username"]
         else:
-            password = self.root_password
+            password = self._root_password
             username = "root"
 
         # TODO add password configuration in future patch
@@ -110,10 +110,10 @@ class MongoDB:
         #    password)
 
         uri = "mongodb://"
-        for i, host in enumerate(self.unit_ips):
+        for i, host in enumerate(self._unit_ips):
             if i:
                 uri += ","
-            uri += "{}:{}".format(host, self.port)
+            uri += "{}:{}".format(host, self._port)
         uri += "/"
         logger.debug("uri %s", uri)
         return uri
@@ -121,7 +121,8 @@ class MongoDB:
     @staticmethod
     def new_password() -> str:
         """Generate a random password string.
-        Args: None
+
+        Args: None.
 
         Returns:
            str A random password string.
