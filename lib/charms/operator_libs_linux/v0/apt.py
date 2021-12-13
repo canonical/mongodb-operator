@@ -124,7 +124,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 3
+LIBPATCH = 4
 
 
 VALID_SOURCE_TYPES = ("deb", "deb-src")
@@ -1241,6 +1241,7 @@ class RepositoryMapping(Mapping):
         new_filename = (
             f"{DebianRepository.prefix_from_uri(repo.uri)}-{repo.release.replace('/', '-')}.list"
         )
+
         fname = repo.filename or new_filename
 
         options = repo.options if repo.options else {}
