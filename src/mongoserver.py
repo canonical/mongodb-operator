@@ -1,13 +1,11 @@
 # Copyright 2021 Canonical Ltd
 # See LICENSE file for licensing details.
 
-import secrets
-import string
-
-from tenacity import retry, stop_after_attempt, wait_exponential, RetryError
-from pymongo import MongoClient
 import logging
 
+from pymongo import MongoClient
+from pymongo.errors import ConnectionFailure, ConfigurationError
+from tenacity import RetryError, retry, stop_after_attempt, wait_exponential
 
 logger = logging.getLogger(__name__)
 
@@ -80,8 +78,14 @@ class MongoDB:
         client = self.client()
         try:
             client.admin.command("replSetInitiate", config)
-        except Exception as e:
-            logger.error("cannot initialize replica set. error={}".format(e))
+        except ConnectionFailure as e:
+            logger.error(
+                "cannot initialize replica set: failure to connect to mongo client: error: %s",
+                str(e),
+            )
+            raise e
+        except ConfigurationError as e:
+            logger.error("cannot initialize replica set: incorrect credentials: error: %s", str(e))
             raise e
         finally:
             client.close()
@@ -117,16 +121,3 @@ class MongoDB:
         uri += "/"
         logger.debug("uri %s", uri)
         return uri
-
-    @staticmethod
-    def new_password() -> str:
-        """Generate a random password string.
-
-        Args: None.
-
-        Returns:
-           str A random password string.
-        """
-        choices = string.ascii_letters + string.digits
-        pwd = "".join([secrets.choice(choices) for i in range(16)])
-        return pwd

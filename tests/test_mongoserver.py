@@ -2,9 +2,10 @@
 # See LICENSE file for licensing details.
 
 import unittest
-
 from unittest.mock import patch
+
 from pymongo import MongoClient
+
 from mongoserver import MongoDB
 
 MONGO_CONFIG = {
