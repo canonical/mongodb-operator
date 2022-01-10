@@ -5,7 +5,7 @@
 import tempfile
 from typing import Optional
 
-PERMISSION_MASK_FOR_SCP = 644
+_PERMISSION_MASK_FOR_SCP = 644
 
 
 async def pull_content_from_unit_file(unit, path: str) -> str:
@@ -21,9 +21,11 @@ async def pull_content_from_unit_file(unit, path: str) -> str:
     # Get the file's original access permission mask.
     result = await run_command_on_unit(unit, f"stat -c %a {path}")
     permissions = result.strip()
+    permissions_changed = False
     # Change the permission in order to be able to retrieve the file using the ubuntu user.
-    if permissions != PERMISSION_MASK_FOR_SCP:
-        await run_command_on_unit(unit, f"chmod {PERMISSION_MASK_FOR_SCP} {path}")
+    if permissions != _PERMISSION_MASK_FOR_SCP:
+        await run_command_on_unit(unit, f"chmod {_PERMISSION_MASK_FOR_SCP} {path}")
+        permissions_changed = True
 
     # Get the contents of the file.
     temp_file = tempfile.NamedTemporaryFile()
@@ -32,7 +34,7 @@ async def pull_content_from_unit_file(unit, path: str) -> str:
     temp_file.close()
 
     # Change the file permissions back to the original mask.
-    if permissions != PERMISSION_MASK_FOR_SCP:
+    if permissions_changed:
         await run_command_on_unit(unit, f"chmod {permissions} {path}")
 
     return data
