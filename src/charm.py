@@ -31,7 +31,39 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.config_changed, self._on_config_changed)
+        self.framework.observe(
+            self.on.mongodb_relation_joined,
+            self._mongodb_relation_joined
+        )
         self.framework.observe(self.on.start, self._on_start)
+
+    def _mongodb_relation_joined(self, event) -> None:
+        if not self.unit.is_leader():
+            return
+
+        # do not initialise replicaset until all peers are present
+        # Note to self watch out for:
+        #   - the replicaset already being initialized and then re-initalizing
+        #   - what happens if a new unit is added and it is the leader and it is
+        #   taking over?
+        if not self.app.planned_units() == len(self._peers.units)+1:
+            logger.debug(
+                "planned units does not match joined units: %s != %s, defering relation-joined",
+                str(self.app.planned_units()),
+                len(self.model.get_relation(PEER).units)+1
+            )
+            event.defer()
+            return
+
+        # initialize replica set if not already done
+        logger.debug("replica set status: %s", self._mongo.is_replica_set())
+        if not self._mongo.is_replica_set():
+            self._initialise_replica_set()
+
+        if not self._mongo.is_ready():
+            logger.debug("Replicaset for units: %s, is not ready",
+                         self._unit_ips)
+            self.unit.status = BlockedStatus("could not start replica set")
 
     def _on_install(self, _) -> None:
         """Handle the install event (fired on startup).
@@ -65,9 +97,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         Args:
             event: The triggering start event.
         """
-        if not self.unit.is_leader():
-            return
-
         # start mongo service
         self.unit.status = MaintenanceStatus("starting MongoDB")
         if not service_running("mongod.service"):
@@ -79,29 +108,38 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 return
 
         try:
+            logger.debug("opening tcp port")
             self._open_port_tcp(self._port)
         except subprocess.CalledProcessError:
-            self.unit.status = BlockedStatus("failed to open TCP port for MongoDB")
+            self.unit.status = BlockedStatus(
+                "failed to open TCP port for MongoDB")
             return
 
-        if not self._mongo.is_ready():
+        # check if this units deployment of MongoDB is ready
+        if not self._mongo.is_ready(all_replicas=False):
+            logger.debug("mongoDB not ready, defering on start event")
             self.unit.status = WaitingStatus("waiting for MongoDB to start")
             event.defer()
             return
 
-        # initialize replica set
-        self.unit.status = MaintenanceStatus("initialising MongoDB replicaset")
-        logger.debug("initialising replica set")
-        try:
-            logger.debug("initialising replica set for the following IPs %s", self._unit_ips)
-            self._mongo.initialize_replica_set(self._unit_ips)
-            self._peers.data[self.app]["replica_set_hosts"] = json.dumps(self._unit_ips)
-        except (ConnectionFailure, ConfigurationError) as e:
-            logger.error("error initialising replica sets in _on_start: error: %s", str(e))
-            self.unit.status = BlockedStatus("failed to initialise replicaset")
+        # mongod is now active
+        self.unit.status = ActiveStatus()
+
+        # only leader should initialise the replicaset
+        if not self.unit.is_leader():
             return
 
-        self.unit.status = ActiveStatus()
+        # do not initialise replicaset until all peers have joined
+        if not self.app.planned_units() == len(self.model.get_relation(PEER).units)+1:
+            logger.debug(
+                "planned units does not match joined units: %s != %s, waiting to initialize replicaset",
+                str(self.app.planned_units()),
+                len(self.model.get_relation(PEER).units)+1
+            )
+            return
+
+        # initialize replica set
+        self._initialise_replica_set()
 
     def _open_port_tcp(self, port: int) -> None:
         """Open the given port.
@@ -121,7 +159,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         # Get GPG key
         try:
-            key = urlopen("https://www.mongodb.org/static/pgp/server-5.0.asc").read().decode()
+            key = urlopen(
+                "https://www.mongodb.org/static/pgp/server-5.0.asc").read().decode()
         except URLError as e:
             logger.exception("failed to get GPG key, reason: %s", e)
             self.unit.status = BlockedStatus("couldn't install MongoDB")
@@ -138,7 +177,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 repositories.add(repo)
             except apt.InvalidSourceError as e:
                 # logger.exception("failed to add repository, invalid source: %s", str(e))
-                logger.error("failed to add repository, invalid source: %s", str(e))
+                logger.error(
+                    "failed to add repository, invalid source: %s", str(e))
                 self.unit.status = BlockedStatus("couldn't install MongoDB")
                 return
             except ValueError as e:
@@ -164,11 +204,29 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             logger.debug("installing apt packages: %s", ", ".join(packages))
             apt.add_package(packages)
         except apt.PackageNotFoundError:
-            logger.error("a specified package not found in package cache or on system")
+            logger.error(
+                "a specified package not found in package cache or on system")
             self.unit.status = BlockedStatus("couldn't install MongoDB")
         except TypeError as e:
             logger.error("could not add package(s) to install: %s", str(e))
             self.unit.status = BlockedStatus("couldn't install MongoDB")
+
+    def _initialise_replica_set(self) -> None:
+        self.unit.status = MaintenanceStatus("initialising MongoDB replicaset")
+        logger.debug("initialising replica set for these ips %s",
+                     self._unit_ips)
+        try:
+            self._mongo.initialize_replica_set(self._unit_ips)
+            self._peers.data[self.app]["replica_set_hosts"] = json.dumps(
+                self._unit_ips)
+        except (ConnectionFailure, ConfigurationError) as e:
+            logger.error(
+                "error initialising replica sets in _on_start: error: %s", str(e))
+            self.unit.status = BlockedStatus("failed to initialise replicaset")
+            return
+
+        # replicaset initialized properly and ready to go
+        self.unit.status = ActiveStatus()
 
     @property
     def _unit_ips(self) -> List[str]:
@@ -178,9 +236,10 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             a list of IP address associated with MongoDB application.
         """
         peer_addresses = [
-            str(self._peers.data[unit].get("private_address")) for unit in self._peers.units
+            str(self._peers.data[unit].get("private-address")) for unit in self._peers.units
         ]
 
+        logger.debug("peer addresses: %s", peer_addresses)
         self_address = str(self.model.get_binding(PEER).network.bind_address)
         logger.debug("unit address: %s", self_address)
         addresses = []
@@ -205,6 +264,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             "root_password": "password",
             "security_key": "",
             "unit_ips": self._unit_ips,
+            "calling_unit_ip": str(self.model.get_binding(PEER).network.bind_address)
         }
         return config
 
