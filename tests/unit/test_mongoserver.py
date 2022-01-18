@@ -15,6 +15,7 @@ MONGO_CONFIG = {
     "port": 27017,
     "root_password": "password",
     "unit_ips": ["1.1.1.1"],
+    "calling_unit_ip": ["1.1.1.1"],
 }
 
 
@@ -46,7 +47,7 @@ class TestMongoServer(unittest.TestCase):
     def test_replica_set_uri_contains_correct_number_of_hosts(self):
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
-        uri = mongo.replica_set_uri()
+        uri = mongo.replica_uri()
         host_list = uri.split(",")
         self.assertEqual(len(host_list), config["num_peers"])
 
