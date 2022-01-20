@@ -86,7 +86,7 @@ class MongoDB:
         client = self.client(all_replicas=False)
 
         # if primary/secondary then this unit is part of a replicaset
-        if client.primary is not None:
+        if client.topology_description.replica_set_name is not None:
             is_replica_set = True
 
         client.close()

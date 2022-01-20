@@ -56,14 +56,15 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             return
 
         # initialize replica set if not already done
-        logger.debug("replica set status: %s", self._mongo.is_replica_set())
         if not self._mongo.is_replica_set():
             self._initialise_replica_set()
 
+        # verify replica set is ready
         if not self._mongo.is_ready():
             logger.debug("Replicaset for units: %s, is not ready",
                          self._unit_ips)
-            self.unit.status = BlockedStatus("could not start replica set")
+            self.unit.status = BlockedStatus(
+                "failed to initialise replica set")
 
     def _on_install(self, _) -> None:
         """Handle the install event (fired on startup).
@@ -222,7 +223,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         except (ConnectionFailure, ConfigurationError) as e:
             logger.error(
                 "error initialising replica sets in _on_start: error: %s", str(e))
-            self.unit.status = BlockedStatus("failed to initialise replicaset")
+            self.unit.status = BlockedStatus(
+                "failed to initialise replica set")
             return
 
         # replicaset initialized properly and ready to go

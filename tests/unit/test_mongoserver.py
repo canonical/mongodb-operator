@@ -14,7 +14,7 @@ MONGO_CONFIG = {
     "num_peers": 1,
     "port": 27017,
     "root_password": "password",
-    "unit_ips": ["1.1.1.1"],
+    "unit_ips": ["1.1.1.1", "2.2.2.2"],
     "calling_unit_ip": ["1.1.1.1"],
 }
 
@@ -23,37 +23,50 @@ class TestMongoServer(unittest.TestCase):
     def test_client_returns_mongo_client_instance(self):
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
-
-        client = mongo.client()
-        self.assertIsInstance(client, MongoClient)
+        all_replicas_status = [True, False]
+        for all_replicas in all_replicas_status:
+            client = mongo.client(all_replicas)
+            self.assertIsInstance(client, MongoClient)
 
     @patch("pymongo.MongoClient.server_info")
     def test_mongo_is_ready_when_server_info_is_available(self, server_info):
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
-
         server_info.return_value = {"info": "some info"}
-        ready = mongo.is_ready()
-        self.assertEqual(ready, True)
+
+        all_replicas_status = [True, False]
+        for all_replicas in all_replicas_status:
+            ready = mongo.is_ready(all_replicas)
+            self.assertEqual(ready, True)
 
     @patch("pymongo.MongoClient", "server_info", "ServerSelectionTimeoutError")
     def test_mongo_is_not_ready_when_server_info_is_not_available(self):
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
 
-        ready = mongo.is_ready()
-        self.assertEqual(ready, False)
+        all_replicas_status = [True, False]
+        for all_replicas in all_replicas_status:
+            ready = mongo.is_ready(all_replicas)
+            self.assertEqual(ready, False)
 
     def test_replica_set_uri_contains_correct_number_of_hosts(self):
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
-        uri = mongo.replica_uri()
-        host_list = uri.split(",")
-        self.assertEqual(len(host_list), config["num_peers"])
+        all_replicas_status = [True, False]
+        expected_hosts_by_status = [len(config["unit_ips"]), 1]
+
+        for all_replicas, expected_hosts in zip(
+            all_replicas_status, expected_hosts_by_status
+        ):
+            uri = mongo.replica_uri(all_replicas)
+            host_list = uri.split(",")
+            self.assertEqual(len(host_list), expected_hosts)
 
     @patch("mongoserver.MongoDB.client")
     @patch("pymongo.MongoClient")
-    def test_initializing_replica_invokes_admin_command(self, mock_client, client):
+    def test_initializing_replica_invokes_admin_command(
+        self, mock_client, client
+    ):
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
 
@@ -67,3 +80,42 @@ class TestMongoServer(unittest.TestCase):
         mock_client.admin.command.assert_called()
         command, _ = mock_client.admin.command.call_args
         self.assertEqual("replSetInitiate", command[0])
+
+    @patch("mongoserver.MongoDB.is_ready")
+    def test_is_replica_set_not_ready_returns_false(self, is_ready):
+        config = MONGO_CONFIG.copy()
+        mongo = MongoDB(config)
+        is_ready.return_value = False
+
+        replica_set_status = mongo.is_replica_set()
+        self.assertEqual(replica_set_status, False)
+
+    @patch("pymongo.MongoClient.topology_description")
+    @patch("pymongo.MongoClient.close")
+    @patch("mongoserver.MongoDB.is_ready")
+    def test_is_replica_set_is_replica_returns_true(
+        self, is_ready, close, topology_description
+    ):
+        config = MONGO_CONFIG.copy()
+        mongo = MongoDB(config)
+        is_ready.return_value = True
+
+        topology_description.replica_set_name = "rs0"
+        replica_set_status = mongo.is_replica_set()
+        close.assert_called()
+        self.assertEqual(replica_set_status, True)
+
+    @patch("pymongo.MongoClient.topology_description")
+    @patch("pymongo.MongoClient.close")
+    @patch("mongoserver.MongoDB.is_ready")
+    def test_is_replica_set_is_not_replica_returns_false(
+        self, is_ready, close, topology_description
+    ):
+        config = MONGO_CONFIG.copy()
+        mongo = MongoDB(config)
+        is_ready.return_value = True
+
+        topology_description.replica_set_name = None
+        replica_set_status = mongo.is_replica_set()
+        close.assert_called()
+        self.assertEqual(replica_set_status, False)
