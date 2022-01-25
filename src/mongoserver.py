@@ -82,14 +82,18 @@ class MongoDB:
         if not self.is_ready(all_replicas=False):
             return is_replica_set
 
-        # check if current unit is primary/secondary
+        # access instance replica set configuration
         client = self.client(all_replicas=False)
-
-        # if primary/secondary then this unit is part of a replicaset
-        if client.topology_description.replica_set_name is not None:
+        collection = client.local.system.replset
+        try:
+            replica_set_name = collection.find()[0]['_id']
+            logger.debug("replica set exists with name: %s", replica_set_name)
             is_replica_set = True
+        except IndexError:
+            logger.debug("replica set not yet initialized")
+        finally:
+            client.close()
 
-        client.close()
         return is_replica_set
 
     def initialize_replica_set(self, hosts: list) -> None:

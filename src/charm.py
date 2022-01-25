@@ -41,19 +41,31 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         if not self.unit.is_leader():
             return
 
-        # do not initialise replicaset until all peers are present
-        # Note to self watch out for:
-        #   - the replicaset already being initialized and then re-initalizing
-        #   - what happens if a new unit is added and it is the leader and it is
-        #   taking over?
+        # do not initialise replicaset until all peers have joined
         if not self.app.planned_units() == len(self._peers.units)+1:
             logger.debug(
-                "planned units does not match joined units: %s != %s, defering relation-joined",
+                "planned units does not match joined units: %s != %s, will " +
+                "wait to initialise replica set until all planned units " +
+                "have joined",
                 str(self.app.planned_units()),
                 len(self.model.get_relation(PEER).units)+1
             )
-            event.defer()
             return
+
+        # do not initilise replicaset until all peers have started mongod
+        for peer in self._peers.units:
+            peer_ip = str(self._peers.data[peer].get("private-address"))
+            peer_config = self._config
+            peer_config["calling_unit_ip"] = peer_ip
+            mongo_peer = MongoDB(peer_config)
+            if not mongo_peer.is_ready(all_replicas=False):
+                logger.debug(
+                    "unit %s is not ready, cannot initilise replicaset " +
+                    "until all units are ready, defering on relation-joined",
+                    peer
+                )
+                event.defer()
+                return
 
         # initialize replica set if not already done
         if not self._mongo.is_replica_set():
@@ -69,7 +81,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
     def _on_install(self, _) -> None:
         """Handle the install event (fired on startup).
 
-        Handles the startup install event -- installs updates the apt cache, installs MongoDB.
+        Handles the startup install event -- installs updates the apt cache,
+        installs MongoDB.
         """
         self.unit.status = MaintenanceStatus("installing MongoDB")
         self._add_mongodb_org_repository()
@@ -133,7 +146,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # do not initialise replicaset until all peers have joined
         if not self.app.planned_units() == len(self.model.get_relation(PEER).units)+1:
             logger.debug(
-                "planned units does not match joined units: %s != %s, waiting to initialize replicaset",
+                "planned units does not match joined units: %s != %s," +
+                "waiting to initialize replicaset",
                 str(self.app.planned_units()),
                 len(self.model.get_relation(PEER).units)+1
             )
@@ -161,7 +175,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # Get GPG key
         try:
             key = urlopen(
-                "https://www.mongodb.org/static/pgp/server-5.0.asc").read().decode()
+                "https://www.mongodb.org/static/pgp/server-5.0.asc"
+            ).read().decode()
         except URLError as e:
             logger.exception("failed to get GPG key, reason: %s", e)
             self.unit.status = BlockedStatus("couldn't install MongoDB")
@@ -214,7 +229,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def _initialise_replica_set(self) -> None:
         self.unit.status = MaintenanceStatus("initialising MongoDB replicaset")
-        logger.debug("initialising replica set for these ips %s",
+        logger.debug("initialising replica set for these ips: %s",
                      self._unit_ips)
         try:
             self._mongo.initialize_replica_set(self._unit_ips)
@@ -222,7 +237,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 self._unit_ips)
         except (ConnectionFailure, ConfigurationError) as e:
             logger.error(
-                "error initialising replica sets in _on_start: error: %s", str(e))
+                "error initialising replica sets in _on_start: error: %s",
+                str(e)
+            )
             self.unit.status = BlockedStatus(
                 "failed to initialise replica set")
             return

@@ -495,7 +495,9 @@ class TestCharm(unittest.TestCase):
             )
             self.harness.charm._add_mongodb_org_repository()
             self.assertIn(
-                "planned units does not match joined units: 3 != 1, defering relation-joined",
+                "planned units does not match joined units: 3 != 1, will " +
+                "wait to initialise replica set until all planned units " +
+                "have joined",
                 "".join(logs.output)
             )
 
@@ -572,6 +574,68 @@ class TestCharm(unittest.TestCase):
                         self.harness.charm.unit.status,
                         BlockedStatus("failed to initialise replica set")
                     )
+
+    @patch_network_get(private_address="1.1.1.1")
+    @mock.patch("charm.MongodbOperatorCharm._initialise_replica_set")
+    @mock.patch("mongoserver.MongoDB.is_ready")
+    @mock.patch("charm.MongodbOperatorCharm.app")
+    def test_mongodb_relation_joined_peers_not_ready(
+        self, app, is_ready, initialise_replica_set
+    ):
+        # preset values
+        self.harness.set_leader(True)
+        is_ready.return_value = False
+
+        # simulate 2nd MongoDB unit
+        rel = self.harness.charm.model.get_relation("mongodb")
+        rel_id = rel.id
+        key_values = {"private-address": "127.4.5.6"}
+        self.harness.add_relation_unit(rel_id, "mongodb/1")
+        self.harness.update_relation_data(rel_id, "mongodb/1", key_values)
+        app.planned_units.return_value = len(self.harness.charm._unit_ips)
+
+        with self.assertLogs("charm", "DEBUG") as logs:
+            self.harness.charm.on.mongodb_relation_joined.emit(
+                relation=rel,
+            )
+
+            self.assertIn(
+                "unit <ops.model.Unit mongodb/1> is not ready, cannot " +
+                "initilise replicaset until all units are ready, defering " +
+                "on relation-joined",
+                "".join(logs.output)
+            )
+
+            # verify that we do not initialise replica set
+            initialise_replica_set.assert_not_called()
+
+    @patch_network_get(private_address="1.1.1.1")
+    @mock.patch("mongoserver.MongoDB.is_replica_set")
+    @mock.patch("charm.MongodbOperatorCharm._initialise_replica_set")
+    @mock.patch("mongoserver.MongoDB.is_ready")
+    @mock.patch("charm.MongodbOperatorCharm.app")
+    def test_mongodb_relation_joined_peers_ready(
+        self, app, is_ready, initialise_replica_set, is_replica_set
+    ):
+        # preset values
+        self.harness.set_leader(True)
+        is_ready.return_value = True
+        is_replica_set.return_value = False
+
+        # simulate 2nd MongoDB unit
+        rel = self.harness.charm.model.get_relation("mongodb")
+        rel_id = rel.id
+        key_values = {"private-address": "127.4.5.6"}
+        self.harness.add_relation_unit(rel_id, "mongodb/1")
+        self.harness.update_relation_data(rel_id, "mongodb/1", key_values)
+        app.planned_units.return_value = len(self.harness.charm._unit_ips)
+
+        self.harness.charm.on.mongodb_relation_joined.emit(
+            relation=rel,
+        )
+
+        # verify that we do not initialise replica set
+        initialise_replica_set.assert_called()
 
     @patch_network_get(private_address="1.1.1.1")
     @mock.patch("mongoserver.MongoDB.is_ready")

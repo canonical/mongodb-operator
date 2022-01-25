@@ -90,32 +90,34 @@ class TestMongoServer(unittest.TestCase):
         replica_set_status = mongo.is_replica_set()
         self.assertEqual(replica_set_status, False)
 
-    @patch("pymongo.MongoClient.topology_description")
+    @patch("pymongo.collection.Collection.find")
     @patch("pymongo.MongoClient.close")
     @patch("mongoserver.MongoDB.is_ready")
     def test_is_replica_set_is_replica_returns_true(
-        self, is_ready, close, topology_description
+        self, is_ready, close, find
     ):
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
         is_ready.return_value = True
 
-        topology_description.replica_set_name = "rs0"
+        find.return_value = [{'_id': 'rs0'}]
+
         replica_set_status = mongo.is_replica_set()
         close.assert_called()
         self.assertEqual(replica_set_status, True)
 
-    @patch("pymongo.MongoClient.topology_description")
+    @patch("pymongo.collection.Collection.find")
     @patch("pymongo.MongoClient.close")
     @patch("mongoserver.MongoDB.is_ready")
     def test_is_replica_set_is_not_replica_returns_false(
-        self, is_ready, close, topology_description
+        self, is_ready, close, find
     ):
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
         is_ready.return_value = True
 
-        topology_description.replica_set_name = None
+        find.side_effect = IndexError()
+
         replica_set_status = mongo.is_replica_set()
         close.assert_called()
         self.assertEqual(replica_set_status, False)
