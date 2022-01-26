@@ -47,3 +47,8 @@ TODO: expand on this section when spec doc is created
 ## Roadmap
 
 TODO: expand on this section when spec doc is created
+
+
+## Canonical Contributor Agreement
+
+https://ubuntu.com/legal/contributors
