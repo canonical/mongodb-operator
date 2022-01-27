@@ -1,16 +1,51 @@
-# mongodb-operator
+# Contributing
 
-## Code overview
+## Overview
 
-TODO: expand on this section when spec doc is created
+This documents explains the processes and practices recommended for contributing enhancements to this operator.
 
-## Intended use case
+- Generally, before developing enhancements to this charm, you should consider opening an issue explaining your use case.
+- If you would like to chat with us about your use-cases or proposed implementation, you can reach us at [Canonical Mattermost public channel](https://chat.charmhub.io/charmhub/channels/charm-dev) or [Discourse](https://discourse.charmhub.io/).
+- Familiarising yourself with the [Charmed Operator Framework](https://juju.is/docs/sdk) library will help you a lot when working on new features or bug fixes.
+- All enhancements require review before being merged. Code review typically examines
+    - code quality
+    - test coverage
+    - user experience for Juju administrators this charm.
+- Please help us out in ensuring easy to review branches by rebasing your pull request branch onto the `main` branch. This also avoids merge commits and creates a linear Git commit history.
 
-TODO: expand on this section when spec doc is created
 
-## Roadmap
 
-TODO: expand on this section when spec doc is created
+## Developing
+
+
+### Environment set up
+
+This operator charm can be deployed locally using [Juju on a localhost LXD cloud](https://juju.is/docs/olm/lxd). If you do not already have a Juju controller boostrapped to an LXD `localhost` cloud, you can set one up by doing the following:
+
+```
+# install requirements 
+sudo snap install charmcraft --classic
+sudo snap install lxd
+sudo snap install juju --classic
+
+# configure lxd
+sudo adduser $USER lxd
+newgrp lxd
+lxd init --auto
+lxc network set lxdbr0 ipv6.address none
+
+# boostrap controller to lxd
+juju clouds
+juju bootstrap localhost overlord
+```
+
+After cloning the repository, create and activate a virtualenv, and install the development requirements:
+
+```shell
+virtualenv -p python3 venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
 
 ## Testing
 
@@ -22,3 +57,43 @@ tox -e integration   # integration tests
 tox                  # runs 'lint' and 'unit' environments
 ```
 
+
+## Build charm
+
+Build the charm in this git repository using:
+
+```shell
+cd mongodb-operator/
+charmcraft pack
+```
+
+### Deploy
+
+```shell
+# Create a model
+juju add-model development
+# Enable DEBUG logging
+juju model-config logging-config="<root>=INFO;unit=DEBUG"
+# Deploy the charm
+juju deploy ./mongodb_ubuntu-20.04-amd64.charm
+```
+
+## Code overview
+
+The core implementation of this charm is represented by the [MongodbOperatorCharm](./src/charm.py) class. This class will handle the [core lifecycle events](https://juju.is/docs/sdk/events) associated with the charm:
+- Download and installation of MongoDB, using the [operator_libs_linux](./lib/charms/operator_libs_linux/v0/) library.
+- Configuration changes
+
+
+
+The class [MongoDB](./src/mongoserver.py) is a helper module. It provides utilities to comunicate with a MongoDB database. This class is used by the core `MongodbOperatorCharm` to get information and interact with the database.
+
+
+## Intended use case
+
+TODO: expand on this section when spec doc is created
+
+
+## Canonical Contributor Agreement
+
+Canonical welcomes contributions to the Charmed MongoDB Operator. Please check out our [contributor agreement](https://ubuntu.com/legal/contributors) if you're interested in contributing to the solution.
