@@ -17,16 +17,17 @@ Until the MongoDB Machine Charm is published, you need to follow the build & dep
 
 Supported [relations](https://juju.is/docs/olm/relations):
 
-- This charm supports peer relations, which provides replica sets for the database.
+There are currently no supported relations.
 
-The charm will implement both [sharding](https://docs.mongodb.com/manual/sharding/) and [replica set](https://docs.mongodb.com/manual/replication/). To do this, it will need an extra component, the `config-server`.
 
-Future relations will include:
+## License
+The Charmed MongoDB Operator is free software, distributed under the Apache Software License, version 2.0. See [LICENSE](https://github.com/MiaAltieri/mongodb-operator/master/blob/LICENSE) for more information.
 
-- Mongo router `mongos` charm deployed alongside MongoDB charm. It will handle a sharded deployment, and it can work as a MongoDB database interface.
-- A MongoDB database `shard` interface. It will be used by the mongos charm as well.
-- A `config-server` interface used by the mongos charm.
+
+## Security
+Security issues in the Charmed MongoDB Operator can be reported through [LaunchPad](https://wiki.ubuntu.com/DebuggingSecurity#How%20to%20File). Please do not file GitHub issues about security issues.
+
 
 ## Contributing
 
-TODO: update when charm is published
+Please see the [Juju SDK docs](https://juju.is/docs/sdk) for guidelines on enhancements to this charm following best practice guidelines, and [CONTRIBUTING.md](./CONTRIBUTING.md) for developer guidance.

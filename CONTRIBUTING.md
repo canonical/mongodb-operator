@@ -7,12 +7,11 @@ This document explains the processes and practices recommended for contributing 
 - Generally, before developing enhancements to this charm, you should consider opening an issue explaining your use case.
 - If you would like to chat with us about your use-cases or proposed implementation, you can reach us at [Canonical Mattermost public channel](https://chat.charmhub.io/charmhub/channels/charm-dev) or [Discourse](https://discourse.charmhub.io/).
 - Familiarising yourself with the [Charmed Operator Framework](https://juju.is/docs/sdk) library will help you a lot when working on new features or bug fixes.
-- All enhancements require review before being merged. Code review typically examines
+- All enhancements require review before being merged. Additionally, new code must pass the tests. Code review typically examines
     - code quality
     - test coverage
     - user experience for Juju administrators of this charm.
 - Please help us out in ensuring easy to review branches by rebasing your pull request branch onto the `main` branch. This also avoids merge commits and creates a linear Git commit history.
-
 
 
 ## Developing
@@ -20,7 +19,7 @@ This document explains the processes and practices recommended for contributing 
 
 ### Environment set up
 
-This operator charm can be deployed locally using [Juju on a localhost LXD cloud](https://juju.is/docs/olm/lxd). If you do not already have a Juju controller bootstrapped to a LXD `localhost` cloud, you can set one up by doing the following:
+This operator charm can be deployed locally using [Juju on a localhost LXD cloud](https://juju.is/docs/olm/lxd). If you do not already have a Juju controller bootstrapped, you can set one up by doing the following:
 
 ```
 # install requirements 
@@ -39,13 +38,20 @@ juju clouds
 juju bootstrap localhost overlord
 ```
 
-After cloning the repository, create and activate a virtualenv, and install the development requirements:
+Create and activate a virtualenv, and install the development requirements:
 
 ```shell
 virtualenv -p python3 venv
 source venv/bin/activate
 pip install -r requirements.txt
 ```
+
+Clone this repository:
+```shell
+git clone https://github.com/MiaAltieri/mongodb-operator.git
+cd mongodb-operator/
+```
+
 
 ## Testing
 
@@ -58,16 +64,15 @@ tox                  # runs 'lint' and 'unit' environments
 ```
 
 
-## Build charm
+## Build Charm
 
 Build the charm in this git repository using:
 
 ```shell
-cd mongodb-operator/
 charmcraft pack
 ```
 
-### Deploy
+## Deploy Charm
 
 ```shell
 # Create a model
@@ -78,6 +83,8 @@ juju model-config logging-config="<root>=INFO;unit=DEBUG"
 
 # Deploy the charm
 juju deploy ./mongodb_ubuntu-20.04-amd64.charm
+```
+
 
 ## Code overview
 
@@ -85,8 +92,6 @@ The core implementation of this charm is represented by the [MongodbOperatorChar
 - Download and installation of MongoDB, using the [operator_libs_linux](./lib/charms/operator_libs_linux/v0/) library.
 - Configuration changes to `/etc/mongod.conf`
 - Starting of MongoDB daemon `mongod` for the unit as a single replica
-
-
 
 The class [MongoDB](./src/mongoserver.py) is a helper module. It provides utilities to communicate with a MongoDB database. This class is used by the core `MongodbOperatorCharm` to get information and interact with the database.
 
