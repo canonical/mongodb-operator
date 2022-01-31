@@ -48,7 +48,7 @@ pip install -r requirements.txt
 
 Clone this repository:
 ```shell
-git clone https://github.com/MiaAltieri/mongodb-operator.git
+git clone https://github.com/canonical/mongodb-operator.git
 cd mongodb-operator/
 ```
 

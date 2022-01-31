@@ -10,7 +10,7 @@ MongoDB is a general purpose distributed document database. This operator charm 
 
 ## Usage
 
-Until the MongoDB Machine Charm is published, you need to follow the build & deploy instructions from [CONTRIBUTING.md](./CONTRIBUTING.md) to deploy the charm.
+Until the MongoDB Machine Charm is published, you need to follow the build & deploy instructions from [CONTRIBUTING.md](https://github.com/canonical/mongodb-operator/blob/main/CONTRIBUTING.md) to deploy the charm.
 
 
 ## Relations
@@ -21,7 +21,7 @@ There are currently no supported relations.
 
 
 ## License
-The Charmed MongoDB Operator is free software, distributed under the Apache Software License, version 2.0. See [LICENSE](https://github.com/MiaAltieri/mongodb-operator/master/blob/LICENSE) for more information.
+The Charmed MongoDB Operator is free software, distributed under the Apache Software License, version 2.0. See [LICENSE](https://github.com/canonical/mongodb-operator/blob/main/LICENSE) for more information.
 
 
 ## Security
@@ -30,4 +30,4 @@ Security issues in the Charmed MongoDB Operator can be reported through [LaunchP
 
 ## Contributing
 
-Please see the [Juju SDK docs](https://juju.is/docs/sdk) for guidelines on enhancements to this charm following best practice guidelines, and [CONTRIBUTING.md](./CONTRIBUTING.md) for developer guidance.
+Please see the [Juju SDK docs](https://juju.is/docs/sdk) for guidelines on enhancements to this charm following best practice guidelines, and [CONTRIBUTING.md](https://github.com/canonical/mongodb-operator/blob/main/CONTRIBUTING.md) for developer guidance.
