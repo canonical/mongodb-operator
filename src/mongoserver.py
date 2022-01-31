@@ -31,7 +31,7 @@ class MongoDB:
 
         Args:
             all_replicas: an optional boolean flag that indicates if the client
-            should connect to the full replicaset or a single replica
+            should connect to the full replica set or a single replica
         Returns:
             A pymongo `MongoClient` object.
         """
@@ -53,7 +53,7 @@ class MongoDB:
 
         Args:
             all_replicas: an optional boolean flag that indicates if the client
-            should check if the full replicaset or a single replica is ready
+            should check if the full replica set or a single replica is ready
         Returns:
             bool: True if services is ready False otherwise.
         """
@@ -69,12 +69,12 @@ class MongoDB:
         return ready
 
     def is_replica_set(self) -> bool:
-        """Is the MongoDB server operating as a replicaset.
+        """Is the MongoDB server operating as a replica set.
 
         Args:
             None
         Returns:
-            bool: True if server is operating as a replicaset False otherwise.
+            bool: True if server is operating as a replica set False otherwise.
         """
         is_replica_set = False
 
@@ -86,17 +86,17 @@ class MongoDB:
         client = self.client(all_replicas=False)
         collection = client.local.system.replset
         try:
-            replica_set_name = collection.find()[0]['_id']
+            replica_set_name = collection.find()[0]["_id"]
             logger.debug("replica set exists with name: %s", replica_set_name)
             is_replica_set = True
         except IndexError:
-            logger.debug("replica set not yet initialized")
+            logger.debug("replica set not yet initialised")
         finally:
             client.close()
 
         return is_replica_set
 
-    def initialize_replica_set(self, hosts: list) -> None:
+    def initialise_replica_set(self, hosts: list) -> None:
         """Initialize the MongoDB replica set.
 
         Args:
@@ -114,13 +114,12 @@ class MongoDB:
             client.admin.command("replSetInitiate", config)
         except ConnectionFailure as e:
             logger.error(
-                "cannot initialize replica set: failure to connect to mongo client: error: %s",
+                "cannot initialise replica set: failure to connect to mongo client: error: %s",
                 str(e),
             )
             raise e
         except ConfigurationError as e:
-            logger.error(
-                "cannot initialize replica set: incorrect credentials: error: %s", str(e))
+            logger.error("cannot initialise replica set: incorrect credentials: error: %s", str(e))
             raise e
         finally:
             client.close()
@@ -132,7 +131,7 @@ class MongoDB:
             credentials: an optional dictionary with keys "username"
             and "password".
             all_replicas: an optional boolean flag that indicates if the uri
-            should use the full replicaset or a single replica
+            should use the full replica set or a single replica
 
         Returns:
             A string URI that may be used to access the MongoDB

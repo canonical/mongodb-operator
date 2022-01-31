@@ -25,12 +25,12 @@ PORT = 27017
 
 
 @pytest.mark.skipif(
-    os.environ.get('PYTEST_SKIP_DEPLOY', False),
-    reason="skipping deploy, model expected to be provided"
+    os.environ.get("PYTEST_SKIP_DEPLOY", False),
+    reason="skipping deploy, model expected to be provided.",
 )
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
-    """Build and deploy one unit of MongoDB"""
+    """Build and deploy one unit of MongoDB."""
     my_charm = await ops_test.build_charm(".")
     await ops_test.model.deploy(my_charm, num_units=len(UNIT_IDS))
     await ops_test.model.wait_for_idle()
@@ -38,18 +38,14 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 
 @pytest.mark.abort_on_fail
 async def test_status(ops_test: OpsTest) -> None:
-    """Verifies that the application and unit are active"""
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME], status="active", timeout=1000
-    )
+    """Verifies that the application and unit are active."""
+    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=1000)
     assert len(ops_test.model.applications[APP_NAME].units) == len(UNIT_IDS)
 
 
 @pytest.mark.parametrize("unit_id", UNIT_IDS)
-async def test_config_files_are_correct(
-    ops_test: OpsTest, unit_id: int
-) -> None:
-    """Tests that mongo.conf as expected content"""
+async def test_config_files_are_correct(ops_test: OpsTest, unit_id: int) -> None:
+    """Tests that mongo.conf as expected content."""
     # Get the expected contents from files.
     with open("tests/data/mongod.conf") as file:
         expected_mongodb_conf = file.read()
@@ -58,12 +54,9 @@ async def test_config_files_are_correct(
     unit = ops_test.model.applications[f"{APP_NAME}"].units[unit_id]
 
     # Check that the conf settings are as expected.
-    unit_mongodb_conf_data = await pull_content_from_unit_file(
-        unit, "/etc/mongod.conf"
-    )
+    unit_mongodb_conf_data = await pull_content_from_unit_file(unit, "/etc/mongod.conf")
     expected_mongodb_conf = update_bind_ip(
-        expected_mongodb_conf, unit.public_address
-    )
+        expected_mongodb_conf, unit.public_address)
     assert expected_mongodb_conf == unit_mongodb_conf_data
 
 
@@ -71,7 +64,7 @@ async def test_config_files_are_correct(
 async def test_unit_is_running_as_replica_set(
     ops_test: OpsTest, unit_id: int
 ) -> None:
-    """Tests that mongodb is running as a replica set for the application unit
+    """Tests that mongodb is running as a replica set for the application unit.
     """
     # connect to mongo replica set
     unit = ops_test.model.applications[APP_NAME].units[unit_id]
@@ -89,7 +82,7 @@ async def test_unit_is_running_as_replica_set(
 
 
 async def test_all_units_in_same_replica_set(ops_test: OpsTest) -> None:
-    """Tests that all units in the application belong to the same replica set
+    """Tests that all units in the application belong to the same replica set.
 
     This test will be implemented by Raul as part of his onboarding task.
 
@@ -103,7 +96,7 @@ async def test_all_units_in_same_replica_set(ops_test: OpsTest) -> None:
 
 
 async def test_leader_is_primary_on_deployment(ops_test: OpsTest) -> None:
-    """Tests that right after deployment that the primary unit is the leader
+    """Tests that right after deployment that the primary unit is the leader.
     """
     # grab leader unit
     leader_unit = None
@@ -123,18 +116,22 @@ async def test_leader_is_primary_on_deployment(ops_test: OpsTest) -> None:
 
 
 async def test_exactly_one_primary(ops_test: OpsTest) -> None:
+    """Tests that there is exactly one primary in the deployed units.
+    """
     try:
         number_of_primaries = count_primaries(ops_test)
     except RetryError:
         number_of_primaries = 0
 
     # check that exactly of the units is the leader
-    assert number_of_primaries == 1, (
-        "Expected one unit to be a primary: %s != 1" % (number_of_primaries)
+    assert number_of_primaries == 1, "Expected one unit to be a primary: %s != 1" % (
+        number_of_primaries
     )
 
 
 async def test_cluster_is_stable_after_deletion(ops_test: OpsTest) -> None:
+    """Tests that the cluster maintains a primary after the primary is delelted.
+    """
     # find & destroy leader unit
     leader_ip = None
     for unit in ops_test.model.applications[APP_NAME].units:
@@ -144,9 +141,7 @@ async def test_cluster_is_stable_after_deletion(ops_test: OpsTest) -> None:
             break
 
     # wait for app to be active after removal of unit
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME], status="active", timeout=1000
-    )
+    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=1000)
 
     # verify that ther are two units running after deletion of leader
     assert len(ops_test.model.applications[APP_NAME].units) == 2
@@ -160,7 +155,8 @@ async def test_cluster_is_stable_after_deletion(ops_test: OpsTest) -> None:
 
     # check that the replica set with the remaining units has a primary
     replica_set_uri = "mongodb://{}:27017,{}:27017/replicaSet=rs0".format(
-        ip_addresses[0], ip_addresses[1])
+        ip_addresses[0], ip_addresses[1]
+    )
     client = MongoClient(replica_set_uri)
     try:
         primary = replica_set_primary(client, valid_ips=ip_addresses)
@@ -171,19 +167,17 @@ async def test_cluster_is_stable_after_deletion(ops_test: OpsTest) -> None:
     client.close()
 
     # verify that the primary is not None
-    assert primary is not None, (
-        "replica set with uri %s has no primary" % (replica_set_uri)
-    )
+    assert primary is not None, "replica set with uri %s has no primary" % (
+        replica_set_uri)
 
     # check that the primary is not one of the deleted units
     print(primary[0])
     assert primary[0] in ip_addresses, (
-        "replica set primary is not one of the available units"
-    )
+        "replica set primary is not one of the available units")
 
 
 def update_bind_ip(conf: str, ip_address: str) -> str:
-    """ Updates mongod.conf contents to use the given ip address for bindIp
+    """Updates mongod.conf contents to use the given ip address for bindIp.
 
     Args:
         conf: contents of mongod.conf
@@ -195,7 +189,7 @@ def update_bind_ip(conf: str, ip_address: str) -> str:
 
 
 def unit_uri(ip_address: str) -> str:
-    """ Generates URI that is used by MongoDB to connect to a single replica
+    """Generates URI that is used by MongoDB to connect to a single replica.
 
     Args:
         ip_address: ip address of replica/unit
@@ -204,26 +198,26 @@ def unit_uri(ip_address: str) -> str:
 
 
 def is_none(value):
-    """Return True if value is 0"""
+    """Return True if value is None."""
     return value is None
 
 
-@ retry(
+@retry(
     retry=retry_if_result(is_none),
     stop=stop_after_attempt(5),
-    wait=wait_exponential(multiplier=1, min=2, max=30)
+    wait=wait_exponential(multiplier=1, min=2, max=30),
 )
 def replica_set_primary(
     client: MongoClient, valid_ips: List[str]
 ) -> Tuple[str, str]:
-    """ Returns the primary of the replica set, retrying 5 times to give the
+    """Returns the primary of the replica set, retrying 5 times to give the
     replica set time to elect a new primary, also checks against the valid_ips
     to verify that the primary is not outdated.
 
     client:
-        client of the replica set of interest
+        client of the replica set of interest.
     valid_ips:
-        list of ips that are currently in the replica set
+        list of ips that are currently in the replica set.
     """
     primary = client.primary
 
@@ -235,17 +229,17 @@ def replica_set_primary(
 
 
 def is_zero(value):
-    """Return True if value is 0"""
+    """Return True if value is 0."""
     return value == 0
 
 
-@ retry(
+@retry(
     retry=retry_if_result(is_zero),
     stop=stop_after_attempt(5),
-    wait=wait_exponential(multiplier=1, min=2, max=30)
+    wait=wait_exponential(multiplier=1, min=2, max=30),
 )
 def count_primaries(ops_test: OpsTest) -> int:
-    """ Counts the number of primaries in a replica set. Will retry counting
+    """Counts the number of primaries in a replica set. Will retry counting
     when the number of primaries is 0 at most 5 times.
     """
     number_of_primaries = 0
