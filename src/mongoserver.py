@@ -96,6 +96,12 @@ class MongoDB:
 
         return is_replica_set
 
+    @property
+    def _is_primary(self):
+        """TODO"""
+        client = self.client(all_replicas=False)
+        return client.is_primary
+
     def initialise_replica_set(self, hosts: list) -> None:
         """Initialize the MongoDB replica set.
 
@@ -119,7 +125,8 @@ class MongoDB:
             )
             raise e
         except ConfigurationError as e:
-            logger.error("cannot initialise replica set: incorrect credentials: error: %s", str(e))
+            logger.error(
+                "cannot initialise replica set: incorrect credentials: error: %s", str(e))
             raise e
         finally:
             client.close()

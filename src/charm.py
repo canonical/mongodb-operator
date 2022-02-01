@@ -31,8 +31,12 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.config_changed, self._on_config_changed)
-        self.framework.observe(self.on.mongodb_relation_joined, self._mongodb_relation_joined)
+        self.framework.observe(
+            self.on.mongodb_relation_joined, self._mongodb_relation_joined)
         self.framework.observe(self.on.start, self._on_start)
+        self.framework.observe(self.on.update_status, self._on_update_status)
+        self.framework.observe(self.on.get_primary_action,
+                               self._on_get_primary_action)
 
     def _mongodb_relation_joined(self, event) -> None:
         if not self.unit.is_leader():
@@ -51,10 +55,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         # do not initilise replica set until all peers have started mongod
         for peer in self._peers.units:
-            peer_ip = str(self._peers.data[peer].get("private-address"))
-            peer_config = self._config
-            peer_config["calling_unit_ip"] = peer_ip
-            mongo_peer = MongoDB(peer_config)
+            mongo_peer = self._single_mongo_replica(
+                str(self._peers.data[peer].get("private-address")))
             if not mongo_peer.is_ready(all_replicas=False):
                 logger.debug(
                     "unit: %s is not ready, cannot initilise replica set "
@@ -70,8 +72,10 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         # verify replica set is ready
         if not self._mongo.is_ready():
-            logger.debug("Replica set for units: %s, is not ready", self._unit_ips)
-            self.unit.status = BlockedStatus("failed to initialise replica set")
+            logger.debug(
+                "Replica set for units: %s, is not ready", self._unit_ips)
+            self.unit.status = BlockedStatus(
+                "failed to initialise replica set")
 
     def _on_install(self, _) -> None:
         """Handle the install event (fired on startup).
@@ -120,7 +124,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             logger.debug("opening tcp port")
             self._open_port_tcp(self._port)
         except subprocess.CalledProcessError:
-            self.unit.status = BlockedStatus("failed to open TCP port for MongoDB")
+            self.unit.status = BlockedStatus(
+                "failed to open TCP port for MongoDB")
             return
 
         # check if this units deployment of MongoDB is ready
@@ -150,6 +155,36 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # initialise replica set
         self._initialise_replica_set()
 
+    def _on_update_status(self, event):
+        # connect to client for this single unit
+        mongod_unit = self._single_mongo_replica(
+            str(self.model.get_binding(PEER).network.bind_address))
+
+        # if unit is primary then update status
+        if mongod_unit._is_primary:
+            self.unit.status = ActiveStatus("Replica set primary")
+
+    def _on_get_primary_action(self, event):
+        # check if current unit is the primary unit
+        mongod_unit = self._single_mongo_replica(
+            str(self.model.get_binding(PEER).network.bind_address))
+
+        # if unit is primary display this inforamtion and exit
+        if mongod_unit._is_primary:
+            event.set_results({"replica-set-primary": self.unit.name})
+            return
+
+        # loop through peers and check if one is the primary
+        for unit in self._peers.units:
+            # set up a mongo client for this single replica
+            mongod_unit = self._single_mongo_replica(
+                str(self._peers.data[unit].get("private-address")))
+
+            # if unit is primary display this inforamtion and exit
+            if mongod_unit._is_primary:
+                event.set_results({"replica-set-primary": unit.name})
+                return
+
     def _open_port_tcp(self, port: int) -> None:
         """Open the given port.
 
@@ -168,7 +203,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         # Get GPG key
         try:
-            key = urlopen("https://www.mongodb.org/static/pgp/server-5.0.asc").read().decode()
+            key = urlopen(
+                "https://www.mongodb.org/static/pgp/server-5.0.asc").read().decode()
         except URLError as e:
             logger.exception("failed to get GPG key, reason: %s", e)
             self.unit.status = BlockedStatus("couldn't install MongoDB")
@@ -185,7 +221,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 repositories.add(repo)
             except apt.InvalidSourceError as e:
                 # logger.exception("failed to add repository, invalid source: %s", str(e))
-                logger.error("failed to add repository, invalid source: %s", str(e))
+                logger.error(
+                    "failed to add repository, invalid source: %s", str(e))
                 self.unit.status = BlockedStatus("couldn't install MongoDB")
                 return
             except ValueError as e:
@@ -211,27 +248,46 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             logger.debug("installing apt packages: %s", ", ".join(packages))
             apt.add_package(packages)
         except apt.PackageNotFoundError:
-            logger.error("a specified package not found in package cache or on system")
+            logger.error(
+                "a specified package not found in package cache or on system")
             self.unit.status = BlockedStatus("couldn't install MongoDB")
         except TypeError as e:
             logger.error("could not add package(s) to install: %s", str(e))
             self.unit.status = BlockedStatus("couldn't install MongoDB")
 
     def _initialise_replica_set(self) -> None:
-        self.unit.status = MaintenanceStatus("initialising MongoDB replica set")
-        logger.debug("initialising replica set for these ips: %s", self._unit_ips)
+        self.unit.status = MaintenanceStatus(
+            "initialising MongoDB replica set")
+        logger.debug("initialising replica set for these ips: %s",
+                     self._unit_ips)
         try:
             self._mongo.initialise_replica_set(self._unit_ips)
-            self._peers.data[self.app]["replica_set_hosts"] = json.dumps(self._unit_ips)
+            self._peers.data[self.app]["replica_set_hosts"] = json.dumps(
+                self._unit_ips)
         except (ConnectionFailure, ConfigurationError) as e:
-            logger.error("error initialising replica sets in _on_start: error: %s", str(e))
-            self.unit.status = BlockedStatus("failed to initialise replica set")
+            logger.error(
+                "error initialising replica sets in _on_start: error: %s", str(e))
+            self.unit.status = BlockedStatus(
+                "failed to initialise replica set")
             return
 
         # replica set initialised properly and ready to go
         self.unit.status = ActiveStatus()
 
-    @property
+    def _single_mongo_replica(self, ip_address: str) -> MongoDB:
+        """Fetch the MongoDB server interface object for a single replica.
+
+        Args:
+            ip_address: ip_address for the replica of interest
+
+        Returns:
+            A MongoDB server object.
+        """
+        unit_config = self._config
+        unit_config["calling_unit_ip"] = ip_address
+        return MongoDB(unit_config)
+
+    @ property
     def _unit_ips(self) -> List[str]:
         """Retrieve IP addressses associated with MongoDB application.
 
@@ -251,7 +307,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         addresses.append(self_address)
         return addresses
 
-    @property
+    @ property
     def _config(self) -> dict:
         """Retrieve config options for MongoDB.
 
@@ -271,16 +327,17 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         }
         return config
 
-    @property
+    @ property
     def _mongo(self) -> MongoDB:
-        """Fetch the MongoDB server interface object.
+        """Fetch the MongoDB server interface object for all units in the
+        MongoDB application.
 
         Returns:
             A MongoDB server object.
         """
         return MongoDB(self._config)
 
-    @property
+    @ property
     def _peers(self) -> Optional[Relation]:
         """Fetch the peer relation.
 
