@@ -129,6 +129,35 @@ async def test_exactly_one_primary(ops_test: OpsTest) -> None:
     )
 
 
+async def test_get_primary_action(ops_test: OpsTest) -> None:
+    """Tests that the action get-primary outputs the correct unit where the
+    primary replica is located.
+    """
+    # determine which unit is the primary
+    expected_primary = None
+    for unit in ops_test.model.applications[APP_NAME].units:
+        # connect to mongod
+        client = MongoClient(unit_uri(unit.public_address))
+
+        # check primary status
+        if client.is_primary:
+            expected_primary = unit.name
+
+    # verify that there is a primary
+    assert expected_primary
+
+    # check if get-primary returns the correct primary unit regardless of
+    # which unit the action is run on
+    for unit in ops_test.model.applications[APP_NAME].units:
+        # use get-primary action to find primary
+        action = await unit.run_action("get-primary")
+        action = await action.wait()
+        identified_primary = action.results["replica-set-primary"]
+
+        # assert get-primary returned the right primary
+        assert identified_primary == expected_primary
+
+
 async def test_cluster_is_stable_after_deletion(ops_test: OpsTest) -> None:
     """Tests that the cluster maintains a primary after the primary is delelted.
     """
@@ -163,7 +192,6 @@ async def test_cluster_is_stable_after_deletion(ops_test: OpsTest) -> None:
     except RetryError:
         primary = None
 
-    print(client.primary)
     client.close()
 
     # verify that the primary is not None
