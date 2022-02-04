@@ -150,7 +150,8 @@ class TestCharm(unittest.TestCase):
     @mock.patch("charm.MongodbOperatorCharm._install_apt_packages")
     def test_mongodb_install(self, _add, _install):
         self.harness.charm.on.install.emit()
-        self.assertEqual(self.harness.charm.unit.status, MaintenanceStatus("installing MongoDB"))
+        self.assertEqual(self.harness.charm.unit.status,
+                         MaintenanceStatus("installing MongoDB"))
         _install.assert_called_once()
         _add.assert_called_with(["mongodb-org"])
 
@@ -164,7 +165,8 @@ class TestCharm(unittest.TestCase):
         (once config options are implemented)
         """
         open_mock.assert_called_with("/etc/mongod.conf", "w")
-        open_mock.return_value.write.assert_has_calls([mock.call(arg) for arg in MONGO_CONF_ARGS])
+        open_mock.return_value.write.assert_has_calls(
+            [mock.call(arg) for arg in MONGO_CONF_ARGS])
 
     @patch_network_get(private_address="1.1.1.1")
     @mock.patch("mongoserver.MongoDB.is_ready")
@@ -255,7 +257,7 @@ class TestCharm(unittest.TestCase):
 
         service_resume.assert_called()
         _open_port_tcp.assert_called()
-        is_ready.assert_called_with(all_replicas=False)
+        is_ready.assert_called_with(as_stand_alone=True)
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus())
         app.planned_units.assert_not_called()
         _initialise_replica_set.assert_not_called()
@@ -275,10 +277,13 @@ class TestCharm(unittest.TestCase):
         with self.assertLogs("charm", "ERROR") as logs:
             self.harness.charm.on.start.emit()
             service_resume.assert_called()
-            self.assertIn("ERROR:charm:failed to enable mongod.service", logs.output)
-        self.assertEqual(self.harness.charm.unit.status, BlockedStatus("couldn't start MongoDB"))
+            self.assertIn(
+                "ERROR:charm:failed to enable mongod.service", logs.output)
+        self.assertEqual(self.harness.charm.unit.status,
+                         BlockedStatus("couldn't start MongoDB"))
         _open_port_tcp.assert_not_called()
         is_ready.assert_not_called()
+        initialise_replica_set.assert_not_called()
 
     @patch_network_get(private_address="1.1.1.1")
     @mock.patch("mongoserver.MongoDB.is_ready")
@@ -305,7 +310,8 @@ class TestCharm(unittest.TestCase):
         self.harness.charm.on.start.emit()
         is_ready.assert_called()
         self.assertEqual(
-            self.harness.charm.unit.status, WaitingStatus("waiting for MongoDB to start")
+            self.harness.charm.unit.status, WaitingStatus(
+                "waiting for MongoDB to start")
         )
         initialise_replica_set.assert_not_called()
 
@@ -339,23 +345,27 @@ class TestCharm(unittest.TestCase):
         self.harness.charm.on.start.emit()
 
         self.assertEqual(
-            self.harness.charm.unit.status, BlockedStatus("failed to open TCP port for MongoDB")
+            self.harness.charm.unit.status, BlockedStatus(
+                "failed to open TCP port for MongoDB")
         )
 
     @mock.patch("charm.check_call")
     def test_set_port(self, _call):
         self.harness.charm._open_port_tcp(27017)
         # Make sure the port is opened and the service is started
-        self.assertEqual(_call.call_args_list, [call(["open-port", "27017/TCP"])])
+        self.assertEqual(_call.call_args_list, [
+                         call(["open-port", "27017/TCP"])])
 
     @mock.patch("charm.check_call")
     def test_set_port_failure(self, _call):
-        _call.side_effect = subprocess.CalledProcessError(cmd="open-port 27017/TCP", returncode=1)
+        _call.side_effect = subprocess.CalledProcessError(
+            cmd="open-port 27017/TCP", returncode=1)
 
         with self.assertRaises(subprocess.CalledProcessError):
             with self.assertLogs("charm", "ERROR") as logs:
                 self.harness.charm._open_port_tcp(27017)
-                self.assertIn("failed opening port 27017", "".join(logs.output))
+                self.assertIn("failed opening port 27017",
+                              "".join(logs.output))
 
     @mock.patch("charm.apt.add_package")
     @mock.patch("charm.apt.update")
@@ -367,18 +377,21 @@ class TestCharm(unittest.TestCase):
     @mock.patch("charm.apt.add_package")
     @mock.patch("charm.apt.update")
     def test_install_apt_packages_update_failure(self, update, add_package):
-        update.side_effect = subprocess.CalledProcessError(cmd="apt-get update", returncode=1)
+        update.side_effect = subprocess.CalledProcessError(
+            cmd="apt-get update", returncode=1)
         with self.assertLogs("charm", "ERROR") as logs:
             self.harness.charm._install_apt_packages(["test-package"])
             self.assertIn("failed to update apt cache: ", "".join(logs.output))
             self.assertEqual(
-                self.harness.charm.unit.status, BlockedStatus("couldn't install MongoDB")
+                self.harness.charm.unit.status, BlockedStatus(
+                    "couldn't install MongoDB")
             )
 
     @mock.patch("charm.apt.add_package")
     @mock.patch("charm.apt.update")
     def test_install_apt_packages_add_package_failure(self, update, add_package):
-        exceptions = [apt.PackageNotFoundError(), TypeError("package format incorrect")]
+        exceptions = [apt.PackageNotFoundError(), TypeError(
+            "package format incorrect")]
         log_messages = [
             "ERROR:charm:a specified package not found in package cache or on system",
             "ERROR:charm:could not add package(s) to install: package format incorrect",
@@ -391,7 +404,8 @@ class TestCharm(unittest.TestCase):
                 self.assertIn(log_message, logs.output)
 
             self.assertEqual(
-                self.harness.charm.unit.status, BlockedStatus("couldn't install MongoDB")
+                self.harness.charm.unit.status, BlockedStatus(
+                    "couldn't install MongoDB")
             )
 
     @mock.patch("charm.apt.RepositoryMapping")
@@ -410,9 +424,11 @@ class TestCharm(unittest.TestCase):
         urlopen.side_effect = URLError("urlopen error")
         with self.assertLogs("charm", "ERROR") as logs:
             self.harness.charm._add_mongodb_org_repository()
-            self.assertIn("ERROR:charm:failed to get GPG key, reason:", "".join(logs.output))
+            self.assertIn(
+                "ERROR:charm:failed to get GPG key, reason:", "".join(logs.output))
 
-        self.assertEqual(self.harness.charm.unit.status, BlockedStatus("couldn't install MongoDB"))
+        self.assertEqual(self.harness.charm.unit.status,
+                         BlockedStatus("couldn't install MongoDB"))
 
     @mock.patch("charm.apt.RepositoryMapping")
     @mock.patch("charm.apt.DebianRepository.from_repo_line")
@@ -436,7 +452,8 @@ class TestCharm(unittest.TestCase):
                 self.assertIn(log_message, "".join(logs.output))
 
             self.assertEqual(
-                self.harness.charm.unit.status, BlockedStatus("couldn't install MongoDB")
+                self.harness.charm.unit.status, BlockedStatus(
+                    "couldn't install MongoDB")
             )
 
     @mock.patch("charm.apt.RepositoryMapping.add")
@@ -477,7 +494,6 @@ class TestCharm(unittest.TestCase):
 
         with self.assertLogs("charm", "DEBUG") as logs:
             self.harness.charm.on.mongodb_relation_joined.emit(relation=rel)
-            self.harness.charm._add_mongodb_org_repository()
             self.assertIn(
                 "planned units does not match joined units: 3 != 1, will "
                 + "wait to initialise replica set until all planned units "
@@ -502,7 +518,8 @@ class TestCharm(unittest.TestCase):
         with self.assertLogs("charm", "DEBUG") as logs:
             for ready_status in ready_statuses:
                 is_ready.return_value = ready_status
-                self.harness.charm.on.mongodb_relation_joined.emit(relation=rel)
+                self.harness.charm.on.mongodb_relation_joined.emit(
+                    relation=rel)
                 # verify that we do not re-initialise replica set
                 initialise_replica_set.assert_not_called()
 
@@ -512,7 +529,8 @@ class TestCharm(unittest.TestCase):
                     continue
 
                 self.assertIn(
-                    "Replica set for units: ['1.1.1.1'], is not ready", "".join(logs.output)
+                    "Replica set for units: ['1.1.1.1'], is not ready", "".join(
+                        logs.output)
                 )
                 self.assertEqual(
                     self.harness.charm.unit.status,
@@ -536,7 +554,8 @@ class TestCharm(unittest.TestCase):
             with self.assertLogs("charm", "DEBUG") as logs:
                 for ready_status in ready_statuses:
                     is_ready.return_value = ready_status
-                    self.harness.charm.on.mongodb_relation_joined.emit(relation=rel)
+                    self.harness.charm.on.mongodb_relation_joined.emit(
+                        relation=rel)
                     # verify that we do initialise replica set
                     initialise_replica_set.assert_called()
 
@@ -546,7 +565,8 @@ class TestCharm(unittest.TestCase):
                         continue
 
                     self.assertIn(
-                        "Replica set for units: ['1.1.1.1'], is not ready", "".join(logs.output)
+                        "Replica set for units: ['1.1.1.1'], is not ready", "".join(
+                            logs.output)
                     )
                     self.assertEqual(
                         self.harness.charm.unit.status,
@@ -575,7 +595,7 @@ class TestCharm(unittest.TestCase):
 
             self.assertIn(
                 "unit: <ops.model.Unit mongodb/1> is not ready, cannot "
-                + "initilise replica set until all units are ready, defering "
+                + "initilise replica set until all units are ready, deferring "
                 + "on relation-joined",
                 "".join(logs.output),
             )
@@ -614,11 +634,13 @@ class TestCharm(unittest.TestCase):
     @mock.patch("mongoserver.MongoDB.initialise_replica_set")
     @mock.patch("charm.MongodbOperatorCharm._open_port_tcp")
     @mock.patch("charm.service_resume")
+    @mock.patch("charm.MongodbOperatorCharm.app")
     def test_initialise_replica_failure_leads_to_blocked_state(
-        self, service_resume, _open_port_tcp, initialise_replica_set, is_ready
+        self, app, service_resume, _, initialise_replica_set, is_ready
     ):
         self.harness.set_leader(True)
         is_ready.return_value = True
+        app.planned_units.return_value = 1
         exceptions = [
             ConnectionFailure("connection error message"),
             ConfigurationError("configuration error message"),
@@ -628,15 +650,15 @@ class TestCharm(unittest.TestCase):
             "ERROR:charm:error initialising replica sets in _on_start: error: configuration error message",
         ]
         for exception, log_message in zip(exceptions, log_messages):
-            with self.assertLogs("charm", "ERROR") as logs:
+            with self.assertLogs("charm", "DEBUG") as logs:
                 initialise_replica_set.side_effect = exception
-                # make sure that this has necessary flags
                 self.harness.charm.on.start.emit()
                 initialise_replica_set.assert_called()
                 self.assertIn(log_message, logs.output)
 
             self.assertEqual(
-                self.harness.charm.unit.status, BlockedStatus("failed to initialise replica set")
+                self.harness.charm.unit.status, BlockedStatus(
+                    "failed to initialise replica set")
             )
 
     @patch_network_get(private_address="1.1.1.1")

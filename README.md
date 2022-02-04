@@ -12,6 +12,16 @@ MongoDB is a general purpose distributed document database. This operator charm 
 
 Until the MongoDB Machine Charm is published, you need to follow the build & deploy instructions from [CONTRIBUTING.md](https://github.com/canonical/mongodb-operator/blob/main/CONTRIBUTING.md) to deploy the charm.
 
+After building the charm you may deploy a single unit of MongoDB using its default configuration
+```shell
+juju deploy ./*.charm
+```
+
+It is customary to use MongoDB with replication. Hence usually more than one unit (preferably and odd number) is deployed. To deploy MongoDB with multiple replicas specify the number of desired units with the `-n` option.
+```shell
+juju deploy ./*.charm -n <number of replicas>
+```
+
 
 ## Relations
 

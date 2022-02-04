@@ -23,9 +23,9 @@ class TestMongoServer(unittest.TestCase):
     def test_client_returns_mongo_client_instance(self):
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
-        all_replicas_status = [True, False]
-        for all_replicas in all_replicas_status:
-            client = mongo.client(all_replicas)
+        as_stand_alone_status = [True, False]
+        for as_stand_alone in as_stand_alone_status:
+            client = mongo.client(as_stand_alone)
             self.assertIsInstance(client, MongoClient)
 
     @patch("pymongo.MongoClient.server_info")
@@ -34,9 +34,9 @@ class TestMongoServer(unittest.TestCase):
         mongo = MongoDB(config)
         server_info.return_value = {"info": "some info"}
 
-        all_replicas_status = [True, False]
-        for all_replicas in all_replicas_status:
-            ready = mongo.is_ready(all_replicas)
+        as_stand_alone_status = [True, False]
+        for as_stand_alone in as_stand_alone_status:
+            ready = mongo.is_ready(as_stand_alone)
             self.assertEqual(ready, True)
 
     @patch("pymongo.MongoClient", "server_info", "ServerSelectionTimeoutError")
@@ -44,19 +44,19 @@ class TestMongoServer(unittest.TestCase):
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
 
-        all_replicas_status = [True, False]
-        for all_replicas in all_replicas_status:
-            ready = mongo.is_ready(all_replicas)
+        as_stand_alone_status = [True, False]
+        for as_stand_alone in as_stand_alone_status:
+            ready = mongo.is_ready(as_stand_alone)
             self.assertEqual(ready, False)
 
     def test_replica_set_uri_contains_correct_number_of_hosts(self):
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
-        all_replicas_status = [True, False]
+        as_stand_alone_status = [False, True]
         expected_hosts_by_status = [len(config["unit_ips"]), 1]
 
-        for all_replicas, expected_hosts in zip(all_replicas_status, expected_hosts_by_status):
-            uri = mongo.replica_uri(all_replicas)
+        for as_stand_alone, expected_hosts in zip(as_stand_alone_status, expected_hosts_by_status):
+            uri = mongo.replica_uri(as_stand_alone)
             host_list = uri.split(",")
             self.assertEqual(len(host_list), expected_hosts)
 

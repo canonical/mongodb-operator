@@ -163,7 +163,6 @@ async def test_cluster_is_stable_after_deletion(ops_test: OpsTest) -> None:
     except RetryError:
         primary = None
 
-    print(client.primary)
     client.close()
 
     # verify that the primary is not None
@@ -171,7 +170,6 @@ async def test_cluster_is_stable_after_deletion(ops_test: OpsTest) -> None:
         replica_set_uri)
 
     # check that the primary is not one of the deleted units
-    print(primary[0])
     assert primary[0] in ip_addresses, (
         "replica set primary is not one of the available units")
 
