@@ -258,7 +258,7 @@ class TestCharm(unittest.TestCase):
 
         service_resume.assert_called()
         _open_port_tcp.assert_called()
-        is_ready.assert_called_with(all_replicas=False)
+        is_ready.assert_called_with(as_stand_alone=True)
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus())
         app.planned_units.assert_not_called()
         _initialise_replica_set.assert_not_called()
@@ -284,6 +284,7 @@ class TestCharm(unittest.TestCase):
                          BlockedStatus("couldn't start MongoDB"))
         _open_port_tcp.assert_not_called()
         is_ready.assert_not_called()
+        initialise_replica_set.assert_not_called()
 
     @patch_network_get(private_address="1.1.1.1")
     @mock.patch("mongoserver.MongoDB.is_ready")
@@ -494,7 +495,6 @@ class TestCharm(unittest.TestCase):
 
         with self.assertLogs("charm", "DEBUG") as logs:
             self.harness.charm.on.mongodb_relation_joined.emit(relation=rel)
-            self.harness.charm._add_mongodb_org_repository()
             self.assertIn(
                 "planned units does not match joined units: 3 != 1, will "
                 + "wait to initialise replica set until all planned units "
@@ -596,7 +596,7 @@ class TestCharm(unittest.TestCase):
 
             self.assertIn(
                 "unit: <ops.model.Unit mongodb/1> is not ready, cannot "
-                + "initilise replica set until all units are ready, defering "
+                + "initilise replica set until all units are ready, deferring "
                 + "on relation-joined",
                 "".join(logs.output),
             )
@@ -635,11 +635,13 @@ class TestCharm(unittest.TestCase):
     @mock.patch("mongoserver.MongoDB.initialise_replica_set")
     @mock.patch("charm.MongodbOperatorCharm._open_port_tcp")
     @mock.patch("charm.service_resume")
+    @mock.patch("charm.MongodbOperatorCharm.app")
     def test_initialise_replica_failure_leads_to_blocked_state(
-        self, service_resume, _open_port_tcp, initialise_replica_set, is_ready
+        self, app, service_resume, _, initialise_replica_set, is_ready
     ):
         self.harness.set_leader(True)
         is_ready.return_value = True
+        app.planned_units.return_value = 1
         exceptions = [
             ConnectionFailure("connection error message"),
             ConfigurationError("configuration error message"),
@@ -649,9 +651,8 @@ class TestCharm(unittest.TestCase):
             "ERROR:charm:error initialising replica sets in _on_start: error: configuration error message",
         ]
         for exception, log_message in zip(exceptions, log_messages):
-            with self.assertLogs("charm", "ERROR") as logs:
+            with self.assertLogs("charm", "DEBUG") as logs:
                 initialise_replica_set.side_effect = exception
-                # make sure that this has necessary flags
                 self.harness.charm.on.start.emit()
                 initialise_replica_set.assert_called()
                 self.assertIn(log_message, logs.output)
