@@ -101,7 +101,7 @@ class MongoDB:
     @property
     def _is_primary(self):
         """TODO"""
-        client = self.client(all_replicas=False)
+        client = self.client(as_stand_alone=True)
         return client.is_primary
 
     def initialise_replica_set(self, hosts: list) -> None:

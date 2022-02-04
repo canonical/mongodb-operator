@@ -57,7 +57,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         for peer in self._peers.units:
             mongo_peer = self._single_mongo_replica(
                 str(self._peers.data[peer].get("private-address")))
-            if not mongo_peer.is_ready(all_replicas=False):
+            if not mongo_peer.is_ready(as_stand_alone=True):
                 logger.debug(
                     "unit: %s is not ready, cannot initilise replica set "
                     + "until all units are ready, deferring on relation-joined",
@@ -265,7 +265,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self.unit.status = BlockedStatus("couldn't install MongoDB")
 
     def _initialise_replica_set(self) -> None:
-        """Initialize deployed units as a replica set"""
+        """Initialize deployed units as a replica set."""
         self.unit.status = MaintenanceStatus(
             "initialising MongoDB replica set")
         logger.debug("initialising replica set for these ips: %s",
@@ -284,10 +284,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def _single_mongo_replica(self, ip_address: str) -> MongoDB:
         """Fetch the MongoDB server interface object for a single replica.
-
         Args:
             ip_address: ip_address for the replica of interest
-
         Returns:
             A MongoDB server object.
         """
@@ -295,7 +293,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         unit_config["calling_unit_ip"] = ip_address
         return MongoDB(unit_config)
 
-    @ property
+    @property
     def _unit_ips(self) -> List[str]:
         """Retrieve IP addressses associated with MongoDB application.
 
@@ -315,7 +313,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         addresses.append(self_address)
         return addresses
 
-    @ property
+    @property
     def _config(self) -> dict:
         """Retrieve config options for MongoDB.
 
@@ -335,17 +333,16 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         }
         return config
 
-    @ property
+    @property
     def _mongo(self) -> MongoDB:
-        """Fetch the MongoDB server interface object for all units in the
-        MongoDB application.
+        """Fetch the MongoDB server interface object.
 
         Returns:
             A MongoDB server object.
         """
         return MongoDB(self._config)
 
-    @ property
+    @property
     def _peers(self) -> Optional[Relation]:
         """Fetch the peer relation.
 
