@@ -5,7 +5,7 @@
 
 The Charmed MongoDB Operator delivers automated operations management from day 0 to day 2 on the [MongoDB Community Edition](https://github.com/mongodb/mongo) document database.
 
-MongoDB is a general purpose distributed document database. This operator charm deploys and operates MongoDB on physical or virtual machines as a single replica.
+MongoDB is a general purpose distributed document database. This operator charm deploys and operates MongoDB (vs 5.0) on physical or virtual machines as a single replica.
 
 
 ## Usage
