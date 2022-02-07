@@ -93,7 +93,7 @@ The core implementation of this charm is represented by the [MongodbOperatorChar
 - Configuration changes to `/etc/mongod.conf`
 - Starting of MongoDB daemon `mongod` for the unit as a single replica
 
-The class [MongoDB](./src/mongoserver.py) is a helper module. It provides utilities to communicate with a MongoDB database. This class is used by the core `MongodbOperatorCharm` to get information and interact with the database.
+The class [MongoDB](./src/mongod_helpers.py) is a helper module. It provides utilities to communicate with a MongoDB database. This class is used by the core `MongodbOperatorCharm` to get information and interact with the database.
 
 
 ## Intended use case

@@ -15,7 +15,7 @@ from charms.operator_libs_linux.v0.systemd import service_resume, service_runnin
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, Relation, WaitingStatus
 
-from mongoserver import MONGODB_PORT, MongoDB, ConnectionFailure, ConfigurationError
+from mongod_helpers import MONGODB_PORT, MongoDB, ConnectionFailure, ConfigurationError
 
 logger = logging.getLogger(__name__)
 

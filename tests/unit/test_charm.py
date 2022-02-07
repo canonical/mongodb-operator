@@ -170,7 +170,7 @@ class TestCharm(unittest.TestCase):
             [mock.call(arg) for arg in MONGO_CONF_ARGS])
 
     @patch_network_get(private_address="1.1.1.1")
-    @mock.patch("mongoserver.MongoDB.is_ready")
+    @mock.patch("mongod_helpers.MongoDB.is_ready")
     @mock.patch("charm.MongodbOperatorCharm._initialise_replica_set")
     @mock.patch("charm.MongodbOperatorCharm._open_port_tcp")
     @mock.patch("charm.service_resume")
@@ -198,7 +198,7 @@ class TestCharm(unittest.TestCase):
         initialise_replica_set.assert_called()
 
     @patch_network_get(private_address="1.1.1.1")
-    @mock.patch("mongoserver.MongoDB.is_ready")
+    @mock.patch("mongod_helpers.MongoDB.is_ready")
     @mock.patch("charm.MongodbOperatorCharm._initialise_replica_set")
     @mock.patch("charm.MongodbOperatorCharm._open_port_tcp")
     @mock.patch("charm.service_resume")
@@ -237,8 +237,8 @@ class TestCharm(unittest.TestCase):
         initialise_replica_set.assert_not_called()
 
     @patch_network_get(private_address="1.1.1.1")
-    @mock.patch("mongoserver.MongoDB.is_ready")
-    @mock.patch("mongoserver.MongoDB.initialise_replica_set")
+    @mock.patch("mongod_helpers.MongoDB.is_ready")
+    @mock.patch("mongod_helpers.MongoDB.initialise_replica_set")
     @mock.patch("charm.MongodbOperatorCharm._open_port_tcp")
     @mock.patch("charm.service_resume")
     @mock.patch("charm.MongodbOperatorCharm._initialise_replica_set")
@@ -264,7 +264,7 @@ class TestCharm(unittest.TestCase):
         _initialise_replica_set.assert_not_called()
 
     @patch_network_get(private_address="1.1.1.1")
-    @mock.patch("mongoserver.MongoDB.is_ready")
+    @mock.patch("mongod_helpers.MongoDB.is_ready")
     @mock.patch("charm.MongodbOperatorCharm._initialise_replica_set")
     @mock.patch("charm.MongodbOperatorCharm._open_port_tcp")
     @mock.patch("charm.service_resume")
@@ -287,7 +287,7 @@ class TestCharm(unittest.TestCase):
         initialise_replica_set.assert_not_called()
 
     @patch_network_get(private_address="1.1.1.1")
-    @mock.patch("mongoserver.MongoDB.is_ready")
+    @mock.patch("mongod_helpers.MongoDB.is_ready")
     @mock.patch("charm.service_resume")
     @mock.patch("charm.service_running")
     @mock.patch("charm.MongodbOperatorCharm._open_port_tcp")
@@ -302,7 +302,7 @@ class TestCharm(unittest.TestCase):
         service_resume.assert_not_called()
 
     @patch_network_get(private_address="1.1.1.1")
-    @mock.patch("mongoserver.MongoDB.is_ready")
+    @mock.patch("mongod_helpers.MongoDB.is_ready")
     @mock.patch("charm.MongodbOperatorCharm._open_port_tcp")
     @mock.patch("charm.MongodbOperatorCharm._initialise_replica_set")
     def test_on_start_not_ready_defer(self, initialise_replica_set, _open_port_tcp, is_ready):
@@ -317,8 +317,8 @@ class TestCharm(unittest.TestCase):
         initialise_replica_set.assert_not_called()
 
     @patch_network_get(private_address="1.1.1.1")
-    @mock.patch("mongoserver.MongoDB.is_ready")
-    @mock.patch("mongoserver.MongoDB.initialise_replica_set")
+    @mock.patch("mongod_helpers.MongoDB.is_ready")
+    @mock.patch("mongod_helpers.MongoDB.initialise_replica_set")
     @mock.patch("charm.MongodbOperatorCharm._open_port_tcp")
     @mock.patch("charm.service_resume")
     @mock.patch("charm.service_running")
@@ -332,7 +332,7 @@ class TestCharm(unittest.TestCase):
         service_resume.assert_not_called()
 
     @patch_network_get(private_address="1.1.1.1")
-    @mock.patch("mongoserver.MongoDB.is_ready")
+    @mock.patch("mongod_helpers.MongoDB.is_ready")
     @mock.patch("charm.MongodbOperatorCharm._open_port_tcp")
     @mock.patch("charm.service_running")
     def test_start_unable_to_open_tcp_moves_to_blocked(
@@ -504,8 +504,8 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @mock.patch("charm.MongodbOperatorCharm._initialise_replica_set")
-    @mock.patch("mongoserver.MongoDB.is_ready")
-    @mock.patch("mongoserver.MongoDB.is_replica_set")
+    @mock.patch("mongod_helpers.MongoDB.is_ready")
+    @mock.patch("mongod_helpers.MongoDB.is_replica_set")
     @mock.patch("charm.MongodbOperatorCharm.app")
     def test_mongodb_relation_joined_already_replica_set(
         self, app, is_replica_set, is_ready, initialise_replica_set
@@ -540,8 +540,8 @@ class TestCharm(unittest.TestCase):
 
         @patch_network_get(private_address="1.1.1.1")
         @mock.patch("charm.MongodbOperatorCharm._initialise_replica_set")
-        @mock.patch("mongoserver.MongoDB.is_ready")
-        @mock.patch("mongoserver.MongoDB.is_replica_set")
+        @mock.patch("mongod_helpers.MongoDB.is_ready")
+        @mock.patch("mongod_helpers.MongoDB.is_replica_set")
         @mock.patch("charm.MongodbOperatorCharm.app")
         def test_mongodb_relation_joined_not_yet_replica_set(
             self, app, is_replica_set, is_ready, initialise_replica_set
@@ -576,7 +576,7 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @mock.patch("charm.MongodbOperatorCharm._initialise_replica_set")
-    @mock.patch("mongoserver.MongoDB.is_ready")
+    @mock.patch("mongod_helpers.MongoDB.is_ready")
     @mock.patch("charm.MongodbOperatorCharm.app")
     def test_mongodb_relation_joined_peers_not_ready(self, app, is_ready, initialise_replica_set):
         # preset values
@@ -605,9 +605,9 @@ class TestCharm(unittest.TestCase):
             initialise_replica_set.assert_not_called()
 
     @patch_network_get(private_address="1.1.1.1")
-    @mock.patch("mongoserver.MongoDB.is_replica_set")
+    @mock.patch("mongod_helpers.MongoDB.is_replica_set")
     @mock.patch("charm.MongodbOperatorCharm._initialise_replica_set")
-    @mock.patch("mongoserver.MongoDB.is_ready")
+    @mock.patch("mongod_helpers.MongoDB.is_ready")
     @mock.patch("charm.MongodbOperatorCharm.app")
     def test_mongodb_relation_joined_peers_ready(
         self, app, is_ready, initialise_replica_set, is_replica_set
@@ -631,8 +631,8 @@ class TestCharm(unittest.TestCase):
         initialise_replica_set.assert_called()
 
     @patch_network_get(private_address="1.1.1.1")
-    @mock.patch("mongoserver.MongoDB.is_ready")
-    @mock.patch("mongoserver.MongoDB.initialise_replica_set")
+    @mock.patch("mongod_helpers.MongoDB.is_ready")
+    @mock.patch("mongod_helpers.MongoDB.initialise_replica_set")
     @mock.patch("charm.MongodbOperatorCharm._open_port_tcp")
     @mock.patch("charm.service_resume")
     @mock.patch("charm.MongodbOperatorCharm.app")
@@ -663,8 +663,8 @@ class TestCharm(unittest.TestCase):
             )
 
     @patch_network_get(private_address="1.1.1.1")
-    @mock.patch("mongoserver.MongoDB.is_ready")
-    @mock.patch("mongoserver.MongoDB.initialise_replica_set")
+    @mock.patch("mongod_helpers.MongoDB.is_ready")
+    @mock.patch("mongod_helpers.MongoDB.initialise_replica_set")
     @mock.patch("charm.MongodbOperatorCharm._open_port_tcp")
     @mock.patch("charm.service_running")
     def test_initialise_replica_success(
@@ -684,11 +684,11 @@ class TestCharm(unittest.TestCase):
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus(""))
 
     @patch_network_get(private_address="1.1.1.1")
-    @mock.patch("mongoserver.MongoDB.is_ready")
-    @mock.patch("mongoserver.MongoDB.initialise_replica_set")
+    @mock.patch("mongod_helpers.MongoDB.is_ready")
+    @mock.patch("mongod_helpers.MongoDB.initialise_replica_set")
     @mock.patch("charm.MongodbOperatorCharm._open_port_tcp")
     @mock.patch("charm.service_running")
-    @mock.patch("mongoserver.MongoDB.is_replica_set")
+    @mock.patch("mongod_helpers.MongoDB.is_replica_set")
     def test_initialise_replica_only_once(
         self, is_replica_set, service_running, _open_port_tcp, initialise_replica_set, is_ready
     ):
