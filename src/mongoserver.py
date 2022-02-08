@@ -1,10 +1,11 @@
-# Copyright 2021 Canonical Ltd
+"""Code for facilitating interaction with mongod for a juju unit running MongoDB."""
+# Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 import logging
 
 from pymongo import MongoClient
-from pymongo.errors import ConnectionFailure, ConfigurationError
+from pymongo.errors import ConfigurationError, ConnectionFailure
 from tenacity import RetryError, retry, stop_after_attempt, wait_exponential
 
 logger = logging.getLogger(__name__)
@@ -15,6 +16,8 @@ MONGODB_PORT = 27017
 
 
 class MongoDB:
+    """Communicate with mongod using pymongo python package."""
+
     def __init__(self, config):
         self._app_name = config["app_name"]
         self._replica_set_name = config["replica_set_name"]
@@ -39,6 +42,7 @@ class MongoDB:
 
         Args:
             client: MongoClient client to check for server info.
+
         Returns:
             client.server_info information about the server.
         """
@@ -102,11 +106,15 @@ class MongoDB:
             replica set.
         """
         if credentials:
-            password = credentials["password"]
-            username = credentials["username"]
+            pass
+            # TODO enable password functionality
+            # password = credentials["password"]
+            # username = credentials["username"]
         else:
-            password = self._root_password
-            username = "root"
+            pass
+            # TODO enable password functionality
+            # password = self._root_password
+            # username = "root"
 
         # TODO add password configuration in future patch
         # uri = "mongodb://{}:{}@".format(
