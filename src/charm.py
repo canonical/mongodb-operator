@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Charm code for MongoDB service."""
 # Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
 import json
@@ -6,16 +7,22 @@ import logging
 import subprocess
 from subprocess import check_call
 from typing import List, Optional
-from urllib.request import urlopen, URLError
+from urllib.request import URLError, urlopen
 
 import ops.charm
 import yaml
 from charms.operator_libs_linux.v0 import apt
 from charms.operator_libs_linux.v0.systemd import service_resume, service_running
 from ops.main import main
-from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, Relation, WaitingStatus
+from ops.model import (
+    ActiveStatus,
+    BlockedStatus,
+    MaintenanceStatus,
+    Relation,
+    WaitingStatus,
+)
 
-from mongoserver import MONGODB_PORT, MongoDB, ConnectionFailure, ConfigurationError
+from mongoserver import MONGODB_PORT, ConfigurationError, ConnectionFailure, MongoDB
 
 logger = logging.getLogger(__name__)
 

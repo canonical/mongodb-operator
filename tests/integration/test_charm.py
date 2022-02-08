@@ -7,10 +7,11 @@ from pathlib import Path
 
 import pytest
 import yaml
-from pytest_operator.plugin import OpsTest
-from tests.integration.helpers import pull_content_from_unit_file
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
+from pytest_operator.plugin import OpsTest
+
+from tests.integration.helpers import pull_content_from_unit_file
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,7 @@ PORT = 27017
 
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
-    """Build and deploy one unit of MongoDB"""
+    """Build and deploy one unit of MongoDB."""
     my_charm = await ops_test.build_charm(".")
     await ops_test.model.deploy(my_charm)
     await ops_test.model.wait_for_idle()
@@ -30,16 +31,14 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 
 @pytest.mark.abort_on_fail
 async def test_status(ops_test: OpsTest) -> None:
-    """Verifies that the application and unit are active"""
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME], status="active", timeout=1000
-    )
+    """Verifies that the application and unit are active."""
+    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=1000)
     assert len(ops_test.model.applications[APP_NAME].units) == 1
 
 
 @pytest.mark.parametrize("unit_id", UNIT_IDS)
 async def test_config_files_are_correct(ops_test: OpsTest, unit_id: int) -> None:
-    """Tests that mongo.conf as expected content"""
+    """Tests that mongo.conf as expected content."""
     # Get the expected contents from files.
     with open("tests/data/mongod.conf") as file:
         expected_mongodb_conf = file.read()
@@ -48,18 +47,14 @@ async def test_config_files_are_correct(ops_test: OpsTest, unit_id: int) -> None
     unit = ops_test.model.applications[f"{APP_NAME}"].units[unit_id]
 
     # Check that the remaining settings are as expected.
-    unit_mongodb_conf_data = await pull_content_from_unit_file(
-        unit, "/etc/mongod.conf"
-    )
-    expected_mongodb_conf = update_bind_ip(
-        expected_mongodb_conf, unit.public_address
-    )
+    unit_mongodb_conf_data = await pull_content_from_unit_file(unit, "/etc/mongod.conf")
+    expected_mongodb_conf = update_bind_ip(expected_mongodb_conf, unit.public_address)
     assert expected_mongodb_conf == unit_mongodb_conf_data
 
 
 @pytest.mark.parametrize("unit_id", UNIT_IDS)
 async def test_database_is_up_as_replica_set(ops_test: OpsTest, unit_id: int) -> None:
-    """Tests that mongodb is running as a replica set for the application unit"""
+    """Tests that mongodb is running as a replica set for the application unit."""
     # connect to mongo replicaSet
     unit = ops_test.model.applications[APP_NAME].units[unit_id]
     connection = unit.public_address + ":" + str(PORT)
@@ -76,7 +71,7 @@ async def test_database_is_up_as_replica_set(ops_test: OpsTest, unit_id: int) ->
 
 
 def update_bind_ip(conf: str, ip_address: str) -> str:
-    """ Updates mongod.conf contents to use the given ip address for bindIp
+    """Updates mongod.conf contents to use the given ip address for bindIp.
 
     Args:
         conf: contents of mongod.conf

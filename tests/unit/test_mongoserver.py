@@ -1,10 +1,11 @@
-# Copyright 2021 Canonical Ltd
+# Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 import unittest
 from unittest.mock import patch
 
 from pymongo import MongoClient
+from tenacity import RetryError
 
 from mongoserver import MongoDB
 
@@ -35,10 +36,12 @@ class TestMongoServer(unittest.TestCase):
         ready = mongo.is_ready()
         self.assertEqual(ready, True)
 
+    @patch("mongoserver.MongoDB.check_server_info")
     @patch("pymongo.MongoClient", "server_info", "ServerSelectionTimeoutError")
-    def test_mongo_is_not_ready_when_server_info_is_not_available(self):
+    def test_mongo_is_not_ready_when_server_info_is_not_available(self, check_server_info):
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
+        check_server_info.side_effect = RetryError(last_attempt=None)
 
         ready = mongo.is_ready()
         self.assertEqual(ready, False)
