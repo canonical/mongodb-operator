@@ -105,21 +105,7 @@ class MongoDB:
             A string URI that may be used to access the MongoDB
             replica set.
         """
-        if credentials:
-            pass
-            # TODO enable password functionality
-            # password = credentials["password"]
-            # username = credentials["username"]
-        else:
-            pass
-            # TODO enable password functionality
-            # password = self._root_password
-            # username = "root"
-
         # TODO add password configuration in future patch
-        # uri = "mongodb://{}:{}@".format(
-        #    username,
-        #    password)
 
         uri = "mongodb://"
         for i, host in enumerate(self._unit_ips):
