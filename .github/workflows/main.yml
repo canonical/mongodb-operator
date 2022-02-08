@@ -31,6 +31,6 @@ jobs:
       - name: Setup operator environment
         uses: charmed-kubernetes/actions-operator@main
         with:
-          provider: microk8s
+          provider: lxd 
       - name: Run integration tests
         run: tox -e integration
