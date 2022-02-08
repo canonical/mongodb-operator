@@ -5,8 +5,8 @@ import unittest
 from unittest.mock import patch
 
 from pymongo import MongoClient
-
 from mongoserver import MongoDB
+from tenacity import RetryError
 
 MONGO_CONFIG = {
     "app_name": "mongodb",
@@ -34,11 +34,13 @@ class TestMongoServer(unittest.TestCase):
         server_info.return_value = {"info": "some info"}
         ready = mongo.is_ready()
         self.assertEqual(ready, True)
-
+    
+    @patch("mongoserver.MongoDB.check_server_info")
     @patch("pymongo.MongoClient", "server_info", "ServerSelectionTimeoutError")
-    def test_mongo_is_not_ready_when_server_info_is_not_available(self):
+    def test_mongo_is_not_ready_when_server_info_is_not_available(self, check_server_info):
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
+        check_server_info.side_effect = RetryError(last_attempt=None)
 
         ready = mongo.is_ready()
         self.assertEqual(ready, False)

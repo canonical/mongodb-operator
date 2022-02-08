@@ -234,14 +234,16 @@ class TestCharm(unittest.TestCase):
         initialize_replica_set.assert_not_called()
 
     @patch_network_get(private_address="1.1.1.1")
+    @mock.patch("mongoserver.MongoDB.is_ready")
     @mock.patch("charm.service_resume")
     @mock.patch("charm.service_running")
     @mock.patch("charm.MongodbOperatorCharm._open_port_tcp")
     def test_on_start_mongo_service_ready_doesnt_reenable(
-        self, _open_port_tcp, service_running, service_resume
+        self, _open_port_tcp, service_running, service_resume, is_ready
     ):
         self.harness.set_leader(True)
         service_running.return_value = True
+        is_ready.return_value = True
         self.harness.charm.on.start.emit()
         service_running.assert_called()
         service_resume.assert_not_called()
@@ -434,16 +436,19 @@ class TestCharm(unittest.TestCase):
                     "couldn't install MongoDB")
             )
 
-    @mock.patch("charm.apt.RepositoryMapping.add")
+    @mock.patch("charm.apt.RepositoryMapping")
     @mock.patch("charm.apt.DebianRepository.import_key")
     @mock.patch("charm.apt.DebianRepository.from_repo_line")
     @mock.patch("charm.urlopen")
     def test_add_mongodb_org_repository_already_added_skips(
-        self, urlopen, from_repo_line, import_key, add
+        self, urlopen, from_repo_line, import_key, repo_map
     ):
+        repo_map.return_value = [
+            "deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"]
         self.harness.charm._add_mongodb_org_repository()
         urlopen.assert_called()
         from_repo_line.assert_not_called()
+
 
     @patch_network_get(private_address="1.1.1.1")
     def test_unit_ips(self):

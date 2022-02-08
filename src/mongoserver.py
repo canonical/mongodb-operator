@@ -33,7 +33,7 @@ class MongoDB:
         """
         return MongoClient(self.replica_set_uri(), serverSelectionTimeoutMS=1000)
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=30))
+    @retry(stop=stop_after_attempt(10), wait=wait_exponential(multiplier=1, min=2, max=30))
     def check_server_info(self, client: MongoClient):
         """Repeatly checks to see if the server is ready, timing out after 10 tries.
 
