@@ -177,20 +177,16 @@ def unit_uri(ip_address: str) -> str:
     return "mongodb://{}:27017/".format(ip_address)
 
 
-def is_none(value):
-    """Return True if value is None."""
-    return value is None
-
-
 @retry(
-    retry=retry_if_result(is_none),
+    retry=retry_if_result(lambda x: x is None),
     stop=stop_after_attempt(5),
     wait=wait_exponential(multiplier=1, min=2, max=30),
 )
 def replica_set_primary(client: MongoClient, valid_ips: List[str]) -> Tuple[str, str]:
-    """Returns the primary of the replica set, retrying 5 times to give the
-    replica set time to elect a new primary, also checks against the valid_ips
-    to verify that the primary is not outdated.
+    """Returns the primary of the replica set.
+
+    Retrying 5 times to give the replica set time to elect a new primary, also checks against the
+    valid_ips to verify that the primary is not outdated.
 
     client:
         client of the replica set of interest.
@@ -206,19 +202,15 @@ def replica_set_primary(client: MongoClient, valid_ips: List[str]) -> Tuple[str,
     return primary
 
 
-def is_zero(value):
-    """Return True if value is 0."""
-    return value == 0
-
-
 @retry(
-    retry=retry_if_result(is_zero),
+    retry=retry_if_result(lambda x: x == 0),
     stop=stop_after_attempt(5),
     wait=wait_exponential(multiplier=1, min=2, max=30),
 )
 def count_primaries(ops_test: OpsTest) -> int:
-    """Counts the number of primaries in a replica set. Will retry counting
-    when the number of primaries is 0 at most 5 times.
+    """Counts the number of primaries in a replica set.
+
+    Will retry counting when the number of primaries is 0 at most 5 times.
     """
     number_of_primaries = 0
     for unit_id in UNIT_IDS:

@@ -1,4 +1,5 @@
-# Copyright 2021 Canonical Ltd
+"""Code for facilitating interaction with mongod for a juju unit running MongoDB."""
+# Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 import logging
@@ -15,6 +16,8 @@ MONGODB_PORT = 27017
 
 
 class MongoDB:
+    """Communicate with mongod using pymongo python package."""
+
     def __init__(self, config):
         self._app_name = config["app_name"]
         self._replica_set_name = config["replica_set_name"]
@@ -30,9 +33,8 @@ class MongoDB:
         The timeout for all queries using this client object is 1 sec.
 
         Args:
-            standalone: an optional boolean flag that indicates if the
-            client should connect to a single instance of MongoDB or the entire
-            replica set
+            standalone: an optional boolean flag that indicates if the client should connect to a
+            single instance of MongoDB or the entire replica set
         Returns:
             A pymongo `MongoClient` object.
         """
@@ -44,6 +46,7 @@ class MongoDB:
 
         Args:
             client: MongoClient client to check for server info.
+
         Returns:
             client.server_info information about the server.
         """
@@ -53,9 +56,8 @@ class MongoDB:
         """Is the MongoDB server ready to services requests.
 
         Args:
-            all_replicas: an optional boolean flag that indicates if the client
-            should check if a single instance of MongoDB or the entire
-            replica set is ready
+            standalone: an optional boolean flag that indicates if the client should check if a
+            single instance of MongoDB or the entire replica set is ready
         Returns:
             bool: True if services is ready False otherwise.
         """
@@ -128,26 +130,15 @@ class MongoDB:
         """Construct a replica set URI.
 
         Args:
-            credentials: an optional dictionary with keys "username"
-            and "password".
-            standalone: an optional boolean flag that indicates if the uri
-            should use the full replica set or a stand
+            credentials: an optional dictionary with keys "username" and "password".
+            standalone: an optional boolean flag that indicates if the uri should use the full
+            replica set or a stand
 
         Returns:
             A string URI that may be used to access the MongoDB
             replica set.
         """
-        if credentials:
-            password = credentials["password"]
-            username = credentials["username"]
-        else:
-            password = self._root_password
-            username = "root"
-
         # TODO add password configuration in future patch
-        # uri = "mongodb://{}:{}@".format(
-        #    username,
-        #    password)
 
         uri = "mongodb://"
         if not standalone:

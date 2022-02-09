@@ -1,4 +1,4 @@
-# Copyright 2021 Canonical
+# Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 import unittest
@@ -160,9 +160,7 @@ class TestCharm(unittest.TestCase):
         with patch("builtins.open", open_mock, create=True):
             self.harness.charm.on.config_changed.emit()
 
-        """TODO change expected output based on config options,
-        (once config options are implemented)
-        """
+        # TODO change expected output based on config options,(once config options are implemented)
         open_mock.assert_called_with("/etc/mongod.conf", "w")
         open_mock.return_value.write.assert_has_calls([mock.call(arg) for arg in MONGO_CONF_ARGS])
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Charm code for MongoDB service."""
 # Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
 import json
