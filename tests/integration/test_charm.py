@@ -3,17 +3,22 @@
 # See LICENSE file for licensing details.
 
 import logging
-from pathlib import Path
 import os
+from pathlib import Path
+from typing import List, Tuple
+
 import pytest
 import yaml
-from typing import Tuple, List
-from pytest_operator.plugin import OpsTest
 from helpers import pull_content_from_unit_file
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
+from pytest_operator.plugin import OpsTest
 from tenacity import (
-    RetryError, retry, retry_if_result, stop_after_attempt, wait_exponential
+    RetryError,
+    retry,
+    retry_if_result,
+    stop_after_attempt,
+    wait_exponential,
 )
 
 logger = logging.getLogger(__name__)
@@ -55,17 +60,13 @@ async def test_config_files_are_correct(ops_test: OpsTest, unit_id: int) -> None
 
     # Check that the conf settings are as expected.
     unit_mongodb_conf_data = await pull_content_from_unit_file(unit, "/etc/mongod.conf")
-    expected_mongodb_conf = update_bind_ip(
-        expected_mongodb_conf, unit.public_address)
+    expected_mongodb_conf = update_bind_ip(expected_mongodb_conf, unit.public_address)
     assert expected_mongodb_conf == unit_mongodb_conf_data
 
 
 @pytest.mark.parametrize("unit_id", UNIT_IDS)
-async def test_unit_is_running_as_replica_set(
-    ops_test: OpsTest, unit_id: int
-) -> None:
-    """Tests that mongodb is running as a replica set for the application unit.
-    """
+async def test_unit_is_running_as_replica_set(ops_test: OpsTest, unit_id: int) -> None:
+    """Tests that mongodb is running as a replica set for the application unit."""
     # connect to mongo replica set
     unit = ops_test.model.applications[APP_NAME].units[unit_id]
     connection = unit.public_address + ":" + str(PORT)
@@ -81,23 +82,8 @@ async def test_unit_is_running_as_replica_set(
     client.close()
 
 
-async def test_all_units_in_same_replica_set(ops_test: OpsTest) -> None:
-    """Tests that all units in the application belong to the same replica set.
-
-    This test will be implemented by Raul as part of his onboarding task.
-
-    Hint: multiple ways to do this, here are two but there are probably
-    other ways to implement it:
-    - check that each unit has the same replica set name
-    - create a URI for all units for the expected replica set name and see if
-      you can connect
-    """
-    pass
-
-
 async def test_leader_is_primary_on_deployment(ops_test: OpsTest) -> None:
-    """Tests that right after deployment that the primary unit is the leader.
-    """
+    """Tests that right after deployment that the primary unit is the leader."""
     # grab leader unit
     leader_unit = None
     for unit in ops_test.model.applications[APP_NAME].units:
@@ -116,8 +102,7 @@ async def test_leader_is_primary_on_deployment(ops_test: OpsTest) -> None:
 
 
 async def test_exactly_one_primary(ops_test: OpsTest) -> None:
-    """Tests that there is exactly one primary in the deployed units.
-    """
+    """Tests that there is exactly one primary in the deployed units."""
     try:
         number_of_primaries = count_primaries(ops_test)
     except RetryError:
@@ -130,8 +115,7 @@ async def test_exactly_one_primary(ops_test: OpsTest) -> None:
 
 
 async def test_cluster_is_stable_after_deletion(ops_test: OpsTest) -> None:
-    """Tests that the cluster maintains a primary after the primary is delelted.
-    """
+    """Tests that the cluster maintains a primary after the primary is delelted."""
     # find & destroy leader unit
     leader_ip = None
     for unit in ops_test.model.applications[APP_NAME].units:
@@ -163,17 +147,13 @@ async def test_cluster_is_stable_after_deletion(ops_test: OpsTest) -> None:
     except RetryError:
         primary = None
 
-    print(client.primary)
     client.close()
 
     # verify that the primary is not None
-    assert primary is not None, "replica set with uri %s has no primary" % (
-        replica_set_uri)
+    assert primary is not None, "replica set with uri %s has no primary" % (replica_set_uri)
 
     # check that the primary is not one of the deleted units
-    print(primary[0])
-    assert primary[0] in ip_addresses, (
-        "replica set primary is not one of the available units")
+    assert primary[0] in ip_addresses, "replica set primary is not one of the available units"
 
 
 def update_bind_ip(conf: str, ip_address: str) -> str:
@@ -207,9 +187,7 @@ def is_none(value):
     stop=stop_after_attempt(5),
     wait=wait_exponential(multiplier=1, min=2, max=30),
 )
-def replica_set_primary(
-    client: MongoClient, valid_ips: List[str]
-) -> Tuple[str, str]:
+def replica_set_primary(client: MongoClient, valid_ips: List[str]) -> Tuple[str, str]:
     """Returns the primary of the replica set, retrying 5 times to give the
     replica set time to elect a new primary, also checks against the valid_ips
     to verify that the primary is not outdated.

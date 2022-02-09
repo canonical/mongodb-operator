@@ -6,16 +6,22 @@ import logging
 import subprocess
 from subprocess import check_call
 from typing import List, Optional
-from urllib.request import urlopen, URLError
+from urllib.request import URLError, urlopen
 
 import ops.charm
 import yaml
 from charms.operator_libs_linux.v0 import apt
 from charms.operator_libs_linux.v0.systemd import service_resume, service_running
 from ops.main import main
-from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, Relation, WaitingStatus
+from ops.model import (
+    ActiveStatus,
+    BlockedStatus,
+    MaintenanceStatus,
+    Relation,
+    WaitingStatus,
+)
 
-from mongoserver import MONGODB_PORT, MongoDB, ConnectionFailure, ConfigurationError
+from mongoserver import MONGODB_PORT, ConfigurationError, ConnectionFailure, MongoDB
 
 logger = logging.getLogger(__name__)
 
@@ -39,14 +45,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             return
 
         # do not initialise replica set until all peers have joined
-        if not self.app.planned_units() == len(self._peers.units) + 1:
-            logger.debug(
-                "planned units does not match joined units: %s != %s, will "
-                + "wait to initialise replica set until all planned units "
-                + "have joined",
-                str(self.app.planned_units()),
-                len(self.model.get_relation(PEER).units) + 1,
-            )
+        if not self._check_unit_count:
+            logger.debug("waiting to initialise replica set until all planned units have joined")
             return
 
         # do not initilise replica set until all peers have started mongod
@@ -55,10 +55,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             peer_config = self._config
             peer_config["calling_unit_ip"] = peer_ip
             mongo_peer = MongoDB(peer_config)
-            if not mongo_peer.is_ready(all_replicas=False):
+            if not mongo_peer.is_ready(standalone=True):
                 logger.debug(
-                    "unit: %s is not ready, cannot initilise replica set "
-                    + "until all units are ready, defering on relation-joined",
+                    "unit: %s is not ready, cannot initilise replica set until all units are ready, deferring on relation-joined",
                     peer,
                 )
                 event.defer()
@@ -66,7 +65,11 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         # initialise replica set if not already done
         if not self._mongo.is_replica_set():
-            self._initialise_replica_set()
+            try:
+                self._initialise_replica_set()
+            except (ConnectionFailure, ConfigurationError):
+                self.unit.status = BlockedStatus("failed to initialise replica set")
+                return
 
         # verify replica set is ready
         if not self._mongo.is_ready():
@@ -123,9 +126,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self.unit.status = BlockedStatus("failed to open TCP port for MongoDB")
             return
 
-        # check if this units deployment of MongoDB is ready
-        if not self._mongo.is_ready(all_replicas=False):
-            logger.debug("mongoDB not ready, defering on start event")
+        # check if this unit's deployment of MongoDB is ready
+        if not self._mongo.is_ready(standalone=True):
+            logger.debug("mongoDB not ready, deferring on start event")
             self.unit.status = WaitingStatus("waiting for MongoDB to start")
             event.defer()
             return
@@ -138,17 +141,15 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             return
 
         # do not initialise replica set until all peers have joined
-        if not self.app.planned_units() == len(self.model.get_relation(PEER).units) + 1:
-            logger.debug(
-                "planned units does not match joined units: %s != %s,"
-                + "waiting to initialise replica set",
-                str(self.app.planned_units()),
-                len(self.model.get_relation(PEER).units) + 1,
-            )
+        if not self._check_unit_count:
+            logger.debug("waiting to initialise replica set until all planned units have joined")
             return
 
         # initialise replica set
-        self._initialise_replica_set()
+        try:
+            self._initialise_replica_set()
+        except (ConnectionFailure, ConfigurationError):
+            self.unit.status = BlockedStatus("failed to initialise replica set")
 
     def _open_port_tcp(self, port: int) -> None:
         """Open the given port.
@@ -218,18 +219,28 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self.unit.status = BlockedStatus("couldn't install MongoDB")
 
     def _initialise_replica_set(self) -> None:
+        """Initialise deployed units as a replica set."""
         self.unit.status = MaintenanceStatus("initialising MongoDB replica set")
-        logger.debug("initialising replica set for these ips: %s", self._unit_ips)
+        logger.debug("initialising replica set for IPs: %s", self._unit_ips)
         try:
             self._mongo.initialise_replica_set(self._unit_ips)
             self._peers.data[self.app]["replica_set_hosts"] = json.dumps(self._unit_ips)
         except (ConnectionFailure, ConfigurationError) as e:
             logger.error("error initialising replica sets in _on_start: error: %s", str(e))
-            self.unit.status = BlockedStatus("failed to initialise replica set")
-            return
+            raise e
 
         # replica set initialised properly and ready to go
         self.unit.status = ActiveStatus()
+
+    @property
+    def _check_unit_count(self) -> bool:
+        all_units_joined = self.app.planned_units() == len(self._peers.units) + 1
+        logger.debug(
+            "planned units does not match joined units: %s != %s",
+            str(self.app.planned_units()),
+            str(len(self._peers.units) + 1),
+        )
+        return all_units_joined
 
     @property
     def _unit_ips(self) -> List[str]:

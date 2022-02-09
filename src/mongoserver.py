@@ -4,7 +4,7 @@
 import logging
 
 from pymongo import MongoClient
-from pymongo.errors import ConnectionFailure, ConfigurationError
+from pymongo.errors import ConfigurationError, ConnectionFailure
 from tenacity import RetryError, retry, stop_after_attempt, wait_exponential
 
 logger = logging.getLogger(__name__)
@@ -24,18 +24,19 @@ class MongoDB:
         self._unit_ips = config["unit_ips"]
         self._calling_unit_ip = config["calling_unit_ip"]
 
-    def client(self, all_replicas=True) -> MongoClient:
+    def client(self, standalone=False) -> MongoClient:
         """Construct a client for the MongoDB database.
 
         The timeout for all queries using this client object is 1 sec.
 
         Args:
-            all_replicas: an optional boolean flag that indicates if the client
-            should connect to the full replica set or a single replica
+            standalone: an optional boolean flag that indicates if the
+            client should connect to a single instance of MongoDB or the entire
+            replica set
         Returns:
             A pymongo `MongoClient` object.
         """
-        return MongoClient(self.replica_uri(all_replicas), serverSelectionTimeoutMS=1000)
+        return MongoClient(self.replica_uri(standalone), serverSelectionTimeoutMS=1000)
 
     @retry(stop=stop_after_attempt(10), wait=wait_exponential(multiplier=1, min=2, max=30))
     def check_server_info(self, client: MongoClient):
@@ -48,17 +49,18 @@ class MongoDB:
         """
         return client.server_info()
 
-    def is_ready(self, all_replicas=True) -> bool:
+    def is_ready(self, standalone=False) -> bool:
         """Is the MongoDB server ready to services requests.
 
         Args:
             all_replicas: an optional boolean flag that indicates if the client
-            should check if the full replica set or a single replica is ready
+            should check if a single instance of MongoDB or the entire
+            replica set is ready
         Returns:
             bool: True if services is ready False otherwise.
         """
         ready = False
-        client = self.client(all_replicas)
+        client = self.client(standalone)
         try:
             self.check_server_info(client)
             ready = True
@@ -71,19 +73,17 @@ class MongoDB:
     def is_replica_set(self) -> bool:
         """Is the MongoDB server operating as a replica set.
 
-        Args:
-            None
         Returns:
             bool: True if server is operating as a replica set False otherwise.
         """
         is_replica_set = False
 
         # cannot be in replica set status if this server is not up
-        if not self.is_ready(all_replicas=False):
+        if not self.is_ready(standalone=True):
             return is_replica_set
 
         # access instance replica set configuration
-        client = self.client(all_replicas=False)
+        client = self.client(standalone=True)
         collection = client.local.system.replset
         try:
             replica_set_name = collection.find()[0]["_id"]
@@ -109,7 +109,7 @@ class MongoDB:
         logger.debug("setting up replica set with these options %s", config)
 
         # must initiate replica with current unit IP address
-        client = self.client(all_replicas=False)
+        client = self.client(standalone=True)
         try:
             client.admin.command("replSetInitiate", config)
         except ConnectionFailure as e:
@@ -124,14 +124,14 @@ class MongoDB:
         finally:
             client.close()
 
-    def replica_uri(self, all_replicas=True, credentials=None) -> str:
+    def replica_uri(self, standalone=False, credentials=None) -> str:
         """Construct a replica set URI.
 
         Args:
             credentials: an optional dictionary with keys "username"
             and "password".
-            all_replicas: an optional boolean flag that indicates if the uri
-            should use the full replica set or a single replica
+            standalone: an optional boolean flag that indicates if the uri
+            should use the full replica set or a stand
 
         Returns:
             A string URI that may be used to access the MongoDB
@@ -150,11 +150,9 @@ class MongoDB:
         #    password)
 
         uri = "mongodb://"
-        if all_replicas:
-            for i, host in enumerate(self._unit_ips):
-                if i:
-                    uri += ","
-                uri += "{}:{}".format(host, self._port)
+        if not standalone:
+            hosts = ["{}:{}".format(unit_ip, self._port) for unit_ip in self._unit_ips]
+            uri += ",".join(hosts)
         else:
             uri += "{}:{}".format(self._calling_unit_ip, self._port)
 
