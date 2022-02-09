@@ -16,7 +16,7 @@ from charm import (
     apt,
     subprocess,
 )
-from tests.helpers import patch_network_get
+from tests.unit.helpers import patch_network_get
 
 MONGO_CONF_ORIG = """# mongod.conf
 
@@ -47,19 +47,19 @@ net:
 processManagement:
   timeZoneInfo: /usr/share/zoneinfo
 
-#security:
+# security:
 
-#operationProfiling:
+# operationProfiling:
 
-#replication:
+# replication:
 
-#sharding:
+# sharding:
 
-## Enterprise-Only Options:
+# Enterprise-Only Options:
 
-#auditLog:
+# auditLog:
 
-#snmp:
+# snmp:
 """
 
 MONGO_CONF_ARGS = [
@@ -160,74 +160,124 @@ class TestCharm(unittest.TestCase):
         with patch("builtins.open", open_mock, create=True):
             self.harness.charm.on.config_changed.emit()
 
-        """TODO change expected output based on config options,
-        (once config options are implemented)
-        """
+        # TODO change expected output based on config options,(once config options are implemented)
         open_mock.assert_called_with("/etc/mongod.conf", "w")
         open_mock.return_value.write.assert_has_calls([mock.call(arg) for arg in MONGO_CONF_ARGS])
 
     @patch_network_get(private_address="1.1.1.1")
     @mock.patch("mongoserver.MongoDB.is_ready")
-    @mock.patch("mongoserver.MongoDB.initialize_replica_set")
+    @mock.patch("charm.MongodbOperatorCharm._initialise_replica_set")
     @mock.patch("charm.MongodbOperatorCharm._open_port_tcp")
     @mock.patch("charm.service_resume")
-    def test_on_start(self, service_resume, _open_port_tcp, initialize_replica_set, is_ready):
+    def test_on_start_full_successful_execution(
+        self, service_resume, _open_port_tcp, initialise_replica_set, is_ready
+    ):
         self.harness.set_leader(True)
         is_ready.return_value = True
 
         self.harness.charm.on.start.emit()
-
-        # Make sure the port is opened
-        _open_port_tcp.assert_called_with(27017)
-        # self.assertEqual(_call.call_args_list, [call(["open-port", "27017/TCP"])])
 
         # Check if mongod is started
         service_resume.assert_called_with("mongod.service")
 
+        # Make sure the port is opened
+        _open_port_tcp.assert_called_with(27017)
+
         # Check if mongod is ready
         is_ready.assert_called()
-
-        # Check that replica set is initialized with correct IP
-        initialize_replica_set.assert_called_with(["1.1.1.1"])
 
         # Ensure we set an ActiveStatus for the charm
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus())
 
-    @mock.patch("mongoserver.MongoDB.is_ready")
-    @mock.patch("mongoserver.MongoDB.initialize_replica_set")
-    @mock.patch("charm.MongodbOperatorCharm._open_port_tcp")
-    @mock.patch("charm.service_resume")
-    def test_on_start_not_leader_doesnt_start_mongo(
-        self, service_resume, _open_port_tcp, initialize_replica_set, is_ready
-    ):
-        self.harness.set_leader(False)
-        self.harness.charm.on.start.emit()
-
-        _open_port_tcp.assert_not_called()
-        service_resume.assert_not_called()
-        is_ready.assert_not_called()
-        initialize_replica_set.assert_not_called()
-        self.assertNotEqual(self.harness.charm.unit.status, ActiveStatus(""))
+        # Check that replica set is initialised with correct IP
+        initialise_replica_set.assert_called()
 
     @patch_network_get(private_address="1.1.1.1")
     @mock.patch("mongoserver.MongoDB.is_ready")
-    @mock.patch("mongoserver.MongoDB.initialize_replica_set")
+    @mock.patch("charm.MongodbOperatorCharm._initialise_replica_set")
+    @mock.patch("charm.MongodbOperatorCharm._open_port_tcp")
+    @mock.patch("charm.service_resume")
+    @mock.patch("charm.service_running")
+    @mock.patch("charm.MongodbOperatorCharm.app")
+    def test_on_start_wait_for_peers(
+        self,
+        app,
+        service_running,
+        service_resume,
+        _open_port_tcp,
+        initialise_replica_set,
+        is_ready,
+    ):
+        service_running.return_value = False
+        app.planned_units.return_value = len(self.harness.charm._unit_ips) + 2
+        self.harness.set_leader(True)
+        is_ready.return_value = True
+
+        self.harness.charm.on.start.emit()
+
+        # Check if mongod is started
+        service_resume.assert_called_with("mongod.service")
+
+        # Make sure the port is opened
+        _open_port_tcp.assert_called_with(27017)
+
+        # Check if mongod is ready
+        is_ready.assert_called()
+
+        # Ensure we set an ActiveStatus for the charm
+        self.assertEqual(self.harness.charm.unit.status, ActiveStatus())
+
+        # Verify that we don't initialise the replica set when number of
+        # expected units doesn't match
+        initialise_replica_set.assert_not_called()
+
+    @patch_network_get(private_address="1.1.1.1")
+    @mock.patch("mongoserver.MongoDB.is_ready")
+    @mock.patch("mongoserver.MongoDB.initialise_replica_set")
+    @mock.patch("charm.MongodbOperatorCharm._open_port_tcp")
+    @mock.patch("charm.service_resume")
+    @mock.patch("charm.MongodbOperatorCharm._initialise_replica_set")
+    @mock.patch("charm.MongodbOperatorCharm.app")
+    def test_on_start_not_leader_doesnt_initialise_replica_set(
+        self,
+        app,
+        _initialise_replica_set,
+        service_resume,
+        _open_port_tcp,
+        initialise_replica_set,
+        is_ready,
+    ):
+        self.harness.set_leader(False)
+        is_ready.return_value = True
+        self.harness.charm.on.start.emit()
+
+        service_resume.assert_called()
+        _open_port_tcp.assert_called()
+        is_ready.assert_called_with(standalone=True)
+        self.assertEqual(self.harness.charm.unit.status, ActiveStatus())
+        app.planned_units.assert_not_called()
+        _initialise_replica_set.assert_not_called()
+
+    @patch_network_get(private_address="1.1.1.1")
+    @mock.patch("mongoserver.MongoDB.is_ready")
+    @mock.patch("charm.MongodbOperatorCharm._initialise_replica_set")
     @mock.patch("charm.MongodbOperatorCharm._open_port_tcp")
     @mock.patch("charm.service_resume")
     @mock.patch("charm.service_running")
     def test_on_start_systemd_failure_leads_to_blocked_status(
-        self, service_running, service_resume, _open_port_tcp, initialize_replica_set, is_ready
+        self, service_running, service_resume, _open_port_tcp, initialise_replica_set, is_ready
     ):
-        self.harness.set_leader(True)
-        is_ready.return_value = True
         service_running.return_value = False
         service_resume.return_value = False
 
         with self.assertLogs("charm", "ERROR") as logs:
             self.harness.charm.on.start.emit()
+            service_resume.assert_called()
             self.assertIn("ERROR:charm:failed to enable mongod.service", logs.output)
         self.assertEqual(self.harness.charm.unit.status, BlockedStatus("couldn't start MongoDB"))
-        initialize_replica_set.assert_not_called()
+        _open_port_tcp.assert_not_called()
+        is_ready.assert_not_called()
+        initialise_replica_set.assert_not_called()
 
     @patch_network_get(private_address="1.1.1.1")
     @mock.patch("mongoserver.MongoDB.is_ready")
@@ -245,12 +295,12 @@ class TestCharm(unittest.TestCase):
         service_resume.assert_not_called()
 
     @patch_network_get(private_address="1.1.1.1")
-    @mock.patch("charm.service_running")
     @mock.patch("mongoserver.MongoDB.is_ready")
     @mock.patch("charm.MongodbOperatorCharm._open_port_tcp")
-    @mock.patch("mongoserver.MongoDB.initialize_replica_set")
+    @mock.patch("charm.MongodbOperatorCharm._initialise_replica_set")
+    @mock.patch("charm.service_running")
     def test_on_start_not_ready_defer(
-        self, initialize_replica_set, _open_port_tcp, is_ready, service_running
+        self, service_running, initialise_replica_set, _open_port_tcp, is_ready
     ):
         self.harness.set_leader(True)
         service_running.return_value = True
@@ -260,45 +310,16 @@ class TestCharm(unittest.TestCase):
         self.assertEqual(
             self.harness.charm.unit.status, WaitingStatus("waiting for MongoDB to start")
         )
-        initialize_replica_set.assert_not_called()
+        initialise_replica_set.assert_not_called()
 
     @patch_network_get(private_address="1.1.1.1")
     @mock.patch("mongoserver.MongoDB.is_ready")
-    @mock.patch("mongoserver.MongoDB.initialize_replica_set")
-    @mock.patch("charm.MongodbOperatorCharm._open_port_tcp")
-    @mock.patch("charm.service_resume")
-    def test_on_start_initialize_replica_failure_leads_to_blocked_state(
-        self, service_resume, _open_port_tcp, initialize_replica_set, is_ready
-    ):
-        self.harness.set_leader(True)
-        is_ready.return_value = True
-
-        exceptions = [
-            ConnectionFailure("connection error message"),
-            ConfigurationError("configuration error message"),
-        ]
-        log_messages = [
-            "ERROR:charm:error initialising replica sets in _on_start: error: connection error message",
-            "ERROR:charm:error initialising replica sets in _on_start: error: configuration error message",
-        ]
-        for exception, log_message in zip(exceptions, log_messages):
-            with self.assertLogs("charm", "ERROR") as logs:
-                initialize_replica_set.side_effect = exception
-                self.harness.charm.on.start.emit()
-                self.assertIn(log_message, logs.output)
-
-            self.assertEqual(
-                self.harness.charm.unit.status, BlockedStatus("failed to initialise replicaset")
-            )
-
-    @patch_network_get(private_address="1.1.1.1")
-    @mock.patch("mongoserver.MongoDB.is_ready")
-    @mock.patch("mongoserver.MongoDB.initialize_replica_set")
+    @mock.patch("mongoserver.MongoDB.initialise_replica_set")
     @mock.patch("charm.MongodbOperatorCharm._open_port_tcp")
     @mock.patch("charm.service_resume")
     @mock.patch("charm.service_running")
     def test_on_start_mongo_service_running_doesnt_resume_service(
-        self, service_running, service_resume, _open_port_tcp, initialize_replica_set, is_ready
+        self, service_running, service_resume, _open_port_tcp, initialise_replica_set, is_ready
     ):
         self.harness.set_leader(True)
         service_running.return_value = True
@@ -435,7 +456,7 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     def test_unit_ips(self):
-        key_values = {"private_address": "127.4.5.6"}
+        key_values = {"private-address": "127.4.5.6"}
         rel_id = self.harness.charm.model.get_relation("mongodb").id
         self.harness.add_relation_unit(rel_id, "mongodb/1")
         self.harness.update_relation_data(rel_id, "mongodb/1", key_values)
@@ -443,3 +464,220 @@ class TestCharm(unittest.TestCase):
         resulting_ips = self.harness.charm._unit_ips
         expected_ips = ["127.4.5.6", "1.1.1.1"]
         self.assertEqual(resulting_ips, expected_ips)
+
+    @mock.patch("charm.MongodbOperatorCharm.app")
+    def test_mongodb_relation_joined_non_leader_does_nothing(self, app):
+        rel = self.harness.charm.model.get_relation("mongodb")
+        self.harness.set_leader(False)
+        self.harness.charm.on.mongodb_relation_joined.emit(relation=rel)
+
+        app.planned_units.assert_not_called()
+
+    @mock.patch("charm.MongodbOperatorCharm.app")
+    def test_mongodb_relation_joined_planned_units_does_not_match_joined_units(self, app):
+        rel = self.harness.charm.model.get_relation("mongodb")
+        self.harness.set_leader(True)
+        app.planned_units.return_value = 3
+
+        with self.assertLogs("charm", "DEBUG") as logs:
+            self.harness.charm.on.mongodb_relation_joined.emit(relation=rel)
+            self.assertIn(
+                "planned units does not match joined units: 3 != 1",
+                "".join(logs.output),
+            )
+
+    @patch_network_get(private_address="1.1.1.1")
+    @mock.patch("charm.MongodbOperatorCharm._initialise_replica_set")
+    @mock.patch("mongoserver.MongoDB.is_ready")
+    @mock.patch("mongoserver.MongoDB.is_replica_set")
+    @mock.patch("charm.MongodbOperatorCharm.app")
+    def test_mongodb_relation_joined_already_replica_set(
+        self, app, is_replica_set, is_ready, initialise_replica_set
+    ):
+        rel = self.harness.charm.model.get_relation("mongodb")
+        self.harness.set_leader(True)
+        app.planned_units.return_value = len(self.harness.charm._unit_ips)
+        is_replica_set.return_value = True
+        ready_statuses = [True, False]
+
+        with self.assertLogs("charm", "DEBUG") as logs:
+            for ready_status in ready_statuses:
+                is_ready.return_value = ready_status
+                self.harness.charm.on.mongodb_relation_joined.emit(relation=rel)
+                # verify that we do not re-initialise replica set
+                initialise_replica_set.assert_not_called()
+
+                # check behavior based on ready status
+                is_ready.assert_called()
+                if ready_status:
+                    continue
+
+                self.assertIn(
+                    "Replica set for units: ['1.1.1.1'], is not ready", "".join(logs.output)
+                )
+                self.assertEqual(
+                    self.harness.charm.unit.status,
+                    BlockedStatus("failed to initialise replica set"),
+                )
+
+        @patch_network_get(private_address="1.1.1.1")
+        @mock.patch("charm.MongodbOperatorCharm._initialise_replica_set")
+        @mock.patch("mongoserver.MongoDB.is_ready")
+        @mock.patch("mongoserver.MongoDB.is_replica_set")
+        @mock.patch("charm.MongodbOperatorCharm.app")
+        def test_mongodb_relation_joined_not_yet_replica_set(
+            self, app, is_replica_set, is_ready, initialise_replica_set
+        ):
+            rel = self.harness.charm.model.get_relation("mongodb")
+            self.harness.set_leader(True)
+            app.planned_units.return_value = len(self.harness.charm._unit_ips)
+            is_replica_set.return_value = False
+            ready_statuses = [True, False]
+
+            with self.assertLogs("charm", "DEBUG") as logs:
+                for ready_status in ready_statuses:
+                    is_ready.return_value = ready_status
+                    self.harness.charm.on.mongodb_relation_joined.emit(relation=rel)
+                    # verify that we do initialise replica set
+                    initialise_replica_set.assert_called()
+
+                    # check behavior based on ready status
+                    is_ready.assert_called()
+                    if ready_status:
+                        continue
+
+                    self.assertIn(
+                        "Replica set for units: ['1.1.1.1'], is not ready", "".join(logs.output)
+                    )
+                    self.assertEqual(
+                        self.harness.charm.unit.status,
+                        BlockedStatus("failed to initialise replica set"),
+                    )
+
+    @patch_network_get(private_address="1.1.1.1")
+    @mock.patch("charm.MongodbOperatorCharm._initialise_replica_set")
+    @mock.patch("mongoserver.MongoDB.is_ready")
+    @mock.patch("charm.MongodbOperatorCharm.app")
+    def test_mongodb_relation_joined_peers_not_ready(self, app, is_ready, initialise_replica_set):
+        # preset values
+        self.harness.set_leader(True)
+        is_ready.return_value = False
+
+        # simulate 2nd MongoDB unit
+        rel = self.harness.charm.model.get_relation("mongodb")
+        rel_id = rel.id
+        key_values = {"private-address": "127.4.5.6"}
+        self.harness.add_relation_unit(rel_id, "mongodb/1")
+        self.harness.update_relation_data(rel_id, "mongodb/1", key_values)
+        app.planned_units.return_value = len(self.harness.charm._unit_ips)
+
+        with self.assertLogs("charm", "DEBUG") as logs:
+            self.harness.charm.on.mongodb_relation_joined.emit(relation=rel)
+
+            self.assertIn(
+                "unit: <ops.model.Unit mongodb/1> is not ready, cannot "
+                + "initilise replica set until all units are ready, deferring "
+                + "on relation-joined",
+                "".join(logs.output),
+            )
+
+            # verify that we do not initialise replica set
+            initialise_replica_set.assert_not_called()
+
+    @patch_network_get(private_address="1.1.1.1")
+    @mock.patch("mongoserver.MongoDB.is_replica_set")
+    @mock.patch("charm.MongodbOperatorCharm._initialise_replica_set")
+    @mock.patch("mongoserver.MongoDB.is_ready")
+    @mock.patch("charm.MongodbOperatorCharm.app")
+    def test_mongodb_relation_joined_peers_ready(
+        self, app, is_ready, initialise_replica_set, is_replica_set
+    ):
+        # preset values
+        self.harness.set_leader(True)
+        is_ready.return_value = True
+        is_replica_set.return_value = False
+
+        # simulate 2nd MongoDB unit
+        rel = self.harness.charm.model.get_relation("mongodb")
+        rel_id = rel.id
+        key_values = {"private-address": "127.4.5.6"}
+        self.harness.add_relation_unit(rel_id, "mongodb/1")
+        self.harness.update_relation_data(rel_id, "mongodb/1", key_values)
+        app.planned_units.return_value = len(self.harness.charm._unit_ips)
+
+        self.harness.charm.on.mongodb_relation_joined.emit(relation=rel)
+
+        # verify that we do not initialise replica set
+        initialise_replica_set.assert_called()
+
+    @patch_network_get(private_address="1.1.1.1")
+    @mock.patch("mongoserver.MongoDB.is_ready")
+    @mock.patch("mongoserver.MongoDB.initialise_replica_set")
+    @mock.patch("charm.MongodbOperatorCharm._open_port_tcp")
+    @mock.patch("charm.service_resume")
+    @mock.patch("charm.MongodbOperatorCharm.app")
+    def test_initialise_replica_failure_leads_to_blocked_state(
+        self, app, service_resume, _, initialise_replica_set, is_ready
+    ):
+        self.harness.set_leader(True)
+        is_ready.return_value = True
+        app.planned_units.return_value = 1
+        exceptions = [
+            ConnectionFailure("connection error message"),
+            ConfigurationError("configuration error message"),
+        ]
+        log_messages = [
+            "ERROR:charm:error initialising replica sets in _on_start: error: connection error message",
+            "ERROR:charm:error initialising replica sets in _on_start: error: configuration error message",
+        ]
+        for exception, log_message in zip(exceptions, log_messages):
+            with self.assertLogs("charm", "DEBUG") as logs:
+                initialise_replica_set.side_effect = exception
+                self.harness.charm.on.start.emit()
+                initialise_replica_set.assert_called()
+                self.assertIn(log_message, logs.output)
+
+            self.assertEqual(
+                self.harness.charm.unit.status, BlockedStatus("failed to initialise replica set")
+            )
+
+    @patch_network_get(private_address="1.1.1.1")
+    @mock.patch("mongoserver.MongoDB.is_ready")
+    @mock.patch("mongoserver.MongoDB.initialise_replica_set")
+    @mock.patch("charm.MongodbOperatorCharm._open_port_tcp")
+    @mock.patch("charm.service_running")
+    def test_initialise_replica_success(
+        self, service_running, _open_port_tcp, initialise_replica_set, is_ready
+    ):
+        self.harness.set_leader(True)
+        service_running.return_value = True
+        is_ready.return_value = True
+
+        self.harness.charm.on.start.emit()
+        initialise_replica_set.assert_called()
+        self.assertEqual(
+            self.harness.charm._peers.data[self.harness.charm.app]["replica_set_hosts"],
+            '["1.1.1.1"]',
+        )
+
+        self.assertEqual(self.harness.charm.unit.status, ActiveStatus(""))
+
+    @patch_network_get(private_address="1.1.1.1")
+    @mock.patch("mongoserver.MongoDB.is_ready")
+    @mock.patch("mongoserver.MongoDB.initialise_replica_set")
+    @mock.patch("charm.MongodbOperatorCharm._open_port_tcp")
+    @mock.patch("charm.service_running")
+    @mock.patch("mongoserver.MongoDB.is_replica_set")
+    def test_initialise_replica_only_once(
+        self, is_replica_set, service_running, _open_port_tcp, initialise_replica_set, is_ready
+    ):
+        self.harness.set_leader(True)
+        is_ready.return_value = True
+
+        # emit both events
+        self.harness.charm.on.start.emit()
+        rel = self.harness.charm.model.get_relation("mongodb")
+        self.harness.charm.on.mongodb_relation_joined.emit(relation=rel)
+
+        initialise_replica_set.assert_called_once()
+        is_replica_set.assert_called()
