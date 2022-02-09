@@ -1,4 +1,5 @@
-# Copyright 2021 Canonical Ltd
+"""Code for facilitating interaction with mongod for a juju unit running MongoDB."""
+# Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 import logging
@@ -15,6 +16,8 @@ MONGODB_PORT = 27017
 
 
 class MongoDB:
+    """Communicate with mongod using pymongo python package."""
+
     def __init__(self, config):
         self._app_name = config["app_name"]
         self._replica_set_name = config["replica_set_name"]
@@ -24,19 +27,18 @@ class MongoDB:
         self._unit_ips = config["unit_ips"]
         self._calling_unit_ip = config["calling_unit_ip"]
 
-    def client(self, as_stand_alone=False) -> MongoClient:
+    def client(self, standalone=False) -> MongoClient:
         """Construct a client for the MongoDB database.
 
         The timeout for all queries using this client object is 1 sec.
 
         Args:
-            as_stand_alone: an optional boolean flag that indicates if the
-            client should connect to a single instance of MongoDB or the entire
-            replica set
+            standalone: an optional boolean flag that indicates if the client should connect to a
+            single instance of MongoDB or the entire replica set
         Returns:
             A pymongo `MongoClient` object.
         """
-        return MongoClient(self.replica_uri(as_stand_alone), serverSelectionTimeoutMS=1000)
+        return MongoClient(self.replica_uri(standalone), serverSelectionTimeoutMS=1000)
 
     @retry(stop=stop_after_attempt(10), wait=wait_exponential(multiplier=1, min=2, max=30))
     def check_server_info(self, client: MongoClient):
@@ -44,23 +46,25 @@ class MongoDB:
 
         Args:
             client: MongoClient client to check for server info.
+
         Returns:
             client.server_info information about the server.
         """
         return client.server_info()
 
-    def is_ready(self, as_stand_alone=False) -> bool:
+    def is_ready(self, standalone: bool = False) -> bool:
         """Is the MongoDB server ready to services requests.
 
         Args:
-            all_replicas: an optional boolean flag that indicates if the client
-            should check if a single instance of MongoDB or the entire
-            replica set is ready
+            standalone: an optional flag that indicates if the client should check if a single
+            instance of MongoDB or the entire replica set is ready
+
         Returns:
             bool: True if services is ready False otherwise.
         """
         ready = False
-        client = self.client(as_stand_alone)
+        client = self.client(standalone)
+
         try:
             self.check_server_info(client)
             ready = True
@@ -73,19 +77,18 @@ class MongoDB:
     def is_replica_set(self) -> bool:
         """Is the MongoDB server operating as a replica set.
 
-        Args:
-            None
         Returns:
             bool: True if server is operating as a replica set False otherwise.
         """
         is_replica_set = False
 
         # cannot be in replica set status if this server is not up
-        if not self.is_ready(as_stand_alone=True):
+        if not self.is_ready(standalone=True):
             return is_replica_set
 
         # access instance replica set configuration
-        client = self.client(as_stand_alone=True)
+        client = self.client(standalone=True)
+
         collection = client.local.system.replset
         try:
             replica_set_name = collection.find()[0]["_id"]
@@ -100,8 +103,8 @@ class MongoDB:
 
     @property
     def _is_primary(self):
-        """TODO"""
-        client = self.client(as_stand_alone=True)
+        """Returns true if querying unit is the primary replica."""
+        client = self.client(standalone=True)
         return client.is_primary
 
     def initialise_replica_set(self, hosts: list) -> None:
@@ -117,7 +120,7 @@ class MongoDB:
         logger.debug("setting up replica set with these options %s", config)
 
         # must initiate replica with current unit IP address
-        client = self.client(as_stand_alone=True)
+        client = self.client(standalone=True)
         try:
             client.admin.command("replSetInitiate", config)
         except ConnectionFailure as e:
@@ -132,37 +135,24 @@ class MongoDB:
         finally:
             client.close()
 
-    def replica_uri(self, as_stand_alone=False, credentials=None) -> str:
+    def replica_uri(self, standalone=False, credentials=None) -> str:
         """Construct a replica set URI.
 
         Args:
-            credentials: an optional dictionary with keys "username"
-            and "password".
-            as_stand_alone: an optional boolean flag that indicates if the uri
-            should use the full replica set or a stand
+            credentials: an optional dictionary with keys "username" and "password".
+            standalone: an optional boolean flag that indicates if the uri should use the full
+            replica set or a stand
 
         Returns:
             A string URI that may be used to access the MongoDB
             replica set.
         """
-        if credentials:
-            password = credentials["password"]
-            username = credentials["username"]
-        else:
-            password = self._root_password
-            username = "root"
-
         # TODO add password configuration in future patch
-        # uri = "mongodb://{}:{}@".format(
-        #    username,
-        #    password)
 
         uri = "mongodb://"
-        if not as_stand_alone:
-            for i, host in enumerate(self._unit_ips):
-                if i:
-                    uri += ","
-                uri += "{}:{}".format(host, self._port)
+        if not standalone:
+            hosts = ["{}:{}".format(unit_ip, self._port) for unit_ip in self._unit_ips]
+            uri += ",".join(hosts)
         else:
             uri += "{}:{}".format(self._calling_unit_ip, self._port)
 

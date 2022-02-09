@@ -1,10 +1,11 @@
-# Copyright 2021 Canonical Ltd
+# Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 import unittest
 from unittest.mock import patch
 
 from pymongo import MongoClient
+from tenacity import RetryError
 
 from mongoserver import MongoDB
 
@@ -23,9 +24,9 @@ class TestMongoServer(unittest.TestCase):
     def test_client_returns_mongo_client_instance(self):
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
-        as_stand_alone_status = [True, False]
-        for as_stand_alone in as_stand_alone_status:
-            client = mongo.client(as_stand_alone)
+        standalone_status = [True, False]
+        for standalone in standalone_status:
+            client = mongo.client(standalone)
             self.assertIsInstance(client, MongoClient)
 
     @patch("pymongo.MongoClient.server_info")
@@ -34,29 +35,31 @@ class TestMongoServer(unittest.TestCase):
         mongo = MongoDB(config)
         server_info.return_value = {"info": "some info"}
 
-        as_stand_alone_status = [True, False]
-        for as_stand_alone in as_stand_alone_status:
-            ready = mongo.is_ready(as_stand_alone)
+        standalone_status = [True, False]
+        for standalone in standalone_status:
+            ready = mongo.is_ready(standalone)
             self.assertEqual(ready, True)
 
+    @patch("mongoserver.MongoDB.check_server_info")
     @patch("pymongo.MongoClient", "server_info", "ServerSelectionTimeoutError")
-    def test_mongo_is_not_ready_when_server_info_is_not_available(self):
+    def test_mongo_is_not_ready_when_server_info_is_not_available(self, check_server_info):
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
+        check_server_info.side_effect = RetryError(last_attempt=None)
 
-        as_stand_alone_status = [True, False]
-        for as_stand_alone in as_stand_alone_status:
-            ready = mongo.is_ready(as_stand_alone)
+        standalone_status = [True, False]
+        for standalone in standalone_status:
+            ready = mongo.is_ready(standalone)
             self.assertEqual(ready, False)
 
     def test_replica_set_uri_contains_correct_number_of_hosts(self):
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
-        as_stand_alone_status = [False, True]
+        standalone_status = [False, True]
         expected_hosts_by_status = [len(config["unit_ips"]), 1]
 
-        for as_stand_alone, expected_hosts in zip(as_stand_alone_status, expected_hosts_by_status):
-            uri = mongo.replica_uri(as_stand_alone)
+        for standalone, expected_hosts in zip(standalone_status, expected_hosts_by_status):
+            uri = mongo.replica_uri(standalone)
             host_list = uri.split(",")
             self.assertEqual(len(host_list), expected_hosts)
 

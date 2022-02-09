@@ -5,7 +5,7 @@
 
 The Charmed MongoDB Operator delivers automated operations management from day 0 to day 2 on the [MongoDB Community Edition](https://github.com/mongodb/mongo) document database.
 
-MongoDB is a general purpose distributed document database. This operator charm deploys and operates MongoDB on physical or virtual machines as a single replica.
+MongoDB is a general purpose distributed document database. This operator charm deploys and operates MongoDB (vs 5.0) on physical or virtual machines as a single replica.
 
 
 ## Usage
@@ -14,12 +14,12 @@ Until the MongoDB Machine Charm is published, you need to follow the build & dep
 
 After building the charm you may deploy a single unit of MongoDB using its default configuration
 ```shell
-juju deploy ./*.charm
+juju deploy ./mongodb_ubuntu-20.04-amd64.charm
 ```
 
 It is customary to use MongoDB with replication. Hence usually more than one unit (preferably an odd number to prohibit a "split-brain" scenario) is deployed. To deploy MongoDB with multiple replicas, specify the number of desired units with the `-n` option.
 ```shell
-juju deploy ./*.charm -n <number_of_replicas>
+juju deploy ./mongodb_ubuntu-20.04-amd64.charm -n <number_of_replicas>
 ```
 
 To retrieve primary replica one can use the action `get-primary` on any of the units running MongoDB

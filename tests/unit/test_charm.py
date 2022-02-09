@@ -1,9 +1,9 @@
-# Copyright 2021 Canonical
+# Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 import unittest
 from unittest import mock
-from unittest.mock import PropertyMock, call, mock_open, patch
+from unittest.mock import call, mock_open, patch
 
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from ops.testing import Harness
@@ -161,9 +161,7 @@ class TestCharm(unittest.TestCase):
         with patch("builtins.open", open_mock, create=True):
             self.harness.charm.on.config_changed.emit()
 
-        """TODO change expected output based on config options,
-        (once config options are implemented)
-        """
+        # TODO change expected output based on config options,(once config options are implemented)
         open_mock.assert_called_with("/etc/mongod.conf", "w")
         open_mock.return_value.write.assert_has_calls([mock.call(arg) for arg in MONGO_CONF_ARGS])
 
@@ -256,7 +254,7 @@ class TestCharm(unittest.TestCase):
 
         service_resume.assert_called()
         _open_port_tcp.assert_called()
-        is_ready.assert_called_with(as_stand_alone=True)
+        is_ready.assert_called_with(standalone=True)
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus())
         app.planned_units.assert_not_called()
         _initialise_replica_set.assert_not_called()
@@ -301,8 +299,12 @@ class TestCharm(unittest.TestCase):
     @mock.patch("mongoserver.MongoDB.is_ready")
     @mock.patch("charm.MongodbOperatorCharm._open_port_tcp")
     @mock.patch("charm.MongodbOperatorCharm._initialise_replica_set")
-    def test_on_start_not_ready_defer(self, initialise_replica_set, _open_port_tcp, is_ready):
+    @mock.patch("charm.service_running")
+    def test_on_start_not_ready_defer(
+        self, service_running, initialise_replica_set, _open_port_tcp, is_ready
+    ):
         self.harness.set_leader(True)
+        service_running.return_value = True
         is_ready.return_value = False
         self.harness.charm.on.start.emit()
         is_ready.assert_called()
@@ -441,13 +443,14 @@ class TestCharm(unittest.TestCase):
                 self.harness.charm.unit.status, BlockedStatus("couldn't install MongoDB")
             )
 
-    @mock.patch("charm.apt.RepositoryMapping.add")
+    @mock.patch("charm.apt.RepositoryMapping")
     @mock.patch("charm.apt.DebianRepository.import_key")
     @mock.patch("charm.apt.DebianRepository.from_repo_line")
     @mock.patch("charm.urlopen")
     def test_add_mongodb_org_repository_already_added_skips(
-        self, urlopen, from_repo_line, import_key, add
+        self, urlopen, from_repo_line, import_key, repo_map
     ):
+        repo_map.return_value = ["deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"]
         self.harness.charm._add_mongodb_org_repository()
         urlopen.assert_called()
         from_repo_line.assert_not_called()
@@ -480,9 +483,7 @@ class TestCharm(unittest.TestCase):
         with self.assertLogs("charm", "DEBUG") as logs:
             self.harness.charm.on.mongodb_relation_joined.emit(relation=rel)
             self.assertIn(
-                "planned units does not match joined units: 3 != 1, will "
-                + "wait to initialise replica set until all planned units "
-                + "have joined",
+                "planned units does not match joined units: 3 != 1",
                 "".join(logs.output),
             )
 
