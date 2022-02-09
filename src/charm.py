@@ -6,16 +6,22 @@ import logging
 import subprocess
 from subprocess import check_call
 from typing import List, Optional
-from urllib.request import urlopen, URLError
+from urllib.request import URLError, urlopen
 
 import ops.charm
 import yaml
 from charms.operator_libs_linux.v0 import apt
 from charms.operator_libs_linux.v0.systemd import service_resume, service_running
 from ops.main import main
-from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, Relation, WaitingStatus
+from ops.model import (
+    ActiveStatus,
+    BlockedStatus,
+    MaintenanceStatus,
+    Relation,
+    WaitingStatus,
+)
 
-from mongoserver import MONGODB_PORT, MongoDB, ConnectionFailure, ConfigurationError
+from mongoserver import MONGODB_PORT, ConfigurationError, ConnectionFailure, MongoDB
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +62,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # do not initilise replica set until all peers have started mongod
         for peer in self._peers.units:
             mongo_peer = self._single_mongo_replica(
-                str(self._peers.data[peer].get("private-address")))
+                str(self._peers.data[peer].get("private-address"))
+            )
             if not mongo_peer.is_ready(as_stand_alone=True):
                 logger.debug(
                     "unit: %s is not ready, cannot initilise replica set "
@@ -164,16 +171,17 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self.unit.status = BlockedStatus(
                 "failed to initialise replica set")
 
-    def _on_update_status(self, event):
+    def _on_update_status(self, _):
         # connect to client for this single unit
         mongod_unit = self._single_mongo_replica(
-            str(self.model.get_binding(PEER).network.bind_address))
+            str(self.model.get_binding(PEER).network.bind_address)
+        )
 
         # if unit is primary then update status
         if mongod_unit._is_primary:
             self.unit.status = ActiveStatus("Replica set primary")
 
-    def _on_get_primary_action(self, event):
+    def _on_get_primary_action(self, event: ops.charm.ActionEvent):
         # check if current unit is the primary unit
         mongod_unit = self._single_mongo_replica(
             str(self.model.get_binding(PEER).network.bind_address))

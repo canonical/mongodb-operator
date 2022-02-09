@@ -17,7 +17,7 @@ After building the charm you may deploy a single unit of MongoDB using its defau
 juju deploy ./*.charm
 ```
 
-It is customary to use MongoDB with replication. Hence usually more than one unit (preferably an odd number) is deployed. To deploy MongoDB with multiple replicas, specify the number of desired units with the `-n` option.
+It is customary to use MongoDB with replication. Hence usually more than one unit (preferably an odd number to prohibit a "split-brain" scenario) is deployed. To deploy MongoDB with multiple replicas, specify the number of desired units with the `-n` option.
 ```shell
 juju deploy ./*.charm -n <number_of_replicas>
 ```

@@ -4,7 +4,7 @@
 import logging
 
 from pymongo import MongoClient
-from pymongo.errors import ConnectionFailure, ConfigurationError
+from pymongo.errors import ConfigurationError, ConnectionFailure
 from tenacity import RetryError, retry, stop_after_attempt, wait_exponential
 
 logger = logging.getLogger(__name__)
@@ -127,8 +127,7 @@ class MongoDB:
             )
             raise e
         except ConfigurationError as e:
-            logger.error(
-                "cannot initialise replica set: incorrect credentials: error: %s", str(e))
+            logger.error("cannot initialise replica set: incorrect credentials: error: %s", str(e))
             raise e
         finally:
             client.close()
