@@ -52,17 +52,19 @@ class MongoDB:
         """
         return client.server_info()
 
-    def is_ready(self, standalone=False) -> bool:
+    def is_ready(self, standalone: bool = False) -> bool:
         """Is the MongoDB server ready to services requests.
 
         Args:
-            standalone: an optional boolean flag that indicates if the client should check if a
-            single instance of MongoDB or the entire replica set is ready
+            standalone: an optional flag that indicates if the client should check if a single
+            instance of MongoDB or the entire replica set is ready
+
         Returns:
             bool: True if services is ready False otherwise.
         """
         ready = False
         client = self.client(standalone)
+
         try:
             self.check_server_info(client)
             ready = True
@@ -86,6 +88,7 @@ class MongoDB:
 
         # access instance replica set configuration
         client = self.client(standalone=True)
+
         collection = client.local.system.replset
         try:
             replica_set_name = collection.find()[0]["_id"]
@@ -97,6 +100,12 @@ class MongoDB:
             client.close()
 
         return is_replica_set
+
+    @property
+    def _is_primary(self):
+        """Returns true if querying unit is the primary replica."""
+        client = self.client(standalone=True)
+        return client.is_primary
 
     def initialise_replica_set(self, hosts: list) -> None:
         """Initialize the MongoDB replica set.

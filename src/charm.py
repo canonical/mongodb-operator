@@ -40,6 +40,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(self.on.mongodb_relation_joined, self._mongodb_relation_joined)
         self.framework.observe(self.on.start, self._on_start)
+        self.framework.observe(self.on.update_status, self._on_update_status)
+        self.framework.observe(self.on.get_primary_action, self._on_get_primary_action)
 
     def _mongodb_relation_joined(self, event) -> None:
         if not self.unit.is_leader():
@@ -52,10 +54,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         # do not initilise replica set until all peers have started mongod
         for peer in self._peers.units:
-            peer_ip = str(self._peers.data[peer].get("private-address"))
-            peer_config = self._config
-            peer_config["calling_unit_ip"] = peer_ip
-            mongo_peer = MongoDB(peer_config)
+            mongo_peer = self._single_mongo_replica(
+                str(self._peers.data[peer].get("private-address"))
+            )
             if not mongo_peer.is_ready(standalone=True):
                 logger.debug(
                     "unit: %s is not ready, cannot initilise replica set until all units are ready, deferring on relation-joined",
@@ -152,6 +153,39 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         except (ConnectionFailure, ConfigurationError):
             self.unit.status = BlockedStatus("failed to initialise replica set")
 
+    def _on_update_status(self, _):
+        # connect to client for this single unit
+        mongod_unit = self._single_mongo_replica(
+            str(self.model.get_binding(PEER).network.bind_address)
+        )
+
+        # if unit is primary then update status
+        if mongod_unit._is_primary:
+            self.unit.status = ActiveStatus("Replica set primary")
+
+    def _on_get_primary_action(self, event: ops.charm.ActionEvent):
+        # check if current unit is the primary unit
+        mongod_unit = self._single_mongo_replica(
+            str(self.model.get_binding(PEER).network.bind_address)
+        )
+
+        # if unit is primary display this inforamtion and exit
+        if mongod_unit._is_primary:
+            event.set_results({"replica-set-primary": self.unit.name})
+            return
+
+        # loop through peers and check if one is the primary
+        for unit in self._peers.units:
+            # set up a mongo client for this single replica
+            mongod_unit = self._single_mongo_replica(
+                str(self._peers.data[unit].get("private-address"))
+            )
+
+            # if unit is primary display this inforamtion and exit
+            if mongod_unit._is_primary:
+                event.set_results({"replica-set-primary": unit.name})
+                return
+
     def _open_port_tcp(self, port: int) -> None:
         """Open the given port.
 
@@ -233,6 +267,19 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # replica set initialised properly and ready to go
         self.unit.status = ActiveStatus()
 
+    def _single_mongo_replica(self, ip_address: str) -> MongoDB:
+        """Fetch the MongoDB server interface object for a single replica.
+
+        Args:
+            ip_address: ip_address for the replica of interest.
+
+        Returns:
+            A MongoDB server object.
+        """
+        unit_config = self._config
+        unit_config["calling_unit_ip"] = ip_address
+        return MongoDB(unit_config)
+
     @property
     def _check_unit_count(self) -> bool:
         all_units_joined = self.app.planned_units() == len(self._peers.units) + 1
@@ -300,6 +347,16 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
              An `ops.model.Relation` object representing the peer relation.
         """
         return self.model.get_relation(PEER)
+
+    @property
+    def _number_of_expected_units(self) -> int:
+        """Returns the number of units expect for MongoDB application."""
+        return self.app.planned_units()
+
+    @property
+    def _number_of_current_units(self) -> int:
+        """Returns the number of units in the MongoDB application."""
+        return len(self._peers.units) + 1
 
 
 if __name__ == "__main__":

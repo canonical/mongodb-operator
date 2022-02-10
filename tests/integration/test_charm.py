@@ -114,6 +114,34 @@ async def test_exactly_one_primary(ops_test: OpsTest) -> None:
     )
 
 
+async def test_get_primary_action(ops_test: OpsTest) -> None:
+    """Tests that action get-primary outputs the correct unit with the primary replica."""
+    # determine which unit is the primary
+    expected_primary = None
+    for unit in ops_test.model.applications[APP_NAME].units:
+        # connect to mongod
+        client = MongoClient(unit_uri(unit.public_address))
+
+        # check primary status
+        if client.is_primary:
+            expected_primary = unit.name
+            break
+
+    # verify that there is a primary
+    assert expected_primary
+
+    # check if get-primary returns the correct primary unit regardless of
+    # which unit the action is run on
+    for unit in ops_test.model.applications[APP_NAME].units:
+        # use get-primary action to find primary
+        action = await unit.run_action("get-primary")
+        action = await action.wait()
+        identified_primary = action.results["replica-set-primary"]
+
+        # assert get-primary returned the right primary
+        assert identified_primary == expected_primary
+
+
 async def test_cluster_is_stable_after_deletion(ops_test: OpsTest) -> None:
     """Tests that the cluster maintains a primary after the primary is delelted."""
     # find & destroy leader unit
@@ -138,8 +166,8 @@ async def test_cluster_is_stable_after_deletion(ops_test: OpsTest) -> None:
             ip_addresses.append(unit.public_address)
 
     # check that the replica set with the remaining units has a primary
-    replica_set_uri = "mongodb://{}:27017,{}:27017/replicaSet=rs0".format(
-        ip_addresses[0], ip_addresses[1]
+    replica_set_uri = "mongodb://{}:{},{}:{}/replicaSet=rs0".format(
+        ip_addresses[0], PORT, ip_addresses[1], PORT
     )
     client = MongoClient(replica_set_uri)
     try:
@@ -174,7 +202,7 @@ def unit_uri(ip_address: str) -> str:
     Args:
         ip_address: ip address of replica/unit
     """
-    return "mongodb://{}:27017/".format(ip_address)
+    return "mongodb://{}:{}/".format(ip_address, PORT)
 
 
 @retry(

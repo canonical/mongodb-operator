@@ -17,11 +17,17 @@ After building the charm you may deploy a single unit of MongoDB using its defau
 juju deploy ./mongodb_ubuntu-20.04-amd64.charm
 ```
 
-It is customary to use MongoDB with replication. Hence usually more than one unit (preferably and odd number) is deployed. To deploy MongoDB with multiple replicas specify the number of desired units with the `-n` option.
+It is customary to use MongoDB with replication. Hence usually more than one unit (preferably an odd number to prohibit a "split-brain" scenario) is deployed. To deploy MongoDB with multiple replicas, specify the number of desired units with the `-n` option.
 ```shell
-juju deploy ./mongodb_ubuntu-20.04-amd64.charm -n <number of replicas>
+juju deploy ./mongodb_ubuntu-20.04-amd64.charm -n <number_of_replicas>
 ```
 
+To retrieve primary replica one can use the action `get-primary` on any of the units running MongoDB
+```shell
+juju run-action mongodb/<unit_number> get-primary --wait
+```
+
+Similarly, the primary replica is displayed as a status message in `juju status`, however one should note that this hook gets called on regular time intervals and the primary may be outdated if the status hook has not been called recently.
 
 ## Relations
 

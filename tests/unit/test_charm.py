@@ -61,6 +61,7 @@ processManagement:
 
 # snmp:
 """
+incr_return_values = [True, False]
 
 MONGO_CONF_ARGS = [
     "net",
@@ -681,3 +682,55 @@ class TestCharm(unittest.TestCase):
 
         initialise_replica_set.assert_called_once()
         is_replica_set.assert_called()
+
+    @patch_network_get(private_address="1.1.1.1")
+    def test_single_mongo_replica(self):
+        ip_address = "1.1.1.1"
+        mongo_replica = self.harness.charm._single_mongo_replica(ip_address)
+        self.assertEqual(mongo_replica._calling_unit_ip, ip_address)
+
+    @patch_network_get(private_address="1.1.1.1")
+    @mock.patch("charm.MongodbOperatorCharm._single_mongo_replica")
+    def test_update_status_primary(self, single_replica):
+        single_replica.return_value._is_primary = True
+        self.harness.charm.on.update_status.emit()
+        single_replica.assert_called_with("1.1.1.1")
+        self.assertEqual(self.harness.charm.unit.status, ActiveStatus("Replica set primary"))
+
+    @patch_network_get(private_address="1.1.1.1")
+    @mock.patch("charm.MongodbOperatorCharm._single_mongo_replica")
+    @mock.patch("ops.model.ActiveStatus")
+    def test_update_status_secondary(self, active_status, single_replica):
+        single_replica.return_value._is_primary = False
+        self.harness.charm.on.update_status.emit()
+        single_replica.assert_called_with("1.1.1.1")
+        active_status.assert_not_called()
+
+    @patch_network_get(private_address="1.1.1.1")
+    @mock.patch("charm.MongodbOperatorCharm._single_mongo_replica")
+    def test_get_primary_current_unit_primary(self, single_replica):
+        single_replica.return_value._is_primary = True
+        mock_event = mock.Mock()
+        self.harness.charm._on_get_primary_action(mock_event)
+        mock_event.set_results.assert_called_with({"replica-set-primary": "mongodb/0"})
+
+    @patch_network_get(private_address="1.1.1.1")
+    @mock.patch("charm.MongodbOperatorCharm._single_mongo_replica")
+    def test_get_primary_peer_unit_primary(self, single_replica):
+
+        # add peer unit
+        rel_id = self.harness.charm.model.get_relation("mongodb").id
+        self.harness.add_relation_unit(rel_id, "mongodb/1")
+        self.harness.update_relation_data(rel_id, "mongodb/1", {"private-address": "2.2.2.2"})
+
+        # mock out the self unit not being primary but its peer being primary
+        mock_self_unit = mock.Mock()
+        mock_self_unit._is_primary = False
+        mock_peer_unit = mock.Mock()
+        mock_peer_unit._is_primary = True
+        single_replica.side_effect = [mock_self_unit, mock_peer_unit]
+
+        mock_event = mock.Mock()
+
+        self.harness.charm._on_get_primary_action(mock_event)
+        mock_event.set_results.assert_called_with({"replica-set-primary": "mongodb/1"})
