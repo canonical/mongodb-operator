@@ -22,7 +22,7 @@ from ops.model import (
     WaitingStatus,
 )
 
-from mongoserver import MONGODB_PORT, ConfigurationError, ConnectionFailure, MongoDB
+from mongod_helpers import MONGODB_PORT, ConfigurationError, ConnectionFailure, MongoDB
 
 logger = logging.getLogger(__name__)
 
@@ -220,7 +220,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 repo.import_key(key)
                 repositories.add(repo)
             except apt.InvalidSourceError as e:
-                # logger.exception("failed to add repository, invalid source: %s", str(e))
                 logger.error("failed to add repository, invalid source: %s", str(e))
                 self.unit.status = BlockedStatus("couldn't install MongoDB")
                 return

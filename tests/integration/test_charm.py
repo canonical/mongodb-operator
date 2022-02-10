@@ -109,7 +109,7 @@ async def test_exactly_one_primary(ops_test: OpsTest) -> None:
         number_of_primaries = 0
 
     # check that exactly of the units is the leader
-    assert number_of_primaries == 1, "Expected one unit to be a primary: %s != 1" % (
+    assert number_of_primaries == 1, "Expected one unit to be a primary: {} != 1".format(
         number_of_primaries
     )
 
@@ -178,7 +178,7 @@ async def test_cluster_is_stable_after_deletion(ops_test: OpsTest) -> None:
     client.close()
 
     # verify that the primary is not None
-    assert primary is not None, "replica set with uri %s has no primary" % (replica_set_uri)
+    assert primary is not None, "replica set with uri {} has no primary".format(replica_set_uri)
 
     # check that the primary is not one of the deleted units
     assert primary[0] in ip_addresses, "replica set primary is not one of the available units"
