@@ -7,7 +7,7 @@ from unittest.mock import patch
 from pymongo import MongoClient
 from tenacity import RetryError
 
-from mongoserver import MongoDB
+from mongod_helpers import MongoDB
 
 MONGO_CONFIG = {
     "app_name": "mongodb",
@@ -40,7 +40,7 @@ class TestMongoServer(unittest.TestCase):
             ready = mongo.is_ready(standalone)
             self.assertEqual(ready, True)
 
-    @patch("mongoserver.MongoDB.check_server_info")
+    @patch("mongod_helpers.MongoDB.check_server_info")
     @patch("pymongo.MongoClient", "server_info", "ServerSelectionTimeoutError")
     def test_mongo_is_not_ready_when_server_info_is_not_available(self, check_server_info):
         config = MONGO_CONFIG.copy()
@@ -63,7 +63,7 @@ class TestMongoServer(unittest.TestCase):
             host_list = uri.split(",")
             self.assertEqual(len(host_list), expected_hosts)
 
-    @patch("mongoserver.MongoDB.client")
+    @patch("mongod_helpers.MongoDB.client")
     @patch("pymongo.MongoClient")
     def test_initializing_replica_invokes_admin_command(self, mock_client, client):
         config = MONGO_CONFIG.copy()
@@ -80,7 +80,7 @@ class TestMongoServer(unittest.TestCase):
         command, _ = mock_client.admin.command.call_args
         self.assertEqual("replSetInitiate", command[0])
 
-    @patch("mongoserver.MongoDB.is_ready")
+    @patch("mongod_helpers.MongoDB.is_ready")
     def test_is_replica_set_not_ready_returns_false(self, is_ready):
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
@@ -91,7 +91,7 @@ class TestMongoServer(unittest.TestCase):
 
     @patch("pymongo.collection.Collection.find")
     @patch("pymongo.MongoClient.close")
-    @patch("mongoserver.MongoDB.is_ready")
+    @patch("mongod_helpers.MongoDB.is_ready")
     def test_is_replica_set_is_replica_returns_true(self, is_ready, close, find):
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
@@ -105,7 +105,7 @@ class TestMongoServer(unittest.TestCase):
 
     @patch("pymongo.collection.Collection.find")
     @patch("pymongo.MongoClient.close")
-    @patch("mongoserver.MongoDB.is_ready")
+    @patch("mongod_helpers.MongoDB.is_ready")
     def test_is_replica_set_is_not_replica_returns_false(self, is_ready, close, find):
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)

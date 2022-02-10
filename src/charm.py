@@ -22,7 +22,7 @@ from ops.model import (
     WaitingStatus,
 )
 
-from mongoserver import MONGODB_PORT, ConfigurationError, ConnectionFailure, MongoDB
+from mongod_helpers import MONGODB_PORT, ConfigurationError, ConnectionFailure, MongoDB
 
 logger = logging.getLogger(__name__)
 
