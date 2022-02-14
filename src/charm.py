@@ -52,21 +52,20 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             logger.debug("waiting to initialise replica set until all planned units have joined")
             return
 
-        # do not initilise replica set until all peers have started mongod
+        # do not initialise replica set until all peers have started mongod
         for peer in self._peers.units:
             mongo_peer = self._single_mongo_replica(
                 str(self._peers.data[peer].get("private-address"))
             )
             if not mongo_peer.is_ready(standalone=True):
                 logger.debug(
-                    "unit: %s is not ready, cannot initilise replica set until all units are ready, deferring on relation-joined",
+                    "unit: %s is not ready, cannot initialise replica set until all units are ready, deferring on relation-joined",
                     peer,
                 )
                 event.defer()
                 return
 
         # in future patch we will reconfigure the replicaset instead of re-initialising
-        # see: https://warthogs.atlassian.net/browse/DPE-64?atlOrigin=eyJpIjoiM2NmYWU2YWI5ZDkwNDQ1Nzg2ZWFmMjBkYjM5Y2VkMjMiLCJwIjoiaiJ9
         # re-initialise replica set with new peers
         if not self._mongo.is_replica_set():
             try:
@@ -172,7 +171,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             str(self.model.get_binding(PEER).network.bind_address)
         )
 
-        # if unit is primary display this inforamtion and exit
+        # if unit is primary display this information and exit
         if mongod_unit._is_primary:
             event.set_results({"replica-set-primary": self.unit.name})
             return
@@ -184,7 +183,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 str(self._peers.data[unit].get("private-address"))
             )
 
-            # if unit is primary display this inforamtion and exit
+            # if unit is primary display this information and exit
             if mongod_unit._is_primary:
                 event.set_results({"replica-set-primary": unit.name})
                 return
@@ -293,7 +292,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     @property
     def _unit_ips(self) -> List[str]:
-        """Retrieve IP addressses associated with MongoDB application.
+        """Retrieve IP addresses associated with MongoDB application.
 
         Returns:
             a list of IP address associated with MongoDB application.

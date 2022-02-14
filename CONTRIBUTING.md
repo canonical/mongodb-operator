@@ -33,7 +33,7 @@ newgrp lxd
 lxd init --auto
 lxc network set lxdbr0 ipv6.address none
 
-# boostrap controller to lxd
+# bootstrap controller to lxd
 juju clouds
 juju bootstrap localhost overlord
 ```
