@@ -66,7 +66,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 return
 
         # in future patch we will reconfigure the replicaset instead of re-initialising
-        # re-initialise replica set with new peers
         if not self._mongo.is_replica_set():
             try:
                 self._initialise_replica_set()

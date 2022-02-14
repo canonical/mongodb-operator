@@ -591,7 +591,7 @@ class TestCharm(unittest.TestCase):
     @patch("charm.service_resume")
     @patch("charm.MongodbOperatorCharm.app")
     @patch("mongod_helpers.MongoDB.is_replica_set")
-    def test_initialise_replica_failure_leads_to_blocked_state(
+    def test_initialise_replica_failure_leads_to_waiting_state(
         self, is_replica, app, service_resume, _, initialise_replica_set, is_ready
     ):
         self.harness.set_leader(True)
