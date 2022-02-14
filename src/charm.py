@@ -66,7 +66,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 return
 
         # in future patch we will reconfigure the replicaset instead of re-initialising
-        # see: link
+        # see: https://warthogs.atlassian.net/browse/DPE-64?atlOrigin=eyJpIjoiM2NmYWU2YWI5ZDkwNDQ1Nzg2ZWFmMjBkYjM5Y2VkMjMiLCJwIjoiaiJ9
         # re-initialise replica set with new peers
         if not self._mongo.is_replica_set():
             try:
@@ -123,7 +123,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 self.unit.status = BlockedStatus("couldn't start MongoDB")
                 return
 
-        # open TCP port
         try:
             self._open_port_tcp(self._port)
         except subprocess.CalledProcessError:
@@ -144,7 +143,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         if not self.unit.is_leader():
             return
 
-        # initilise replica set if not already a replica set
+        # initialise replica set if not already a replica set
         if not self._mongo.is_replica_set():
             self._initialise_replica_set()
 
@@ -258,7 +257,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self.unit.status = BlockedStatus("couldn't install MongoDB")
 
     def _initialise_replica_set(self) -> None:
-        # initilise as a replica set with one replica
+        # initialise as a replica set with one replica
         self.unit.status = MaintenanceStatus("initialising MongoDB replica set")
         logger.debug("initialising replica set for leader")
         try:
