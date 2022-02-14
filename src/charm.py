@@ -65,7 +65,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 event.defer()
                 return
 
-        # initialise replica set if not already done
+        # in future patch we will reconfigure the replicaset instead of re-initialising
         if not self._mongo.is_replica_set():
             try:
                 self._initialise_replica_set()
@@ -122,7 +122,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 return
 
         try:
-            logger.debug("opening tcp port")
             self._open_port_tcp(self._port)
         except subprocess.CalledProcessError:
             self.unit.status = BlockedStatus("failed to open TCP port for MongoDB")
@@ -142,16 +141,18 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         if not self.unit.is_leader():
             return
 
-        # do not initialise replica set until all peers have joined
-        if not self._check_unit_count:
-            logger.debug("waiting to initialise replica set until all planned units have joined")
+        # initialise replica set if not already a replica set
+        if not self._mongo.is_replica_set():
+            self._initialise_replica_set()
+
+        # verify that leader is in replica set mode
+        if not self._mongo.is_ready(standalone=True) or not self._mongo.is_replica_set():
+            logger.debug("Replica set for leader is not ready")
+            event.defer()
             return
 
-        # initialise replica set
-        try:
-            self._initialise_replica_set()
-        except (ConnectionFailure, ConfigurationError):
-            self.unit.status = BlockedStatus("failed to initialise replica set")
+        # replica set initialised properly and ready to go
+        self.unit.status = ActiveStatus()
 
     def _on_update_status(self, _):
         # connect to client for this single unit
@@ -193,6 +194,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             port: The port to open.
         """
         try:
+            logger.debug("opening tcp port")
             check_call(["open-port", "{}/TCP".format(port)])
         except subprocess.CalledProcessError as e:
             logger.exception("failed opening port: %s", str(e))
@@ -253,18 +255,16 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self.unit.status = BlockedStatus("couldn't install MongoDB")
 
     def _initialise_replica_set(self) -> None:
-        """Initialise deployed units as a replica set."""
+        # initialise as a replica set with one replica
         self.unit.status = MaintenanceStatus("initialising MongoDB replica set")
-        logger.debug("initialising replica set for IPs: %s", self._unit_ips)
+        logger.debug("initialising replica set for leader")
         try:
-            self._mongo.initialise_replica_set(self._unit_ips)
-            self._peers.data[self.app]["replica_set_hosts"] = json.dumps(self._unit_ips)
+            leader_ip = str(self.model.get_binding(PEER).network.bind_address)
+            self._mongo.initialise_replica_set([leader_ip])
+            self._peers.data[self.app]["replica_set_hosts"] = json.dumps(leader_ip)
         except (ConnectionFailure, ConfigurationError) as e:
             logger.error("error initialising replica sets in _on_start: error: %s", str(e))
-            raise e
-
-        # replica set initialised properly and ready to go
-        self.unit.status = ActiveStatus()
+            self.unit.status = WaitingStatus("waiting to initialise replica set")
 
     def _single_mongo_replica(self, ip_address: str) -> MongoDB:
         """Fetch the MongoDB server interface object for a single replica.
