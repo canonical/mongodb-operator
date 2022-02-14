@@ -155,11 +155,11 @@ async def test_cluster_is_stable_after_deletion(ops_test: OpsTest) -> None:
     # wait for app to be active after removal of unit
     await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=1000)
 
-    # verify that there are two units running after deletion of leader
+    # verify that ther are two units running after deletion of leader
     assert len(ops_test.model.applications[APP_NAME].units) == 2
 
     # grab remaining IPS, must compare against leader_ip since it is not
-    # guaranteed that the leader unit will be fully shutdown
+    # gaurenteed that the leader unit will be fully shutdown
     ip_addresses = []
     for unit in ops_test.model.applications[APP_NAME].units:
         if not unit.public_address == leader_ip:
@@ -189,7 +189,7 @@ def update_bind_ip(conf: str, ip_address: str) -> str:
 
     Args:
         conf: contents of mongod.conf
-        ip_address: ip address of unit
+        ip_address: ip adress of unit
     """
     mongo_config = yaml.safe_load(conf)
     mongo_config["net"]["bindIp"] = "localhost,{}".format(ip_address)

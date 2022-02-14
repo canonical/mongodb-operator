@@ -42,7 +42,7 @@ class MongoDB:
 
     @retry(stop=stop_after_attempt(10), wait=wait_exponential(multiplier=1, min=2, max=30))
     def check_server_info(self, client: MongoClient):
-        """Repeatedly checks to see if the server is ready, timing out after 10 tries.
+        """Repeatly checks to see if the server is ready, timing out after 10 tries.
 
         Args:
             client: MongoClient client to check for server info.
