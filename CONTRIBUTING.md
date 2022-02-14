@@ -22,7 +22,7 @@ This document explains the processes and practices recommended for contributing 
 This operator charm can be deployed locally using [Juju on a localhost LXD cloud](https://juju.is/docs/olm/lxd). If you do not already have a Juju controller bootstrapped, you can set one up by doing the following:
 
 ```
-# install requirements 
+# install requirements
 sudo snap install charmcraft --classic
 sudo snap install lxd
 sudo snap install juju --classic
@@ -33,7 +33,7 @@ newgrp lxd
 lxd init --auto
 lxc network set lxdbr0 ipv6.address none
 
-# boostrap controller to lxd
+# bootstrap controller to lxd
 juju clouds
 juju bootstrap localhost overlord
 ```

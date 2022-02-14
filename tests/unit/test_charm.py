@@ -550,7 +550,7 @@ class TestCharm(unittest.TestCase):
 
             self.assertIn(
                 "unit: <ops.model.Unit mongodb/1> is not ready, cannot "
-                + "initilise replica set until all units are ready, deferring "
+                + "initialise replica set until all units are ready, deferring "
                 + "on relation-joined",
                 "".join(logs.output),
             )
