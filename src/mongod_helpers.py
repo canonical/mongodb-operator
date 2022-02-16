@@ -3,9 +3,10 @@
 # See LICENSE file for licensing details.
 
 import logging
+from typing import List
 
 from pymongo import MongoClient
-from pymongo.errors import ConfigurationError, ConnectionFailure
+from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
 from tenacity import RetryError, retry, stop_after_attempt, wait_exponential
 
 logger = logging.getLogger(__name__)
@@ -21,7 +22,7 @@ class MongoDB:
     def __init__(self, config):
         self._app_name = config["app_name"]
         self._replica_set_name = config["replica_set_name"]
-        self._num_peers = config["num_peers"]
+        self._num_hosts = config["num_hosts"]
         self._port = config["port"]
         self._root_password = config["root_password"]
         self._unit_ips = config["unit_ips"]
@@ -134,6 +135,85 @@ class MongoDB:
             raise e
         finally:
             client.close()
+
+    def reconfigure_replica_set(self) -> None:
+        """Reconfigure the MongoDB replica set."""
+        replica_set_client = self.client()
+        try:
+            # get current configuration and update with correct hosts
+            rs_config = replica_set_client.admin.command("replSetGetConfig")
+            rs_config["config"]["_id"] = self._replica_set_name
+            rs_config["config"]["members"] = self.replica_set_config()
+            rs_config["config"]["version"] += 1
+            replica_set_client.admin.command("replSetReconfig", rs_config["config"])
+        except ConnectionFailure as e:
+            logger.error(
+                "cannot reconfigure replica set: failure to connect to mongo client: error: %s",
+                str(e),
+            )
+            raise e
+        except ConfigurationError as e:
+            logger.error(
+                "cannot reconfigure replica set: incorrect credentials: error: %s", str(e)
+            )
+            raise e
+        except OperationFailure as e:
+            logger.error(
+                "cannot reconfigure replica set: database operation failed: error: %s", str(e)
+            )
+        finally:
+            replica_set_client.close()
+
+    def replica_set_config(self) -> List[dict]:
+        """Maps unit ips to MongoDB replica set ids.
+
+        When reconfiguring a replica set it is a requirement of mongod that machines do not get
+        reassigned to different replica ids. This function ensures that already assigned machines
+        maintain their replica set id and that new machines get assigned a new unused id.
+
+        Returns:
+            A list of dicts, where each dict contains the host machine with its replica set id
+        """
+        new_config = []
+        replica_set_client = self.client()
+        try:
+            # acquire current config
+            rs_config = replica_set_client.admin.command("replSetGetConfig")
+            rs_config["config"]["_id"] = self._replica_set_name
+            current_config = rs_config["config"]["members"]
+            logger.debug("current config for replica set: %s", current_config)
+
+            # look at each member in the current config and decide if it belongs in the new confg
+            used_ids = set()
+            assigned_ips = set()
+            for member in current_config:
+                # get member ip without ":PORT"
+                member_ip = member["host"].split(":")[0]
+
+                # if this ip is still being used retain it in new config
+                if member_ip in self._unit_ips:
+                    new_config.append(member)
+                    used_ids.add(member["_id"])
+                    assigned_ips.add(member_ip)
+
+            # assign un-assigned ips with un-used ids if possible
+            unassigned_ips = set(self._unit_ips).difference(assigned_ips)
+            unused_ids = set(range(0, self._num_hosts)).difference(used_ids)
+
+            # create new ids if necessary
+            if len(unused_ids) == 0:
+                unused_ids = range(self._num_hosts, self._num_hosts + len(unassigned_ips))
+
+            # get current configuration
+            new_assignments = [{"_id": i, "host": h} for i, h in zip(unused_ids, unassigned_ips)]
+            new_config.extend(new_assignments)
+        except (ConnectionFailure, ConfigurationError) as e:
+            raise e
+        finally:
+            replica_set_client.close()
+
+        logger.debug("new config for replica set: %s", new_config)
+        return new_config
 
     def replica_uri(self, standalone=False, credentials=None) -> str:
         """Construct a replica set URI.
