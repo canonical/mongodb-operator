@@ -22,7 +22,13 @@ from ops.model import (
     WaitingStatus,
 )
 
-from mongod_helpers import MONGODB_PORT, ConfigurationError, ConnectionFailure, OperationFailure, MongoDB
+from mongod_helpers import (
+    MONGODB_PORT,
+    ConfigurationError,
+    ConnectionFailure,
+    MongoDB,
+    OperationFailure,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -39,18 +45,23 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(self.on.start, self._on_start)
-        self.framework.observe(self.on.mongodb_relation_joined, self._on_mongodb_relation_joined)
+        self.framework.observe(self.on.mongodb_relation_joined, self._on_mongodb_relation_handler)
+        self.framework.observe(self.on.mongodb_relation_changed, self._on_mongodb_relation_handler)
         self.framework.observe(self.on.update_status, self._on_update_status)
         self.framework.observe(self.on.get_primary_action, self._on_get_primary_action)
 
-    def _on_mongodb_relation_joined(self, event: ops.charm.RelationJoinedEvent) -> None:
-        """Adds the joined unit as a replica to the MongoDB replica set.
+    def _on_mongodb_relation_handler(self, event: ops.charm.RelationEvent) -> None:
+        """Adds the unit as a replica to the MongoDB replica set.
 
         Args:
-            event: The triggering relation joined event.
+            event: The triggering relation joined/chnged event.
         """
         # only leader should configure replica set
         if not self.unit.is_leader():
+            return
+
+        # app-changed-events can trigger the relation changed hook resulting in no JUJU_REMOTE_UNIT
+        if event.unit is None:
             return
 
         #  only add the calling unit to the replica set if it has mongod running
@@ -60,7 +71,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         if not mongo_peer.is_ready(standalone=True):
             logger.debug(
                 "unit is not ready, cannot initialise replica set unit: %s is ready, deferring on relation-joined",
-                calling_unit.name
+                calling_unit.name,
             )
             event.defer()
             return
@@ -273,7 +284,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             leader_ip = str(self.model.get_binding(PEER).network.bind_address)
             self._mongo.initialise_replica_set([leader_ip])
             self._peers.data[self.app]["replica_set_hosts"] = json.dumps([leader_ip])
-        except (ConnectionFailure, ConfigurationError) as e:
+        except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
             logger.error("error initialising replica sets in _on_start: error: %s", str(e))
             self.unit.status = WaitingStatus("waiting to initialise replica set")
 

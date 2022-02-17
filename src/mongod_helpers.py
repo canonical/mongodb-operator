@@ -133,6 +133,11 @@ class MongoDB:
         except ConfigurationError as e:
             logger.error("cannot initialise replica set: incorrect credentials: error: %s", str(e))
             raise e
+        except OperationFailure as e:
+            logger.error(
+                "cannot initialise replica set: database operation failed: error: %s", str(e)
+            )
+            raise e
         finally:
             client.close()
 
@@ -143,7 +148,7 @@ class MongoDB:
             # get current configuration and update with correct hosts
             rs_config = replica_set_client.admin.command("replSetGetConfig")
             rs_config["config"]["_id"] = self._replica_set_name
-            rs_config["config"]["members"] = self.replica_set_config()
+            rs_config["config"]["members"] = self.replica_set_config(rs_config)
             rs_config["config"]["version"] += 1
             replica_set_client.admin.command("replSetReconfig", rs_config["config"])
         except ConnectionFailure as e:
@@ -161,57 +166,58 @@ class MongoDB:
             logger.error(
                 "cannot reconfigure replica set: database operation failed: error: %s", str(e)
             )
+            raise e
         finally:
             replica_set_client.close()
 
-    def replica_set_config(self) -> List[dict]:
+    def replica_set_config(self, rs_config) -> List[dict]:
         """Maps unit ips to MongoDB replica set ids.
 
         When reconfiguring a replica set it is a requirement of mongod that machines do not get
         reassigned to different replica ids. This function ensures that already assigned machines
         maintain their replica set id and that new machines get assigned a new unused id.
 
+        Args:
+            rs_config: dict containing current configuration of replica set according to mongod
+
         Returns:
             A list of dicts, where each dict contains the host machine with its replica set id
         """
         new_config = []
-        replica_set_client = self.client()
-        try:
-            # acquire current config
-            rs_config = replica_set_client.admin.command("replSetGetConfig")
-            rs_config["config"]["_id"] = self._replica_set_name
-            current_config = rs_config["config"]["members"]
-            logger.debug("current config for replica set: %s", current_config)
 
-            # look at each member in the current config and decide if it belongs in the new confg
-            used_ids = set()
-            assigned_ips = set()
-            for member in current_config:
-                # get member ip without ":PORT"
-                member_ip = member["host"].split(":")[0]
+        # acquire current members in config
+        current_members = rs_config["config"]["members"]
+        logger.debug("current config for replica set: %s", current_members)
 
-                # if this ip is still being used retain it in new config
-                if member_ip in self._unit_ips:
-                    new_config.append(member)
-                    used_ids.add(member["_id"])
-                    assigned_ips.add(member_ip)
+        # look at each member in the current config and decide if it belongs in the new confg
+        used_ids = set()
+        assigned_ips = set()
+        for member in current_members:
+            # get member ip without ":PORT"
+            member_ip = member["host"].split(":")[0]
 
-            # assign un-assigned ips with un-used ids if possible
-            unassigned_ips = set(self._unit_ips).difference(assigned_ips)
-            unused_ids = set(range(0, self._num_hosts)).difference(used_ids)
+            # if this ip is still being used retain it in new config
+            if member_ip in self._unit_ips:
+                new_config.append(member)
+                used_ids.add(int(member["_id"]))
+                assigned_ips.add(member_ip)
 
-            # create new ids if necessary
-            if len(unused_ids) == 0:
-                unused_ids = range(self._num_hosts, self._num_hosts + len(unassigned_ips))
+        # assign un-assigned ips with un-used ids if possible
+        unassigned_ips = set(self._unit_ips).difference(assigned_ips)
+        unused_ids = set(range(0, self._num_hosts)).difference(used_ids)
 
-            # get current configuration
-            new_assignments = [{"_id": i, "host": h} for i, h in zip(unused_ids, unassigned_ips)]
-            new_config.extend(new_assignments)
-        except (ConnectionFailure, ConfigurationError) as e:
-            raise e
-        finally:
-            replica_set_client.close()
+        # create new ids if necessary
+        if len(unused_ids) == 0:
+            unused_ids = range(self._num_hosts, self._num_hosts + len(unassigned_ips))
 
+        # get current configuration
+        new_assignments = [
+            {"_id": i, "host": (h + ":" + str(self._port))}
+            for i, h in zip(unused_ids, unassigned_ips)
+        ]
+        new_config.extend(new_assignments)
+
+        # return new config
         logger.debug("new config for replica set: %s", new_config)
         return new_config
 

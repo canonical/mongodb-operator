@@ -12,6 +12,7 @@ from charm import (
     ConfigurationError,
     ConnectionFailure,
     MongodbOperatorCharm,
+    OperationFailure,
     URLError,
     apt,
     subprocess,
@@ -439,150 +440,102 @@ class TestCharm(unittest.TestCase):
         expected_ips = ["127.4.5.6", "1.1.1.1"]
         self.assertEqual(resulting_ips, expected_ips)
 
-    @patch("charm.MongodbOperatorCharm.app")
-    def test_mongodb_relation_joined_non_leader_does_nothing(self, app):
+    @patch("charm.MongodbOperatorCharm._reconfigure")
+    def test_mongodb_relation_joined_non_leader_does_nothing(self, reconfigure):
         rel = self.harness.charm.model.get_relation("mongodb")
         self.harness.set_leader(False)
         self.harness.charm.on.mongodb_relation_joined.emit(relation=rel)
 
-        app.planned_units.assert_not_called()
-
-    @patch("charm.MongodbOperatorCharm.app")
-    def test_mongodb_relation_joined_planned_units_does_not_match_joined_units(self, app):
-        rel = self.harness.charm.model.get_relation("mongodb")
-        self.harness.set_leader(True)
-        app.planned_units.return_value = 3
-
-        with self.assertLogs("charm", "DEBUG") as logs:
-            self.harness.charm.on.mongodb_relation_joined.emit(relation=rel)
-            self.assertIn(
-                "planned units does not match joined units: 3 != 1",
-                "".join(logs.output),
-            )
+        reconfigure.assert_not_called()
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongodbOperatorCharm._initialise_replica_set")
-    @patch("mongod_helpers.MongoDB.is_ready")
-    @patch("mongod_helpers.MongoDB.is_replica_set")
-    @patch("charm.MongodbOperatorCharm.app")
-    def test_mongodb_relation_joined_already_replica_set(
-        self, app, is_replica_set, is_ready, initialise_replica_set
-    ):
-        rel = self.harness.charm.model.get_relation("mongodb")
+    @patch("mongod_helpers.MongoDB.reconfigure_replica_set")
+    @patch("charm.MongodbOperatorCharm._single_mongo_replica")
+    @patch("charm.MongodbOperatorCharm._peers")
+    def test_mongodb_relation_joined_peers_not_ready(self, _, single_replica, mongo_reconfigure):
+        # preset values
         self.harness.set_leader(True)
-        app.planned_units.return_value = len(self.harness.charm._unit_ips)
-        is_replica_set.return_value = True
-        ready_statuses = [True, False]
+        single_replica.return_value.is_ready.return_value = False
 
-        with self.assertLogs("charm", "DEBUG") as logs:
-            for ready_status in ready_statuses:
-                is_ready.return_value = ready_status
-                self.harness.charm.on.mongodb_relation_joined.emit(relation=rel)
-                # verify that we do not re-initialise replica set
-                initialise_replica_set.assert_not_called()
+        # simulate 2nd MongoDB unit
+        rel = self.harness.charm.model.get_relation("mongodb")
+        rel_id = rel.id
+        key_values = {"private-address": "127.4.5.6"}
+        self.harness.add_relation_unit(rel_id, "mongodb/1")
+        self.harness.update_relation_data(rel_id, "mongodb/1", key_values)
+        rel = self.harness.charm.model.get_relation("mongodb")
 
-                # check behavior based on ready status
-                is_ready.assert_called()
-                if ready_status:
-                    continue
+        # verify that we do not reconfigure replica set
+        mongo_reconfigure.assert_not_called()
 
-                self.assertIn(
-                    "Replica set for units: ['1.1.1.1'], is not ready", "".join(logs.output)
-                )
-                self.assertEqual(
-                    self.harness.charm.unit.status,
-                    BlockedStatus("failed to initialise replica set"),
-                )
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongodbOperatorCharm._single_mongo_replica")
+    @patch("charm.MongodbOperatorCharm._need_replica_set_reconfiguration")
+    @patch("mongod_helpers.MongoDB.reconfigure_replica_set")
+    def test_mongodb_relation_joined_peer_ready(
+        self, mongodb_reconfigure, need_reconfiguration, single_replica
+    ):
+        # preset values
+        self.harness.set_leader(True)
+        single_replica.return_value.is_ready.return_value = True
 
-        @patch_network_get(private_address="1.1.1.1")
-        @patch("charm.MongodbOperatorCharm._initialise_replica_set")
-        @patch("mongod_helpers.MongoDB.is_ready")
-        @patch("mongod_helpers.MongoDB.is_replica_set")
-        @patch("charm.MongodbOperatorCharm.app")
-        def test_mongodb_relation_joined_not_yet_replica_set(
-            self, app, is_replica_set, is_ready, initialise_replica_set
-        ):
+        # test cases where replica set should and shouldn't be reconfigured
+        for reconfiguration in [False, True]:
+            self.harness.charm._need_replica_set_reconfiguration = reconfiguration
+
+            # simulate 2nd MongoDB unit
             rel = self.harness.charm.model.get_relation("mongodb")
-            self.harness.set_leader(True)
-            app.planned_units.return_value = len(self.harness.charm._unit_ips)
-            is_replica_set.return_value = False
-            ready_statuses = [True, False]
+            rel_id = rel.id
+            key_values = {"private-address": "127.4.5.6"}
+            self.harness.add_relation_unit(rel_id, "mongodb/1")
+            self.harness.update_relation_data(rel_id, "mongodb/1", key_values)
 
-            with self.assertLogs("charm", "DEBUG") as logs:
-                for ready_status in ready_statuses:
-                    is_ready.return_value = ready_status
-                    self.harness.charm.on.mongodb_relation_joined.emit(relation=rel)
-                    # verify that we do initialise replica set
-                    initialise_replica_set.assert_called()
+            # check if mongod reconfigured replica set
+            if reconfiguration:
+                mongodb_reconfigure.assert_called()
 
-                    # check behavior based on ready status
-                    is_ready.assert_called()
-                    if ready_status:
-                        continue
+                # verify replica set hosts updated accordingly
+                self.assertEqual(
+                    self.harness.charm._replica_set_hosts,
+                    ["127.4.5.6", "1.1.1.1"],
+                )
 
-                    self.assertIn(
-                        "Replica set for units: ['1.1.1.1'], is not ready", "".join(logs.output)
-                    )
-                    self.assertEqual(
-                        self.harness.charm.unit.status,
-                        BlockedStatus("failed to initialise replica set"),
-                    )
+            else:
+                mongodb_reconfigure.assert_not_called()
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongodbOperatorCharm._initialise_replica_set")
-    @patch("mongod_helpers.MongoDB.is_ready")
-    @patch("charm.MongodbOperatorCharm.app")
-    def test_mongodb_relation_joined_peers_not_ready(self, app, is_ready, initialise_replica_set):
-        # preset values
-        self.harness.set_leader(True)
-        is_ready.return_value = False
-
-        # simulate 2nd MongoDB unit
-        rel = self.harness.charm.model.get_relation("mongodb")
-        rel_id = rel.id
-        key_values = {"private-address": "127.4.5.6"}
-        self.harness.add_relation_unit(rel_id, "mongodb/1")
-        self.harness.update_relation_data(rel_id, "mongodb/1", key_values)
-        app.planned_units.return_value = len(self.harness.charm._unit_ips)
-
-        with self.assertLogs("charm", "DEBUG") as logs:
-            self.harness.charm.on.mongodb_relation_joined.emit(relation=rel)
-
-            self.assertIn(
-                "unit: <ops.model.Unit mongodb/1> is not ready, cannot "
-                + "initialise replica set until all units are ready, deferring "
-                + "on relation-joined",
-                "".join(logs.output),
-            )
-
-            # verify that we do not initialise replica set
-            initialise_replica_set.assert_not_called()
-
-    @patch_network_get(private_address="1.1.1.1")
-    @patch("mongod_helpers.MongoDB.is_replica_set")
-    @patch("charm.MongodbOperatorCharm._initialise_replica_set")
-    @patch("mongod_helpers.MongoDB.is_ready")
-    @patch("charm.MongodbOperatorCharm.app")
-    def test_mongodb_relation_joined_peers_ready(
-        self, app, is_ready, initialise_replica_set, is_replica_set
+    @patch("charm.MongodbOperatorCharm._single_mongo_replica")
+    @patch("charm.MongodbOperatorCharm._need_replica_set_reconfiguration")
+    @patch("mongod_helpers.MongoDB.reconfigure_replica_set")
+    def test_mongodb_relation_joined_failure(
+        self, mongodb_reconfigure, need_reconfiguration, single_replica
     ):
         # preset values
         self.harness.set_leader(True)
-        is_ready.return_value = True
-        is_replica_set.return_value = False
+        single_replica.return_value.is_ready.return_value = True
+        self.harness.charm._need_replica_set_reconfiguration = True
 
-        # simulate 2nd MongoDB unit
-        rel = self.harness.charm.model.get_relation("mongodb")
-        rel_id = rel.id
-        key_values = {"private-address": "127.4.5.6"}
-        self.harness.add_relation_unit(rel_id, "mongodb/1")
-        self.harness.update_relation_data(rel_id, "mongodb/1", key_values)
-        app.planned_units.return_value = len(self.harness.charm._unit_ips)
+        # test cases where replica set should and shouldn't be reconfigured
+        exceptions = [
+            ConnectionFailure("error message"),
+            ConfigurationError("error message"),
+            OperationFailure("error message"),
+        ]
+        for exception in exceptions:
+            # exception
+            mongodb_reconfigure.side_effect = exception
 
-        self.harness.charm.on.mongodb_relation_joined.emit(relation=rel)
+            # simulate 2nd MongoDB unit
+            rel = self.harness.charm.model.get_relation("mongodb")
+            rel_id = rel.id
+            key_values = {"private-address": "127.4.5.6"}
+            self.harness.add_relation_unit(rel_id, "mongodb/1")
+            self.harness.update_relation_data(rel_id, "mongodb/1", key_values)
 
-        # verify that we do not initialise replica set
-        initialise_replica_set.assert_called()
+            # charm waits
+            self.assertEqual(
+                self.harness.charm.unit.status, WaitingStatus("waiting to reconfigure replica set")
+            )
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("mongod_helpers.MongoDB.is_ready")
@@ -601,6 +554,7 @@ class TestCharm(unittest.TestCase):
         exceptions = [
             ConnectionFailure("connection error message"),
             ConfigurationError("configuration error message"),
+            OperationFailure("operation error message"),
         ]
         log_messages = [
             "ERROR:charm:error initialising replica sets in _on_start: error: connection error message",
@@ -633,33 +587,14 @@ class TestCharm(unittest.TestCase):
 
         self.harness.charm.on.start.emit()
         initialise_replica_set.assert_called()
+
+        # assert added to replica set hosts
         self.assertEqual(
-            self.harness.charm._peers.data[self.harness.charm.app]["replica_set_hosts"],
-            '"1.1.1.1"',
+            self.harness.charm._replica_set_hosts,
+            ["1.1.1.1"],
         )
 
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus(""))
-
-    @patch_network_get(private_address="1.1.1.1")
-    @patch("mongod_helpers.MongoDB.is_ready")
-    @patch("mongod_helpers.MongoDB.initialise_replica_set")
-    @patch("charm.MongodbOperatorCharm._open_port_tcp")
-    @patch("charm.service_running")
-    @patch("mongod_helpers.MongoDB.is_replica_set")
-    def test_initialise_replica_only_once(
-        self, is_replica, service_running, _open_port_tcp, initialise_replica_set, is_ready
-    ):
-        self.harness.set_leader(True)
-        is_ready.return_value = True
-        is_replica.side_effect = [False, True, True]
-
-        # emit both events
-        self.harness.charm.on.start.emit()
-        rel = self.harness.charm.model.get_relation("mongodb")
-        self.harness.charm.on.mongodb_relation_joined.emit(relation=rel)
-
-        initialise_replica_set.assert_called_once()
-        is_replica.assert_called()
 
     @patch_network_get(private_address="1.1.1.1")
     def test_single_mongo_replica(self):
@@ -712,3 +647,14 @@ class TestCharm(unittest.TestCase):
 
         self.harness.charm._on_get_primary_action(mock_event)
         mock_event.set_results.assert_called_with({"replica-set-primary": "mongodb/1"})
+
+    @patch("charm.MongodbOperatorCharm._unit_ips")
+    @patch("charm.MongodbOperatorCharm._replica_set_hosts")
+    def test_need_replica_set_reconfiguration(self, units, hosts):
+        self.harness.charm._unit_ips = ["1.1.1.1", "2.2.2.2"]
+        self.harness.charm._replica_set_hosts = ["1.1.1.1"]
+        self.assertEqual(self.harness.charm._need_replica_set_reconfiguration, True)
+
+        self.harness.charm._unit_ips = ["1.1.1.1", "2.2.2.2"]
+        self.harness.charm._replica_set_hosts = ["1.1.1.1", "2.2.2.2"]
+        self.assertEqual(self.harness.charm._need_replica_set_reconfiguration, False)
