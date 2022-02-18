@@ -194,3 +194,23 @@ class TestMongoServer(unittest.TestCase):
         ]
         new_config = mongo.replica_set_config(current_config)
         self.assertEqual(new_config, expected_new_members)
+
+    def test_replica_set_config_removes_member(self):
+        # standard presets
+        config = MONGO_CONFIG.copy()
+        # remove a member
+        config["unit_ips"] = ["2.2.2.2"]
+        mongo = MongoDB(config)
+
+        current_config = {}
+        current_config["config"] = {}
+        current_config["config"]["members"] = [
+            {"host": "1.1.1.1:27017", "_id": 0},
+            {"host": "2.2.2.2:27017", "_id": 1},
+        ]
+
+        expected_new_members = [
+            {"host": "2.2.2.2:27017", "_id": 1},
+        ]
+        new_config = mongo.replica_set_config(current_config)
+        self.assertEqual(new_config, expected_new_members)

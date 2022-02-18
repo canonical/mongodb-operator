@@ -463,7 +463,6 @@ class TestCharm(unittest.TestCase):
         key_values = {"private-address": "127.4.5.6"}
         self.harness.add_relation_unit(rel_id, "mongodb/1")
         self.harness.update_relation_data(rel_id, "mongodb/1", key_values)
-        rel = self.harness.charm.model.get_relation("mongodb")
 
         # verify that we do not reconfigure replica set
         mongo_reconfigure.assert_not_called()
@@ -536,6 +535,42 @@ class TestCharm(unittest.TestCase):
             self.assertEqual(
                 self.harness.charm.unit.status, WaitingStatus("waiting to reconfigure replica set")
             )
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongodbOperatorCharm._single_mongo_replica")
+    @patch("charm.MongodbOperatorCharm._need_replica_set_reconfiguration")
+    @patch("mongod_helpers.MongoDB.reconfigure_replica_set")
+    def test_mongodb_departed_reconfigures_replicas(
+        self, mongodb_reconfigure, need_reconfiguration, single_replica
+    ):
+        # preset values
+        self.harness.charm._need_replica_set_reconfiguration = True
+        self.harness.set_leader(True)
+
+        # add peer unit
+        rel = self.harness.charm.model.get_relation("mongodb")
+        rel_id = rel.id
+        key_values = {"private-address": "127.4.5.6"}
+        self.harness.add_relation_unit(rel_id, "mongodb/1")
+        self.harness.update_relation_data(rel_id, "mongodb/1", key_values)
+
+        # remove unit to trigger event
+        self.harness.add_relation_unit(rel_id, "mongodb/1")
+
+        # verify replica set hosts updated accordingly
+        self.assertEqual(
+            self.harness.charm._replica_set_hosts,
+            ["1.1.1.1"],
+        )
+
+    @patch("charm.MongodbOperatorCharm._reconfigure")
+    def test_mongodb_departed_non_leader_does_nothing(self, reconfigure):
+        # preset values
+        self.harness.set_leader(False)
+        mock_event = mock.Mock()
+
+        self.harness.charm._on_mongodb_relation_departed(mock_event)
+        reconfigure.assert_not_called()
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("mongod_helpers.MongoDB.is_ready")
