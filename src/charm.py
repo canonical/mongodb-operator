@@ -312,16 +312,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         return set(self._unit_ips) != set(self._replica_set_hosts)
 
     @property
-    def _check_unit_count(self) -> bool:
-        all_units_joined = self.app.planned_units() == len(self._peers.units) + 1
-        logger.debug(
-            "planned units does not match joined units: %s != %s",
-            str(self.app.planned_units()),
-            str(len(self._peers.units) + 1),
-        )
-        return all_units_joined
-
-    @property
     def _unit_ips(self) -> List[str]:
         """Retrieve IP addresses associated with MongoDB application.
 
@@ -387,16 +377,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
              An `ops.model.Relation` object representing the peer relation.
         """
         return self.model.get_relation(PEER)
-
-    @property
-    def _number_of_expected_units(self) -> int:
-        """Returns the number of units expect for MongoDB application."""
-        return self.app.planned_units()
-
-    @property
-    def _number_of_current_units(self) -> int:
-        """Returns the number of units in the MongoDB application."""
-        return len(self._peers.units) + 1
 
 
 if __name__ == "__main__":
