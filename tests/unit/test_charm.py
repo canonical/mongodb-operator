@@ -139,6 +139,37 @@ MONGO_CONF_ARGS = [
     "\n",
 ]
 
+MONGODB_PUB_KEY = """-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+mQINBGAsKNUBEAClMqPCvvqm6gFmbiorEN9qp00GI8oaECkwbxtGGbqX9sqMSrKe
+AB3sGI7kqG2Fl0K+xmmiq1QDjhNgFDA1jjXq+Bd66RNPtvu747IRxVs+9fX7bk67
+8Bruha7U3M5l4193x5oYLlbcZL9aC7RSJE2mggTyS6LarmF6vKQN9LMXDicnageV
+KCPpF2i3jkZaGnLPzAisW/pOjPQpWCbatTVqKOKvtOyP3Fz1spYd4obu6ELu1PXa
+gmhSfvWJYt1irpchOl29LWZfcmXuJszmb00bqm4gLcK12VrnK191iXv46A8h2hSO
+f3eQqrkc+pF/kw4RyG54EV7QtHXyTe9TVCbJUfgtliWIQt/bCoJYfPLHJaWIMs83
+bzA6ZvOjCKIfMS0CY5ZJyVaBfiI3wURSjgZIYFZAXVwbreQIfOKKuik7UVVn3xUO
+nWpmQ2zyI0W7cJMquxwLNjkI+RckPhIqxWFo5iNSV4v6pzrlHD1WmIfFGBKEn7m+
+edwVyHG53fNIFZjxyShO6Pf1vgb9Js/XmXB4lxYnNyx1tB+hQhXTjLlY6N5gPpw5
+Z/PWQc7vfYekUZGQMXhTyRxU0QTwmdEeKcb+fb9r23OH59bbAfzE10xTMzhqCd2L
+lgSozMBvMmkHb1xs1x6FFuv/U/X7LjHTrHIf4M//DNwdP4l4I1jhPlTAxwARAQAB
+tDdNb25nb0RCIDUuMCBSZWxlYXNlIFNpZ25pbmcgS2V5IDxwYWNrYWdpbmdAbW9u
+Z29kYi5jb20+iQI+BBMBAgAoBQJgLCjVAhsDBQkJZgGABgsJCAcDAgYVCAIJCgsE
+FgIDAQIeAQIXgAAKCRCwCgvR4sY8EawdD/0ewkyx3yE99K9n3y7gdvh5+2U8BsqU
+7SWEfup7kPpf+4pF5xWqMaciEV/wRAGt7TiKlfVyAv3Q9iNsaLFN+s3kMaIcKhwD
+8+q/iGfziIuOSTeo20dAxn9vF6YqrKGc7TbHdXf9AtYuJCfIU5j02uVZiupx+P9+
+rG39dEnjOXm3uY0Fv3pRGCpuGubDlWB1DYh0R5O481kDVGoMqBxmc3iTALu14L/u
+g+AKxFYfT4DmgdzPVMDhppgywfyd/IOWxoOCl4laEhVjUt5CygBa7w07qdKwWx2w
+gTd9U0KGHxnnSmvQYxrRrS5RX3ILPJShivTSZG+rMqnUe6RgCwBrKHCRU1L728Yv
+1B3ZFJLxB1TlVT2Hjr+oigp0RY9W1FCIdO2uhb9GImpaJ1Y0ZZqUkt/d9D8U2wcw
+SW6/6WYeO7wAi/zlJ25hrBwhxS2+88gM6wJ1yL9yrM9v8JUb7Kq0rCGsEO5kqscV
+AmX90wsF2cZ6gHR53eGIDbAJK0MO5RHR73aQ4bpTivPnoTx4HTj5fyhW9z8yCSOe
+BlQABoFFqFvOS7KBxoyIS3pxlDetWOSc6yQrvA1CwxnkB81OHNmJfWAbNbEtZkLm
+xs2c8CIh2R81yi6HUzAaxyDH7mrThbwX3hUe/wsaD1koV91G6bDD4Xx3zpa9DG/O
+HyB98+e983gslg==
+=IQQF
+-----END PGP PUBLIC KEY BLOCK-----
+"""
+
 
 class TestCharm(unittest.TestCase):
     def setUp(self, *unused):
@@ -373,60 +404,73 @@ class TestCharm(unittest.TestCase):
 
     @patch("charm.apt.RepositoryMapping")
     @patch("charm.apt.DebianRepository.from_repo_line")
-    @patch("charm.urlopen")
-    def test_add_mongodb_org_repository_success(self, urlopen, from_repo_line, get_mapping):
+    @patch("charm.apt.DebianRepository.import_key")
+    def test_add_mongodb_org_repository_success(self, import_key, from_repo_line, repo_map):
+        repo_map.return_value = set()
+
         self.harness.charm._add_mongodb_org_repository()
-        get_mapping.return_value = {}
-        urlopen.assert_called()
         from_repo_line.assert_called()
-
-    @patch("charm.apt.RepositoryMapping")
-    @patch("charm.urlopen")
-    def test_add_mongodb_org_repository_gpg_fail_leads_to_blocked(self, urlopen, get_mapping):
-        get_mapping.return_value = {}
-        urlopen.side_effect = URLError("urlopen error")
-        with self.assertLogs("charm", "ERROR") as logs:
-            self.harness.charm._add_mongodb_org_repository()
-            self.assertIn("ERROR:charm:failed to get GPG key, reason:", "".join(logs.output))
-
-        self.assertEqual(self.harness.charm.unit.status, BlockedStatus("couldn't install MongoDB"))
+        (from_repo_line.return_value.import_key).assert_called_with(MONGODB_PUB_KEY)
+        self.assertEqual(repo_map.return_value, {from_repo_line.return_value})
 
     @patch("charm.apt.RepositoryMapping")
     @patch("charm.apt.DebianRepository.from_repo_line")
+    @patch("charm.apt.DebianRepository.import_key")
     @patch("charm.urlopen")
-    def test_add_mongodb_org_repository_cant_create_list_file_blocks(
-        self, urlopen, from_repo_line, get_mapping
+    def test_add_mongodb_org_repository_gpg_fail_leads_to_blocked(
+        self, urlopen, import_key, from_repo_line, repo_map
     ):
-        get_mapping.return_value = {}
-        exceptions = [
-            apt.InvalidSourceError("invalid source message"),
-            ValueError("value message"),
-        ]
-        log_messages = [
-            "ERROR:charm:failed to add repository, invalid source: invalid source message",
-            "ERROR:charm:failed to add repository: value message",
-        ]
-        for exception, log_message in zip(exceptions, log_messages):
-            with self.assertLogs("charm", "ERROR") as logs:
-                from_repo_line.side_effect = exception
-                self.harness.charm._add_mongodb_org_repository()
-                self.assertIn(log_message, "".join(logs.output))
+        # preset values
+        repo_map.return_value = set()
+        urlopen.side_effect = URLError("urlopen error")
+        self.harness.charm._add_mongodb_org_repository()
 
-            self.assertEqual(
-                self.harness.charm.unit.status, BlockedStatus("couldn't install MongoDB")
-            )
+        # verify we don't add repo when an exception occurs and that we enter blocked state
+        from_repo_line.assert_not_called()
+        import_key.assert_not_called()
+        self.assertEqual(repo_map.return_value, set())
+        self.assertEqual(self.harness.charm.unit.status, BlockedStatus("couldn't install MongoDB"))
 
     @patch("charm.apt.RepositoryMapping")
     @patch("charm.apt.DebianRepository.import_key")
     @patch("charm.apt.DebianRepository.from_repo_line")
     @patch("charm.urlopen")
-    def test_add_mongodb_org_repository_already_added_skips(
+    def test_add_mongodb_org_repository_cant_create_list_file_blocks(
         self, urlopen, from_repo_line, import_key, repo_map
     ):
-        repo_map.return_value = ["deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"]
+        repo_map.return_value = set()
+        exceptions = [
+            apt.InvalidSourceError("invalid source message"),
+            ValueError("value message"),
+        ]
+        for exception in exceptions:
+            from_repo_line.side_effect = exception
+            self.harness.charm._add_mongodb_org_repository()
+
+            # verify we don't add repo when an exception occurs and that we enter blocked state
+            import_key.assert_not_called()
+            self.assertEqual(repo_map.return_value, set())
+            self.assertEqual(
+                self.harness.charm.unit.status, BlockedStatus("couldn't install MongoDB")
+            )
+
+    # Will need to update this once I figure out how to mock RepositoryMapping properly
+    @patch("charm.apt.DebianRepository.import_key")
+    @patch("charm.apt.DebianRepository.from_repo_line")
+    @patch("charm.apt.RepositoryMapping")
+    def test_add_mongodb_org_repository_already_added_skips(
+        self, repo_map, from_repo_line, import_key
+    ):
+        repo_map.return_value = {"deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"}
+
+        # verify we don't add repo when we already have repo
         self.harness.charm._add_mongodb_org_repository()
-        urlopen.assert_called()
         from_repo_line.assert_not_called()
+        import_key.assert_not_called()
+        self.assertEqual(
+            repo_map.return_value,
+            {"deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"},
+        )
 
     @patch_network_get(private_address="1.1.1.1")
     def test_unit_ips(self):
