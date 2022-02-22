@@ -2,9 +2,10 @@
 # See LICENSE file for licensing details.
 
 import unittest
+import requests
 from unittest import mock
 from unittest.mock import call, mock_open, patch
-
+from typing import List
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from ops.testing import Harness
 
@@ -17,158 +18,6 @@ from charm import (
     subprocess,
 )
 from tests.unit.helpers import patch_network_get
-
-MONGO_CONF_ORIG = """# mongod.conf
-
-# for documentation of all options, see:
-#   http://docs.mongodb.org/manual/reference/configuration-options/
-
-# Where and how to store data.
-storage:
-  dbPath: /var/lib/mongodb
-  journal:
-    enabled: true
-#  engine:
-#  wiredTiger:
-
-# where to write logging data.
-systemLog:
-  destination: file
-  logAppend: true
-  path: /var/log/mongodb/mongod.log
-
-# network interfaces
-net:
-  port: 27017
-  bindIp: 127.0.0.1
-
-
-# how the process runs
-processManagement:
-  timeZoneInfo: /usr/share/zoneinfo
-
-# security:
-
-# operationProfiling:
-
-# replication:
-
-# sharding:
-
-# Enterprise-Only Options:
-
-# auditLog:
-
-# snmp:
-"""
-incr_return_values = [True, False]
-
-MONGO_CONF_ARGS = [
-    "net",
-    ":",
-    "\n",
-    "  ",
-    "bindIp",
-    ":",
-    " ",
-    "localhost,1.1.1.1",
-    "\n",
-    "  ",
-    "port",
-    ":",
-    " ",
-    "27017",
-    "\n",
-    "processManagement",
-    ":",
-    "\n",
-    "  ",
-    "timeZoneInfo",
-    ":",
-    " ",
-    "/usr/share/zoneinfo",
-    "\n",
-    "replication",
-    ":",
-    "\n",
-    "  ",
-    "replSetName",
-    ":",
-    " ",
-    "rs0",
-    "\n",
-    "storage",
-    ":",
-    "\n",
-    "  ",
-    "dbPath",
-    ":",
-    " ",
-    "/var/lib/mongodb",
-    "\n",
-    "  ",
-    "journal",
-    ":",
-    "\n",
-    "    ",
-    "enabled",
-    ":",
-    " ",
-    "true",
-    "\n",
-    "systemLog",
-    ":",
-    "\n",
-    "  ",
-    "destination",
-    ":",
-    " ",
-    "file",
-    "\n",
-    "  ",
-    "logAppend",
-    ":",
-    " ",
-    "true",
-    "\n",
-    "  ",
-    "path",
-    ":",
-    " ",
-    "/var/log/mongodb/mongod.log",
-    "\n",
-]
-
-MONGODB_PUB_KEY = """-----BEGIN PGP PUBLIC KEY BLOCK-----
-
-mQINBGAsKNUBEAClMqPCvvqm6gFmbiorEN9qp00GI8oaECkwbxtGGbqX9sqMSrKe
-AB3sGI7kqG2Fl0K+xmmiq1QDjhNgFDA1jjXq+Bd66RNPtvu747IRxVs+9fX7bk67
-8Bruha7U3M5l4193x5oYLlbcZL9aC7RSJE2mggTyS6LarmF6vKQN9LMXDicnageV
-KCPpF2i3jkZaGnLPzAisW/pOjPQpWCbatTVqKOKvtOyP3Fz1spYd4obu6ELu1PXa
-gmhSfvWJYt1irpchOl29LWZfcmXuJszmb00bqm4gLcK12VrnK191iXv46A8h2hSO
-f3eQqrkc+pF/kw4RyG54EV7QtHXyTe9TVCbJUfgtliWIQt/bCoJYfPLHJaWIMs83
-bzA6ZvOjCKIfMS0CY5ZJyVaBfiI3wURSjgZIYFZAXVwbreQIfOKKuik7UVVn3xUO
-nWpmQ2zyI0W7cJMquxwLNjkI+RckPhIqxWFo5iNSV4v6pzrlHD1WmIfFGBKEn7m+
-edwVyHG53fNIFZjxyShO6Pf1vgb9Js/XmXB4lxYnNyx1tB+hQhXTjLlY6N5gPpw5
-Z/PWQc7vfYekUZGQMXhTyRxU0QTwmdEeKcb+fb9r23OH59bbAfzE10xTMzhqCd2L
-lgSozMBvMmkHb1xs1x6FFuv/U/X7LjHTrHIf4M//DNwdP4l4I1jhPlTAxwARAQAB
-tDdNb25nb0RCIDUuMCBSZWxlYXNlIFNpZ25pbmcgS2V5IDxwYWNrYWdpbmdAbW9u
-Z29kYi5jb20+iQI+BBMBAgAoBQJgLCjVAhsDBQkJZgGABgsJCAcDAgYVCAIJCgsE
-FgIDAQIeAQIXgAAKCRCwCgvR4sY8EawdD/0ewkyx3yE99K9n3y7gdvh5+2U8BsqU
-7SWEfup7kPpf+4pF5xWqMaciEV/wRAGt7TiKlfVyAv3Q9iNsaLFN+s3kMaIcKhwD
-8+q/iGfziIuOSTeo20dAxn9vF6YqrKGc7TbHdXf9AtYuJCfIU5j02uVZiupx+P9+
-rG39dEnjOXm3uY0Fv3pRGCpuGubDlWB1DYh0R5O481kDVGoMqBxmc3iTALu14L/u
-g+AKxFYfT4DmgdzPVMDhppgywfyd/IOWxoOCl4laEhVjUt5CygBa7w07qdKwWx2w
-gTd9U0KGHxnnSmvQYxrRrS5RX3ILPJShivTSZG+rMqnUe6RgCwBrKHCRU1L728Yv
-1B3ZFJLxB1TlVT2Hjr+oigp0RY9W1FCIdO2uhb9GImpaJ1Y0ZZqUkt/d9D8U2wcw
-SW6/6WYeO7wAi/zlJ25hrBwhxS2+88gM6wJ1yL9yrM9v8JUb7Kq0rCGsEO5kqscV
-AmX90wsF2cZ6gHR53eGIDbAJK0MO5RHR73aQ4bpTivPnoTx4HTj5fyhW9z8yCSOe
-BlQABoFFqFvOS7KBxoyIS3pxlDetWOSc6yQrvA1CwxnkB81OHNmJfWAbNbEtZkLm
-xs2c8CIh2R81yi6HUzAaxyDH7mrThbwX3hUe/wsaD1koV91G6bDD4Xx3zpa9DG/O
-HyB98+e983gslg==
-=IQQF
------END PGP PUBLIC KEY BLOCK-----
-"""
 
 
 class TestCharm(unittest.TestCase):
@@ -188,13 +37,15 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     def test_on_config_changed(self):
-        open_mock = mock_open(read_data=MONGO_CONF_ORIG)
+
+        open_mock = mock_open(read_data=self.mongodb_config)
         with patch("builtins.open", open_mock, create=True):
             self.harness.charm.on.config_changed.emit()
 
         # TODO change expected output based on config options,(once config options are implemented)
         open_mock.assert_called_with("/etc/mongod.conf", "w")
-        open_mock.return_value.write.assert_has_calls([mock.call(arg) for arg in MONGO_CONF_ARGS])
+        open_mock.return_value.write.assert_has_calls(
+            [mock.call(arg) for arg in self.mongodb_config_args])
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("mongod_helpers.MongoDB.is_ready")
@@ -398,8 +249,8 @@ class TestCharm(unittest.TestCase):
                 self.harness.charm._install_apt_packages(["test-package"])
                 self.assertIn(log_message, logs.output)
 
-            self.assertEqual(
-                self.harness.charm.unit.status, BlockedStatus("couldn't install MongoDB")
+            self.assertTrue(
+                isinstance(self.harness.charm.unit.status, BlockedStatus)
             )
 
     @patch("charm.apt.RepositoryMapping")
@@ -407,10 +258,12 @@ class TestCharm(unittest.TestCase):
     @patch("charm.apt.DebianRepository.import_key")
     def test_add_mongodb_org_repository_success(self, import_key, from_repo_line, repo_map):
         repo_map.return_value = set()
+        req = requests.get('https://www.mongodb.org/static/pgp/server-5.0.asc')
+        mongodb_public_key = req.text
 
         self.harness.charm._add_mongodb_org_repository()
         from_repo_line.assert_called()
-        (from_repo_line.return_value.import_key).assert_called_with(MONGODB_PUB_KEY)
+        (from_repo_line.return_value.import_key).assert_called_with(mongodb_public_key)
         self.assertEqual(repo_map.return_value, {from_repo_line.return_value})
 
     @patch("charm.apt.RepositoryMapping")
@@ -426,10 +279,9 @@ class TestCharm(unittest.TestCase):
         self.harness.charm._add_mongodb_org_repository()
 
         # verify we don't add repo when an exception occurs and that we enter blocked state
-        from_repo_line.assert_not_called()
         import_key.assert_not_called()
         self.assertEqual(repo_map.return_value, set())
-        self.assertEqual(self.harness.charm.unit.status, BlockedStatus("couldn't install MongoDB"))
+        self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
 
     @patch("charm.apt.RepositoryMapping")
     @patch("charm.apt.DebianRepository.import_key")
@@ -448,11 +300,7 @@ class TestCharm(unittest.TestCase):
             self.harness.charm._add_mongodb_org_repository()
 
             # verify we don't add repo when an exception occurs and that we enter blocked state
-            import_key.assert_not_called()
-            self.assertEqual(repo_map.return_value, set())
-            self.assertEqual(
-                self.harness.charm.unit.status, BlockedStatus("couldn't install MongoDB")
-            )
+            self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
 
     # Will need to update this once I figure out how to mock RepositoryMapping properly
     @patch("charm.apt.DebianRepository.import_key")
@@ -461,15 +309,15 @@ class TestCharm(unittest.TestCase):
     def test_add_mongodb_org_repository_already_added_skips(
         self, repo_map, from_repo_line, import_key
     ):
-        repo_map.return_value = {"deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"}
+        mongo_repo = {"deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"}
+        repo_map.return_value = mongo_repo
 
         # verify we don't add repo when we already have repo
         self.harness.charm._add_mongodb_org_repository()
         from_repo_line.assert_not_called()
-        import_key.assert_not_called()
         self.assertEqual(
             repo_map.return_value,
-            {"deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"},
+            mongo_repo
         )
 
     @patch_network_get(private_address="1.1.1.1")
@@ -756,3 +604,21 @@ class TestCharm(unittest.TestCase):
 
         self.harness.charm._on_get_primary_action(mock_event)
         mock_event.set_results.assert_called_with({"replica-set-primary": "mongodb/1"})
+
+    @property
+    def mongodb_config_args(self) -> List[str]:
+        with open("tests/unit/data/mongodb_config_args.txt") as f:
+            config_args = f.read()
+            config_args = config_args.split(",\n")
+            # handle reformatting issues
+            config_args = ["\n" if args == "\\n" else args for args in config_args]
+            config_args = config_args[:-1]
+
+        return config_args
+
+    @property
+    def mongodb_config(self) -> str:
+        with open("tests/unit/data/mongodb_config.txt") as f:
+            config = f.read()
+
+        return config
