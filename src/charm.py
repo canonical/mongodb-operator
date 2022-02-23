@@ -56,12 +56,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         Args:
             event: The triggering relation joined/changed event.
         """
-        # only leader should configure replica set
-        if not self.unit.is_leader():
-            return
-
-        # app-changed-events can trigger the relation changed hook resulting in no JUJU_REMOTE_UNIT
-        if event.unit is None:
+        # only leader should configure replica set and app-changed-events can trigger the relation
+        # changed hook resulting in no JUJU_REMOTE_UNIT if this is the case we should return
+        if not (self.unit.is_leader() and event.unit):
             return
 
         #  only add the calling unit to the replica set if it has mongod running
@@ -90,7 +87,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # check if reconfiguration is necessary
         if self._need_replica_set_reconfiguration:
             try:
-                # reconfigure replica set
                 self._mongo.reconfigure_replica_set()
                 # update the set of replica set hosts
                 self._peers.data[self.app]["replica_set_hosts"] = json.dumps(self._unit_ips)

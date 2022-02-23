@@ -142,7 +142,11 @@ class MongoDB:
             client.close()
 
     def reconfigure_replica_set(self) -> None:
-        """Reconfigure the MongoDB replica set."""
+        """Reconfigure the MongoDB replica set.
+
+        Using the current MongoDB configuration from mongod, reconfigure_replica_set reconfigures
+        the replica set based on the current replica set hosts and the desired replica set hosts.
+        """
         replica_set_client = self.client()
         try:
             # get current configuration and update with correct hosts
