@@ -4,7 +4,7 @@
 import unittest
 import requests
 from unittest import mock
-from unittest.mock import call, mock_open, patch
+from unittest.mock import call, mock_open, patch, MagicMock
 from typing import List
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from ops.testing import Harness
@@ -272,14 +272,14 @@ class TestCharm(unittest.TestCase):
     @patch("charm.apt.DebianRepository.from_repo_line")
     @patch("charm.apt.DebianRepository.import_key")
     def test_add_mongodb_org_repository_success(self, import_key, from_repo_line, repo_map):
-        repo_map.return_value = set()
+        repo_map.return_value = MagicMock()
         req = requests.get('https://www.mongodb.org/static/pgp/server-5.0.asc')
         mongodb_public_key = req.text
 
         self.harness.charm._add_mongodb_org_repository()
         from_repo_line.assert_called()
         (from_repo_line.return_value.import_key).assert_called_with(mongodb_public_key)
-        self.assertEqual(repo_map.return_value, {from_repo_line.return_value})
+        repo_map.return_value.add.assert_called_with(from_repo_line.return_value)
 
     @patch("charm.apt.RepositoryMapping")
     @patch("charm.apt.DebianRepository.from_repo_line")
@@ -289,24 +289,19 @@ class TestCharm(unittest.TestCase):
         self, urlopen, import_key, from_repo_line, repo_map
     ):
         # preset values
-        repo_map.return_value = set()
-        repo_map.add = mock.Mock()
+        repo_map.return_value = MagicMock()
         urlopen.side_effect = URLError("urlopen error")
         self.harness.charm._add_mongodb_org_repository()
 
         # verify we don't add repo when an exception occurs and that we enter blocked state
-        repo_map.add.assert_not_called()
+        repo_map.return_value.add.assert_not_called()
         self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
 
     @patch("charm.apt.RepositoryMapping")
-    @patch("charm.apt.DebianRepository.import_key")
     @patch("charm.apt.DebianRepository.from_repo_line")
-    @patch("charm.urlopen")
     def test_add_mongodb_org_repository_cant_create_list_file_blocks(
-        self, urlopen, from_repo_line, import_key, repo_map
+        self, from_repo_line, repo_map
     ):
-        repo_map.return_value = set()
-        repo_map.add = mock.Mock()
         exceptions = [
             apt.InvalidSourceError("invalid source message"),
             ValueError("value message"),
@@ -320,15 +315,16 @@ class TestCharm(unittest.TestCase):
 
     @patch("charm.apt.RepositoryMapping")
     def test_add_mongodb_org_repository_already_added_skips(
-        self, repo_map, import_key
+        self, repo_map
     ):
-        mongo_repo = {"deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"}
-        repo_map.return_value = mongo_repo
-        repo_map.add = mock.Mock()
+        repo_map.return_value = MagicMock(
+            return_value={"deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"})
 
         # verify we don't add repo when we already have repo
         self.harness.charm._add_mongodb_org_repository()
-        repo_map.add.assert_not_called()
+        # TODO this is checking incorrectly since we should be checking what is returned by
+        # repo_map
+        repo_map.return_value.add.assert_not_called()
 
     @ patch_network_get(private_address="1.1.1.1")
     def test_unit_ips(self):
