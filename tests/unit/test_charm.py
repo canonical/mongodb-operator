@@ -2,10 +2,11 @@
 # See LICENSE file for licensing details.
 
 import unittest
-import requests
-from unittest import mock
-from unittest.mock import call, mock_open, patch, MagicMock
 from typing import List
+from unittest import mock
+from unittest.mock import MagicMock, call, mock_open, patch
+
+import requests
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from ops.testing import Harness
 
@@ -60,7 +61,8 @@ class TestCharm(unittest.TestCase):
         # TODO change expected output based on config options,(once config options are implemented)
         open_mock.assert_called_with("/etc/mongod.conf", "w")
         open_mock.return_value.write.assert_has_calls(
-            [mock.call(arg) for arg in self.mongodb_config_args])
+            [mock.call(arg) for arg in self.mongodb_config_args]
+        )
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("mongod_helpers.MongoDB.is_ready")
@@ -264,22 +266,23 @@ class TestCharm(unittest.TestCase):
                 self.harness.charm._install_apt_packages(["test-package"])
                 self.assertIn(log_message, logs.output)
 
-            self.assertTrue(
-                isinstance(self.harness.charm.unit.status, BlockedStatus)
-            )
+            self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
 
     @patch("charm.apt.RepositoryMapping")
     @patch("charm.apt.DebianRepository.from_repo_line")
     @patch("charm.apt.DebianRepository.import_key")
     def test_add_mongodb_org_repository_success(self, import_key, from_repo_line, repo_map):
-        repo_map.return_value = MagicMock()
-        req = requests.get('https://www.mongodb.org/static/pgp/server-5.0.asc')
+        # repo_map.return_value = MagicMock()
+        repo_map.return_value = set()
+        req = requests.get("https://www.mongodb.org/static/pgp/server-5.0.asc")
         mongodb_public_key = req.text
 
         self.harness.charm._add_mongodb_org_repository()
         from_repo_line.assert_called()
         (from_repo_line.return_value.import_key).assert_called_with(mongodb_public_key)
-        repo_map.return_value.add.assert_called_with(from_repo_line.return_value)
+        # TODO: figure out the right way to verify repo map
+        # repo_map.return_value.add.assert_called_with(from_repo_line.return_value)
+        self.assertEqual(repo_map.return_value, {from_repo_line.return_value})
 
     @patch("charm.apt.RepositoryMapping")
     @patch("charm.apt.DebianRepository.from_repo_line")
@@ -289,12 +292,15 @@ class TestCharm(unittest.TestCase):
         self, urlopen, import_key, from_repo_line, repo_map
     ):
         # preset values
-        repo_map.return_value = MagicMock()
+        # repo_map.return_value = MagicMock()
+        repo_map.return_value = set()
         urlopen.side_effect = URLError("urlopen error")
         self.harness.charm._add_mongodb_org_repository()
 
         # verify we don't add repo when an exception occurs and that we enter blocked state
-        repo_map.return_value.add.assert_not_called()
+        # TODO: figure out the right way to verify repo map
+        # repo_map.return_value.add.assert_not_called()
+        self.assertEqual(repo_map.return_value, set())
         self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
 
     @patch("charm.apt.RepositoryMapping")
@@ -314,19 +320,24 @@ class TestCharm(unittest.TestCase):
             self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
 
     @patch("charm.apt.RepositoryMapping")
+    @patch("charm.apt.DebianRepository.from_repo_line")
+    @patch("charm.apt.DebianRepository.import_key")
     def test_add_mongodb_org_repository_already_added_skips(
-        self, repo_map
+        self, import_key, from_repo_line, repo_map
     ):
-        repo_map.return_value = MagicMock(
-            return_value={"deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"})
+        # repo_map.return_value = MagicMock(
+        #     return_value={"deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"}
+        # )
+        REPO_MAP = {"deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"}
+        repo_map.return_value = REPO_MAP
 
         # verify we don't add repo when we already have repo
         self.harness.charm._add_mongodb_org_repository()
-        # TODO this is checking incorrectly since we should be checking what is returned by
-        # repo_map
-        repo_map.return_value.add.assert_not_called()
+        # TODO: figure out the right way to verify repo map
+        # repo_map.return_value.add.assert_not_called()
+        self.assertEqual(repo_map.return_value, REPO_MAP)
 
-    @ patch_network_get(private_address="1.1.1.1")
+    @patch_network_get(private_address="1.1.1.1")
     def test_unit_ips(self):
         key_values = {"private-address": "127.4.5.6"}
         rel_id = self.harness.charm.model.get_relation("mongodb").id
@@ -337,7 +348,7 @@ class TestCharm(unittest.TestCase):
         expected_ips = ["127.4.5.6", "1.1.1.1"]
         self.assertEqual(resulting_ips, expected_ips)
 
-    @ patch("charm.MongodbOperatorCharm.app")
+    @patch("charm.MongodbOperatorCharm.app")
     def test_mongodb_relation_joined_non_leader_does_nothing(self, app):
         rel = self.harness.charm.model.get_relation("mongodb")
         self.harness.set_leader(False)
@@ -345,7 +356,7 @@ class TestCharm(unittest.TestCase):
 
         app.planned_units.assert_not_called()
 
-    @ patch("charm.MongodbOperatorCharm.app")
+    @patch("charm.MongodbOperatorCharm.app")
     def test_mongodb_relation_joined_planned_units_does_not_match_joined_units(self, app):
         rel = self.harness.charm.model.get_relation("mongodb")
         self.harness.set_leader(True)
@@ -358,11 +369,11 @@ class TestCharm(unittest.TestCase):
                 "".join(logs.output),
             )
 
-    @ patch_network_get(private_address="1.1.1.1")
-    @ patch("charm.MongodbOperatorCharm._initialise_replica_set")
-    @ patch("mongod_helpers.MongoDB.is_ready")
-    @ patch("mongod_helpers.MongoDB.is_replica_set")
-    @ patch("charm.MongodbOperatorCharm.app")
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongodbOperatorCharm._initialise_replica_set")
+    @patch("mongod_helpers.MongoDB.is_ready")
+    @patch("mongod_helpers.MongoDB.is_replica_set")
+    @patch("charm.MongodbOperatorCharm.app")
     def test_mongodb_relation_joined_already_replica_set(
         self, app, is_replica_set, is_ready, initialise_replica_set
     ):
@@ -392,11 +403,11 @@ class TestCharm(unittest.TestCase):
                     BlockedStatus("failed to initialise replica set"),
                 )
 
-        @ patch_network_get(private_address="1.1.1.1")
-        @ patch("charm.MongodbOperatorCharm._initialise_replica_set")
-        @ patch("mongod_helpers.MongoDB.is_ready")
-        @ patch("mongod_helpers.MongoDB.is_replica_set")
-        @ patch("charm.MongodbOperatorCharm.app")
+        @patch_network_get(private_address="1.1.1.1")
+        @patch("charm.MongodbOperatorCharm._initialise_replica_set")
+        @patch("mongod_helpers.MongoDB.is_ready")
+        @patch("mongod_helpers.MongoDB.is_replica_set")
+        @patch("charm.MongodbOperatorCharm.app")
         def test_mongodb_relation_joined_not_yet_replica_set(
             self, app, is_replica_set, is_ready, initialise_replica_set
         ):
@@ -426,10 +437,10 @@ class TestCharm(unittest.TestCase):
                         BlockedStatus("failed to initialise replica set"),
                     )
 
-    @ patch_network_get(private_address="1.1.1.1")
-    @ patch("charm.MongodbOperatorCharm._initialise_replica_set")
-    @ patch("mongod_helpers.MongoDB.is_ready")
-    @ patch("charm.MongodbOperatorCharm.app")
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongodbOperatorCharm._initialise_replica_set")
+    @patch("mongod_helpers.MongoDB.is_ready")
+    @patch("charm.MongodbOperatorCharm.app")
     def test_mongodb_relation_joined_peers_not_ready(self, app, is_ready, initialise_replica_set):
         # preset values
         self.harness.set_leader(True)
@@ -456,11 +467,11 @@ class TestCharm(unittest.TestCase):
             # verify that we do not initialise replica set
             initialise_replica_set.assert_not_called()
 
-    @ patch_network_get(private_address="1.1.1.1")
-    @ patch("mongod_helpers.MongoDB.is_replica_set")
-    @ patch("charm.MongodbOperatorCharm._initialise_replica_set")
-    @ patch("mongod_helpers.MongoDB.is_ready")
-    @ patch("charm.MongodbOperatorCharm.app")
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("mongod_helpers.MongoDB.is_replica_set")
+    @patch("charm.MongodbOperatorCharm._initialise_replica_set")
+    @patch("mongod_helpers.MongoDB.is_ready")
+    @patch("charm.MongodbOperatorCharm.app")
     def test_mongodb_relation_joined_peers_ready(
         self, app, is_ready, initialise_replica_set, is_replica_set
     ):
@@ -482,13 +493,13 @@ class TestCharm(unittest.TestCase):
         # verify that we do not initialise replica set
         initialise_replica_set.assert_called()
 
-    @ patch_network_get(private_address="1.1.1.1")
-    @ patch("mongod_helpers.MongoDB.is_ready")
-    @ patch("mongod_helpers.MongoDB.initialise_replica_set")
-    @ patch("charm.MongodbOperatorCharm._open_port_tcp")
-    @ patch("charm.service_resume")
-    @ patch("charm.MongodbOperatorCharm.app")
-    @ patch("mongod_helpers.MongoDB.is_replica_set")
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("mongod_helpers.MongoDB.is_ready")
+    @patch("mongod_helpers.MongoDB.initialise_replica_set")
+    @patch("charm.MongodbOperatorCharm._open_port_tcp")
+    @patch("charm.service_resume")
+    @patch("charm.MongodbOperatorCharm.app")
+    @patch("mongod_helpers.MongoDB.is_replica_set")
     def test_initialise_replica_failure_leads_to_waiting_state(
         self, is_replica, app, service_resume, _, initialise_replica_set, is_ready
     ):
@@ -515,12 +526,12 @@ class TestCharm(unittest.TestCase):
                 self.harness.charm.unit.status, WaitingStatus("waiting to initialise replica set")
             )
 
-    @ patch_network_get(private_address="1.1.1.1")
-    @ patch("mongod_helpers.MongoDB.is_ready")
-    @ patch("mongod_helpers.MongoDB.initialise_replica_set")
-    @ patch("charm.MongodbOperatorCharm._open_port_tcp")
-    @ patch("charm.service_running")
-    @ patch("mongod_helpers.MongoDB.is_replica_set")
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("mongod_helpers.MongoDB.is_ready")
+    @patch("mongod_helpers.MongoDB.initialise_replica_set")
+    @patch("charm.MongodbOperatorCharm._open_port_tcp")
+    @patch("charm.service_running")
+    @patch("mongod_helpers.MongoDB.is_replica_set")
     def test_initialise_replica_success(
         self, is_replica, service_running, _open_port_tcp, initialise_replica_set, is_ready
     ):
@@ -538,12 +549,12 @@ class TestCharm(unittest.TestCase):
 
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus(""))
 
-    @ patch_network_get(private_address="1.1.1.1")
-    @ patch("mongod_helpers.MongoDB.is_ready")
-    @ patch("mongod_helpers.MongoDB.initialise_replica_set")
-    @ patch("charm.MongodbOperatorCharm._open_port_tcp")
-    @ patch("charm.service_running")
-    @ patch("mongod_helpers.MongoDB.is_replica_set")
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("mongod_helpers.MongoDB.is_ready")
+    @patch("mongod_helpers.MongoDB.initialise_replica_set")
+    @patch("charm.MongodbOperatorCharm._open_port_tcp")
+    @patch("charm.service_running")
+    @patch("mongod_helpers.MongoDB.is_replica_set")
     def test_initialise_replica_only_once(
         self, is_replica, service_running, _open_port_tcp, initialise_replica_set, is_ready
     ):
@@ -559,39 +570,39 @@ class TestCharm(unittest.TestCase):
         initialise_replica_set.assert_called_once()
         is_replica.assert_called()
 
-    @ patch_network_get(private_address="1.1.1.1")
+    @patch_network_get(private_address="1.1.1.1")
     def test_single_mongo_replica(self):
         ip_address = "1.1.1.1"
         mongo_replica = self.harness.charm._single_mongo_replica(ip_address)
         self.assertEqual(mongo_replica._calling_unit_ip, ip_address)
 
-    @ patch_network_get(private_address="1.1.1.1")
-    @ patch("charm.MongodbOperatorCharm._single_mongo_replica")
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongodbOperatorCharm._single_mongo_replica")
     def test_update_status_primary(self, single_replica):
         single_replica.return_value._is_primary = True
         self.harness.charm.on.update_status.emit()
         single_replica.assert_called_with("1.1.1.1")
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus("Replica set primary"))
 
-    @ patch_network_get(private_address="1.1.1.1")
-    @ patch("charm.MongodbOperatorCharm._single_mongo_replica")
-    @ patch("ops.model.ActiveStatus")
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongodbOperatorCharm._single_mongo_replica")
+    @patch("ops.model.ActiveStatus")
     def test_update_status_secondary(self, active_status, single_replica):
         single_replica.return_value._is_primary = False
         self.harness.charm.on.update_status.emit()
         single_replica.assert_called_with("1.1.1.1")
         active_status.assert_not_called()
 
-    @ patch_network_get(private_address="1.1.1.1")
-    @ patch("charm.MongodbOperatorCharm._single_mongo_replica")
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongodbOperatorCharm._single_mongo_replica")
     def test_get_primary_current_unit_primary(self, single_replica):
         single_replica.return_value._is_primary = True
         mock_event = mock.Mock()
         self.harness.charm._on_get_primary_action(mock_event)
         mock_event.set_results.assert_called_with({"replica-set-primary": "mongodb/0"})
 
-    @ patch_network_get(private_address="1.1.1.1")
-    @ patch("charm.MongodbOperatorCharm._single_mongo_replica")
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongodbOperatorCharm._single_mongo_replica")
     def test_get_primary_peer_unit_primary(self, single_replica):
 
         # add peer unit
