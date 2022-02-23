@@ -22,7 +22,13 @@ from ops.model import (
     WaitingStatus,
 )
 
-from mongod_helpers import MONGODB_PORT, ConfigurationError, ConnectionFailure, MongoDB
+from mongod_helpers import (
+    MONGODB_PORT,
+    ConfigurationError,
+    ConnectionFailure,
+    MongoDB,
+    OperationFailure,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -38,45 +44,57 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.config_changed, self._on_config_changed)
-        self.framework.observe(self.on.mongodb_relation_joined, self._mongodb_relation_joined)
         self.framework.observe(self.on.start, self._on_start)
+        self.framework.observe(self.on.mongodb_relation_joined, self._on_mongodb_relation_handler)
+        self.framework.observe(self.on.mongodb_relation_changed, self._on_mongodb_relation_handler)
         self.framework.observe(self.on.update_status, self._on_update_status)
         self.framework.observe(self.on.get_primary_action, self._on_get_primary_action)
 
-    def _mongodb_relation_joined(self, event) -> None:
-        if not self.unit.is_leader():
+    def _on_mongodb_relation_handler(self, event: ops.charm.RelationEvent) -> None:
+        """Adds the unit as a replica to the MongoDB replica set.
+
+        Args:
+            event: The triggering relation joined/changed event.
+        """
+        # only leader should configure replica set and app-changed-events can trigger the relation
+        # changed hook resulting in no JUJU_REMOTE_UNIT if this is the case we should return
+        if not (self.unit.is_leader() and event.unit):
             return
 
-        # do not initialise replica set until all peers have joined
-        if not self._check_unit_count:
-            logger.debug("waiting to initialise replica set until all planned units have joined")
-            return
-
-        # do not initialise replica set until all peers have started mongod
-        for peer in self._peers.units:
-            mongo_peer = self._single_mongo_replica(
-                str(self._peers.data[peer].get("private-address"))
+        #  only add the calling unit to the replica set if it has mongod running
+        calling_unit = event.unit
+        calling_unit_ip = str(self._peers.data[calling_unit].get("private-address"))
+        mongo_peer = self._single_mongo_replica(calling_unit_ip)
+        if not mongo_peer.is_ready(standalone=True):
+            logger.debug(
+                "unit is not ready, cannot initialise replica set unit: %s is ready, deferring on relation-joined",
+                calling_unit.name,
             )
-            if not mongo_peer.is_ready(standalone=True):
-                logger.debug(
-                    "unit: %s is not ready, cannot initialise replica set until all units are ready, deferring on relation-joined",
-                    peer,
-                )
-                event.defer()
-                return
+            event.defer()
+            return
 
-        # in future patch we will reconfigure the replicaset instead of re-initialising
-        if not self._mongo.is_replica_set():
+        logger.debug("unit: %s is ready to join the replica set", calling_unit.name)
+        self._reconfigure(event)
+
+    def _reconfigure(self, event: ops.charm.RelationEvent) -> None:
+        """Adds/removes RelationEvent triggering unit from the replica set.
+
+        Note: Removal funcationality will be implemented in the following PR.
+
+        Args:
+            event: The triggering relation event.
+        """
+        # check if reconfiguration is necessary
+        if self._need_replica_set_reconfiguration:
             try:
-                self._initialise_replica_set()
-            except (ConnectionFailure, ConfigurationError):
-                self.unit.status = BlockedStatus("failed to initialise replica set")
-                return
-
-        # verify replica set is ready
-        if not self._mongo.is_ready():
-            logger.debug("Replica set for units: %s, is not ready", self._unit_ips)
-            self.unit.status = BlockedStatus("failed to initialise replica set")
+                self._mongo.reconfigure_replica_set()
+                # update the set of replica set hosts
+                self._peers.data[self.app]["replica_set_hosts"] = json.dumps(self._unit_ips)
+                logger.debug("Replica set successfully reconfigured")
+            except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
+                logger.error("deferring reconfigure of replica set: %s", str(e))
+                self.unit.status = WaitingStatus("waiting to reconfigure replica set")
+                event.defer()
 
     def _on_install(self, _) -> None:
         """Handle the install event (fired on startup).
@@ -261,8 +279,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         try:
             leader_ip = str(self.model.get_binding(PEER).network.bind_address)
             self._mongo.initialise_replica_set([leader_ip])
-            self._peers.data[self.app]["replica_set_hosts"] = json.dumps(leader_ip)
-        except (ConnectionFailure, ConfigurationError) as e:
+            self._peers.data[self.app]["replica_set_hosts"] = json.dumps([leader_ip])
+        except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
             logger.error("error initialising replica sets in _on_start: error: %s", str(e))
             self.unit.status = WaitingStatus("waiting to initialise replica set")
 
@@ -278,6 +296,16 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         unit_config = self._config
         unit_config["calling_unit_ip"] = ip_address
         return MongoDB(unit_config)
+
+    @property
+    def _need_replica_set_reconfiguration(self) -> bool:
+        """Does MongoDB replica set need reconfiguration.
+
+        Returns:
+            bool: that indicates if the replica set hosts should be reconfigured
+        """
+        # are the units for the application all assigned to a host
+        return set(self._unit_ips) != set(self._replica_set_hosts)
 
     @property
     def _check_unit_count(self) -> bool:
@@ -310,6 +338,15 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         return addresses
 
     @property
+    def _replica_set_hosts(self):
+        """Fetch current list of hosts in the replica set.
+
+        Returns:
+            A list of hosts addresses (strings).
+        """
+        return json.loads(self._peers.data[self.app].get("replica_set_hosts", "[]"))
+
+    @property
     def _config(self) -> dict:
         """Retrieve config options for MongoDB.
 
@@ -320,7 +357,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         config = {
             "app_name": self.app.name,
             "replica_set_name": "rs0",
-            "num_peers": 1,
+            "num_hosts": len(self._unit_ips),
             "port": self._port,
             "root_password": "password",
             "security_key": "",

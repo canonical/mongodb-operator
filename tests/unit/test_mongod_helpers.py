@@ -7,12 +7,17 @@ from unittest.mock import patch
 from pymongo import MongoClient
 from tenacity import RetryError
 
-from mongod_helpers import MongoDB
+from mongod_helpers import (
+    ConfigurationError,
+    ConnectionFailure,
+    MongoDB,
+    OperationFailure,
+)
 
 MONGO_CONFIG = {
     "app_name": "mongodb",
     "replica_set_name": "rs0",
-    "num_peers": 1,
+    "num_hosts": 2,
     "port": 27017,
     "root_password": "password",
     "unit_ips": ["1.1.1.1", "2.2.2.2"],
@@ -72,7 +77,7 @@ class TestMongoServer(unittest.TestCase):
         client.return_value = mock_client
 
         hosts = {}
-        for i in range(config["num_peers"]):
+        for i in range(config["num_hosts"]):
             hosts[i] = "host{}".format(i)
 
         mongo.initialise_replica_set(hosts)
@@ -116,3 +121,76 @@ class TestMongoServer(unittest.TestCase):
         replica_set_status = mongo.is_replica_set()
         close.assert_called()
         self.assertEqual(replica_set_status, False)
+
+    @patch("mongod_helpers.MongoDB.client")
+    @patch("pymongo.MongoClient")
+    def test_reconfiguring_replica_invokes_admin_command(self, mock_client, client):
+        # presets
+        config = MONGO_CONFIG.copy()
+        mongo = MongoDB(config)
+        client.return_value = mock_client
+
+        # verify we make a call to replSetReconfig
+        mongo.reconfigure_replica_set()
+        mock_client.admin.command.assert_called()
+        (command, _), _ = mock_client.admin.command.call_args
+        self.assertEqual("replSetReconfig", command)
+
+        # verify we close connection
+        (mock_client.close).assert_called()
+
+    @patch("mongod_helpers.MongoDB.client")
+    @patch("pymongo.MongoClient")
+    def test_reconfiguring_replica_handles_failure(self, mock_client, client):
+        # presets
+        config = MONGO_CONFIG.copy()
+        mongo = MongoDB(config)
+        client.return_value = mock_client
+
+        # verify we make a call to reconfigure
+        exceptions = [
+            ConnectionFailure("error message"),
+            ConfigurationError("error message"),
+            OperationFailure("error message"),
+        ]
+        raises = [ConnectionFailure, ConfigurationError, OperationFailure]
+        for exception, expected_raise in zip(exceptions, raises):
+            with self.assertRaises(expected_raise):
+                mock_client.admin.command.side_effect = exception
+
+                # call function
+                mongo.reconfigure_replica_set()
+
+                # verify we close connection
+                (mock_client.close).assert_called()
+
+    def test_replica_set_config_no_changes(self):
+        # standard presets
+        config = MONGO_CONFIG.copy()
+        mongo = MongoDB(config)
+
+        current_config = {}
+        current_config["config"] = {}
+        current_config["config"]["members"] = [
+            {"host": "1.1.1.1:27017", "_id": 0},
+            {"host": "2.2.2.2:27017", "_id": 1},
+        ]
+
+        new_config = mongo.replica_set_config(current_config)
+        self.assertEqual(new_config, current_config["config"]["members"])
+
+    def test_replica_set_config_adds_member(self):
+        # standard presets
+        config = MONGO_CONFIG.copy()
+        mongo = MongoDB(config)
+
+        current_config = {}
+        current_config["config"] = {}
+        current_config["config"]["members"] = [{"host": "1.1.1.1:27017", "_id": 0}]
+
+        expected_new_members = [
+            {"host": "1.1.1.1:27017", "_id": 0},
+            {"host": "2.2.2.2:27017", "_id": 1},
+        ]
+        new_config = mongo.replica_set_config(current_config)
+        self.assertEqual(new_config, expected_new_members)
