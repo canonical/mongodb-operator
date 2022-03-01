@@ -58,23 +58,24 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         Args:
             event: The triggering relation departed event.
         """
-        # only leader should configure replica set
-        if not self.unit.is_leader():
+        # only leader should configure replica set and app-changed-events can trigger the relation
+        # changed hook resulting in no JUJU_REMOTE_UNIT if this is the case we should return
+        print("Before reconfig", self._replica_set_hosts)
+        if not (self.unit.is_leader() and event.unit):
             return
 
         self._reconfigure(event)
+        print("After reconfig", self._replica_set_hosts)
 
     def _on_mongodb_relation_handler(self, event: ops.charm.RelationEvent) -> None:
         """Adds the unit as a replica to the MongoDB replica set.
+
         Args:
             event: The triggering relation joined/changed event.
         """
-        # only leader should configure replica set
-        if not self.unit.is_leader():
-            return
-
-        # app-changed-events can trigger the relation changed hook resulting in no JUJU_REMOTE_UNIT
-        if event.unit is None:
+        # only leader should configure replica set and app-changed-events can trigger the relation
+        # changed hook resulting in no JUJU_REMOTE_UNIT if this is the case we should return
+        if not (self.unit.is_leader() and event.unit):
             return
 
         #  only add the calling unit to the replica set if it has mongod running
@@ -103,7 +104,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # check if reconfiguration is necessary
         if self._need_replica_set_reconfiguration:
             try:
-                # reconfigure replica set
                 self._mongo.reconfigure_replica_set()
                 # update the set of replica set hosts
                 self._peers.data[self.app]["replica_set_hosts"] = json.dumps(self._unit_ips)
@@ -325,16 +325,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         return set(self._unit_ips) != set(self._replica_set_hosts)
 
     @property
-    def _check_unit_count(self) -> bool:
-        all_units_joined = self.app.planned_units() == len(self._peers.units) + 1
-        logger.debug(
-            "planned units does not match joined units: %s != %s",
-            str(self.app.planned_units()),
-            str(len(self._peers.units) + 1),
-        )
-        return all_units_joined
-
-    @property
     def _unit_ips(self) -> List[str]:
         """Retrieve IP addresses associated with MongoDB application.
 
@@ -400,16 +390,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
              An `ops.model.Relation` object representing the peer relation.
         """
         return self.model.get_relation(PEER)
-
-    @property
-    def _number_of_expected_units(self) -> int:
-        """Returns the number of units expect for MongoDB application."""
-        return self.app.planned_units()
-
-    @property
-    def _number_of_current_units(self) -> int:
-        """Returns the number of units in the MongoDB application."""
-        return len(self._peers.units) + 1
 
 
 if __name__ == "__main__":

@@ -133,8 +133,8 @@ class TestMongoServer(unittest.TestCase):
         # verify we make a call to replSetReconfig
         mongo.reconfigure_replica_set()
         mock_client.admin.command.assert_called()
-        command, _ = mock_client.admin.command.call_args
-        self.assertEqual("replSetReconfig", command[0])
+        (command, _), _ = mock_client.admin.command.call_args
+        self.assertEqual("replSetReconfig", command)
 
         # verify we close connection
         (mock_client.close).assert_called()

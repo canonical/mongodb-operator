@@ -459,10 +459,9 @@ class TestCharm(unittest.TestCase):
 
         # simulate 2nd MongoDB unit
         rel = self.harness.charm.model.get_relation("mongodb")
-        rel_id = rel.id
         key_values = {"private-address": "127.4.5.6"}
-        self.harness.add_relation_unit(rel_id, "mongodb/1")
-        self.harness.update_relation_data(rel_id, "mongodb/1", key_values)
+        self.harness.add_relation_unit(rel.id, "mongodb/1")
+        self.harness.update_relation_data(rel.id, "mongodb/1", key_values)
 
         # verify that we do not reconfigure replica set
         mongo_reconfigure.assert_not_called()
@@ -484,10 +483,9 @@ class TestCharm(unittest.TestCase):
 
             # simulate 2nd MongoDB unit
             rel = self.harness.charm.model.get_relation("mongodb")
-            rel_id = rel.id
             key_values = {"private-address": "127.4.5.6"}
-            self.harness.add_relation_unit(rel_id, "mongodb/1")
-            self.harness.update_relation_data(rel_id, "mongodb/1", key_values)
+            self.harness.add_relation_unit(rel.id, "mongodb/1")
+            self.harness.update_relation_data(rel.id, "mongodb/1", key_values)
 
             # check if mongod reconfigured replica set
             if reconfiguration:
@@ -521,15 +519,13 @@ class TestCharm(unittest.TestCase):
             OperationFailure("error message"),
         ]
         for exception in exceptions:
-            # exception
             mongodb_reconfigure.side_effect = exception
 
             # simulate 2nd MongoDB unit
             rel = self.harness.charm.model.get_relation("mongodb")
-            rel_id = rel.id
             key_values = {"private-address": "127.4.5.6"}
-            self.harness.add_relation_unit(rel_id, "mongodb/1")
-            self.harness.update_relation_data(rel_id, "mongodb/1", key_values)
+            self.harness.add_relation_unit(rel.id, "mongodb/1")
+            self.harness.update_relation_data(rel.id, "mongodb/1", key_values)
 
             # charm waits
             self.assertEqual(
@@ -555,7 +551,7 @@ class TestCharm(unittest.TestCase):
         self.harness.update_relation_data(rel_id, "mongodb/1", key_values)
 
         # remove unit to trigger event
-        self.harness.add_relation_unit(rel_id, "mongodb/1")
+        self.harness.remove_relation_unit(rel_id, "mongodb/1")
 
         # verify replica set hosts updated accordingly
         self.assertEqual(
