@@ -20,6 +20,12 @@ from charm import (
 )
 from tests.unit.helpers import patch_network_get
 
+REPO_NAME = "deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"
+GPG_URL = "https://www.mongodb.org/static/pgp/server-5.0.asc"
+REPO_ENTRY = (
+    "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/5.0 multiverse"
+)
+
 
 class TestCharm(unittest.TestCase):
     def setUp(self, *unused):
@@ -43,7 +49,7 @@ class TestCharm(unittest.TestCase):
 
         return config
 
-    @patch("charm.MongodbOperatorCharm._add_mongodb_org_repository")
+    @patch("charm.MongodbOperatorCharm._add_repository")
     @patch("charm.MongodbOperatorCharm._install_apt_packages")
     def test_mongodb_install(self, _add, _install):
         self.harness.charm.on.install.emit()
@@ -271,71 +277,66 @@ class TestCharm(unittest.TestCase):
     @patch("charm.apt.RepositoryMapping")
     @patch("charm.apt.DebianRepository.from_repo_line")
     @patch("charm.apt.DebianRepository.import_key")
-    def test_add_mongodb_org_repository_success(self, import_key, from_repo_line, repo_map):
-        # repo_map.return_value = MagicMock()
+    def test_add_repository_success(self, import_key, from_repo_line, repo_map):
+        # preset values
         repo_map.return_value = set()
-        req = requests.get("https://www.mongodb.org/static/pgp/server-5.0.asc")
+        req = requests.get(GPG_URL)
         mongodb_public_key = req.text
 
-        self.harness.charm._add_mongodb_org_repository()
+        # verify we add the MongoDB repository
+        repos = self.harness.charm._add_repository(REPO_NAME, GPG_URL, REPO_ENTRY)
         from_repo_line.assert_called()
         (from_repo_line.return_value.import_key).assert_called_with(mongodb_public_key)
-        # TODO: figure out the right way to verify repo map
-        # repo_map.return_value.add.assert_called_with(from_repo_line.return_value)
-        self.assertEqual(repo_map.return_value, {from_repo_line.return_value})
+        self.assertEqual(repos, {from_repo_line.return_value})
 
     @patch("charm.apt.RepositoryMapping")
     @patch("charm.apt.DebianRepository.from_repo_line")
-    @patch("charm.apt.DebianRepository.import_key")
     @patch("charm.urlopen")
-    def test_add_mongodb_org_repository_gpg_fail_leads_to_blocked(
-        self, urlopen, import_key, from_repo_line, repo_map
-    ):
+    def test_add_repository_gpg_fail_leads_to_blocked(self, urlopen, from_repo_line, repo_map):
         # preset values
-        # repo_map.return_value = MagicMock()
         repo_map.return_value = set()
         urlopen.side_effect = URLError("urlopen error")
-        self.harness.charm._add_mongodb_org_repository()
+        self.harness.charm._add_repository(REPO_NAME, GPG_URL, REPO_ENTRY)
 
         # verify we don't add repo when an exception occurs and that we enter blocked state
-        # TODO: figure out the right way to verify repo map
-        # repo_map.return_value.add.assert_not_called()
         self.assertEqual(repo_map.return_value, set())
         self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
 
     @patch("charm.apt.RepositoryMapping")
     @patch("charm.apt.DebianRepository.from_repo_line")
-    def test_add_mongodb_org_repository_cant_create_list_file_blocks(
-        self, from_repo_line, repo_map
-    ):
+    def test_add_repository_cant_create_list_file_blocks(self, from_repo_line, repo_map):
         exceptions = [
             apt.InvalidSourceError("invalid source message"),
             ValueError("value message"),
         ]
-        for exception in exceptions:
-            from_repo_line.side_effect = exception
-            self.harness.charm._add_mongodb_org_repository()
+        exceptions_types = [apt.InvalidSourceError, ValueError]
 
-            # verify that when an exception occurs we enter blocked state
-            self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
+        for exception_type, exception in zip(exceptions_types, exceptions):
+            # verify an exception is raised when repo line fails
+            with self.assertRaises(exception_type):
+                from_repo_line.side_effect = exception
+                self.harness.charm._add_repository(REPO_NAME, GPG_URL, REPO_ENTRY)
 
     @patch("charm.apt.RepositoryMapping")
     @patch("charm.apt.DebianRepository.from_repo_line")
-    @patch("charm.apt.DebianRepository.import_key")
-    def test_add_mongodb_org_repository_already_added_skips(
-        self, import_key, from_repo_line, repo_map
-    ):
-        # repo_map.return_value = MagicMock(
-        #     return_value={"deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"}
-        # )
+    def test_add_repository_cant_import_key_blocks(self, from_repo_line, repo_map):
+        # verify an exception is raised when we cannot import GPG key
+        with self.assertRaises(apt.GPGKeyError):
+            (from_repo_line.return_value.import_key).side_effect = apt.GPGKeyError(
+                "import key error"
+            )
+            self.harness.charm._add_repository(REPO_NAME, GPG_URL, REPO_ENTRY)
+
+    @patch("charm.apt.RepositoryMapping")
+    @patch("charm.apt.DebianRepository.from_repo_line")
+    def test_add_repository_already_added(self, from_repo_line, repo_map):
+        # preset value
         REPO_MAP = {"deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"}
         repo_map.return_value = REPO_MAP
 
-        # verify we don't add repo when we already have repo
-        self.harness.charm._add_mongodb_org_repository()
-        # TODO: figure out the right way to verify repo map
-        # repo_map.return_value.add.assert_not_called()
-        self.assertEqual(repo_map.return_value, REPO_MAP)
+        # verify we don't change the repos if we already have the repo of interest
+        repos = self.harness.charm._add_repository(REPO_NAME, GPG_URL, REPO_ENTRY)
+        self.assertEqual(repos, REPO_MAP)
 
     @patch_network_get(private_address="1.1.1.1")
     def test_unit_ips(self):

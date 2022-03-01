@@ -89,7 +89,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         repo_entry = "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/5.0 multiverse"
         gpg_url = "https://www.mongodb.org/static/pgp/server-5.0.asc"
         try:
-            self._add_mongodb_org_repository(repo_name, gpg_url, repo_entry)
+            self._add_repository(repo_name, gpg_url, repo_entry)
             self._install_apt_packages(["mongodb-org"])
         except (apt.InvalidSourceError, ValueError, apt.GPGKeyError, URLError):
             self.unit.status = BlockedStatus("couldn't install MongoDB")
@@ -206,7 +206,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             logger.exception("failed opening port: %s", str(e))
             raise
 
-    def _add_mongodb_org_repository(self, repo_name: str, gpg_url: str, repo_entry: str) -> apt.RepositoryMapping:
+    def _add_repository(
+        self, repo_name: str, gpg_url: str, repo_entry: str
+    ) -> apt.RepositoryMapping:
         """Adds MongoDB repo to container.
 
         Args:
