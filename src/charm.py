@@ -34,7 +34,9 @@ logger = logging.getLogger(__name__)
 
 PEER = "mongodb"
 REPO_URL = "deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"
-REPO_ENTRY = "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/5.0 multiverse"
+REPO_ENTRY = (
+    "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/5.0 multiverse"
+)
 GPG_URL = "https://www.mongodb.org/static/pgp/server-5.0.asc"
 
 
