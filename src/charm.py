@@ -33,6 +33,9 @@ from mongod_helpers import (
 logger = logging.getLogger(__name__)
 
 PEER = "mongodb"
+REPO_URL = "deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"
+REPO_ENTRY = "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/5.0 multiverse"
+GPG_URL = "https://www.mongodb.org/static/pgp/server-5.0.asc"
 
 
 class MongodbOperatorCharm(ops.charm.CharmBase):
@@ -103,11 +106,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         installs MongoDB.
         """
         self.unit.status = MaintenanceStatus("installing MongoDB")
-        repo_name = "deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"
-        repo_entry = "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/5.0 multiverse"
-        gpg_url = "https://www.mongodb.org/static/pgp/server-5.0.asc"
         try:
-            self._add_repository(repo_name, gpg_url, repo_entry)
+            self._add_repository(REPO_URL, GPG_URL, REPO_ENTRY)
             self._install_apt_packages(["mongodb-org"])
         except (apt.InvalidSourceError, ValueError, apt.GPGKeyError, URLError):
             self.unit.status = BlockedStatus("couldn't install MongoDB")
@@ -225,19 +225,19 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             raise
 
     def _add_repository(
-        self, repo_name: str, gpg_url: str, repo_entry: str
+        self, repo_url: str, gpg_url: str, repo_entry: str
     ) -> apt.RepositoryMapping:
         """Adds MongoDB repo to container.
 
         Args:
-            repo_name: deb-https url of repo to add
+            repo_url: deb-https url of repo to add
             gpg_url: url to retrieve GPP key
             repo_entry: a string representing a repository entry
         """
         repositories = apt.RepositoryMapping()
 
         # Add the repository if it doesn't already exist
-        if repo_name not in repositories:
+        if repo_url not in repositories:
             # Get GPG key
             try:
                 key = urlopen(gpg_url).read().decode()
