@@ -59,14 +59,11 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         Args:
             event: The triggering relation departed event.
         """
-        # only leader should configure replica set and app-changed-events can trigger the relation
-        # changed hook resulting in no JUJU_REMOTE_UNIT if this is the case we should return
-        print("Before reconfig", self._replica_set_hosts)
-        if not (self.unit.is_leader() and event.unit):
+        # only leader should configure replica set
+        if not self.unit.is_leader():
             return
 
         self._reconfigure(event)
-        print("After reconfig", self._replica_set_hosts)
 
     def _on_mongodb_relation_handler(self, event: ops.charm.RelationEvent) -> None:
         """Adds the unit as a replica to the MongoDB replica set.

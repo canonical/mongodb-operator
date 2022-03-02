@@ -143,7 +143,7 @@ async def test_get_primary_action(ops_test: OpsTest) -> None:
 
 
 async def test_cluster_is_stable_after_deletion(ops_test: OpsTest) -> None:
-    """Tests that the cluster maintains a primary after the primary is delelted."""
+    """Tests that the cluster cluster behavior after planned non-leader unit removal."""
     # find & destroy non-leader unit
     non_leader_ip = None
     for unit in ops_test.model.applications[APP_NAME].units:
