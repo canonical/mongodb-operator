@@ -52,8 +52,23 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.framework.observe(self.on.start, self._on_start)
         self.framework.observe(self.on.mongodb_relation_joined, self._on_mongodb_relation_handler)
         self.framework.observe(self.on.mongodb_relation_changed, self._on_mongodb_relation_handler)
+        self.framework.observe(
+            self.on.mongodb_relation_departed, self._on_mongodb_relation_departed
+        )
         self.framework.observe(self.on.update_status, self._on_update_status)
         self.framework.observe(self.on.get_primary_action, self._on_get_primary_action)
+
+    def _on_mongodb_relation_departed(self, event: ops.charm.RelationDepartedEvent) -> None:
+        """Removes the unit from the MongoDB replica set.
+
+        Args:
+            event: The triggering relation departed event.
+        """
+        # only leader should configure replica set
+        if not self.unit.is_leader():
+            return
+
+        self._reconfigure(event)
 
     def _on_mongodb_relation_handler(self, event: ops.charm.RelationEvent) -> None:
         """Adds the unit as a replica to the MongoDB replica set.

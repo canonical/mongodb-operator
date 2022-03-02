@@ -143,45 +143,44 @@ async def test_get_primary_action(ops_test: OpsTest) -> None:
 
 
 async def test_cluster_is_stable_after_deletion(ops_test: OpsTest) -> None:
-    """Tests that the cluster maintains a primary after the primary is delelted."""
-    # find & destroy leader unit
-    leader_ip = None
+    """Tests that the cluster behavior after planned non-leader unit removal."""
+    # find & destroy non-leader unit
+    non_leader_ip = None
     for unit in ops_test.model.applications[APP_NAME].units:
-        if await unit.is_leader_from_status():
-            leader_ip = unit.public_address
+        if not await unit.is_leader_from_status():
+            non_leader_ip = unit.public_address
             await unit.destroy()
             break
 
     # wait for app to be active after removal of unit
     await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=1000)
 
-    # verify that there are two units running after deletion of leader
+    # verify that there are two units running after deletion of non leader
     assert len(ops_test.model.applications[APP_NAME].units) == 2
 
-    # grab remaining IPS, must compare against leader_ip since it is not
-    # guaranteed that the leader unit will be fully shutdown
+    # grab remaining IPS, must compare against non_leader_ip since it is not
+    # guaranteed that the non_leader unit will be fully shutdown
     ip_addresses = []
     for unit in ops_test.model.applications[APP_NAME].units:
-        if not unit.public_address == leader_ip:
+        if not unit.public_address == non_leader_ip:
             ip_addresses.append(unit.public_address)
 
-    # check that the replica set with the remaining units has a primary
+    # verify that the configuration of mongodb no longer has the deleted ip
     replica_set_uri = "mongodb://{}:{},{}:{}/replicaSet=rs0".format(
         ip_addresses[0], PORT, ip_addresses[1], PORT
     )
     client = MongoClient(replica_set_uri)
-    try:
-        primary = replica_set_primary(client, valid_ips=ip_addresses)
-    except RetryError:
-        primary = None
 
+    removed_from_config = True
+    rs_config = client.admin.command("replSetGetConfig")
+    for member in rs_config["config"]["members"]:
+        # get member ip without ":PORT"
+        member_ip = member["host"].split(":")[0]
+        if member_ip == non_leader_ip:
+            removed_from_config = False
+
+    assert removed_from_config, "removed unit is still present in replica set config"
     client.close()
-
-    # verify that the primary is not None
-    assert primary is not None, "replica set with uri {} has no primary".format(replica_set_uri)
-
-    # check that the primary is not one of the deleted units
-    assert primary[0] in ip_addresses, "replica set primary is not one of the available units"
 
 
 def update_bind_ip(conf: str, ip_address: str) -> str:
