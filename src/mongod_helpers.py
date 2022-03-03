@@ -108,6 +108,15 @@ class MongoDB:
         client = self.client(standalone=True)
         return client.is_primary
 
+    def primary_step_down(self) -> None:
+        client = self.client()
+        try:
+            config = {}
+            config["stepDownSecs"] = "60"
+            client.admin.command("replSetStepDown", config)
+        except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
+            raise e
+
     def initialise_replica_set(self, hosts: list) -> None:
         """Initialize the MongoDB replica set.
 
