@@ -59,15 +59,18 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def _on_leader_elected(self, event: ops.charm.LeaderElectedEvent) -> None:
         # only reconfigure if previous leader stepped down without reconfiguring
-        if not bool(self._peers.data[self.app].get("_new_leader_must_reconfigure", False)):
+        # relation data only accepts string, hence "False"
+        if self._peers.data[self.app].get("_new_leader_must_reconfigure", "False") == "False":
             return
 
         # don't reconfigure until a primary has been elected
         if not self._primary:
             event.defer()
+            self.unit.status = WaitingStatus("waiting to reconfigure replica set")
             return
 
         self._reconfigure(event)
+
         # reset need for new leader to reconfigure
         self._peers.data[self.app]["_new_leader_must_reconfigure"] = "False"
 
@@ -77,17 +80,14 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         Args:
             event: The triggering relation departed event.
         """
-        # only leader should configure replica set
-        if not self.unit.is_leader():
-            return
 
         # aquire removed unit
         # TODO update this to use ops framework after this issue is addressed:
         # https://github.com/canonical/operator/issues/707
         departing_unit = os.environ.get("JUJU_DEPARTING_UNIT")
 
-        # If primary is leaving, allow it to step down
-        if departing_unit == self._primary:
+        # If primary is leaving, allow it to step down before reconfiguring
+        if departing_unit == self.unit.name and departing_unit == self._primary:
             try:
                 self._mongo.primary_step_down()
             except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
@@ -95,6 +95,10 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 self.unit.status = WaitingStatus("waiting to reconfigure replica set")
                 event.defer()
                 return
+
+        # only leader should configure replica set
+        if not self.unit.is_leader():
+            return
 
         # do not allow leader to reconfigure the set if leader is getting removed
         if departing_unit == self.unit.name:
