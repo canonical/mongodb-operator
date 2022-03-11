@@ -4,13 +4,13 @@
 # See LICENSE file for licensing details.
 import json
 import logging
+import os
 import subprocess
 from subprocess import check_call
 from typing import List, Optional
 from urllib.request import URLError, urlopen
 
 import ops.charm
-import os
 import yaml
 from charms.operator_libs_linux.v0 import apt
 from charms.operator_libs_linux.v0.systemd import service_resume, service_running
@@ -63,7 +63,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         if self._peers.data[self.app].get("_new_leader_must_reconfigure", "False") == "False":
             return
 
-        # don't reconfigure until a primary has been elected
+        # wait to reconfigure until a primary has been elected
         if not self._primary:
             event.defer()
             self.unit.status = WaitingStatus("waiting to reconfigure replica set")
@@ -80,10 +80,10 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         Args:
             event: The triggering relation departed event.
         """
-
-        # aquire removed unit
+        # acquire removed unit
         # TODO update this to use ops framework after this issue is addressed:
         # https://github.com/canonical/operator/issues/707
+        # this will be updated in the following PR
         departing_unit = os.environ.get("JUJU_DEPARTING_UNIT")
 
         # If primary is leaving, allow it to step down before reconfiguring
@@ -336,9 +336,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         unit_config["calling_unit_ip"] = ip_address
         return MongoDB(unit_config)
 
-    @ property
+    @property
     def _primary(self) -> str:
-        """TODO"""
+        """Retrieves the unit with the primary replica."""
         # check if current unit is the primary unit
         mongod_unit = self._single_mongo_replica(
             str(self.model.get_binding(PEER).network.bind_address)
@@ -361,7 +361,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         return None
 
-    @ property
+    @property
     def _need_replica_set_reconfiguration(self) -> bool:
         """Does MongoDB replica set need reconfiguration.
 
@@ -371,7 +371,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # are the units for the application all assigned to a host
         return set(self._unit_ips) != set(self._replica_set_hosts)
 
-    @ property
+    @property
     def _unit_ips(self) -> List[str]:
         """Retrieve IP addresses associated with MongoDB application.
 
@@ -391,7 +391,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         addresses.append(self_address)
         return addresses
 
-    @ property
+    @property
     def _replica_set_hosts(self):
         """Fetch current list of hosts in the replica set.
 
@@ -400,7 +400,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         """
         return json.loads(self._peers.data[self.app].get("replica_set_hosts", "[]"))
 
-    @ property
+    @property
     def _config(self) -> dict:
         """Retrieve config options for MongoDB.
 
@@ -420,7 +420,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         }
         return config
 
-    @ property
+    @property
     def _mongo(self) -> MongoDB:
         """Fetch the MongoDB server interface object.
 
@@ -429,7 +429,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         """
         return MongoDB(self._config)
 
-    @ property
+    @property
     def _peers(self) -> Optional[Relation]:
         """Fetch the peer relation.
 

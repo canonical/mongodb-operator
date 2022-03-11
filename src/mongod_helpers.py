@@ -109,6 +109,7 @@ class MongoDB:
         return client.is_primary
 
     def primary_step_down(self) -> None:
+        """Steps primary replica down, enabling one of the secondaries to become primary."""
         client = self.client()
         try:
             config = {}

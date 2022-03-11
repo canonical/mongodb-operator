@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 from typing import List, Tuple
 
+import ops
 import pytest
 import yaml
 from helpers import pull_content_from_unit_file
@@ -85,10 +86,7 @@ async def test_unit_is_running_as_replica_set(ops_test: OpsTest, unit_id: int) -
 async def test_leader_is_primary_on_deployment(ops_test: OpsTest) -> None:
     """Tests that right after deployment that the primary unit is the leader."""
     # grab leader unit
-    leader_unit = None
-    for unit in ops_test.model.applications[APP_NAME].units:
-        if await unit.is_leader_from_status():
-            leader_unit = unit
+    leader_unit = await find_leader_unit(ops_test)
 
     # verify that we have a leader
     assert leader_unit is not None, "No unit is leader"
@@ -144,15 +142,18 @@ async def test_get_primary_action(ops_test: OpsTest) -> None:
 
 async def test_cluster_is_stable_after_leader_deletion(ops_test: OpsTest) -> None:
     """Tests that the cluster cluster behavior after planned leader unit removal."""
-    # find & destroy non-leader unit
-    leader_ip = None
-    for unit in ops_test.model.applications[APP_NAME].units:
-        if await unit.is_leader_from_status():
-            leader_ip = unit.public_address
-            await unit.destroy()
-            break
+    # find & destroy leader unit
+    # grab leader unit
+    leader_unit = await find_leader_unit(ops_test)
 
-    # wait for app to be active after removal of unit
+    # verify that we have a leader
+    assert leader_unit is not None, "No unit is leader"
+
+    # save ip and delete leader
+    leader_ip = leader_unit.public_address
+    await leader_unit.destroy()
+
+    # wait for app to be active after removal of leader
     # issuing dummy update_status to re-trigger event
     await ops_test.model.set_config({"update-status-hook-interval": "10s"})
     await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=1000)
@@ -160,11 +161,17 @@ async def test_cluster_is_stable_after_leader_deletion(ops_test: OpsTest) -> Non
     # reset update_status
     await ops_test.model.set_config({"update-status-hook-interval": "5m"})
 
-    # verify that there is one units running after deletion of leader
+    # verify that there are two units running after deletion of leader
     assert len(ops_test.model.applications[APP_NAME].units) == 2
 
-    # grab remaining IPS, must compare against non_leader_ip since it is not
-    # guaranteed that the non_leader unit will be fully shutdown
+    # verify that a new leader has been elected
+    # grab leader unit
+    leader_unit = await find_leader_unit(ops_test)
+
+    # verify that we have a leader
+    assert leader_unit is not None, "No unit is leader"
+
+    # grab remaining IPS, maintaining that the deleted ip is not in them
     ip_addresses = []
     for unit in ops_test.model.applications[APP_NAME].units:
         if not unit.public_address == leader_ip:
@@ -186,7 +193,7 @@ async def test_cluster_is_stable_after_leader_deletion(ops_test: OpsTest) -> Non
     # verify that the primary is not None
     assert primary is not None, "replica set with uri {} has no primary".format(replica_set_uri)
 
-    # check that the primary is the remaining unit
+    # check that the primary is one of the remaining units
     assert primary[0] in ip_addresses, "replica set primary is not one of the available units"
 
     # verify that the configuration of mongodb no longer has the deleted ip
@@ -215,11 +222,10 @@ async def test_cluster_is_stable_after_non_leader_deletion(ops_test: OpsTest) ->
     # wait for app to be active after removal of unit
     await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=1000)
 
-    # verify that there are two units running after deletion of non leader
+    # verify that is one unit running after deletion of non-leader
     assert len(ops_test.model.applications[APP_NAME].units) == 1
 
-    # grab remaining IPS, must compare against non_leader_ip since it is not
-    # guaranteed that the non_leader unit will be fully shutdown
+    # grab remaining IPS, maintaining that the deleted ip is not in them
     ip_addresses = []
     for unit in ops_test.model.applications[APP_NAME].units:
         if not unit.public_address == non_leader_ip:
@@ -323,3 +329,17 @@ def count_primaries(ops_test: OpsTest) -> int:
             number_of_primaries += 1
 
     return number_of_primaries
+
+
+async def find_leader_unit(ops_test: OpsTest) -> ops.model.Unit:
+    """Helper function identifies the leader unit.
+
+    Returns:
+        leader unit
+    """
+    leader_unit = None
+    for unit in ops_test.model.applications[APP_NAME].units:
+        if await unit.is_leader_from_status():
+            leader_unit = unit
+
+    return leader_unit

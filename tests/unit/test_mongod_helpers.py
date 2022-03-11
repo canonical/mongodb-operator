@@ -218,8 +218,7 @@ class TestMongoServer(unittest.TestCase):
     @patch("mongod_helpers.MongoDB.client")
     @patch("pymongo.MongoClient")
     def test_primary_step_down(self, mock_client, client):
-        """Verifies that primary_step_down calls the necessary replSetStepDown command"""
-
+        """Verifies that primary_step_down calls the necessary replSetStepDown command."""
         # standard presets
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
@@ -233,8 +232,7 @@ class TestMongoServer(unittest.TestCase):
     @patch("mongod_helpers.MongoDB.client")
     @patch("pymongo.MongoClient")
     def test_primary_step_down_failure(self, mock_client, client):
-        """Verifies that primary_step_down appropriately handles exceptions"""
-
+        """Verifies that primary_step_down appropriately handles exceptions."""
         # standard presets
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
