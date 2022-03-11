@@ -2,9 +2,11 @@
 # See LICENSE file for licensing details.
 
 import unittest
+from typing import List
 from unittest import mock
 from unittest.mock import call, mock_open, patch
 
+import requests
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from ops.testing import Harness
 
@@ -19,126 +21,12 @@ from charm import (
 )
 from tests.unit.helpers import patch_network_get
 
-MONGO_CONF_ORIG = """# mongod.conf
-
-# for documentation of all options, see:
-#   http://docs.mongodb.org/manual/reference/configuration-options/
-
-# Where and how to store data.
-storage:
-  dbPath: /var/lib/mongodb
-  journal:
-    enabled: true
-#  engine:
-#  wiredTiger:
-
-# where to write logging data.
-systemLog:
-  destination: file
-  logAppend: true
-  path: /var/log/mongodb/mongod.log
-
-# network interfaces
-net:
-  port: 27017
-  bindIp: 127.0.0.1
-
-
-# how the process runs
-processManagement:
-  timeZoneInfo: /usr/share/zoneinfo
-
-# security:
-
-# operationProfiling:
-
-# replication:
-
-# sharding:
-
-# Enterprise-Only Options:
-
-# auditLog:
-
-# snmp:
-"""
-incr_return_values = [True, False]
-
-MONGO_CONF_ARGS = [
-    "net",
-    ":",
-    "\n",
-    "  ",
-    "bindIp",
-    ":",
-    " ",
-    "localhost,1.1.1.1",
-    "\n",
-    "  ",
-    "port",
-    ":",
-    " ",
-    "27017",
-    "\n",
-    "processManagement",
-    ":",
-    "\n",
-    "  ",
-    "timeZoneInfo",
-    ":",
-    " ",
-    "/usr/share/zoneinfo",
-    "\n",
-    "replication",
-    ":",
-    "\n",
-    "  ",
-    "replSetName",
-    ":",
-    " ",
-    "rs0",
-    "\n",
-    "storage",
-    ":",
-    "\n",
-    "  ",
-    "dbPath",
-    ":",
-    " ",
-    "/var/lib/mongodb",
-    "\n",
-    "  ",
-    "journal",
-    ":",
-    "\n",
-    "    ",
-    "enabled",
-    ":",
-    " ",
-    "true",
-    "\n",
-    "systemLog",
-    ":",
-    "\n",
-    "  ",
-    "destination",
-    ":",
-    " ",
-    "file",
-    "\n",
-    "  ",
-    "logAppend",
-    ":",
-    " ",
-    "true",
-    "\n",
-    "  ",
-    "path",
-    ":",
-    " ",
-    "/var/log/mongodb/mongod.log",
-    "\n",
-]
+REPO_NAME = "deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"
+GPG_URL = "https://www.mongodb.org/static/pgp/server-5.0.asc"
+REPO_ENTRY = (
+    "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/5.0 multiverse"
+)
+REPO_MAP = {"deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"}
 
 
 class TestCharm(unittest.TestCase):
@@ -148,7 +36,22 @@ class TestCharm(unittest.TestCase):
         self.harness.begin()
         self.peer_rel_id = self.harness.add_relation("mongodb", "mongodb")
 
-    @patch("charm.MongodbOperatorCharm._add_mongodb_org_repository")
+    @property
+    def mongodb_config_args(self) -> List[str]:
+        with open("tests/unit/data/mongodb_config_args.txt") as f:
+            config_args = f.read().splitlines()
+            config_args_formatted = ["\n" if arg == "\\n" else arg for arg in config_args]
+
+        return config_args_formatted
+
+    @property
+    def mongodb_config(self) -> str:
+        with open("tests/unit/data/mongodb_config.txt") as f:
+            config = f.read()
+
+        return config
+
+    @patch("charm.MongodbOperatorCharm._add_repository")
     @patch("charm.MongodbOperatorCharm._install_apt_packages")
     def test_mongodb_install(self, _add, _install):
         self.harness.charm.on.install.emit()
@@ -158,13 +61,16 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     def test_on_config_changed(self):
-        open_mock = mock_open(read_data=MONGO_CONF_ORIG)
+
+        open_mock = mock_open(read_data=self.mongodb_config)
         with patch("builtins.open", open_mock, create=True):
             self.harness.charm.on.config_changed.emit()
 
         # TODO change expected output based on config options,(once config options are implemented)
         open_mock.assert_called_with("/etc/mongod.conf", "w")
-        open_mock.return_value.write.assert_has_calls([mock.call(arg) for arg in MONGO_CONF_ARGS])
+        open_mock.return_value.write.assert_has_calls(
+            [mock.call(arg) for arg in self.mongodb_config_args]
+        )
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("mongod_helpers.MongoDB.is_ready")
@@ -368,66 +274,70 @@ class TestCharm(unittest.TestCase):
                 self.harness.charm._install_apt_packages(["test-package"])
                 self.assertIn(log_message, logs.output)
 
-            self.assertEqual(
-                self.harness.charm.unit.status, BlockedStatus("couldn't install MongoDB")
-            )
+            self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
 
     @patch("charm.apt.RepositoryMapping")
     @patch("charm.apt.DebianRepository.from_repo_line")
-    @patch("charm.urlopen")
-    def test_add_mongodb_org_repository_success(self, urlopen, from_repo_line, get_mapping):
-        self.harness.charm._add_mongodb_org_repository()
-        get_mapping.return_value = {}
-        urlopen.assert_called()
+    @patch("charm.apt.DebianRepository.import_key")
+    def test_add_repository_success(self, import_key, from_repo_line, repo_map):
+        # preset values
+        repo_map.return_value = set()
+        req = requests.get(GPG_URL)
+        mongodb_public_key = req.text
+
+        # verify we add the MongoDB repository
+        repos = self.harness.charm._add_repository(REPO_NAME, GPG_URL, REPO_ENTRY)
         from_repo_line.assert_called()
-
-    @patch("charm.apt.RepositoryMapping")
-    @patch("charm.urlopen")
-    def test_add_mongodb_org_repository_gpg_fail_leads_to_blocked(self, urlopen, get_mapping):
-        get_mapping.return_value = {}
-        urlopen.side_effect = URLError("urlopen error")
-        with self.assertLogs("charm", "ERROR") as logs:
-            self.harness.charm._add_mongodb_org_repository()
-            self.assertIn("ERROR:charm:failed to get GPG key, reason:", "".join(logs.output))
-
-        self.assertEqual(self.harness.charm.unit.status, BlockedStatus("couldn't install MongoDB"))
+        (from_repo_line.return_value.import_key).assert_called_with(mongodb_public_key)
+        self.assertEqual(repos, {from_repo_line.return_value})
 
     @patch("charm.apt.RepositoryMapping")
     @patch("charm.apt.DebianRepository.from_repo_line")
     @patch("charm.urlopen")
-    def test_add_mongodb_org_repository_cant_create_list_file_blocks(
-        self, urlopen, from_repo_line, get_mapping
-    ):
-        get_mapping.return_value = {}
+    def test_add_repository_gpg_fail_leads_to_blocked(self, urlopen, from_repo_line, repo_map):
+        # preset values
+        repo_map.return_value = set()
+        urlopen.side_effect = URLError("urlopen error")
+        self.harness.charm._add_repository(REPO_NAME, GPG_URL, REPO_ENTRY)
+
+        # verify we don't add repo when an exception occurs and that we enter blocked state
+        self.assertEqual(repo_map.return_value, set())
+        self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
+
+    @patch("charm.apt.RepositoryMapping")
+    @patch("charm.apt.DebianRepository.from_repo_line")
+    def test_add_repository_cant_create_list_file_blocks(self, from_repo_line, repo_map):
         exceptions = [
             apt.InvalidSourceError("invalid source message"),
             ValueError("value message"),
         ]
-        log_messages = [
-            "ERROR:charm:failed to add repository, invalid source: invalid source message",
-            "ERROR:charm:failed to add repository: value message",
-        ]
-        for exception, log_message in zip(exceptions, log_messages):
-            with self.assertLogs("charm", "ERROR") as logs:
-                from_repo_line.side_effect = exception
-                self.harness.charm._add_mongodb_org_repository()
-                self.assertIn(log_message, "".join(logs.output))
+        exceptions_types = [apt.InvalidSourceError, ValueError]
 
-            self.assertEqual(
-                self.harness.charm.unit.status, BlockedStatus("couldn't install MongoDB")
-            )
+        for exception_type, exception in zip(exceptions_types, exceptions):
+            # verify an exception is raised when repo line fails
+            with self.assertRaises(exception_type):
+                from_repo_line.side_effect = exception
+                self.harness.charm._add_repository(REPO_NAME, GPG_URL, REPO_ENTRY)
 
     @patch("charm.apt.RepositoryMapping")
-    @patch("charm.apt.DebianRepository.import_key")
     @patch("charm.apt.DebianRepository.from_repo_line")
-    @patch("charm.urlopen")
-    def test_add_mongodb_org_repository_already_added_skips(
-        self, urlopen, from_repo_line, import_key, repo_map
-    ):
-        repo_map.return_value = ["deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"]
-        self.harness.charm._add_mongodb_org_repository()
-        urlopen.assert_called()
-        from_repo_line.assert_not_called()
+    def test_add_repository_cant_import_key_blocks(self, from_repo_line, repo_map):
+        # verify an exception is raised when we cannot import GPG key
+        with self.assertRaises(apt.GPGKeyError):
+            (from_repo_line.return_value.import_key).side_effect = apt.GPGKeyError(
+                "import key error"
+            )
+            self.harness.charm._add_repository(REPO_NAME, GPG_URL, REPO_ENTRY)
+
+    @patch("charm.apt.RepositoryMapping")
+    @patch("charm.apt.DebianRepository.from_repo_line")
+    def test_add_repository_already_added(self, from_repo_line, repo_map):
+        # preset value
+        repo_map.return_value = REPO_MAP
+
+        # verify we don't change the repos if we already have the repo of interest
+        repos = self.harness.charm._add_repository(REPO_NAME, GPG_URL, REPO_ENTRY)
+        self.assertEqual(repos, REPO_MAP)
 
     @patch_network_get(private_address="1.1.1.1")
     def test_unit_ips(self):

@@ -34,6 +34,11 @@ from mongod_helpers import (
 logger = logging.getLogger(__name__)
 
 PEER = "mongodb"
+REPO_URL = "deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"
+REPO_ENTRY = (
+    "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/5.0 multiverse"
+)
+GPG_URL = "https://www.mongodb.org/static/pgp/server-5.0.asc"
 
 
 class MongodbOperatorCharm(ops.charm.CharmBase):
@@ -162,8 +167,11 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         installs MongoDB.
         """
         self.unit.status = MaintenanceStatus("installing MongoDB")
-        self._add_mongodb_org_repository()
-        self._install_apt_packages(["mongodb-org"])
+        try:
+            self._add_repository(REPO_URL, GPG_URL, REPO_ENTRY)
+            self._install_apt_packages(["mongodb-org"])
+        except (apt.InvalidSourceError, ValueError, apt.GPGKeyError, URLError):
+            self.unit.status = BlockedStatus("couldn't install MongoDB")
 
     def _on_config_changed(self, _) -> None:
         """Event handler for configuration changed events."""
@@ -257,35 +265,39 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             logger.exception("failed opening port: %s", str(e))
             raise
 
-    def _add_mongodb_org_repository(self) -> None:
-        """Adds MongoDB repo to container."""
+    def _add_repository(
+        self, repo_url: str, gpg_url: str, repo_entry: str
+    ) -> apt.RepositoryMapping:
+        """Adds MongoDB repo to container.
+
+        Args:
+            repo_url: deb-https url of repo to add
+            gpg_url: url to retrieve GPP key
+            repo_entry: a string representing a repository entry
+        """
         repositories = apt.RepositoryMapping()
 
-        # Get GPG key
-        try:
-            key = urlopen("https://www.mongodb.org/static/pgp/server-5.0.asc").read().decode()
-        except URLError as e:
-            logger.exception("failed to get GPG key, reason: %s", e)
-            self.unit.status = BlockedStatus("couldn't install MongoDB")
-            return
-
         # Add the repository if it doesn't already exist
-        repo_name = "deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"
-        if repo_name not in repositories:
+        if repo_url not in repositories:
+            # Get GPG key
             try:
-                line = "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/5.0 multiverse"
-                repo = apt.DebianRepository.from_repo_line(line)
+                key = urlopen(gpg_url).read().decode()
+            except URLError as e:
+                logger.exception("failed to get GPG key, reason: %s", e)
+                self.unit.status = BlockedStatus("couldn't install MongoDB")
+                return
+
+            # Add repository
+            try:
+                repo = apt.DebianRepository.from_repo_line(repo_entry)
                 # Import the repository's key
                 repo.import_key(key)
                 repositories.add(repo)
-            except apt.InvalidSourceError as e:
-                logger.error("failed to add repository, invalid source: %s", str(e))
-                self.unit.status = BlockedStatus("couldn't install MongoDB")
-                return
-            except ValueError as e:
-                logger.exception("failed to add repository: %s", str(e))
-                self.unit.status = BlockedStatus("couldn't install MongoDB")
-                return
+            except (apt.InvalidSourceError, ValueError, apt.GPGKeyError) as e:
+                logger.error("failed to add repository: %s", str(e))
+                raise e
+
+        return repositories
 
     def _install_apt_packages(self, packages: List[str]) -> None:
         """Installs package(s) to container.

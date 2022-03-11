@@ -141,7 +141,12 @@ async def test_get_primary_action(ops_test: OpsTest) -> None:
 
 
 async def test_cluster_is_stable_after_leader_deletion(ops_test: OpsTest) -> None:
-    """Tests that the cluster cluster behavior after planned leader unit removal."""
+    """Tests that the cluster cluster behavior after planned leader unit removal.
+
+    This test verifies that the behavior of when a leader is deleted that the new leader, on
+    calling leader_elected will reconfigure the replicaset. Similarly, this tests the case of a
+    primary steping down, since on deployment it is maintained that the leader is primary.
+    """
     # find & destroy leader unit
     # grab leader unit
     leader_unit = await find_leader_unit(ops_test)
@@ -210,7 +215,11 @@ async def test_cluster_is_stable_after_leader_deletion(ops_test: OpsTest) -> Non
 
 
 async def test_cluster_is_stable_after_non_leader_deletion(ops_test: OpsTest) -> None:
-    """Tests that the cluster cluster behavior after planned non-leader unit removal."""
+    """Tests that the cluster cluster behavior after planned non-leader unit removal.
+
+    This test verifies that the behavior of when a non-leader is deleted that the current leader
+    will reconfigure the replicaset.
+    """
     # find & destroy non-leader unit
     non_leader_ip = None
     for unit in ops_test.model.applications[APP_NAME].units:
