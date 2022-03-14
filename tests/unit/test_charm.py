@@ -569,9 +569,6 @@ class TestCharm(unittest.TestCase):
             # verify waiting status
             self.assertTrue(isinstance(self.harness.charm.unit.status, WaitingStatus))
 
-            # verify we don't reconfigure
-            mongodb_reconfigure.assert_called()
-
             # verify we don't update
             self.assertEqual(
                 self.harness.charm._replica_set_hosts,

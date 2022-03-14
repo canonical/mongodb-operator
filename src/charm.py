@@ -63,6 +63,13 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.framework.observe(self.on.leader_elected, self._on_leader_elected)
 
     def _on_leader_elected(self, event: ops.charm.LeaderElectedEvent) -> None:
+        """Handles leader elected event in the case that a new leader has elected.
+
+        In the case that a new leader has been elected the new leader reconfigures the replica set.
+
+        Args:
+            event: The triggering leader elected event
+        """
         # only reconfigure if previous leader stepped down without reconfiguring
         # relation data only accepts string, hence "False"
         if self._peers.data[self.app].get("_new_leader_must_reconfigure", "False") == "False":

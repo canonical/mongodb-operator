@@ -112,8 +112,7 @@ class MongoDB:
         """Steps primary replica down, enabling one of the secondaries to become primary."""
         client = self.client()
         try:
-            config = {}
-            config["stepDownSecs"] = "60"
+            config = {"stepDownSecs": "60"}
             client.admin.command("replSetStepDown", config)
         except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
             raise e
