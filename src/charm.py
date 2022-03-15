@@ -56,8 +56,11 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.framework.observe(
             self.on.mongodb_relation_departed, self._on_mongodb_relation_departed
         )
+        self.framework.observe(self.on.leader_elected, self._on_leader_elected)
         self.framework.observe(self.on.update_status, self._on_update_status)
         self.framework.observe(self.on.get_primary_action, self._on_get_primary_action)
+        self.framework.observe(self.on.mongodb_storage_detaching,
+                               self._on_mongodb_storage_detaching)
 
         # if a new leader has been elected, reconfigure the replica set
         self.framework.observe(self.on.leader_elected, self._on_leader_elected)
@@ -79,36 +82,51 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # reset need for new leader to reconfigure
         self._peers.data[self.app]["_new_leader_must_reconfigure"] = "False"
 
-    def _on_mongodb_relation_departed(self, event: ops.charm.RelationDepartedEvent) -> None:
-        """Removes the unit from the MongoDB replica set.
+    def _on_mongodb_storage_detaching(self, event: ops.charm.StorageDetachingEvent) -> None:
+        logger.debug("the current primary is %s", self._primary)
+        logger.debug("the current unit is %s", self.unit.name)
 
-        Args:
-            event: The triggering relation departed event.
-        """
-        # acquire removed unit
-        # TODO update this to use ops framework after this issue is addressed:
-        # https://github.com/canonical/operator/issues/707
-        # this will be updated in the following PR
-        departing_unit = os.environ.get("JUJU_DEPARTING_UNIT")
-
-        # If primary is leaving, allow it to step down before reconfiguring
-        if departing_unit == self.unit.name and departing_unit == self._primary:
+        # if the unit that is leaving is the primary allow it to step down
+        if self.unit.name == self._primary:
             try:
                 self._mongo.primary_step_down()
+                logger.debug("the current primary is %s", self._primary)
             except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
                 logger.error("deferring reconfigure of replica set: %s", str(e))
                 self.unit.status = WaitingStatus("waiting to reconfigure replica set")
                 event.defer()
                 return
 
+    def _on_mongodb_relation_departed(self, event: ops.charm.RelationDepartedEvent) -> None:
+        """Removes the unit from the MongoDB replica set.
+
+        Args:
+            event: The triggering relation departed event.
+        """
+
         # only leader should configure replica set
         if not self.unit.is_leader():
             return
 
+        # acquire removed unit
+        # TODO update this to use ops framework after this issue is addressed:
+        # https://github.com/canonical/operator/issues/707
+        # this will be updated in the following PR
+        departing_unit = os.environ.get("JUJU_DEPARTING_UNIT")
+
         # do not allow leader to reconfigure the set if leader is getting removed
         if departing_unit == self.unit.name:
             # make note that that the new leader must reconfigure
+            logger.debug("leader is departing replica set, new leader must reconfigure")
             self._peers.data[self.app]["_new_leader_must_reconfigure"] = "True"
+            return
+
+        # if departing unit is primary wait for a new one to be elected
+        logger.debug("the current primary unit is %s", self._primary)
+        if self._primary == departing_unit or self._primary is None:
+            logger.debug("waiting for new primary to be elected")
+            self.unit.status = WaitingStatus("waiting to reconfigure replica set")
+            event.defer()
             return
 
         self._reconfigure(event)
