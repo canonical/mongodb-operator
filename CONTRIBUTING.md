@@ -38,18 +38,17 @@ juju clouds
 juju bootstrap localhost overlord
 ```
 
-Create and activate a virtualenv, and install the development requirements:
-
-```shell
-virtualenv -p python3 venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
-
 Clone this repository:
 ```shell
 git clone https://github.com/canonical/mongodb-operator.git
 cd mongodb-operator/
+```
+
+Create and activate a virtualenv, and install the development requirements:
+```shell
+virtualenv -p python3 venv
+source venv/bin/activate
+pip install -r requirements.txt
 ```
 
 
