@@ -649,44 +649,40 @@ class TestCharm(unittest.TestCase):
         self.assertEqual(mongo_replica._calling_unit_ip, ip_address)
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongodbOperatorCharm._single_mongo_replica")
-    def test_update_status_primary(self, single_replica):
-        single_replica.return_value._is_primary = True
+    @patch("mongod_helpers.MongoDB.primary")
+    def test_update_status_primary(self, primary):
+        primary.return_value = "1.1.1.1"
         self.harness.charm.on.update_status.emit()
-        single_replica.assert_called_with("1.1.1.1")
+        primary.assert_called()
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus("Replica set primary"))
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongodbOperatorCharm._single_mongo_replica")
+    @patch("mongod_helpers.MongoDB.primary")
     @patch("ops.model.ActiveStatus")
-    def test_update_status_secondary(self, active_status, single_replica):
-        single_replica.return_value._is_primary = False
+    def test_update_status_secondary(self, active_status, primary):
+        primary.return_value = "2.2.2.2"
         self.harness.charm.on.update_status.emit()
-        single_replica.assert_called_with("1.1.1.1")
+        primary.assert_called()
         active_status.assert_not_called()
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongodbOperatorCharm._single_mongo_replica")
-    def test_get_primary_current_unit_primary(self, single_replica):
-        single_replica.return_value._is_primary = True
+    @patch("mongod_helpers.MongoDB.primary")
+    def test_get_primary_current_unit_primary(self, primary):
+        primary.return_value = "1.1.1.1"
         mock_event = mock.Mock()
         self.harness.charm._on_get_primary_action(mock_event)
         mock_event.set_results.assert_called_with({"replica-set-primary": "mongodb/0"})
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongodbOperatorCharm._single_mongo_replica")
-    def test_get_primary_peer_unit_primary(self, single_replica):
+    @patch("mongod_helpers.MongoDB.primary")
+    def test_get_primary_peer_unit_primary(self, primary):
         # add peer unit
         rel_id = self.harness.charm.model.get_relation("mongodb").id
         self.harness.add_relation_unit(rel_id, "mongodb/1")
         self.harness.update_relation_data(rel_id, "mongodb/1", {"private-address": "2.2.2.2"})
 
         # mock out the self unit not being primary but its peer being primary
-        mock_self_unit = mock.Mock()
-        mock_self_unit._is_primary = False
-        mock_peer_unit = mock.Mock()
-        mock_peer_unit._is_primary = True
-        single_replica.side_effect = [mock_self_unit, mock_peer_unit]
+        primary.return_value = "2.2.2.2"
 
         mock_event = mock.Mock()
 
@@ -694,8 +690,8 @@ class TestCharm(unittest.TestCase):
         mock_event.set_results.assert_called_with({"replica-set-primary": "mongodb/1"})
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongodbOperatorCharm._single_mongo_replica")
-    def test_primary_no_primary(self, single_replica):
+    @patch("mongod_helpers.MongoDB.primary")
+    def test_primary_no_primary(self, primary_helper):
         """Test that that the primary property can handle the case when there is no primary.
 
         Verifies that when there is no primary, the property _primary returns None.
@@ -706,27 +702,27 @@ class TestCharm(unittest.TestCase):
         self.harness.update_relation_data(rel_id, "mongodb/1", {"private-address": "2.2.2.2"})
 
         # mock out no units being primary
-        single_replica.return_value._is_primary = False
+        primary_helper.return_value = None
 
         # verify no primary identified
         primary = self.harness.charm._primary
         self.assertEqual(primary, None)
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongodbOperatorCharm._single_mongo_replica")
-    def test_primary_self_primary(self, single_replica):
+    @patch("mongod_helpers.MongoDB.primary")
+    def test_primary_self_primary(self, primary_helper):
         """Test that that the primary property can identify itself as primary.
 
         Verifies that when the calling unit is primary, the calling unit is identified as primary.
         """
-        single_replica.return_value._is_primary = True
+        primary_helper.return_value = "1.1.1.1"
 
         primary = self.harness.charm._primary
         self.assertEqual(primary, "mongodb/0")
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongodbOperatorCharm._single_mongo_replica")
-    def test_primary_peer_primary(self, single_replica):
+    @patch("mongod_helpers.MongoDB.primary")
+    def test_primary_peer_primary(self, primary_helper):
         """Test that that the primary property can identify a peer unit as primary.
 
         Verifies that when a non-calling unit is primary, the non-calling unit is identified as
@@ -738,14 +734,24 @@ class TestCharm(unittest.TestCase):
         self.harness.update_relation_data(rel_id, "mongodb/1", {"private-address": "2.2.2.2"})
 
         # mock out the self unit not being primary but its peer being primary
-        mock_self_unit = mock.Mock()
-        mock_self_unit._is_primary = False
-        mock_peer_unit = mock.Mock()
-        mock_peer_unit._is_primary = True
-        single_replica.side_effect = [mock_self_unit, mock_peer_unit]
+        primary_helper.return_value = "2.2.2.2"
 
         primary = self.harness.charm._primary
         self.assertEqual(primary, "mongodb/1")
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("mongod_helpers.MongoDB.primary")
+    def test_primary_failure(self, primary_helper):
+        # verify that we raise the correct exception
+        exceptions = [
+            ConnectionFailure("error message"),
+            ConfigurationError("error message"),
+            OperationFailure("error message"),
+        ]
+
+        for exception in exceptions:
+            primary_helper.side_effect = exception
+            self.assertEqual(self.harness.charm._primary, None)
 
     @patch("charm.MongodbOperatorCharm._unit_ips")
     @patch("charm.MongodbOperatorCharm._replica_set_hosts")
@@ -761,9 +767,9 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("mongod_helpers.MongoDB.reconfigure_replica_set")
     @patch("charm.MongodbOperatorCharm._peers")
-    @patch("charm.MongodbOperatorCharm._single_mongo_replica")
+    @patch("mongod_helpers.MongoDB.primary")
     @patch("charm.MongodbOperatorCharm._need_replica_set_reconfiguration")
-    def test_on_leader_elected_waits_for_primary(self, _, single_replica, peers, reconfigure):
+    def test_on_leader_elected_waits_for_primary(self, _, primary, peers, reconfigure):
         """Test that leader elected will wait for a new primary before reconfiguring.
 
         Verifies that if the leader needs to reconfigure the replica set it will wait for a primary
@@ -771,7 +777,7 @@ class TestCharm(unittest.TestCase):
         """
         # preset values
         self.harness.charm._need_replica_set_reconfiguration = True
-        single_replica.return_value._is_primary = False
+        primary.return_value = None
 
         # peers data values are string because relation data only supports strings
         peers_data = {}
@@ -796,15 +802,15 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongodbOperatorCharm._reconfigure")
     @patch("charm.MongodbOperatorCharm._peers")
-    @patch("charm.MongodbOperatorCharm._single_mongo_replica")
-    def test_on_leader_elected_updates_relation_data(self, single_replica, peers, reconfigure):
+    @patch("mongod_helpers.MongoDB.primary")
+    def test_on_leader_elected_updates_relation_data(self, primary, peers, reconfigure):
         """Test that leader elected properly handles relation data.
 
         Verifies that if the leader needs to reconfigure the replica set, that after it
         reconfigures it will reset the relation data.
         """
         # preset values
-        single_replica.return_value._is_primary = True
+        primary.return_value = "1.1.1.1"
 
         # peers data values are string because relation data only supports strings
         peers_data = {}

@@ -247,13 +247,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.unit.status = ActiveStatus()
 
     def _on_update_status(self, _):
-        # connect to client for this single unit
-        mongod_unit = self._single_mongo_replica(
-            str(self.model.get_binding(PEER).network.bind_address)
-        )
-
         # if unit is primary then update status
-        if mongod_unit._is_primary:
+        if self._primary == self.unit.name:
             self.unit.status = ActiveStatus("Replica set primary")
 
     def _on_get_primary_action(self, event: ops.charm.ActionEvent):
@@ -358,24 +353,20 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
     @property
     def _primary(self) -> str:
         """Retrieves the unit with the primary replica."""
-        # check if current unit is the primary unit
-        mongod_unit = self._single_mongo_replica(
-            str(self.model.get_binding(PEER).network.bind_address)
-        )
+        # get IP of current priamry
+        try:
+            primary_ip = self._mongo.primary()
+        except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
+            logger.error("Unable to access primary due to: %s", e)
+            return None
 
-        # if unit is primary display this information and exit
-        if mongod_unit._is_primary:
+        # check if current unit matches primary ip
+        if primary_ip == str(self.model.get_binding(PEER).network.bind_address):
             return self.unit.name
 
-        # loop through peers and check if one is the primary
+        # check if peer unit matches primary ip
         for unit in self._peers.units:
-            # set up a mongo client for this single replica
-            mongod_unit = self._single_mongo_replica(
-                str(self._peers.data[unit].get("private-address"))
-            )
-
-            # if unit is primary display this information and exit
-            if mongod_unit._is_primary:
+            if primary_ip == str(self._peers.data[unit].get("private-address")):
                 return unit.name
 
         return None
