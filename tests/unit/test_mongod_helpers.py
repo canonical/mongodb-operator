@@ -214,3 +214,59 @@ class TestMongoServer(unittest.TestCase):
         ]
         new_config = mongo.replica_set_config(current_config)
         self.assertEqual(new_config, expected_new_members)
+
+    @patch("mongod_helpers.MongoDB.client")
+    @patch("pymongo.MongoClient")
+    def test_primary_step_down(self, mock_client, client):
+        """Verifies that primary_step_down calls the necessary replSetStepDown command."""
+        # standard presets
+        config = MONGO_CONFIG.copy()
+        mongo = MongoDB(config)
+        client.return_value = mock_client
+
+        mongo.primary_step_down()
+        mock_client.admin.command.assert_called()
+        command, _ = mock_client.admin.command.call_args
+        self.assertEqual("replSetStepDown", command[0])
+
+    @patch("mongod_helpers.MongoDB.client")
+    @patch("pymongo.MongoClient")
+    def test_primary_step_down_failure(self, mock_client, client):
+        """Verifies that primary_step_down appropriately handles exceptions."""
+        # standard presets
+        config = MONGO_CONFIG.copy()
+        mongo = MongoDB(config)
+        client.return_value = mock_client
+
+        # verify that we raise the correct exception
+        exceptions = [
+            ConnectionFailure("error message"),
+            ConfigurationError("error message"),
+            OperationFailure("error message"),
+        ]
+        raises = [ConnectionFailure, ConfigurationError, OperationFailure]
+        for exception, expected_raise in zip(exceptions, raises):
+            with self.assertRaises(expected_raise):
+                mock_client.admin.command.side_effect = exception
+                mongo.primary_step_down()
+
+    @patch("mongod_helpers.MongoDB.client")
+    @patch("pymongo.MongoClient")
+    def test_primary_failure(self, mock_client, client):
+        """Verifies that primary appropriately handles exceptions."""
+        # standard presets
+        config = MONGO_CONFIG.copy()
+        mongo = MongoDB(config)
+        client.return_value = mock_client
+
+        # verify that we raise the correct exception
+        exceptions = [
+            ConnectionFailure("error message"),
+            ConfigurationError("error message"),
+            OperationFailure("error message"),
+        ]
+        raises = [ConnectionFailure, ConfigurationError, OperationFailure]
+        for exception, expected_raise in zip(exceptions, raises):
+            with self.assertRaises(expected_raise):
+                mock_client.admin.command.side_effect = exception
+                mongo.primary()

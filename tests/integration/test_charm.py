@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 from typing import List, Tuple
 
+import ops
 import pytest
 import yaml
 from helpers import pull_content_from_unit_file
@@ -85,10 +86,7 @@ async def test_unit_is_running_as_replica_set(ops_test: OpsTest, unit_id: int) -
 async def test_leader_is_primary_on_deployment(ops_test: OpsTest) -> None:
     """Tests that right after deployment that the primary unit is the leader."""
     # grab leader unit
-    leader_unit = None
-    for unit in ops_test.model.applications[APP_NAME].units:
-        if await unit.is_leader_from_status():
-            leader_unit = unit
+    leader_unit = await find_leader_unit(ops_test)
 
     # verify that we have a leader
     assert leader_unit is not None, "No unit is leader"
@@ -142,8 +140,85 @@ async def test_get_primary_action(ops_test: OpsTest) -> None:
         assert identified_primary == expected_primary
 
 
-async def test_cluster_is_stable_after_deletion(ops_test: OpsTest) -> None:
-    """Tests that the cluster behavior after planned non-leader unit removal."""
+async def test_cluster_is_stable_after_leader_deletion(ops_test: OpsTest) -> None:
+    """Tests that the cluster behavior after planned leader unit removal.
+
+    This test verifies that the behavior of when a leader is deleted that the new leader, on
+    calling leader_elected will reconfigure the replicaset. Similarly, this tests the case of a
+    primary steping down, since on deployment it is maintained that the leader is primary.
+    """
+    # find & destroy leader unit
+    # grab leader unit
+    leader_unit = await find_leader_unit(ops_test)
+
+    # verify that we have a leader
+    assert leader_unit is not None, "No unit is leader"
+
+    # save ip and delete leader
+    leader_ip = leader_unit.public_address
+    await leader_unit.destroy()
+
+    # wait for app to be active after removal of leader
+    # issuing dummy update_status to re-trigger event
+    await ops_test.model.set_config({"update-status-hook-interval": "10s"})
+    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=1000)
+
+    # reset update_status
+    await ops_test.model.set_config({"update-status-hook-interval": "5m"})
+
+    # verify that there are two units running after deletion of leader
+    assert len(ops_test.model.applications[APP_NAME].units) == 2
+
+    # verify that a new leader has been elected
+    # grab leader unit
+    leader_unit = await find_leader_unit(ops_test)
+
+    # verify that we have a leader
+    assert leader_unit is not None, "No unit is leader"
+
+    # grab IPS
+    ip_addresses = []
+    for unit in ops_test.model.applications[APP_NAME].units:
+        ip_addresses.append(unit.public_address)
+
+    # connect to mongo replica set
+    # check that the replica set with the remaining units has a primary
+    replica_set_uri = "mongodb://{}:{},{}:{}/replicaSet=rs0".format(
+        ip_addresses[0], PORT, ip_addresses[1], PORT
+    )
+    client = MongoClient(replica_set_uri)
+
+    # grab primary
+    try:
+        primary = replica_set_primary(client, valid_ips=ip_addresses)
+    except RetryError:
+        primary = None
+
+    # verify that the primary is not None
+    assert primary is not None, "replica set with uri {} has no primary".format(replica_set_uri)
+
+    # check that the primary is one of the remaining units
+    assert primary[0] in ip_addresses, "replica set primary is not one of the available units"
+
+    # verify that the configuration of mongodb no longer has the deleted ip
+    removed_from_config = True
+    rs_config = client.admin.command("replSetGetConfig")
+    for member in rs_config["config"]["members"]:
+        # get member ip without ":PORT"
+        member_ip = member["host"].split(":")[0]
+        if member_ip == leader_ip:
+            removed_from_config = False
+
+    assert removed_from_config, "removed unit is still present in replica set config"
+    client.close()
+
+
+async def test_cluster_is_stable_after_non_leader_deletion(ops_test: OpsTest) -> None:
+    """Tests that the cluster behavior after planned non-leader unit removal.
+
+    This test verifies that the behavior of when a non-leader is deleted that the current leader
+    will reconfigure the replicaset.
+    """
     # find & destroy non-leader unit
     non_leader_ip = None
     for unit in ops_test.model.applications[APP_NAME].units:
@@ -155,22 +230,31 @@ async def test_cluster_is_stable_after_deletion(ops_test: OpsTest) -> None:
     # wait for app to be active after removal of unit
     await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=1000)
 
-    # verify that there are two units running after deletion of non leader
-    assert len(ops_test.model.applications[APP_NAME].units) == 2
+    # verify that is one unit running after deletion of non-leader
+    assert len(ops_test.model.applications[APP_NAME].units) == 1
 
-    # grab remaining IPS, must compare against non_leader_ip since it is not
-    # guaranteed that the non_leader unit will be fully shutdown
+    # grab IPS
     ip_addresses = []
     for unit in ops_test.model.applications[APP_NAME].units:
-        if not unit.public_address == non_leader_ip:
-            ip_addresses.append(unit.public_address)
+        ip_addresses.append(unit.public_address)
+
+    # check that the replica set with the remaining units has a primary
+    # connect to replica set uri
+    replica_set_uri = ip_addresses[0] + ":" + str(PORT)
+    client = MongoClient(replica_set_uri, replicaset="rs0")
+
+    try:
+        primary = replica_set_primary(client, valid_ips=ip_addresses)
+    except RetryError:
+        primary = None
+
+    # verify that the primary is not None
+    assert primary is not None, "replica set with uri {} has no primary".format(replica_set_uri)
+
+    # check that the primary is not one of the deleted units
+    assert primary[0] in ip_addresses, "replica set primary is not one of the available units"
 
     # verify that the configuration of mongodb no longer has the deleted ip
-    replica_set_uri = "mongodb://{}:{},{}:{}/replicaSet=rs0".format(
-        ip_addresses[0], PORT, ip_addresses[1], PORT
-    )
-    client = MongoClient(replica_set_uri)
-
     removed_from_config = True
     rs_config = client.admin.command("replSetGetConfig")
     for member in rs_config["config"]["members"]:
@@ -252,3 +336,17 @@ def count_primaries(ops_test: OpsTest) -> int:
             number_of_primaries += 1
 
     return number_of_primaries
+
+
+async def find_leader_unit(ops_test: OpsTest) -> ops.model.Unit:
+    """Helper function identifies the leader unit.
+
+    Returns:
+        leader unit
+    """
+    leader_unit = None
+    for unit in ops_test.model.applications[APP_NAME].units:
+        if await unit.is_leader_from_status():
+            leader_unit = unit
+
+    return leader_unit
