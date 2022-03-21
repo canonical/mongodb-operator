@@ -4,7 +4,6 @@
 # See LICENSE file for licensing details.
 import json
 import logging
-import os
 import subprocess
 from subprocess import check_call
 from typing import List, Optional
@@ -59,8 +58,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.framework.observe(self.on.leader_elected, self._on_leader_elected)
         self.framework.observe(self.on.update_status, self._on_update_status)
         self.framework.observe(self.on.get_primary_action, self._on_get_primary_action)
-        self.framework.observe(self.on.mongodb_storage_detaching,
-                               self._on_mongodb_storage_detaching)
+        self.framework.observe(
+            self.on.mongodb_storage_detaching, self._on_mongodb_storage_detaching
+        )
 
         # if a new leader has been elected, reconfigure the replica set
         self.framework.observe(self.on.leader_elected, self._on_leader_elected)
@@ -75,7 +75,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self._peers.data[self.app]["replica_set_hosts"] = json.dumps(self._unit_ips)
 
     def _on_mongodb_storage_detaching(self, event: ops.charm.StorageDetachingEvent) -> None:
-        """Removes the unit from the MongoDB replica set config and steps down primary if necessary.
+        """Removes unit from the MongoDB replica set config and steps down primary if necessary.
 
         Args:
             event: The triggering storage detaching event.
@@ -89,8 +89,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 self._mongo.primary_step_down()
                 logger.debug("the current primary is %s", self._primary)
             except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
-                logger.error("deferring removal of unit: %s for reason: %s",
-                             self.unit.name, str(e))
+                logger.error(
+                    "deferring removal of unit: %s for reason: %s", self.unit.name, str(e)
+                )
                 self.unit.status = WaitingStatus("waiting to reconfigure replica set")
                 event.defer()
                 return
@@ -98,7 +99,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # reconfigure the replica set without this unit
         try:
             self._mongo.remove_replica(
-                remove_replica_ip=str(self.model.get_binding(PEER).network.bind_address))
+                remove_replica_ip=str(self.model.get_binding(PEER).network.bind_address)
+            )
             logger.debug("Replica set successfully reconfigured")
             self.unit.status = ActiveStatus()
         except (ConnectionFailure, ConfigurationError, OperationFailure) as e:

@@ -683,7 +683,9 @@ class TestCharm(unittest.TestCase):
     @patch("mongod_helpers.MongoDB.remove_replica")
     @patch("mongod_helpers.MongoDB.primary_step_down")
     @patch("mongod_helpers.MongoDB.primary")
-    def test_storage_detaching_primary_step_down_failure(self, primary, primary_step_down, remove_replica):
+    def test_storage_detaching_primary_step_down_failure(
+        self, primary, primary_step_down, remove_replica
+    ):
         """Test that failure in stepping down the primary is properly handled.
 
         Verifies that when the primary fails to step down with an error that we don't attempt to
