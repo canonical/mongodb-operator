@@ -102,11 +102,26 @@ class MongoDB:
 
         return is_replica_set
 
-    @property
-    def _is_primary(self):
-        """Returns true if querying unit is the primary replica."""
-        client = self.client(standalone=True)
-        return client.is_primary
+    def primary(self):
+        """Returns IP address of current replica set primary."""
+        # grab the replica set status
+        client = self.client()
+        try:
+            status = client.admin.command("replSetGetStatus")
+        except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
+            raise e
+        finally:
+            client.close()
+
+        primary = None
+        # loop through all members in the replica set
+        for member in status["members"]:
+            # check replica's current state
+            if member["stateStr"] == "PRIMARY":
+                # get member ip without ":PORT"
+                primary = member["name"].split(":")[0]
+
+        return primary
 
     def primary_step_down(self) -> None:
         """Steps primary replica down, enabling one of the secondaries to become primary."""
