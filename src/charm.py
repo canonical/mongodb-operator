@@ -107,13 +107,15 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             event.defer()
             return
 
+        # if a new leader has been elected, reconfigure the replica set
+        self.framework.observe(self.on.leader_elected, self._on_leader_elected)
+
     def _on_mongodb_relation_departed(self, event: ops.charm.RelationDepartedEvent) -> None:
         """Removes the unit from the MongoDB replica set hosts.
 
         Args:
             event: The triggering relation departed event.
         """
-
         # allow leader to reset which hosts are being used
         if self.unit.is_leader():
             self._peers.data[self.app]["replica_set_hosts"] = json.dumps(self._unit_ips)

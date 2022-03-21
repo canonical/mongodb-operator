@@ -593,8 +593,8 @@ class TestCharm(unittest.TestCase):
         mock_event.set_results.assert_called_with({"replica-set-primary": "mongodb/1"})
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongodbOperatorCharm._single_mongo_replica")
-    def test_primary_no_primary(self, single_replica):
+    @patch("mongod_helpers.MongoDB.primary")
+    def test_primary_no_primary(self, primary_helper):
         """Test that that the primary property can handle the case when there is no primary.
 
         Verifies that when there is no primary, the property _primary returns None.
@@ -605,7 +605,7 @@ class TestCharm(unittest.TestCase):
         self.harness.update_relation_data(rel_id, "mongodb/1", {"private-address": "2.2.2.2"})
 
         # mock out no units being primary
-        single_replica.return_value._is_primary = False
+        primary_helper.return_value = None
 
         # verify no primary identified
         primary = self.harness.charm._primary
@@ -615,6 +615,7 @@ class TestCharm(unittest.TestCase):
     @patch("mongod_helpers.MongoDB.primary")
     def test_primary_self_primary(self, primary_helper):
         """Test that that the primary property can identify itself as primary.
+
         Verifies that when the calling unit is primary, the calling unit is identified as primary.
         """
         primary_helper.return_value = "1.1.1.1"
@@ -626,6 +627,7 @@ class TestCharm(unittest.TestCase):
     @patch("mongod_helpers.MongoDB.primary")
     def test_primary_peer_primary(self, primary_helper):
         """Test that that the primary property can identify a peer unit as primary.
+
         Verifies that when a non-calling unit is primary, the non-calling unit is identified as
         primary.
         """
@@ -639,6 +641,20 @@ class TestCharm(unittest.TestCase):
 
         primary = self.harness.charm._primary
         self.assertEqual(primary, "mongodb/1")
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("mongod_helpers.MongoDB.primary")
+    def test_primary_failure(self, primary_helper):
+        # verify that we raise the correct exception
+        exceptions = [
+            ConnectionFailure("error message"),
+            ConfigurationError("error message"),
+            OperationFailure("error message"),
+        ]
+
+        for exception in exceptions:
+            primary_helper.side_effect = exception
+            self.assertEqual(self.harness.charm._primary, None)
 
     @patch("charm.MongodbOperatorCharm._unit_ips")
     @patch("charm.MongodbOperatorCharm._replica_set_hosts")
@@ -695,7 +711,7 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("mongod_helpers.MongoDB.remove_replica")
     @patch("mongod_helpers.MongoDB.primary_step_down")
-    def test_storage_detaching_replica_removavl_failure(self, _, remove_replica):
+    def test_storage_detaching_replica_removal_failure(self, _, remove_replica):
         """Test that failure in removing unit is properly handled.
 
         Verifies that when a replica fails to get removed that we go into the waiting status.

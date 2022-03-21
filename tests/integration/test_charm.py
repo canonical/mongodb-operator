@@ -141,7 +141,7 @@ async def test_get_primary_action(ops_test: OpsTest) -> None:
 
 
 async def test_cluster_is_stable_after_leader_deletion(ops_test: OpsTest) -> None:
-    """Tests that the cluster cluster behavior after planned leader unit removal.
+    """Tests that the cluster behavior after planned leader unit removal.
 
     This test verifies that the behavior of when a leader is deleted that the new leader, on
     calling leader_elected will reconfigure the replicaset. Similarly, this tests the case of a
@@ -176,11 +176,10 @@ async def test_cluster_is_stable_after_leader_deletion(ops_test: OpsTest) -> Non
     # verify that we have a leader
     assert leader_unit is not None, "No unit is leader"
 
-    # grab remaining IPS, maintaining that the deleted ip is not in them
+    # grab IPS
     ip_addresses = []
     for unit in ops_test.model.applications[APP_NAME].units:
-        if not unit.public_address == leader_ip:
-            ip_addresses.append(unit.public_address)
+        ip_addresses.append(unit.public_address)
 
     # connect to mongo replica set
     # check that the replica set with the remaining units has a primary
@@ -215,7 +214,7 @@ async def test_cluster_is_stable_after_leader_deletion(ops_test: OpsTest) -> Non
 
 
 async def test_cluster_is_stable_after_non_leader_deletion(ops_test: OpsTest) -> None:
-    """Tests that the cluster cluster behavior after planned non-leader unit removal.
+    """Tests that the cluster behavior after planned non-leader unit removal.
 
     This test verifies that the behavior of when a non-leader is deleted that the current leader
     will reconfigure the replicaset.
@@ -234,11 +233,10 @@ async def test_cluster_is_stable_after_non_leader_deletion(ops_test: OpsTest) ->
     # verify that is one unit running after deletion of non-leader
     assert len(ops_test.model.applications[APP_NAME].units) == 1
 
-    # grab remaining IPS, maintaining that the deleted ip is not in them
+    # grab IPS
     ip_addresses = []
     for unit in ops_test.model.applications[APP_NAME].units:
-        if not unit.public_address == non_leader_ip:
-            ip_addresses.append(unit.public_address)
+        ip_addresses.append(unit.public_address)
 
     # check that the replica set with the remaining units has a primary
     # connect to replica set uri
