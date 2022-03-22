@@ -167,6 +167,42 @@ class MongoDB:
         finally:
             client.close()
 
+    def remove_replica(self, remove_replica_ip: str) -> None:
+        """Removes the replica with remove_replica_ip from the MongoDB replica set config.
+
+        Using the current MongoDB configuration from mongod, remove_replica reconfigures the
+        replica set such that it no longer contains the replica with remove_replica_ip.
+
+        Args:
+            remove_replica_ip: the ip of the replica to remove.
+        """
+        replica_set_client = self.client()
+        try:
+            # get current configuration and update with correct hosts
+            rs_config = replica_set_client.admin.command("replSetGetConfig")
+            rs_config["config"]["version"] += 1
+
+            # acquire current members in config
+            current_members = rs_config["config"]["members"]
+            logger.debug("current config for replica set: %s", current_members)
+            new_members = []
+
+            # add members to new config that aren't getting removed
+            for member in current_members:
+                # get member ip without ":PORT"
+                member_ip = member["host"].split(":")[0]
+
+                # if this ip is still being used retain it in new config
+                if member_ip != remove_replica_ip:
+                    new_members.append(member)
+
+            rs_config["config"]["members"] = new_members
+            replica_set_client.admin.command("replSetReconfig", rs_config["config"])
+        except (ConfigurationError, ConfigurationError, OperationFailure):
+            raise
+        finally:
+            replica_set_client.close()
+
     def reconfigure_replica_set(self) -> None:
         """Reconfigure the MongoDB replica set.
 

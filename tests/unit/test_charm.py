@@ -449,7 +449,6 @@ class TestCharm(unittest.TestCase):
         self, mongodb_reconfigure, need_reconfiguration, single_replica
     ):
         # preset values
-        self.harness.charm._need_replica_set_reconfiguration = True
         self.harness.set_leader(True)
 
         # add peer unit
@@ -467,113 +466,6 @@ class TestCharm(unittest.TestCase):
             self.harness.charm._replica_set_hosts,
             ["1.1.1.1"],
         )
-
-    @patch("os.environ.get")
-    @patch("charm.MongodbOperatorCharm._reconfigure")
-    @patch("charm.MongodbOperatorCharm._primary")
-    def test_mongodb_departed_non_leader_does_nothing(self, primary, reconfigure, _):
-        # preset values
-        self.harness.set_leader(False)
-        mock_event = mock.Mock()
-
-        self.harness.charm._on_mongodb_relation_departed(mock_event)
-        reconfigure.assert_not_called()
-
-    @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongodbOperatorCharm._primary")
-    @patch("os.environ.get")
-    @patch("mongod_helpers.MongoDB.primary_step_down")
-    @patch("charm.MongodbOperatorCharm._single_mongo_replica")
-    @patch("charm.MongodbOperatorCharm._need_replica_set_reconfiguration")
-    @patch("mongod_helpers.MongoDB.reconfigure_replica_set")
-    def test_on_mongodb_relation_departed_primary_removed(
-        self,
-        mongodb_reconfigure,
-        need_reconfiguration,
-        single_replica,
-        primary_step_down,
-        departing_unit,
-        primary,
-    ):
-        """Test removing primary replica.
-
-        Verifies relation_departed operations for when the departing unit is the primary replica.
-        """
-        # preset values
-        self.harness.charm._need_replica_set_reconfiguration = True
-        # cannot hard set this since its used in other locations
-        self.harness.charm.unit.name = "mongodb/1"
-        departing_unit.return_value = "mongodb/1"
-        self.harness.charm._primary = "mongodb/1"
-
-        # add peer unit
-        rel = self.harness.charm.model.get_relation("mongodb")
-        key_values = {"private-address": "127.4.5.6"}
-        self.harness.add_relation_unit(rel.id, "mongodb/1")
-        self.harness.update_relation_data(rel.id, "mongodb/1", key_values)
-
-        # remove unit to trigger event
-        self.harness.remove_relation_unit(rel.id, "mongodb/1")
-
-        # verify we call the step down method
-        primary_step_down.assert_called()
-
-    @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongodbOperatorCharm._primary")
-    @patch("os.environ.get")
-    @patch("mongod_helpers.MongoDB.primary_step_down")
-    @patch("charm.MongodbOperatorCharm._single_mongo_replica")
-    @patch("charm.MongodbOperatorCharm._need_replica_set_reconfiguration")
-    @patch("mongod_helpers.MongoDB.reconfigure_replica_set")
-    def test_on_mongodb_relation_departed_primary_removed_failure(
-        self,
-        mongodb_reconfigure,
-        need_reconfiguration,
-        single_replica,
-        primary_step_down,
-        departing_unit,
-        primary,
-    ):
-        """Test removing primary replica leads to failure.
-
-        Verifies relation_departed operations for when the departing unit is a primary and
-        a failure occurs in attempying to step down the primary replica.
-        """
-        # preset values
-        self.harness.charm._need_replica_set_reconfiguration = True
-        self.harness.charm.unit.name = "mongodb/0"
-        departing_unit.return_value = "mongodb/0"
-        self.harness.charm._primary = "mongodb/0"
-        self.harness.set_leader(True)
-
-        exceptions = [
-            ConnectionFailure("connection error message"),
-            ConfigurationError("configuration error message"),
-            OperationFailure("operation error message"),
-        ]
-
-        # check that each exception is handled properly
-        for exception in exceptions:
-            primary_step_down.side_effect = exception
-
-            # add peer unit
-            rel = self.harness.charm.model.get_relation("mongodb")
-            rel_id = rel.id
-            key_values = {"private-address": "127.4.5.6"}
-            self.harness.add_relation_unit(rel_id, "mongodb/1")
-            self.harness.update_relation_data(rel_id, "mongodb/1", key_values)
-
-            # remove unit to trigger event
-            self.harness.remove_relation_unit(rel_id, "mongodb/1")
-
-            # verify waiting status
-            self.assertTrue(isinstance(self.harness.charm.unit.status, WaitingStatus))
-
-            # verify we don't update
-            self.assertEqual(
-                self.harness.charm._replica_set_hosts,
-                ["127.4.5.6", "1.1.1.1"],
-            )
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongodbOperatorCharm._peers")
@@ -765,63 +657,67 @@ class TestCharm(unittest.TestCase):
         self.assertEqual(self.harness.charm._need_replica_set_reconfiguration, False)
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("mongod_helpers.MongoDB.reconfigure_replica_set")
-    @patch("charm.MongodbOperatorCharm._peers")
-    @patch("mongod_helpers.MongoDB.primary")
-    @patch("charm.MongodbOperatorCharm._need_replica_set_reconfiguration")
-    def test_on_leader_elected_waits_for_primary(self, _, primary, peers, reconfigure):
-        """Test that leader elected will wait for a new primary before reconfiguring.
-
-        Verifies that if the leader needs to reconfigure the replica set it will wait for a primary
-        to be elected
-        """
-        # preset values
-        self.harness.charm._need_replica_set_reconfiguration = True
-        primary.return_value = None
-
-        # peers data values are string because relation data only supports strings
-        peers_data = {}
-        peers_data[self.harness.charm.app] = {
-            "_new_leader_must_reconfigure": "True",
-            "replica_set_hosts": '["1.1.1.1", "127.4.5.6"]',
-        }
-        peers.data = peers_data
-        self.harness.charm.on.leader_elected.emit()
-
-        # check that we don't reconfigure and that reconfiguration is still needed
-        reconfigure.assert_not_called()
-        self.assertTrue(isinstance(self.harness.charm.unit.status, WaitingStatus))
-        self.assertEqual(
-            peers_data[self.harness.charm.app]["_new_leader_must_reconfigure"], "True"
-        )
-        self.assertEqual(
-            self.harness.charm._replica_set_hosts,
-            ["1.1.1.1", "127.4.5.6"],
-        )
-
-    @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongodbOperatorCharm._reconfigure")
-    @patch("charm.MongodbOperatorCharm._peers")
-    @patch("mongod_helpers.MongoDB.primary")
-    def test_on_leader_elected_updates_relation_data(self, primary, peers, reconfigure):
+    def test_on_leader_elected_updates_relation_data(self):
         """Test that leader elected properly handles relation data.
 
-        Verifies that if the leader needs to reconfigure the replica set, that after it
-        reconfigures it will reset the relation data.
+        Verifies that when a leader gets re-elected it properly sets up the replica set hosts.
+        """
+        self.harness.set_leader(True)
+        self.harness.charm.on.leader_elected.emit()
+
+        # check that we reset the replica_set_hosts
+        self.assertEqual(self.harness.charm._replica_set_hosts, ["1.1.1.1"])
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("mongod_helpers.MongoDB.remove_replica")
+    @patch("mongod_helpers.MongoDB.primary_step_down")
+    @patch("mongod_helpers.MongoDB.primary")
+    def test_storage_detaching_primary_step_down_failure(
+        self, primary, primary_step_down, remove_replica
+    ):
+        """Test that failure in stepping down the primary is properly handled.
+
+        Verifies that when the primary fails to step down with an error that we don't attempt to
+        reconfigure the replica set and that we go into the waiting status.
         """
         # preset values
         primary.return_value = "1.1.1.1"
 
-        # peers data values are string because relation data only supports strings
-        peers_data = {}
-        peers_data[self.harness.charm.app] = {
-            "_new_leader_must_reconfigure": "True",
-        }
-        peers.data = peers_data
-        self.harness.charm.on.leader_elected.emit()
+        exceptions = [
+            ConnectionFailure("connection error message"),
+            ConfigurationError("configuration error message"),
+            OperationFailure("operation error message"),
+        ]
 
-        # check that we don't reconfigure and that reconfiguration is still needed
-        reconfigure.assert_called()
-        self.assertEqual(
-            peers.data[self.harness.charm.app]["_new_leader_must_reconfigure"], "False"
-        )
+        for exception in exceptions:
+            primary_step_down.side_effect = exception
+            self.harness.charm.on.mongodb_storage_detaching.emit(mock.Mock())
+            primary_step_down.assert_called()
+            remove_replica.assert_not_called()
+
+            self.assertEqual(
+                self.harness.charm.unit.status, WaitingStatus("waiting to reconfigure replica set")
+            )
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("mongod_helpers.MongoDB.remove_replica")
+    @patch("mongod_helpers.MongoDB.primary_step_down")
+    def test_storage_detaching_replica_removal_failure(self, _, remove_replica):
+        """Test that failure in removing unit is properly handled.
+
+        Verifies that when a replica fails to get removed that we go into the waiting status.
+        """
+        exceptions = [
+            ConnectionFailure("connection error message"),
+            ConfigurationError("configuration error message"),
+            OperationFailure("operation error message"),
+        ]
+
+        for exception in exceptions:
+            remove_replica.side_effect = exception
+            self.harness.charm.on.mongodb_storage_detaching.emit(mock.Mock())
+            remove_replica.assert_called()
+
+            self.assertEqual(
+                self.harness.charm.unit.status, WaitingStatus("waiting to reconfigure replica set")
+            )
