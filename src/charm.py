@@ -52,36 +52,30 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.framework.observe(self.on.start, self._on_start)
         self.framework.observe(self.on.mongodb_relation_joined, self._on_mongodb_relation_handler)
         self.framework.observe(self.on.mongodb_relation_changed, self._on_mongodb_relation_handler)
-        self.framework.observe(
-            self.on.mongodb_relation_departed, self._on_mongodb_relation_departed
-        )
-        self.framework.observe(self.on.leader_elected, self._on_leader_elected)
+
         self.framework.observe(self.on.update_status, self._on_update_status)
         self.framework.observe(self.on.get_primary_action, self._on_get_primary_action)
-        self.framework.observe(
-            self.on.mongodb_storage_detaching, self._on_mongodb_storage_detaching
-        )
 
-        # if a new leader has been elected, reconfigure the replica set
-        self.framework.observe(self.on.leader_elected, self._on_leader_elected)
+        # handle removal of replica
+        self.framework.observe(self.on.mongodb_storage_detaching, self._on_mongodb_remove_replica)
+        # if a new leader has been elected update hosts of MongoDB
+        self.framework.observe(self.on.leader_elected, self._update_hosts)
+        # when a unit departs the replica set update the hosts of MongoDB
+        self.framework.observe(self.on.mongodb_relation_departed, self._update_hosts)
 
-    def _on_leader_elected(self, _) -> None:
-        """Update replica set hosts.
-
-        On leader elected may get triggered as the result of a unit departing thus the hosts used
-        by MongoDB should be updated
-        """
+    def _update_hosts(self, _) -> None:
+        """Update replica set hosts."""
         # allow leader to reset which hosts are being used
-        self._peers.data[self.app]["replica_set_hosts"] = json.dumps(self._unit_ips)
+        if self.unit.is_leader():
+            self._peers.data[self.app]["replica_set_hosts"] = json.dumps(self._unit_ips)
 
-    def _on_mongodb_storage_detaching(self, event: ops.charm.StorageDetachingEvent) -> None:
+    def _on_mongodb_remove_replica(self, event: ops.charm.StorageDetachingEvent) -> None:
         """Removes unit from the MongoDB replica set config and steps down primary if necessary.
 
         Args:
             event: The triggering storage detaching event.
         """
-        logger.debug("the current primary is %s", self._primary)
-        logger.debug("the current unit is %s", self.unit.name)
+        logger.debug("current primary is %s. current unit is %s", self._primary, self.unit.name)
 
         # if the unit that is leaving is the primary allow it to step down
         if self.unit.name == self._primary:
@@ -107,20 +101,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             logger.error("deferring removal of unit: %s for reason: %s", self.unit.name, str(e))
             self.unit.status = WaitingStatus("waiting to reconfigure replica set")
             event.defer()
-            return
-
-        # if a new leader has been elected, reconfigure the replica set
-        self.framework.observe(self.on.leader_elected, self._on_leader_elected)
-
-    def _on_mongodb_relation_departed(self, event: ops.charm.RelationDepartedEvent) -> None:
-        """Removes the unit from the MongoDB replica set hosts.
-
-        Args:
-            event: The triggering relation departed event.
-        """
-        # allow leader to reset which hosts are being used
-        if self.unit.is_leader():
-            self._peers.data[self.app]["replica_set_hosts"] = json.dumps(self._unit_ips)
             return
 
     def _on_mongodb_relation_handler(self, event: ops.charm.RelationEvent) -> None:

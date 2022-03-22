@@ -131,6 +131,8 @@ class MongoDB:
             client.admin.command("replSetStepDown", config)
         except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
             raise e
+        finally:
+            client.close()
 
     def initialise_replica_set(self, hosts: list) -> None:
         """Initialize the MongoDB replica set.
@@ -170,12 +172,14 @@ class MongoDB:
 
         Using the current MongoDB configuration from mongod, remove_replica reconfigures the
         replica set such that it no longer contains the replica with remove_replica_ip.
+
+        Args:
+            remove_replica_ip: the ip of the replica to remove.
         """
         replica_set_client = self.client()
         try:
             # get current configuration and update with correct hosts
             rs_config = replica_set_client.admin.command("replSetGetConfig")
-            rs_config["config"]["_id"] = self._replica_set_name
             rs_config["config"]["version"] += 1
 
             # acquire current members in config
@@ -189,13 +193,13 @@ class MongoDB:
                 member_ip = member["host"].split(":")[0]
 
                 # if this ip is still being used retain it in new config
-                if not member_ip == remove_replica_ip:
+                if member_ip != remove_replica_ip:
                     new_members.append(member)
 
             rs_config["config"]["members"] = new_members
             replica_set_client.admin.command("replSetReconfig", rs_config["config"])
-        except (ConfigurationError, ConfigurationError, OperationFailure) as e:
-            raise e
+        except (ConfigurationError, ConfigurationError, OperationFailure):
+            raise
         finally:
             replica_set_client.close()
 

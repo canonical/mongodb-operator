@@ -291,4 +291,4 @@ class TestMongoServer(unittest.TestCase):
             with self.assertRaises(expected_raise):
                 mock_client.admin.command.side_effect = exception
                 mongo.primary_step_down()
-                mock_client.close.assert_called()
+            mock_client.close.assert_called()

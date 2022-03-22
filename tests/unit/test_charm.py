@@ -467,17 +467,6 @@ class TestCharm(unittest.TestCase):
             ["1.1.1.1"],
         )
 
-    @patch("os.environ.get")
-    @patch("charm.MongodbOperatorCharm._reconfigure")
-    @patch("charm.MongodbOperatorCharm._primary")
-    def test_mongodb_departed_non_leader_does_nothing(self, primary, reconfigure, _):
-        # preset values
-        self.harness.set_leader(False)
-        mock_event = mock.Mock()
-
-        self.harness.charm._on_mongodb_relation_departed(mock_event)
-        reconfigure.assert_not_called()
-
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongodbOperatorCharm._peers")
     @patch("mongod_helpers.MongoDB.is_ready")
