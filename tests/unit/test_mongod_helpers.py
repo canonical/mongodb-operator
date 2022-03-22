@@ -270,3 +270,25 @@ class TestMongoServer(unittest.TestCase):
             with self.assertRaises(expected_raise):
                 mock_client.admin.command.side_effect = exception
                 mongo.primary()
+
+    @patch("mongod_helpers.MongoDB.client")
+    @patch("pymongo.MongoClient")
+    def test_remove_replica_failure(self, mock_client, client):
+        """Verifies that remove_replica appropriately handles exceptions."""
+        # standard presets
+        config = MONGO_CONFIG.copy()
+        mongo = MongoDB(config)
+        client.return_value = mock_client
+
+        # verify that we raise the correct exception
+        exceptions = [
+            ConnectionFailure("error message"),
+            ConfigurationError("error message"),
+            OperationFailure("error message"),
+        ]
+        raises = [ConnectionFailure, ConfigurationError, OperationFailure]
+        for exception, expected_raise in zip(exceptions, raises):
+            with self.assertRaises(expected_raise):
+                mock_client.admin.command.side_effect = exception
+                mongo.primary_step_down()
+            mock_client.close.assert_called()

@@ -4,7 +4,6 @@
 # See LICENSE file for licensing details.
 import json
 import logging
-import os
 import subprocess
 from subprocess import check_call
 from typing import List, Optional
@@ -53,72 +52,56 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.framework.observe(self.on.start, self._on_start)
         self.framework.observe(self.on.mongodb_relation_joined, self._on_mongodb_relation_handler)
         self.framework.observe(self.on.mongodb_relation_changed, self._on_mongodb_relation_handler)
-        self.framework.observe(
-            self.on.mongodb_relation_departed, self._on_mongodb_relation_departed
-        )
+
         self.framework.observe(self.on.update_status, self._on_update_status)
         self.framework.observe(self.on.get_primary_action, self._on_get_primary_action)
 
-        # if a new leader has been elected, reconfigure the replica set
-        self.framework.observe(self.on.leader_elected, self._on_leader_elected)
+        # handle removal of replica
+        self.framework.observe(self.on.mongodb_storage_detaching, self._on_mongodb_remove_replica)
+        # if a new leader has been elected update hosts of MongoDB
+        self.framework.observe(self.on.leader_elected, self._update_hosts)
+        # when a unit departs the replica set update the hosts of MongoDB
+        self.framework.observe(self.on.mongodb_relation_departed, self._update_hosts)
 
-    def _on_leader_elected(self, event: ops.charm.LeaderElectedEvent) -> None:
-        """Handles leader elected event in the case that a new leader has elected.
+    def _update_hosts(self, _) -> None:
+        """Update replica set hosts."""
+        # allow leader to reset which hosts are being used
+        if self.unit.is_leader():
+            self._peers.data[self.app]["replica_set_hosts"] = json.dumps(self._unit_ips)
 
-        In the case that a new leader has been elected the new leader reconfigures the replica set.
-
-        Args:
-            event: The triggering leader elected event
-        """
-        # only reconfigure if previous leader stepped down without reconfiguring
-        # relation data only accepts string, hence "False"
-        if self._peers.data[self.app].get("_new_leader_must_reconfigure", "False") == "False":
-            return
-
-        # wait to reconfigure until a primary has been elected
-        if not self._primary:
-            event.defer()
-            self.unit.status = WaitingStatus("waiting to reconfigure replica set")
-            return
-
-        self._reconfigure(event)
-
-        # reset need for new leader to reconfigure
-        self._peers.data[self.app]["_new_leader_must_reconfigure"] = "False"
-
-    def _on_mongodb_relation_departed(self, event: ops.charm.RelationDepartedEvent) -> None:
-        """Removes the unit from the MongoDB replica set.
+    def _on_mongodb_remove_replica(self, event: ops.charm.StorageDetachingEvent) -> None:
+        """Removes unit from the MongoDB replica set config and steps down primary if necessary.
 
         Args:
-            event: The triggering relation departed event.
+            event: The triggering storage detaching event.
         """
-        # acquire removed unit
-        # TODO update this to use ops framework after this issue is addressed:
-        # https://github.com/canonical/operator/issues/707
-        # this will be updated in the following PR
-        departing_unit = os.environ.get("JUJU_DEPARTING_UNIT")
+        logger.debug("current primary is %s. current unit is %s", self._primary, self.unit.name)
 
-        # If primary is leaving, allow it to step down before reconfiguring
-        if departing_unit == self.unit.name and departing_unit == self._primary:
+        # if the unit that is leaving is the primary allow it to step down
+        if self.unit.name == self._primary:
             try:
                 self._mongo.primary_step_down()
+                logger.debug("the current primary is %s", self._primary)
             except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
-                logger.error("deferring reconfigure of replica set: %s", str(e))
+                logger.error(
+                    "deferring removal of unit: %s for reason: %s", self.unit.name, str(e)
+                )
                 self.unit.status = WaitingStatus("waiting to reconfigure replica set")
                 event.defer()
                 return
 
-        # only leader should configure replica set
-        if not self.unit.is_leader():
+        # reconfigure the replica set without this unit
+        try:
+            self._mongo.remove_replica(
+                remove_replica_ip=str(self.model.get_binding(PEER).network.bind_address)
+            )
+            logger.debug("Replica set successfully reconfigured")
+            self.unit.status = ActiveStatus()
+        except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
+            logger.error("deferring removal of unit: %s for reason: %s", self.unit.name, str(e))
+            self.unit.status = WaitingStatus("waiting to reconfigure replica set")
+            event.defer()
             return
-
-        # do not allow leader to reconfigure the set if leader is getting removed
-        if departing_unit == self.unit.name:
-            # make note that that the new leader must reconfigure
-            self._peers.data[self.app]["_new_leader_must_reconfigure"] = "True"
-            return
-
-        self._reconfigure(event)
 
     def _on_mongodb_relation_handler(self, event: ops.charm.RelationEvent) -> None:
         """Adds the unit as a replica to the MongoDB replica set.
