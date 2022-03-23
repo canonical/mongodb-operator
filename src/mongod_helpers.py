@@ -61,7 +61,7 @@ class MongoDB:
             status = client.admin.command("replSetGetStatus")
         except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
             logger.error("Failed to check the replica status, error: %s", e)
-            raise e
+            raise
         finally:
             client.close()
 
@@ -84,13 +84,17 @@ class MongoDB:
         except (ConnectionFailure, ConfigurationError, OperationFailure):
             return False
 
-        if replica_status == "PRIMARY" or replica_status == "SECONDARY" or replica_status == "ARBITER":
+        if (
+            replica_status == "PRIMARY"
+            or replica_status == "SECONDARY"
+            or replica_status == "ARBITER"
+        ):
             return True
 
         return False
 
     def is_mongod_ready(self) -> bool:
-        """Are mongod services available on a singe replica.
+        """Are mongod services available on a single replica.
 
         Returns:
             bool: True if services is ready False otherwise.

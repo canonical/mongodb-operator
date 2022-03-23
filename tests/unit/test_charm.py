@@ -80,7 +80,13 @@ class TestCharm(unittest.TestCase):
     @patch("charm.service_resume")
     @patch("mongod_helpers.MongoDB.is_replica_set")
     def test_on_start_full_successful_execution(
-        self, is_replica, service_resume, _open_port_tcp, initialise_replica_set, is_mongod_ready, is_replica_ready
+        self,
+        is_replica,
+        service_resume,
+        _open_port_tcp,
+        initialise_replica_set,
+        is_mongod_ready,
+        is_replica_ready,
     ):
         self.harness.set_leader(True)
         is_replica_ready.return_value = True
@@ -198,7 +204,13 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongodbOperatorCharm._initialise_replica_set")
     @patch("charm.service_running")
     def test_on_start_replica_not_ready_waits(
-        self, service_running, initialise_replica_set, _open_port_tcp, is_mongod_ready, is_replica_ready, is_replica_set
+        self,
+        service_running,
+        initialise_replica_set,
+        _open_port_tcp,
+        is_mongod_ready,
+        is_replica_ready,
+        is_replica_set,
     ):
         """Tests that if a replica is not ready that the charm goes into waiting."""
         self.harness.set_leader(True)
@@ -218,7 +230,13 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongodbOperatorCharm._initialise_replica_set")
     @patch("charm.service_running")
     def test_on_start_cannot_check_replica_status(
-        self, service_running, initialise_replica_set, _open_port_tcp, is_mongod_ready, check_replica_status, is_replica_set
+        self,
+        service_running,
+        initialise_replica_set,
+        _open_port_tcp,
+        is_mongod_ready,
+        check_replica_status,
+        is_replica_set,
     ):
         """Tests that failure to check replica state results in waiting status."""
         self.harness.set_leader(True)
@@ -568,7 +586,13 @@ class TestCharm(unittest.TestCase):
     @patch("charm.service_running")
     @patch("mongod_helpers.MongoDB.is_replica_set")
     def test_initialise_replica_success(
-        self, is_replica, service_running, _open_port_tcp, initialise_replica_set, is_mongod_ready, is_replica_ready
+        self,
+        is_replica,
+        service_running,
+        _open_port_tcp,
+        initialise_replica_set,
+        is_mongod_ready,
+        is_replica_ready,
     ):
         self.harness.set_leader(True)
         service_running.return_value = True
