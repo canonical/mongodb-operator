@@ -118,7 +118,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         calling_unit = event.unit
         calling_unit_ip = str(self._peers.data[calling_unit].get("private-address"))
         mongo_peer = self._single_mongo_replica(calling_unit_ip)
-        if not mongo_peer.is_ready(standalone=True):
+        if not mongo_peer.is_mongod_ready():
             logger.debug(
                 "unit is not ready, cannot initialise replica set unit: %s is ready, deferring on relation-joined",
                 calling_unit.name,
@@ -203,7 +203,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             return
 
         # check if this unit's deployment of MongoDB is ready
-        if not self._mongo.is_ready(standalone=True):
+        if not self._mongo.is_mongod_ready():
             logger.debug("mongoDB not ready, deferring on start event")
             self.unit.status = WaitingStatus("waiting for MongoDB to start")
             event.defer()
@@ -221,8 +221,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self._initialise_replica_set()
 
         # verify that leader is in replica set mode
-        if not self._mongo.is_ready(standalone=True) or not self._mongo.is_replica_set():
+        if not self._mongo.is_replica_set() or not self._mongo.is_replica_ready():
             logger.debug("Replica set for leader is not ready")
+            self.unit.status = WaitingStatus("waiting to initialise replica set")
             event.defer()
             return
 

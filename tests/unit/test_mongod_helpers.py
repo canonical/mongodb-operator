@@ -42,7 +42,7 @@ class TestMongoServer(unittest.TestCase):
 
         standalone_status = [True, False]
         for standalone in standalone_status:
-            ready = mongo.is_ready(standalone)
+            ready = mongo.is_mongod_ready()
             self.assertEqual(ready, True)
 
     @patch("mongod_helpers.MongoDB.check_server_info")
@@ -54,7 +54,7 @@ class TestMongoServer(unittest.TestCase):
 
         standalone_status = [True, False]
         for standalone in standalone_status:
-            ready = mongo.is_ready(standalone)
+            ready = mongo.is_mongod_ready()
             self.assertEqual(ready, False)
 
     def test_replica_set_uri_contains_correct_number_of_hosts(self):
@@ -85,7 +85,7 @@ class TestMongoServer(unittest.TestCase):
         command, _ = mock_client.admin.command.call_args
         self.assertEqual("replSetInitiate", command[0])
 
-    @patch("mongod_helpers.MongoDB.is_ready")
+    @patch("mongod_helpers.MongoDB.is_mongod_ready")
     def test_is_replica_set_not_ready_returns_false(self, is_ready):
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
@@ -96,7 +96,7 @@ class TestMongoServer(unittest.TestCase):
 
     @patch("pymongo.collection.Collection.find")
     @patch("pymongo.MongoClient.close")
-    @patch("mongod_helpers.MongoDB.is_ready")
+    @patch("mongod_helpers.MongoDB.is_mongod_ready")
     def test_is_replica_set_is_replica_returns_true(self, is_ready, close, find):
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
@@ -110,7 +110,7 @@ class TestMongoServer(unittest.TestCase):
 
     @patch("pymongo.collection.Collection.find")
     @patch("pymongo.MongoClient.close")
-    @patch("mongod_helpers.MongoDB.is_ready")
+    @patch("mongod_helpers.MongoDB.is_mongod_ready")
     def test_is_replica_set_is_not_replica_returns_false(self, is_ready, close, find):
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
@@ -291,4 +291,47 @@ class TestMongoServer(unittest.TestCase):
             with self.assertRaises(expected_raise):
                 mock_client.admin.command.side_effect = exception
                 mongo.primary_step_down()
+            mock_client.close.assert_called()
+
+    @patch("mongod_helpers.MongoDB.client")
+    @patch("pymongo.MongoClient")
+    def test_is_replica_ready_status_error(self, mock_client, client):
+        """Verifies that is_replica_ready appropriately handles exceptions."""
+        # standard presets
+        config = MONGO_CONFIG.copy()
+        mongo = MongoDB(config)
+        client.return_value = mock_client
+
+        # verify that we raise the correct exception
+        exceptions = [
+            ConnectionFailure("error message"),
+            ConfigurationError("error message"),
+            OperationFailure("error message"),
+        ]
+        raises = [ConnectionFailure, ConfigurationError, OperationFailure]
+        for exception, expected_raise in zip(exceptions, raises):
+            mock_client.admin.command.side_effect = exception
+            ready = mongo.is_replica_ready()
+            self.assertEqual(ready, False)
+
+    @patch("mongod_helpers.MongoDB.client")
+    @patch("pymongo.MongoClient")
+    def test_check_replica_status_error(self, mock_client, client):
+        """Verifies that check_replica_status appropriately handles exceptions."""
+        # standard presets
+        config = MONGO_CONFIG.copy()
+        mongo = MongoDB(config)
+        client.return_value = mock_client
+
+        # verify that we raise the correct exception
+        exceptions = [
+            ConnectionFailure("error message"),
+            ConfigurationError("error message"),
+            OperationFailure("error message"),
+        ]
+        raises = [ConnectionFailure, ConfigurationError, OperationFailure]
+        for exception, expected_raise in zip(exceptions, raises):
+            with self.assertRaises(expected_raise):
+                mock_client.admin.command.side_effect = exception
+                mongo.check_replica_status()
             mock_client.close.assert_called()
