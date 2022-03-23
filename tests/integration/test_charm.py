@@ -267,6 +267,39 @@ async def test_cluster_is_stable_after_non_leader_deletion(ops_test: OpsTest) ->
     client.close()
 
 
+async def test_add_unit(ops_test: OpsTest) -> None:
+    """Tests juju add-unit functionality.
+
+    Verifies that when a new unit is added to the MongoDB application that it is added to the
+    MongoDB replica set configuration.
+    """
+    # add unit and wait for idle
+    await ops_test.model.applications[APP_NAME].add_unit(count=1)
+    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=1000)
+    assert len(ops_test.model.applications[APP_NAME].units) == 2
+
+    # grab unit ips
+    ip_addresses = [unit.public_address for unit in ops_test.model.applications[APP_NAME].units]
+
+    # connect to replica set uri
+    replica_set_uri = "mongodb://{}:{},{}:{}/replicaSet=rs0".format(
+        ip_addresses[0], PORT, ip_addresses[1], PORT
+    )
+    client = MongoClient(replica_set_uri)
+
+    # get ips from MongoDB replica set configuration
+    rs_config = client.admin.command("replSetGetConfig")
+    member_ips = []
+    for member in rs_config["config"]["members"]:
+        # get member ip without ":PORT"
+        member_ips.append(member["host"].split(":")[0])
+
+    client.close()
+
+    # verify that the configuration has this new unit
+    assert set(member_ips) == set(ip_addresses)
+
+
 def update_bind_ip(conf: str, ip_address: str) -> str:
     """Updates mongod.conf contents to use the given ip address for bindIp.
 
