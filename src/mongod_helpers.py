@@ -82,7 +82,7 @@ class MongoDB:
         try:
             replica_status = self.check_replica_status()
         except (ConnectionFailure, ConfigurationError, OperationFailure):
-            return None
+            return False
 
         if replica_status == "PRIMARY" or replica_status == "SECONDARY" or replica_status == "ARBITER":
             return True
