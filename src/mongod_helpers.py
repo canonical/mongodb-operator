@@ -53,18 +53,50 @@ class MongoDB:
         """
         return client.server_info()
 
-    def is_ready(self, standalone: bool = False) -> bool:
-        """Is the MongoDB server ready to services requests.
+    def check_replica_status(self) -> str:
+        """Retrieves the status of the current replica."""
+        # connect to mongod and retrieve replica set status
+        client = self.client(standalone=True)
+        try:
+            status = client.admin.command("replSetGetStatus")
+        except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
+            logger.error("Failed to check the replica status, error: %s", e)
+            raise e
+        finally:
+            client.close()
 
-        Args:
-            standalone: an optional flag that indicates if the client should check if a single
-            instance of MongoDB or the entire replica set is ready
+        # look for our ip address in set of members
+        for member in status["members"]:
+            # get member ip without ":PORT"
+            if self._calling_unit_ip == member["name"].split(":")[0]:
+                return member["stateStr"]
+
+        return None
+
+    def is_replica_ready(self) -> bool:
+        """Is the MongoDB replica in the ready state.
+
+        Returns:
+            bool: True if services is ready False otherwise.
+        """
+        try:
+            replica_status = self.check_replica_status()
+        except (ConnectionFailure, ConfigurationError, OperationFailure):
+            return None
+
+        if replica_status == "PRIMARY" or replica_status == "SECONDARY" or replica_status == "ARBITER":
+            return True
+
+        return False
+
+    def is_mongod_ready(self) -> bool:
+        """Are mongod services available on a singe replica.
 
         Returns:
             bool: True if services is ready False otherwise.
         """
         ready = False
-        client = self.client(standalone)
+        client = self.client(standalone=True)
 
         try:
             self.check_server_info(client)
@@ -84,7 +116,7 @@ class MongoDB:
         is_replica_set = False
 
         # cannot be in replica set status if this server is not up
-        if not self.is_ready(standalone=True):
+        if not self.is_mongod_ready():
             return is_replica_set
 
         # access instance replica set configuration
