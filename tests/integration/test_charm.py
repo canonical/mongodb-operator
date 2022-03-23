@@ -279,9 +279,7 @@ async def test_add_unit(ops_test: OpsTest) -> None:
     assert len(ops_test.model.applications[APP_NAME].units) == 2
 
     # grab unit ips
-    ip_addresses = []
-    for unit in ops_test.model.applications[APP_NAME].units:
-        ip_addresses.append(unit.public_address)
+    ip_addresses = [unit.public_address for unit in ops_test.model.applications[APP_NAME].units]
 
     # connect to replica set uri
     replica_set_uri = "mongodb://{}:{},{}:{}/replicaSet=rs0".format(
