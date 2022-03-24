@@ -26,6 +26,7 @@ class MongoDB:
         self._port = config["port"]
         self._root_password = config["root_password"]
         self._unit_ips = config["unit_ips"]
+        self._replica_set_hosts = config["replica_set_hosts"]
         self._calling_unit_ip = config["calling_unit_ip"]
 
     def client(self, standalone=False) -> MongoClient:
@@ -53,12 +54,17 @@ class MongoDB:
         """
         return client.server_info()
 
-    def check_replica_status(self) -> str:
-        """Retrieves the status of the current replica."""
+    def check_replica_status(self, replica_ip) -> str:
+        """Retrieves the status of replica.
+
+        Args:
+            replica_ip: ip of replica to check status of
+            """
         # connect to mongod and retrieve replica set status
         client = self.client(standalone=True)
         try:
             status = client.admin.command("replSetGetStatus")
+            logger.debug("current replica set status: %s", status)
         except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
             logger.error("Failed to check the replica status, error: %s", e)
             raise
@@ -68,22 +74,41 @@ class MongoDB:
         # look for our ip address in set of members
         for member in status["members"]:
             # get member ip without ":PORT"
-            if self._calling_unit_ip == member["name"].split(":")[0]:
+            logger.debug(member["name"].split(":")[0])
+            if replica_ip == member["name"].split(":")[0]:
                 return member["stateStr"]
 
         return None
 
-    def is_replica_ready(self) -> bool:
+    def all_replicas_ready(self) -> bool:
+        """TODO."""
+        for unit_ip in self._replica_set_hosts:
+            if not self.is_replica_ready(unit_ip):
+                logger.debug("unit: %s is not ready", unit_ip)
+                return False
+
+        return True
+
+    def is_replica_ready(self, replica_ip=None) -> bool:
         """Is the MongoDB replica in the ready state.
+
+        Args:
+            replica_ip: optional, ip of replica to query.
 
         Returns:
             bool: True if services is ready False otherwise.
         """
+        # use _calling_unit_ip if no specific replica is given
+        if not replica_ip:
+            replica_ip = self._calling_unit_ip
+
         try:
-            replica_status = self.check_replica_status()
-        except (ConnectionFailure, ConfigurationError, OperationFailure):
+            replica_status = self.check_replica_status(replica_ip)
+        except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
+            logger.error("failed to attain replica status error: %s", e)
             return False
 
+        logger.debug("replica status for replica: %s is: %s", replica_ip, replica_status)
         if (
             replica_status == "PRIMARY"
             or replica_status == "SECONDARY"
