@@ -509,7 +509,7 @@ class TestCharm(unittest.TestCase):
     def test_mongodb_relation_joined_all_replicas_not_ready(
         self, all_replicas_ready, mongodb_reconfigure, need_reconfiguration, single_replica
     ):
-        """Tests that when current replcia set hosts are not ready that we go into waiting
+        """Tests that when current replcia set hosts are not ready that we go into waiting.
 
         Tests the scenario that a failure to check the current statuses of replica set hosts
         results in WaitingStatus and no attempt to reconfigure is made.

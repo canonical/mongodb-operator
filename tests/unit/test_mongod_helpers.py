@@ -330,7 +330,7 @@ class TestMongoServer(unittest.TestCase):
     @patch("pymongo.MongoClient")
     @patch("mongod_helpers.MongoDB.client")
     def test_not_all_replicas_ready(self, is_replica_ready, mock_client, client):
-        """Verifies that all_replicas_ready returns False when not all replicas are ready"""
+        """Verifies that all_replicas_ready returns False when not all replicas are ready."""
         # standard presets
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)

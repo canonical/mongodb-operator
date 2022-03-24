@@ -59,7 +59,7 @@ class MongoDB:
 
         Args:
             replica_ip: ip of replica to check status of
-            """
+        """
         # connect to mongod and retrieve replica set status
         client = self.client(standalone=True)
         try:
@@ -81,7 +81,7 @@ class MongoDB:
         return None
 
     def all_replicas_ready(self) -> bool:
-        """TODO."""
+        """Returns true if all replica hosts are ready."""
         for unit_ip in self._replica_set_hosts:
             if not self.is_replica_ready(unit_ip):
                 logger.debug("unit: %s is not ready", unit_ip)
