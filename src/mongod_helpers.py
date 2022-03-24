@@ -61,7 +61,7 @@ class MongoDB:
             status = client.admin.command("replSetGetStatus")
         except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
             logger.error("Failed to check the replica status, error: %s", e)
-            raise e
+            raise
         finally:
             client.close()
 
