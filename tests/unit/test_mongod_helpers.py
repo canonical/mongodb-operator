@@ -24,9 +24,16 @@ MONGO_CONFIG = {
     "calling_unit_ip": ["1.1.1.1"],
 }
 
+PYMONGO_EXCEPTIONS = [
+    (ConnectionFailure("error message"), ConnectionFailure),
+    (ConfigurationError("error message"), ConfigurationError),
+    (OperationFailure("error message"), OperationFailure),
+]
+
 
 class TestMongoServer(unittest.TestCase):
     def test_client_returns_mongo_client_instance(self):
+        """Test that client returns an instance of MongoClient."""
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
         standalone_status = [True, False]
@@ -36,6 +43,7 @@ class TestMongoServer(unittest.TestCase):
 
     @patch("pymongo.MongoClient.server_info")
     def test_mongo_is_ready_when_server_info_is_available(self, server_info):
+        """Test that is ready returns true when mongod is running."""
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
         server_info.return_value = {"info": "some info"}
@@ -48,6 +56,7 @@ class TestMongoServer(unittest.TestCase):
     @patch("mongod_helpers.MongoDB.check_server_info")
     @patch("pymongo.MongoClient", "server_info", "ServerSelectionTimeoutError")
     def test_mongo_is_not_ready_when_server_info_is_not_available(self, check_server_info):
+        """Test that is ready returns False when mongod is not running."""
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
         check_server_info.side_effect = RetryError(last_attempt=None)
@@ -58,6 +67,7 @@ class TestMongoServer(unittest.TestCase):
             self.assertEqual(ready, False)
 
     def test_replica_set_uri_contains_correct_number_of_hosts(self):
+        """Test that is replica set URI uses the expected number of hosts."""
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
         standalone_status = [False, True]
@@ -71,6 +81,7 @@ class TestMongoServer(unittest.TestCase):
     @patch("mongod_helpers.MongoDB.client")
     @patch("pymongo.MongoClient")
     def test_initializing_replica_invokes_admin_command(self, mock_client, client):
+        """Test that when initializing replica set replSetInitiate command is used."""
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
 
@@ -85,23 +96,22 @@ class TestMongoServer(unittest.TestCase):
         command, _ = mock_client.admin.command.call_args
         self.assertEqual("replSetInitiate", command[0])
 
-    @patch("mongod_helpers.MongoDB.is_mongod_ready")
+    @patch("mongod_helpers.MongoDB.is_mongod_ready", return_value=False)
     def test_is_replica_set_not_ready_returns_false(self, is_ready):
+        """Test that is replica set status returns false when mongod isn't running."""
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
-        is_ready.return_value = False
 
         replica_set_status = mongo.is_replica_set()
         self.assertEqual(replica_set_status, False)
 
     @patch("pymongo.collection.Collection.find")
     @patch("pymongo.MongoClient.close")
-    @patch("mongod_helpers.MongoDB.is_mongod_ready")
+    @patch("mongod_helpers.MongoDB.is_mongod_ready", return_value=True)
     def test_is_replica_set_is_replica_returns_true(self, is_ready, close, find):
+        """Test that is replica set status returns true when configured as a replica set."""
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
-        is_ready.return_value = True
-
         find.return_value = [{"_id": "rs0"}]
 
         replica_set_status = mongo.is_replica_set()
@@ -110,11 +120,11 @@ class TestMongoServer(unittest.TestCase):
 
     @patch("pymongo.collection.Collection.find")
     @patch("pymongo.MongoClient.close")
-    @patch("mongod_helpers.MongoDB.is_mongod_ready")
+    @patch("mongod_helpers.MongoDB.is_mongod_ready", return_value=True)
     def test_is_replica_set_is_not_replica_returns_false(self, is_ready, close, find):
+        """Test that is replica set status returns false when not configured as a replica set."""
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
-        is_ready.return_value = True
 
         find.side_effect = IndexError()
 
@@ -125,6 +135,7 @@ class TestMongoServer(unittest.TestCase):
     @patch("mongod_helpers.MongoDB.client")
     @patch("pymongo.MongoClient")
     def test_reconfiguring_replica_invokes_admin_command(self, mock_client, client):
+        """Test that reconfiguring replica set uses the replSetReconfig admin command."""
         # presets
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
@@ -142,29 +153,28 @@ class TestMongoServer(unittest.TestCase):
     @patch("mongod_helpers.MongoDB.client")
     @patch("pymongo.MongoClient")
     def test_reconfiguring_replica_handles_failure(self, mock_client, client):
+        """Test on failure of reconfiguring replica set an exception is raised.
+
+        Test also verifies that when an exception is raised we still close the client connection.
+        """
         # presets
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
         client.return_value = mock_client
 
-        # verify we make a call to reconfigure
-        exceptions = [
-            ConnectionFailure("error message"),
-            ConfigurationError("error message"),
-            OperationFailure("error message"),
-        ]
-        raises = [ConnectionFailure, ConfigurationError, OperationFailure]
-        for exception, expected_raise in zip(exceptions, raises):
+        # verify we raise an exception on reconfigure failure
+        for exception, expected_raise in PYMONGO_EXCEPTIONS:
             with self.assertRaises(expected_raise):
                 mock_client.admin.command.side_effect = exception
 
                 # call function
                 mongo.reconfigure_replica_set()
 
-                # verify we close connection
-                (mock_client.close).assert_called()
+            # verify we close connection
+            (mock_client.close).assert_called()
 
     def test_replica_set_config_no_changes(self):
+        """Test replica_set_config doesn't update the config when no changes are needed."""
         # standard presets
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
@@ -180,6 +190,11 @@ class TestMongoServer(unittest.TestCase):
         self.assertEqual(new_config, current_config["config"]["members"])
 
     def test_replica_set_config_adds_member(self):
+        """Test replica_set_config adds member properly.
+
+        Verifies that the old host machines maintains its original id in the config and that the
+        new host gets an id of the next increment.
+        """
         # standard presets
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
@@ -196,6 +211,10 @@ class TestMongoServer(unittest.TestCase):
         self.assertEqual(new_config, expected_new_members)
 
     def test_replica_set_config_removes_member(self):
+        """Test replica_set_config removes member properly.
+
+        Verifies that the host machines not getting removed maintain their original id.
+        """
         # standard presets
         config = MONGO_CONFIG.copy()
         # remove a member
@@ -239,13 +258,7 @@ class TestMongoServer(unittest.TestCase):
         client.return_value = mock_client
 
         # verify that we raise the correct exception
-        exceptions = [
-            ConnectionFailure("error message"),
-            ConfigurationError("error message"),
-            OperationFailure("error message"),
-        ]
-        raises = [ConnectionFailure, ConfigurationError, OperationFailure]
-        for exception, expected_raise in zip(exceptions, raises):
+        for exception, expected_raise in PYMONGO_EXCEPTIONS:
             with self.assertRaises(expected_raise):
                 mock_client.admin.command.side_effect = exception
                 mongo.primary_step_down()
@@ -260,13 +273,7 @@ class TestMongoServer(unittest.TestCase):
         client.return_value = mock_client
 
         # verify that we raise the correct exception
-        exceptions = [
-            ConnectionFailure("error message"),
-            ConfigurationError("error message"),
-            OperationFailure("error message"),
-        ]
-        raises = [ConnectionFailure, ConfigurationError, OperationFailure]
-        for exception, expected_raise in zip(exceptions, raises):
+        for exception, expected_raise in PYMONGO_EXCEPTIONS:
             with self.assertRaises(expected_raise):
                 mock_client.admin.command.side_effect = exception
                 mongo.primary()
@@ -281,13 +288,7 @@ class TestMongoServer(unittest.TestCase):
         client.return_value = mock_client
 
         # verify that we raise the correct exception
-        exceptions = [
-            ConnectionFailure("error message"),
-            ConfigurationError("error message"),
-            OperationFailure("error message"),
-        ]
-        raises = [ConnectionFailure, ConfigurationError, OperationFailure]
-        for exception, expected_raise in zip(exceptions, raises):
+        for exception, expected_raise in PYMONGO_EXCEPTIONS:
             with self.assertRaises(expected_raise):
                 mock_client.admin.command.side_effect = exception
                 mongo.primary_step_down()
@@ -303,13 +304,7 @@ class TestMongoServer(unittest.TestCase):
         client.return_value = mock_client
 
         # verify that we raise the correct exception
-        exceptions = [
-            ConnectionFailure("error message"),
-            ConfigurationError("error message"),
-            OperationFailure("error message"),
-        ]
-        raises = [ConnectionFailure, ConfigurationError, OperationFailure]
-        for exception, expected_raise in zip(exceptions, raises):
+        for exception, expected_raise in PYMONGO_EXCEPTIONS:
             mock_client.admin.command.side_effect = exception
             ready = mongo.is_replica_ready()
             self.assertEqual(ready, False)
@@ -324,13 +319,7 @@ class TestMongoServer(unittest.TestCase):
         client.return_value = mock_client
 
         # verify that we raise the correct exception
-        exceptions = [
-            ConnectionFailure("error message"),
-            ConfigurationError("error message"),
-            OperationFailure("error message"),
-        ]
-        raises = [ConnectionFailure, ConfigurationError, OperationFailure]
-        for exception, expected_raise in zip(exceptions, raises):
+        for exception, expected_raise in PYMONGO_EXCEPTIONS:
             with self.assertRaises(expected_raise):
                 mock_client.admin.command.side_effect = exception
                 mongo.check_replica_status()
