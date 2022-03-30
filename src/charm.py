@@ -75,9 +75,15 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         Args:
             event: The triggering storage detaching event.
         """
-        logger.debug("current primary is %s. current unit is %s", self._primary, self.unit.name)
+        # only remove and reconfigure if all replicas of MongoDB application are in ready state
+        if not self._mongo.all_replicas_ready():
+            self.unit.status = WaitingStatus("waiting to reconfigure replica set")
+            logger.debug("waiting for all replica set hosts to be ready")
+            event.defer()
+            return
 
         # if the unit that is leaving is the primary allow it to step down
+        logger.debug("current primary is %s. current unit is %s", self._primary, self.unit.name)
         if self.unit.name == self._primary:
             try:
                 self._mongo.primary_step_down()
