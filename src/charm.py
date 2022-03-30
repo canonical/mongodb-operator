@@ -146,19 +146,20 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             event: The triggering relation event.
         """
         # check if reconfiguration is necessary
-        if self._need_replica_set_reconfiguration:
-            try:
-                self._mongo.reconfigure_replica_set()
-                # update the set of replica set hosts
-                self._peers.data[self.app]["replica_set_hosts"] = json.dumps(self._unit_ips)
-                logger.debug("Replica set successfully reconfigured")
-            except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
-                logger.error("deferring reconfigure of replica set: %s", str(e))
-                self.unit.status = WaitingStatus("waiting to reconfigure replica set")
-                event.defer()
-                return
+        if not self._need_replica_set_reconfiguration:
+            self.unit.status = ActiveStatus()
+            return
 
-        self.unit.status = ActiveStatus()
+        try:
+            self._mongo.reconfigure_replica_set()
+            # update the set of replica set hosts
+            self._peers.data[self.app]["replica_set_hosts"] = json.dumps(self._unit_ips)
+            logger.debug("Replica set successfully reconfigured")
+            self.unit.status = ActiveStatus()
+        except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
+            logger.error("deferring reconfigure of replica set: %s", str(e))
+            self.unit.status = WaitingStatus("waiting to reconfigure replica set")
+            event.defer()
 
     def _on_install(self, _) -> None:
         """Handle the install event (fired on startup).

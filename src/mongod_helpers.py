@@ -74,8 +74,9 @@ class MongoDB:
         # look for our ip address in set of members
         for member in status["members"]:
             # get member ip without ":PORT"
-            logger.debug(member["name"].split(":")[0])
-            if replica_ip == member["name"].split(":")[0]:
+            member_ip = member["name"].split(":")[0]
+            logger.debug(member_ip)
+            if replica_ip == member_ip:
                 return member["stateStr"]
 
         return None
