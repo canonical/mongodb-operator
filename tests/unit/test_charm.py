@@ -508,8 +508,8 @@ class TestCharm(unittest.TestCase):
     ):
         """Tests that we go into waiting when current ReplicaSet hosts are not ready.
 
-        Tests the scenario that a failure to check the current statuses of replica set hosts
-        results in WaitingStatus and no attempt to reconfigure is made.
+        Tests the scenario that if current replica set hosts are not ready, the leader goes into
+        WaitingStatus and no attempt to reconfigure is made.
         """
         # preset values
         self.harness.set_leader(True)
@@ -819,3 +819,59 @@ class TestCharm(unittest.TestCase):
             self.assertEqual(
                 self.harness.charm.unit.status, WaitingStatus("waiting to reconfigure replica set")
             )
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongodbOperatorCharm._single_mongo_replica")
+    @patch("charm.MongodbOperatorCharm._need_replica_set_reconfiguration", return_value=True)
+    @patch("mongod_helpers.MongoDB.reconfigure_replica_set")
+    @patch("mongod_helpers.MongoDB.check_replica_status")
+    def test_storage_detaching_check_status_failure(
+        self, check_replica_status, mongodb_reconfigure, need_reconfiguration, single_replica
+    ):
+        """Test failure in checking status results in waiting when removing a unit.
+
+        Tests the scenario that a failure to check the current statuses of replica set hosts
+        results in WaitingStatus and no attempt to reconfigure is made.
+        """
+        # preset values
+        self.harness.set_leader(True)
+        single_replica.return_value.is_ready.return_value = True
+
+        for exception in PYMONGO_EXCEPTIONS:
+            # simulate failure to check replica status
+            check_replica_status.side_effect = exception
+
+            # simulate removal of unit
+            self.harness.charm.on.mongodb_storage_detaching.emit(mock.Mock())
+
+            # verify we go into waiting and don't reconfigure
+            self.assertEqual(
+                self.harness.charm.unit.status, WaitingStatus("waiting to reconfigure replica set")
+            )
+            mongodb_reconfigure.assert_not_called()
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongodbOperatorCharm._single_mongo_replica")
+    @patch("charm.MongodbOperatorCharm._need_replica_set_reconfiguration", return_value=True)
+    @patch("mongod_helpers.MongoDB.reconfigure_replica_set")
+    @patch("mongod_helpers.MongoDB.all_replicas_ready", return_value=False)
+    def test_storage_detaching_all_replicas_not_ready(
+        self, all_replicas_ready, mongodb_reconfigure, need_reconfiguration, single_replica
+    ):
+        """Tests that we go into waiting when current ReplicaSet hosts are not ready.
+
+        Tests the scenario that if current the current hosts of MongoDB are not all ready that
+        the application waits before reconfiguring if the current unit is getting removed.
+        """
+        # preset values
+        self.harness.set_leader(True)
+        single_replica.return_value.is_ready.return_value = True
+
+        # simulate removal of unit
+        self.harness.charm.on.mongodb_storage_detaching.emit(mock.Mock())
+
+        # verify we go into waiting and don't reconfigure
+        self.assertEqual(
+            self.harness.charm.unit.status, WaitingStatus("waiting to reconfigure replica set")
+        )
+        mongodb_reconfigure.assert_not_called()
