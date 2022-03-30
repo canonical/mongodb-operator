@@ -119,10 +119,18 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         calling_unit_ip = str(self._peers.data[calling_unit].get("private-address"))
         mongo_peer = self._single_mongo_replica(calling_unit_ip)
         if not mongo_peer.is_mongod_ready():
+            self.unit.status = WaitingStatus("waiting to reconfigure replica set")
             logger.debug(
                 "unit is not ready, cannot initialise replica set unit: %s is ready, deferring on relation-joined",
                 calling_unit.name,
             )
+            event.defer()
+            return
+
+        # only reconfigure if all current replicas of MongoDB application are in ready state
+        if not self._mongo.all_replicas_ready():
+            self.unit.status = WaitingStatus("waiting to reconfigure replica set")
+            logger.debug("waiting for all replica set hosts to be ready")
             event.defer()
             return
 
@@ -138,17 +146,20 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             event: The triggering relation event.
         """
         # check if reconfiguration is necessary
-        if self._need_replica_set_reconfiguration:
-            try:
-                self._mongo.reconfigure_replica_set()
-                # update the set of replica set hosts
-                self._peers.data[self.app]["replica_set_hosts"] = json.dumps(self._unit_ips)
-                logger.debug("Replica set successfully reconfigured")
-                self.unit.status = ActiveStatus()
-            except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
-                logger.error("deferring reconfigure of replica set: %s", str(e))
-                self.unit.status = WaitingStatus("waiting to reconfigure replica set")
-                event.defer()
+        if not self._need_replica_set_reconfiguration:
+            self.unit.status = ActiveStatus()
+            return
+
+        try:
+            self._mongo.reconfigure_replica_set()
+            # update the set of replica set hosts
+            self._peers.data[self.app]["replica_set_hosts"] = json.dumps(self._unit_ips)
+            logger.debug("Replica set successfully reconfigured")
+            self.unit.status = ActiveStatus()
+        except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
+            logger.error("deferring reconfigure of replica set: %s", str(e))
+            self.unit.status = WaitingStatus("waiting to reconfigure replica set")
+            event.defer()
 
     def _on_install(self, _) -> None:
         """Handle the install event (fired on startup).
@@ -410,6 +421,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             "root_password": "password",
             "security_key": "",
             "unit_ips": self._unit_ips,
+            "replica_set_hosts": self._replica_set_hosts,
             "calling_unit_ip": str(self.model.get_binding(PEER).network.bind_address),
         }
         return config

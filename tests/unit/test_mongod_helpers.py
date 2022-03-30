@@ -22,6 +22,7 @@ MONGO_CONFIG = {
     "root_password": "password",
     "unit_ips": ["1.1.1.1", "2.2.2.2"],
     "calling_unit_ip": ["1.1.1.1"],
+    "replica_set_hosts": ["1.1.1.1", "2.2.2.2"],
 }
 
 PYMONGO_EXCEPTIONS = [
@@ -322,5 +323,32 @@ class TestMongoServer(unittest.TestCase):
         for exception, expected_raise in PYMONGO_EXCEPTIONS:
             with self.assertRaises(expected_raise):
                 mock_client.admin.command.side_effect = exception
-                mongo.check_replica_status()
+                mongo.check_replica_status("1.1.1.1")
             mock_client.close.assert_called()
+
+    @patch("mongod_helpers.MongoDB.is_replica_ready", return_value=False)
+    @patch("pymongo.MongoClient")
+    @patch("mongod_helpers.MongoDB.client")
+    def test_not_all_replicas_ready(self, is_replica_ready, mock_client, client):
+        """Verifies that all_replicas_ready returns False when not all replicas are ready."""
+        # standard presets
+        config = MONGO_CONFIG.copy()
+        mongo = MongoDB(config)
+
+        # verify result of all replicas ready
+        self.assertEqual(mongo.all_replicas_ready(), False)
+
+    @patch("mongod_helpers.MongoDB.check_replica_status")
+    @patch("pymongo.MongoClient")
+    @patch("mongod_helpers.MongoDB.client")
+    def test_not_all_replicas_check_failure(self, check_replica_status, mock_client, client):
+        """Verifies that all_replicas_ready returns False failure to check status occurs."""
+        # standard presets
+        config = MONGO_CONFIG.copy()
+        mongo = MongoDB(config)
+
+        for exception in PYMONGO_EXCEPTIONS:
+            check_replica_status.side_effect = exception
+
+            # verify result of all replicas ready
+            self.assertEqual(mongo.all_replicas_ready(), False)
