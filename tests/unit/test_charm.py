@@ -860,8 +860,8 @@ class TestCharm(unittest.TestCase):
     ):
         """Tests that we go into waiting when current ReplicaSet hosts are not ready.
 
-        Tests the scenario that if current the current hosts of MongoDB are not all ready that
-        the application waits before reconfiguring if the current unit is getting removed.
+        Tests the scenario that if the current hosts of MongoDB are not all ready that the
+        application waits before reconfiguring if the current unit is getting removed.
         """
         # preset values
         self.harness.set_leader(True)
