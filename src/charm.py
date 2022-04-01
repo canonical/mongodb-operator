@@ -13,6 +13,7 @@ import ops.charm
 import yaml
 from charms.operator_libs_linux.v0 import apt
 from charms.operator_libs_linux.v0.systemd import service_resume, service_running
+from charms.rolling_ops.v0.rollingops import RollingOpsManager
 from ops.main import main
 from ops.model import (
     ActiveStatus,
@@ -47,6 +48,11 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         super().__init__(*args)
         self._port = MONGODB_PORT
 
+        # create a lock to be used across all peers for removing replicas
+        self.remove_lock = RollingOpsManager(
+            charm=self, relation="remove", callback=self._remove_replica
+        )
+
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(self.on.start, self._on_start)
@@ -57,7 +63,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.framework.observe(self.on.get_primary_action, self._on_get_primary_action)
 
         # handle removal of replica
-        self.framework.observe(self.on.mongodb_storage_detaching, self._on_mongodb_remove_replica)
+        self.framework.observe(self.on.mongodb_storage_detaching,
+                               self._on_mongodb_storage_detaching)
         # if a new leader has been elected update hosts of MongoDB
         self.framework.observe(self.on.leader_elected, self._update_hosts)
         # when a unit departs the replica set update the hosts of MongoDB
@@ -69,12 +76,21 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         if self.unit.is_leader():
             self._peers.data[self.app]["replica_set_hosts"] = json.dumps(self._unit_ips)
 
-    def _on_mongodb_remove_replica(self, event: ops.charm.StorageDetachingEvent) -> None:
+    def _on_mongodb_storage_detaching(self, _) -> None:
+        """Handles storage detached by first aquiring a lock and then removing the replica."""
+        # this function aquires the lock, executes the function _remove_replica, and then releases
+        # the lock
+        logger.debug("aquiring lock for removing unit.")
+        self.on[self.remove_lock.name].acquire_lock.emit()
+        logger.debug("releasing lock for removing unit.")
+
+    def _remove_replica(self, event: ops.charm.StorageDetachingEvent) -> None:
         """Removes unit from the MongoDB replica set config and steps down primary if necessary.
 
         Args:
             event: The triggering storage detaching event.
         """
+        logger.debug("lock aquired form removing replica")
         # only remove and reconfigure if all replicas of MongoDB application are in ready state
         if not self._mongo.all_replicas_ready():
             self.unit.status = WaitingStatus("waiting to reconfigure replica set")
