@@ -5,14 +5,19 @@
 import logging
 import os
 from pathlib import Path
-from typing import List, Tuple
+from typing import List
 
 import ops
 import pytest
 import yaml
 from helpers import pull_content_from_unit_file
 from pymongo import MongoClient
-from pymongo.errors import ServerSelectionTimeoutError
+from pymongo.errors import (
+    ConfigurationError,
+    ConnectionFailure,
+    OperationFailure,
+    ServerSelectionTimeoutError,
+)
 from pytest_operator.plugin import OpsTest
 from tenacity import (
     RetryError,
@@ -176,41 +181,25 @@ async def test_cluster_is_stable_after_leader_deletion(ops_test: OpsTest) -> Non
     # verify that we have a leader
     assert leader_unit is not None, "No unit is leader"
 
-    # grab IPS
-    ip_addresses = []
-    for unit in ops_test.model.applications[APP_NAME].units:
-        ip_addresses.append(unit.public_address)
+    # grab unit ips
+    ip_addresses = [unit.public_address for unit in ops_test.model.applications[APP_NAME].units]
 
-    # connect to mongo replica set
     # check that the replica set with the remaining units has a primary
-    replica_set_uri = "mongodb://{}:{},{}:{}/replicaSet=rs0".format(
-        ip_addresses[0], PORT, ip_addresses[1], PORT
-    )
-    client = MongoClient(replica_set_uri)
-
-    # grab primary
     try:
-        primary = replica_set_primary(client, valid_ips=ip_addresses)
+        primary = replica_set_primary(ip_addresses)
     except RetryError:
         primary = None
 
     # verify that the primary is not None
-    assert primary is not None, "replica set with uri {} has no primary".format(replica_set_uri)
+    assert primary is not None, "replica set has no primary"
 
     # check that the primary is one of the remaining units
-    assert primary[0] in ip_addresses, "replica set primary is not one of the available units"
+    assert primary in ip_addresses, "replica set primary is not one of the available units"
 
     # verify that the configuration of mongodb no longer has the deleted ip
-    removed_from_config = True
-    rs_config = client.admin.command("replSetGetConfig")
-    for member in rs_config["config"]["members"]:
-        # get member ip without ":PORT"
-        member_ip = member["host"].split(":")[0]
-        if member_ip == leader_ip:
-            removed_from_config = False
+    member_ips = fetch_replica_set_members(ip_addresses)
 
-    assert removed_from_config, "removed unit is still present in replica set config"
-    client.close()
+    assert leader_ip not in member_ips, "removed unit is still present in replica set config"
 
 
 async def test_cluster_is_stable_after_non_leader_deletion(ops_test: OpsTest) -> None:
@@ -233,38 +222,25 @@ async def test_cluster_is_stable_after_non_leader_deletion(ops_test: OpsTest) ->
     # verify that is one unit running after deletion of non-leader
     assert len(ops_test.model.applications[APP_NAME].units) == 1
 
-    # grab IPS
-    ip_addresses = []
-    for unit in ops_test.model.applications[APP_NAME].units:
-        ip_addresses.append(unit.public_address)
+    # grab unit ips
+    ip_addresses = [unit.public_address for unit in ops_test.model.applications[APP_NAME].units]
 
     # check that the replica set with the remaining units has a primary
-    # connect to replica set uri
-    replica_set_uri = ip_addresses[0] + ":" + str(PORT)
-    client = MongoClient(replica_set_uri, replicaset="rs0")
-
     try:
-        primary = replica_set_primary(client, valid_ips=ip_addresses)
+        primary = replica_set_primary(ip_addresses)
     except RetryError:
         primary = None
 
     # verify that the primary is not None
-    assert primary is not None, "replica set with uri {} has no primary".format(replica_set_uri)
+    assert primary is not None, "replica set has no primary"
 
     # check that the primary is not one of the deleted units
-    assert primary[0] in ip_addresses, "replica set primary is not one of the available units"
+    assert primary in ip_addresses, "replica set primary is not one of the available units"
 
     # verify that the configuration of mongodb no longer has the deleted ip
-    removed_from_config = True
-    rs_config = client.admin.command("replSetGetConfig")
-    for member in rs_config["config"]["members"]:
-        # get member ip without ":PORT"
-        member_ip = member["host"].split(":")[0]
-        if member_ip == non_leader_ip:
-            removed_from_config = False
+    member_ips = fetch_replica_set_members(ip_addresses)
 
-    assert removed_from_config, "removed unit is still present in replica set config"
-    client.close()
+    assert non_leader_ip not in member_ips, "removed unit is still present in replica set config"
 
 
 async def test_add_unit(ops_test: OpsTest) -> None:
@@ -273,22 +249,47 @@ async def test_add_unit(ops_test: OpsTest) -> None:
     Verifies that when a new unit is added to the MongoDB application that it is added to the
     MongoDB replica set configuration.
     """
-    # add unit and wait for idle
-    await ops_test.model.applications[APP_NAME].add_unit(count=1)
+    # add units and wait for idle
+    await ops_test.model.applications[APP_NAME].add_unit(count=2)
     await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=1000)
-    assert len(ops_test.model.applications[APP_NAME].units) == 2
+    assert len(ops_test.model.applications[APP_NAME].units) == 3
 
     # grab unit ips
     ip_addresses = [unit.public_address for unit in ops_test.model.applications[APP_NAME].units]
 
+    # connect to replica set uri and get replica set members
+    member_ips = fetch_replica_set_members(ip_addresses)
+
+    # verify that the replica set members have the correct units
+    assert set(member_ips) == set(ip_addresses)
+
+
+def generate_replica_set_uri(replica_ips: List[str]) -> str:
+    """Generates the replica set URI for multiple IP addresses.
+
+    Args:
+        replica_ips: list of ips hosting the replica set.
+    """
+    replica_set_uri = "mongodb://"
+    hosts = ["{}:{}".format(replica_ip, PORT) for replica_ip in replica_ips]
+    replica_set_uri += ",".join(hosts)
+    replica_set_uri += "/replicaSet=rs0"
+    return replica_set_uri
+
+
+def fetch_replica_set_members(replica_ips: List[str]):
+    """Fetches the IPs listed as replica set members in the MongoDB replica set configuration.
+
+    Args:
+        replica_ips: list of ips hosting the replica set.
+    """
+    print("replica_ips", replica_ips)
     # connect to replica set uri
-    replica_set_uri = "mongodb://{}:{},{}:{}/replicaSet=rs0".format(
-        ip_addresses[0], PORT, ip_addresses[1], PORT
-    )
-    client = MongoClient(replica_set_uri)
+    client = MongoClient(generate_replica_set_uri(replica_ips))
 
     # get ips from MongoDB replica set configuration
     rs_config = client.admin.command("replSetGetConfig")
+    print("rs_config", rs_config)
     member_ips = []
     for member in rs_config["config"]["members"]:
         # get member ip without ":PORT"
@@ -296,8 +297,7 @@ async def test_add_unit(ops_test: OpsTest) -> None:
 
     client.close()
 
-    # verify that the configuration has this new unit
-    assert set(member_ips) == set(ip_addresses)
+    return member_ips
 
 
 def update_bind_ip(conf: str, ip_address: str) -> str:
@@ -321,12 +321,40 @@ def unit_uri(ip_address: str) -> str:
     return "mongodb://{}:{}/".format(ip_address, PORT)
 
 
+def fetch_primary(replica_set_hosts: List[str]) -> str:
+    """Returns IP address of current replica set primary."""
+    # connect to MongoDB client
+    if len(replica_set_hosts) == 1:
+        replica_set_uri = replica_set_hosts[0] + ":" + str(PORT)
+        client = MongoClient(replica_set_uri, replicaset="rs0")
+    else:
+        client = MongoClient(generate_replica_set_uri(replica_set_hosts))
+
+    # grab the replica set status
+    try:
+        status = client.admin.command("replSetGetStatus")
+    except (ConnectionFailure, ConfigurationError, OperationFailure):
+        return None
+    finally:
+        client.close()
+
+    primary = None
+    # loop through all members in the replica set
+    for member in status["members"]:
+        # check replica's current state
+        if member["stateStr"] == "PRIMARY":
+            # get member ip without ":PORT"
+            primary = member["name"].split(":")[0]
+
+    return str(primary)
+
+
 @retry(
     retry=retry_if_result(lambda x: x is None),
     stop=stop_after_attempt(5),
     wait=wait_exponential(multiplier=1, min=2, max=30),
 )
-def replica_set_primary(client: MongoClient, valid_ips: List[str]) -> Tuple[str, str]:
+def replica_set_primary(replica_set_hosts: List[str]) -> str:
     """Returns the primary of the replica set.
 
     Retrying 5 times to give the replica set time to elect a new primary, also checks against the
@@ -337,11 +365,10 @@ def replica_set_primary(client: MongoClient, valid_ips: List[str]) -> Tuple[str,
     valid_ips:
         list of ips that are currently in the replica set.
     """
-    primary = client.primary
-
+    primary = fetch_primary(replica_set_hosts)
     # return None if primary is no longer in the replica set
-    if primary is not None and primary[0] not in valid_ips:
-        primary = None
+    if primary is not None and primary not in replica_set_hosts:
+        return None
 
     return primary
 
