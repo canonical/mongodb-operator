@@ -17,7 +17,3 @@ storage:
 peers:
   mongodb:
     interface: mongodb-replicas
-
-  # peer relation for lock on removing replicas
-  remove:
-    interface: rolling_op

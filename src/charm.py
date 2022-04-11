@@ -13,7 +13,6 @@ import ops.charm
 import yaml
 from charms.operator_libs_linux.v0 import apt
 from charms.operator_libs_linux.v0.systemd import service_resume, service_running
-from charms.rolling_ops.v0.rollingops import RollingOpsManager
 from ops.main import main
 from ops.model import (
     ActiveStatus,
@@ -29,6 +28,9 @@ from mongod_helpers import (
     ConnectionFailure,
     MongoDB,
     OperationFailure,
+    RetryError,
+    PyMongoError,
+    NotReadyError
 )
 
 logger = logging.getLogger(__name__)
@@ -48,11 +50,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         super().__init__(*args)
         self._port = MONGODB_PORT
 
-        # create a lock to be used across all peers for removing replicas
-        self.remove_lock = RollingOpsManager(
-            charm=self, relation="remove", callback=self._remove_replica
-        )
-
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(self.on.start, self._on_start)
@@ -68,62 +65,50 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # if a new leader has been elected update hosts of MongoDB
         self.framework.observe(self.on.leader_elected, self._update_hosts)
         # when a unit departs the replica set update the hosts of MongoDB
-        self.framework.observe(self.on.mongodb_relation_departed, self._update_hosts)
+        self.framework.observe(self.on.mongodb_relation_departed, self._relation_departed)
 
-    def _update_hosts(self, _) -> None:
+    def _update_hosts(self, event) -> None:
         """Update replica set hosts."""
-        # allow leader to reset which hosts are being used
         if self.unit.is_leader():
             self._peers.data[self.app]["replica_set_hosts"] = json.dumps(self._unit_ips)
 
-    def _on_mongodb_storage_detaching(self, _) -> None:
-        """Handles storage detached by first aquiring a lock and then removing the replica."""
-        # this function aquires the lock, executes the function _remove_replica, and then releases
-        # the lock
-        logger.debug("aquiring lock for removing unit.")
-        self.on[self.remove_lock.name].acquire_lock.emit()
-        logger.debug("releasing lock for removing unit.")
+        if "replset_initialised" in self._peers.data[self.app]:
+            self.process_unremoved_units(event)
 
-    def _remove_replica(self, event: ops.charm.StorageDetachingEvent) -> None:
+    def _on_mongodb_storage_detaching(self, event: ops.charm.StorageDetachingEvent) -> None:
+        """Handles storage detached by first aquiring a lock and then removing the replica."""
+        # remove replica, this function retries for one minute in an attempt to resolve conflicts
+        # in race conditions as it is not possible to defer in storage detached.
+        try:
+            self._mongo.remove_replset_member(self._unit_ip(self.unit))
+        except RetryError:
+            logger.error("Failed to remove %s from replica set", self.unit.name)
+
+    def _relation_departed(self, event) -> None:
         """Removes unit from the MongoDB replica set config and steps down primary if necessary.
 
         Args:
             event: The triggering storage detaching event.
         """
-        logger.debug("lock aquired form removing replica")
-        # only remove and reconfigure if all replicas of MongoDB application are in ready state
-        if not self._mongo.all_replicas_ready():
-            self.unit.status = WaitingStatus("waiting to reconfigure replica set")
-            logger.debug("waiting for all replica set hosts to be ready")
-            event.defer()
-            return
+        # allow leader to update hosts if it isn't leaving
+        if self.unit.is_leader() and not event.departing_unit == self.unit:
+            self.process_unremoved_units(event)
+            self._update_hosts(event)
 
-        # if the unit that is leaving is the primary allow it to step down
-        logger.debug("current primary is %s. current unit is %s", self._primary, self.unit.name)
-        if self.unit.name == self._primary:
-            try:
-                self._mongo.primary_step_down()
-                logger.debug("the current primary is %s", self._primary)
-            except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
-                logger.error(
-                    "deferring removal of unit: %s for reason: %s", self.unit.name, str(e)
-                )
-                self.unit.status = WaitingStatus("waiting to reconfigure replica set")
-                event.defer()
-                return
+    def process_unremoved_units(self, event) -> None:
+        juju_hosts = self._unit_ips
 
-        # reconfigure the replica set without this unit
         try:
-            self._mongo.remove_replica(
-                remove_replica_ip=str(self.model.get_binding(PEER).network.bind_address)
-            )
-            logger.debug("Replica set successfully reconfigured")
-            self.unit.status = ActiveStatus()
-        except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
-            logger.error("deferring removal of unit: %s for reason: %s", self.unit.name, str(e))
-            self.unit.status = WaitingStatus("waiting to reconfigure replica set")
+            replica_hosts = self._mongo.member_ips()
+            for member in set(replica_hosts) - set(juju_hosts):
+                logger.debug("Removing %s from replica set", member)
+                self.mongo.remove_replset_member(member)
+        except NotReadyError:
+            logger.info("Deferring reconfigure: another member doing sync right now")
             event.defer()
-            return
+        except PyMongoError as e:
+            logger.info("Deferring reconfigure: error=%r", e)
+            event.defer()
 
     def _on_mongodb_relation_handler(self, event: ops.charm.RelationEvent) -> None:
         """Adds the unit as a replica to the MongoDB replica set.
@@ -204,7 +189,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         with open("/etc/mongod.conf", "r") as mongo_config_file:
             mongo_config = yaml.safe_load(mongo_config_file)
 
-        machine_ip = str(self.model.get_binding(PEER).network.bind_address)
+        machine_ip = self._unit_ip(self.unit)
         mongo_config["net"]["bindIp"] = "localhost,{}".format(machine_ip)
         if "replication" not in mongo_config:
             mongo_config["replication"] = {}
@@ -261,6 +246,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             return
 
         # replica set initialised properly and ready to go
+        self._peers.data[self.app]["replset_initialised"] = "True"
         self.unit.status = ActiveStatus()
 
     def _on_update_status(self, _):
@@ -347,7 +333,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.unit.status = MaintenanceStatus("initialising MongoDB replica set")
         logger.debug("initialising replica set for leader")
         try:
-            leader_ip = str(self.model.get_binding(PEER).network.bind_address)
+            leader_ip = self._unit_ip(self.unit)
             self._mongo.initialise_replica_set([leader_ip])
             self._peers.data[self.app]["replica_set_hosts"] = json.dumps([leader_ip])
         except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
@@ -367,7 +353,17 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         unit_config["calling_unit_ip"] = ip_address
         return MongoDB(unit_config)
 
-    @property
+    def _unit_ip(self, unit: ops.model.Unit) -> str:
+        """Returns the ip address of a given unit."""
+        if unit == self.unit:
+            return str(self.model.get_binding(PEER).network.bind_address)
+
+        if unit in self._peers.data:
+            return str(self._peers.data[unit].get("private-address"))
+
+        return None
+
+    @ property
     def _primary(self) -> str:
         """Retrieves the unit with the primary replica."""
         # get IP of current priamry
@@ -378,17 +374,17 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             return None
 
         # check if current unit matches primary ip
-        if primary_ip == str(self.model.get_binding(PEER).network.bind_address):
+        if primary_ip == self._unit_ip(self.unit):
             return self.unit.name
 
         # check if peer unit matches primary ip
         for unit in self._peers.units:
-            if primary_ip == str(self._peers.data[unit].get("private-address")):
+            if primary_ip == self._unit_ip(unit):
                 return unit.name
 
         return None
 
-    @property
+    @ property
     def _need_replica_set_reconfiguration(self) -> bool:
         """Does MongoDB replica set need reconfiguration.
 
@@ -398,19 +394,17 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # are the units for the application all assigned to a host
         return set(self._unit_ips) != set(self._replica_set_hosts)
 
-    @property
+    @ property
     def _unit_ips(self) -> List[str]:
         """Retrieve IP addresses associated with MongoDB application.
 
         Returns:
             a list of IP address associated with MongoDB application.
         """
-        peer_addresses = [
-            str(self._peers.data[unit].get("private-address")) for unit in self._peers.units
-        ]
+        peer_addresses = [self._unit_ip(unit) for unit in self._peers.units]
 
         logger.debug("peer addresses: %s", peer_addresses)
-        self_address = str(self.model.get_binding(PEER).network.bind_address)
+        self_address = self._unit_ip(self.unit)
         logger.debug("unit address: %s", self_address)
         addresses = []
         if peer_addresses:
@@ -418,7 +412,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         addresses.append(self_address)
         return addresses
 
-    @property
+    @ property
     def _replica_set_hosts(self):
         """Fetch current list of hosts in the replica set.
 
@@ -427,7 +421,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         """
         return json.loads(self._peers.data[self.app].get("replica_set_hosts", "[]"))
 
-    @property
+    @ property
     def _config(self) -> dict:
         """Retrieve config options for MongoDB.
 
@@ -444,11 +438,11 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             "security_key": "",
             "unit_ips": self._unit_ips,
             "replica_set_hosts": self._replica_set_hosts,
-            "calling_unit_ip": str(self.model.get_binding(PEER).network.bind_address),
+            "calling_unit_ip": self._unit_ip(self.unit),
         }
         return config
 
-    @property
+    @ property
     def _mongo(self) -> MongoDB:
         """Fetch the MongoDB server interface object.
 
@@ -457,7 +451,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         """
         return MongoDB(self._config)
 
-    @property
+    @ property
     def _peers(self) -> Optional[Relation]:
         """Fetch the peer relation.
 
