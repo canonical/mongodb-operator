@@ -98,9 +98,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         # reconfigure the replica set without this unit
         try:
-            self._mongo.remove_replica(
-                remove_replica_ip=str(self.model.get_binding(PEER).network.bind_address)
-            )
+            self._mongo.remove_replica(remove_replica_ip=self._unit_ip(self.unit))
             logger.debug("Replica set successfully reconfigured")
             self.unit.status = ActiveStatus()
         except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
@@ -188,7 +186,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         with open("/etc/mongod.conf", "r") as mongo_config_file:
             mongo_config = yaml.safe_load(mongo_config_file)
 
-        machine_ip = str(self.model.get_binding(PEER).network.bind_address)
+        machine_ip = self._unit_ip(self.unit)
         mongo_config["net"]["bindIp"] = "localhost,{}".format(machine_ip)
         if "replication" not in mongo_config:
             mongo_config["replication"] = {}
@@ -331,7 +329,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.unit.status = MaintenanceStatus("initialising MongoDB replica set")
         logger.debug("initialising replica set for leader")
         try:
-            leader_ip = str(self.model.get_binding(PEER).network.bind_address)
+            leader_ip = self._unit_ip(self.unit)
             self._mongo.initialise_replica_set([leader_ip])
             self._peers.data[self.app]["replica_set_hosts"] = json.dumps([leader_ip])
         except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
@@ -351,6 +349,18 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         unit_config["calling_unit_ip"] = ip_address
         return MongoDB(unit_config)
 
+    def _unit_ip(self, unit: ops.model.Unit) -> str:
+        """Returns the ip address of a given unit."""
+        # check if host is current host
+        if unit == self.unit:
+            return str(self.model.get_binding(PEER).network.bind_address)
+        # check if host is a peer
+        elif unit in self._peers.data:
+            return str(self._peers.data[unit].get("private-address"))
+        # raise exception if host not found
+        else:
+            raise ApplicationHostNotFoundError
+
     @property
     def _primary(self) -> str:
         """Retrieves the unit with the primary replica."""
@@ -362,12 +372,12 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             return None
 
         # check if current unit matches primary ip
-        if primary_ip == str(self.model.get_binding(PEER).network.bind_address):
+        if primary_ip == self._unit_ip(self.unit):
             return self.unit.name
 
         # check if peer unit matches primary ip
         for unit in self._peers.units:
-            if primary_ip == str(self._peers.data[unit].get("private-address")):
+            if primary_ip == self._unit_ip(unit):
                 return unit.name
 
         return None
@@ -389,12 +399,10 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         Returns:
             a list of IP address associated with MongoDB application.
         """
-        peer_addresses = [
-            str(self._peers.data[unit].get("private-address")) for unit in self._peers.units
-        ]
+        peer_addresses = [self._unit_ip(unit) for unit in self._peers.units]
 
         logger.debug("peer addresses: %s", peer_addresses)
-        self_address = str(self.model.get_binding(PEER).network.bind_address)
+        self_address = self._unit_ip(self.unit)
         logger.debug("unit address: %s", self_address)
         addresses = []
         if peer_addresses:
@@ -428,7 +436,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             "security_key": "",
             "unit_ips": self._unit_ips,
             "replica_set_hosts": self._replica_set_hosts,
-            "calling_unit_ip": str(self.model.get_binding(PEER).network.bind_address),
+            "calling_unit_ip": self._unit_ip(self.unit),
         }
         return config
 
@@ -449,6 +457,12 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
              An `ops.model.Relation` object representing the peer relation.
         """
         return self.model.get_relation(PEER)
+
+
+class ApplicationHostNotFoundError(Exception):
+    """Raised when a queried host is not in the application peers or the current host."""
+
+    pass
 
 
 if __name__ == "__main__":
