@@ -351,13 +351,15 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def _unit_ip(self, unit: ops.model.Unit) -> str:
         """Returns the ip address of a given unit."""
+        # check if host is current host
         if unit == self.unit:
             return str(self.model.get_binding(PEER).network.bind_address)
-
-        if unit in self._peers.data:
+        # check if host is a peer
+        elif unit in self._peers.data:
             return str(self._peers.data[unit].get("private-address"))
-
-        return None
+        # raise exception if host not found
+        else:
+            raise ApplicationHostNotFoundError
 
     @property
     def _primary(self) -> str:
@@ -455,6 +457,12 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
              An `ops.model.Relation` object representing the peer relation.
         """
         return self.model.get_relation(PEER)
+
+
+class ApplicationHostNotFoundError(Exception):
+    """Raised when a queried host is not in the application peers or the current host."""
+
+    pass
 
 
 if __name__ == "__main__":
