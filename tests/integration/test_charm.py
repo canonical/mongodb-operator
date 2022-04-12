@@ -283,13 +283,11 @@ def fetch_replica_set_members(replica_ips: List[str]):
     Args:
         replica_ips: list of ips hosting the replica set.
     """
-    print("replica_ips", replica_ips)
     # connect to replica set uri
     client = MongoClient(generate_replica_set_uri(replica_ips))
 
     # get ips from MongoDB replica set configuration
     rs_config = client.admin.command("replSetGetConfig")
-    print("rs_config", rs_config)
     member_ips = []
     for member in rs_config["config"]["members"]:
         # get member ip without ":PORT"
@@ -346,7 +344,7 @@ def fetch_primary(replica_set_hosts: List[str]) -> str:
             # get member ip without ":PORT"
             primary = member["name"].split(":")[0]
 
-    return str(primary)
+    return primary
 
 
 @retry(
@@ -370,7 +368,7 @@ def replica_set_primary(replica_set_hosts: List[str]) -> str:
     if primary is not None and primary not in replica_set_hosts:
         return None
 
-    return primary
+    return str(primary)
 
 
 @retry(
