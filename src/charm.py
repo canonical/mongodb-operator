@@ -69,11 +69,13 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def _update_hosts(self, event) -> None:
         """Update replica set hosts."""
-        if self.unit.is_leader():
-            self._peers.data[self.app]["replica_set_hosts"] = json.dumps(self._unit_ips)
+        if not self.unit.is_leader():
+            return
 
         if "replset_initialised" in self._peers.data[self.app]:
             self.process_unremoved_units(event)
+
+        self._peers.data[self.app]["replica_set_hosts"] = json.dumps(self._unit_ips)
 
     def _on_mongodb_storage_detaching(self, event: ops.charm.StorageDetachingEvent) -> None:
         """Handles storage detached by first acquiring a lock and then removing the replica."""
@@ -81,8 +83,13 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # in race conditions as it is not possible to defer in storage detached.
         try:
             self._mongo.remove_replset_member(self._unit_ip(self.unit))
-        except (NotReadyError, PyMongoError) as e:
-            logger.error("Failed to remove %s from replica set, error: %s", self.unit.name, e)
+        except NotReadyError:
+            logger.info(
+                "Failed to remove %s from replica set, another member is syncing", self.unit.name)
+            event.defer()
+        except PyMongoError as e:
+            logger.info("Deferring reconfigure: error=%r", e)
+            event.defer()
 
     def _relation_departed(self, event) -> None:
         """Removes unit from the MongoDB replica set config and steps down primary if necessary.
@@ -92,7 +99,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         """
         # allow leader to update hosts if it isn't leaving
         if self.unit.is_leader() and not event.departing_unit == self.unit:
-            self.process_unremoved_units(event)
             self._update_hosts(event)
 
     def process_unremoved_units(self, event) -> None:
@@ -103,9 +109,12 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             replica_hosts = self._mongo.member_ips()
             for member in set(replica_hosts) - set(juju_hosts):
                 logger.debug("Removing %s from replica set", member)
-                self.mongo.remove_replset_member(member)
-        except (NotReadyError, PyMongoError) as e:
-            logger.info("Deferring reconfigure: error=%r", e)
+                self._mongo.remove_replset_member(member)
+        except NotReadyError:
+            logger.info("Deferring process_unremoved_units: another member is syncing")
+            event.defer()
+        except PyMongoError as e:
+            logger.info("Deferring process_unremoved_units: error=%r", e)
             event.defer()
 
     def _on_mongodb_relation_handler(self, event: ops.charm.RelationEvent) -> None:
@@ -353,13 +362,15 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def _unit_ip(self, unit: ops.model.Unit) -> str:
         """Returns the ip address of a given unit."""
+        # check if host is current host
         if unit == self.unit:
             return str(self.model.get_binding(PEER).network.bind_address)
-
-        if unit in self._peers.data:
+        # check if host is a peer
+        elif unit in self._peers.data:
             return str(self._peers.data[unit].get("private-address"))
-
-        return None
+        # raise exception if host not found
+        else:
+            raise ApplicationHostNotFoundError
 
     @property
     def _primary(self) -> str:
@@ -457,6 +468,12 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
              An `ops.model.Relation` object representing the peer relation.
         """
         return self.model.get_relation(PEER)
+
+
+class ApplicationHostNotFoundError(Exception):
+    """Raised when a queried host is not in the application peers or the current host."""
+
+    pass
 
 
 if __name__ == "__main__":

@@ -9,9 +9,9 @@ from unittest.mock import call, mock_open, patch
 import requests
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from ops.testing import Harness
-from tenacity import RetryError
 
 from charm import (
+    NotReadyError,
     ConfigurationError,
     ConnectionFailure,
     MongodbOperatorCharm,
@@ -765,7 +765,22 @@ class TestCharm(unittest.TestCase):
         technically possible to defer the event, it shouldn't be. This test verifies that no
         attempt to defer storage detached as made.
         """
-        remove_replset_member.side_effect = RetryError(last_attempt=None)
-        event = mock.Mock()
-        self.harness.charm.on.mongodb_storage_detaching.emit(mock.Mock())
-        event.defer.assert_not_called()
+        for exception in [PYMONGO_EXCEPTIONS, NotReadyError]:
+            remove_replset_member.side_effect = exception
+            event = mock.Mock()
+            self.harness.charm.on.mongodb_storage_detaching.emit(mock.Mock())
+            event.defer.assert_not_called()
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongodbOperatorCharm._unit_ips")
+    @patch("mongod_helpers.MongoDB.remove_replset_member")
+    @patch("mongod_helpers.MongoDB.member_ips")
+    def test_process_unremoved_units_handles_errors(self, member_ips, remove_replset_member, _unit_ips):
+        """Test TODO"""
+        member_ips.return_value = ["1.1.1.1", "2.2.2.2"]
+        self.harness.charm._unit_ips = ["2.2.2.2"]
+
+        for exception in [PYMONGO_EXCEPTIONS, NotReadyError]:
+            remove_replset_member.side_effect = exception
+            self.harness.charm.process_unremoved_units(mock.Mock())
+            remove_replset_member.assert_called()
