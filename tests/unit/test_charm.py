@@ -11,10 +11,10 @@ from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingSta
 from ops.testing import Harness
 
 from charm import (
-    NotReadyError,
     ConfigurationError,
     ConnectionFailure,
     MongodbOperatorCharm,
+    NotReadyError,
     OperationFailure,
     URLError,
     apt,
@@ -775,8 +775,10 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongodbOperatorCharm._unit_ips")
     @patch("mongod_helpers.MongoDB.remove_replset_member")
     @patch("mongod_helpers.MongoDB.member_ips")
-    def test_process_unremoved_units_handles_errors(self, member_ips, remove_replset_member, _unit_ips):
-        """Test TODO"""
+    def test_process_unremoved_units_handles_errors(
+        self, member_ips, remove_replset_member, _unit_ips
+    ):
+        """Test failures in process_unremoved_units are handled and not raised."""
         member_ips.return_value = ["1.1.1.1", "2.2.2.2"]
         self.harness.charm._unit_ips = ["2.2.2.2"]
 

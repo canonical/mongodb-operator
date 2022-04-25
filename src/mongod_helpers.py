@@ -100,7 +100,7 @@ class MongoDB:
         return None
 
     def member_ips(self):
-        """Returns IP address of current replica set primary."""
+        """Returns IP addresses of current replicas."""
         # grab the replica set status
         client = self.client()
         try:
@@ -294,7 +294,7 @@ class MongoDB:
         before=before_log(logger, logging.DEBUG),
     )
     def remove_replset_member(self, hostname: str) -> None:
-        """Remove member from replica set config inside MongoDB.
+        """Remove member from replica set config inside MongoDB and steps down primary if needed.
 
         Raises:
             ConfigurationError, ConfigurationError, OperationFailure, NotReadyError

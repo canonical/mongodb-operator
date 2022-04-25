@@ -57,42 +57,42 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         self.framework.observe(self.on.update_status, self._on_update_status)
         self.framework.observe(self.on.get_primary_action, self._on_get_primary_action)
-
-        # handle removal of replica
         self.framework.observe(
             self.on.mongodb_storage_detaching, self._on_mongodb_storage_detaching
         )
         # if a new leader has been elected update hosts of MongoDB
         self.framework.observe(self.on.leader_elected, self._update_hosts)
-        # when a unit departs the replica set update the hosts of MongoDB
         self.framework.observe(self.on.mongodb_relation_departed, self._relation_departed)
 
     def _update_hosts(self, event) -> None:
-        """Update replica set hosts."""
-        if not self.unit.is_leader():
+        """Update replica set hosts and remove any unremoved replicas from the config."""
+        if not self.unit.is_leader() and "replset_initialised" not in self._peers.data[self.app]:
             return
 
-        if "replset_initialised" in self._peers.data[self.app]:
-            self.process_unremoved_units(event)
-
+        self.process_unremoved_units(event)
         self._peers.data[self.app]["replica_set_hosts"] = json.dumps(self._unit_ips)
 
     def _on_mongodb_storage_detaching(self, event: ops.charm.StorageDetachingEvent) -> None:
-        """Handles storage detached by first acquiring a lock and then removing the replica."""
-        # remove replica, this function retries for one minute in an attempt to resolve conflicts
-        # in race conditions as it is not possible to defer in storage detached.
+        """Before storage detaches, allow removing unit to remove itself from the set.
+
+        If the removing unit is primary also allow it to step down and elect another unit as
+        primary while it still has access to its storage.
+        """
         try:
+            # remove_replset_member retries for one minute in an attempt to resolve race conditions
+            # it is not possible to defer in storage detached.
             self._mongo.remove_replset_member(self._unit_ip(self.unit))
         except NotReadyError:
             logger.info(
-                "Failed to remove %s from replica set, another member is syncing", self.unit.name)
+                "Failed to remove %s from replica set, another member is syncing", self.unit.name
+            )
             event.defer()
         except PyMongoError as e:
             logger.info("Deferring reconfigure: error=%r", e)
             event.defer()
 
-    def _relation_departed(self, event) -> None:
-        """Removes unit from the MongoDB replica set config and steps down primary if necessary.
+    def _relation_departed(self, event: ops.charm.RelationDepartedEvent) -> None:
+        """Remove peer from replica set if it wasn't able to remove itself.
 
         Args:
             event: The triggering relation departed event.
@@ -102,7 +102,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self._update_hosts(event)
 
     def process_unremoved_units(self, event) -> None:
-        """Removes replica set members that are no longer running as a juju host."""
+        """Removes replica set members that are no longer running as a juju hosts."""
         juju_hosts = self._unit_ips
 
         try:

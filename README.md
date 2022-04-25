@@ -10,6 +10,7 @@ MongoDB is a general purpose distributed document database. This operator charm 
 
 ## Usage
 
+### Basic Usage
 Until the MongoDB Machine Charm is published, you need to follow the build & deploy instructions from [CONTRIBUTING.md](https://github.com/canonical/mongodb-operator/blob/main/CONTRIBUTING.md) to deploy the charm.
 
 After building the charm you may deploy a single unit of MongoDB using its default configuration
@@ -28,6 +29,23 @@ juju run-action mongodb/<unit_number> get-primary --wait
 ```
 
 Similarly, the primary replica is displayed as a status message in `juju status`, however one should note that this hook gets called on regular time intervals and the primary may be outdated if the status hook has not been called recently.
+
+### Replication
+#### Adding Replicas
+To add more replicas one can use the `juju add-unit` functionality i.e.
+```shell
+juju add-unit -n <num_of_replicas_to_add>
+```
+The implementation of `add-unit` allows the operator to add more than one unit, but functions internally by adding one replica at a time, as specified by the [constraints](https://www.mongodb.com/docs/manual/reference/command/replSetReconfig/#reconfiguration-can-add-or-remove-no-more-than-one-voting-member-at-a-time) of MongoDB.
+
+
+#### Removing Replicas 
+Similarly to scale down the number of replicas the `juju remove-unit` functionality may be used i.e.
+```shell
+juju remove-unit <name_of_unit1> <name_of_unit2>
+```
+The implementation of `remove-unit` allows the operator to remove more than one replica so long has the operator **does not remove a majority of the replicas**. The functionality of `remove-unit` functions by removing one replica at a time, as specified by the [constraints](https://www.mongodb.com/docs/manual/reference/command/replSetReconfig/#reconfiguration-can-add-or-remove-no-more-than-one-voting-member-at-a-time) of MongoDB.
+
 
 ## Relations
 
