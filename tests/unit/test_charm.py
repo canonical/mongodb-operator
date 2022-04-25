@@ -9,6 +9,7 @@ from unittest.mock import call, mock_open, patch
 import requests
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from ops.testing import Harness
+from tenacity import RetryError
 
 from charm import (
     ConfigurationError,
@@ -554,32 +555,6 @@ class TestCharm(unittest.TestCase):
             )
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongodbOperatorCharm._single_mongo_replica")
-    @patch("charm.MongodbOperatorCharm._need_replica_set_reconfiguration")
-    @patch("mongod_helpers.MongoDB.reconfigure_replica_set")
-    def test_mongodb_departed_reconfigures_replicas(
-        self, mongodb_reconfigure, need_reconfiguration, single_replica
-    ):
-        """Tests that when reconfigure operations fail we go into the Waiting Status."""
-        # preset values
-        self.harness.set_leader(True)
-
-        # add peer unit
-        rel = self.harness.charm.model.get_relation("mongodb")
-        rel_id = rel.id
-        self.harness.add_relation_unit(rel_id, "mongodb/1")
-        self.harness.update_relation_data(rel_id, "mongodb/1", PEER_ADDR)
-
-        # remove unit to trigger event
-        self.harness.remove_relation_unit(rel_id, "mongodb/1")
-
-        # verify replica set hosts updated accordingly
-        self.assertEqual(
-            self.harness.charm._replica_set_hosts,
-            ["1.1.1.1"],
-        )
-
-    @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongodbOperatorCharm._peers")
     @patch("mongod_helpers.MongoDB.is_mongod_ready", return_value=True)
     @patch("mongod_helpers.MongoDB.initialise_replica_set")
@@ -782,96 +757,15 @@ class TestCharm(unittest.TestCase):
         self.assertEqual(self.harness.charm._replica_set_hosts, ["1.1.1.1"])
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("mongod_helpers.MongoDB.remove_replica")
-    @patch("mongod_helpers.MongoDB.primary_step_down")
-    @patch("mongod_helpers.MongoDB.primary", return_value="1.1.1.1")
-    def test_storage_detaching_primary_step_down_failure(
-        self, primary, primary_step_down, remove_replica
-    ):
-        """Test that failure in stepping down the primary is properly handled.
+    @patch("mongod_helpers.MongoDB.remove_replset_member")
+    def test_storage_detaching_failure_does_not_defer(self, remove_replset_member):
+        """Test that failure in removing replica does not defer the hook.
 
-        Verifies that when the primary fails to step down with an error that we don't attempt to
-        reconfigure the replica set and that we go into the waiting status.
+        Deferring Storage Detached hooks can result in un-predicable behavior and while it is
+        technically possible to defer the event, it shouldn't be. This test verifies that no
+        attempt to defer storage detached as made.
         """
-        for exception in PYMONGO_EXCEPTIONS:
-            primary_step_down.side_effect = exception
-            self.harness.charm.on.mongodb_storage_detaching.emit(mock.Mock())
-            primary_step_down.assert_called()
-            remove_replica.assert_not_called()
-
-            self.assertEqual(
-                self.harness.charm.unit.status, WaitingStatus("waiting to reconfigure replica set")
-            )
-
-    @patch_network_get(private_address="1.1.1.1")
-    @patch("mongod_helpers.MongoDB.remove_replica")
-    @patch("mongod_helpers.MongoDB.primary_step_down")
-    def test_storage_detaching_replica_removal_failure(self, _, remove_replica):
-        """Test that failure in removing unit is properly handled.
-
-        Verifies that when a replica fails to get removed that we go into the waiting status.
-        """
-        for exception in PYMONGO_EXCEPTIONS:
-            remove_replica.side_effect = exception
-            self.harness.charm.on.mongodb_storage_detaching.emit(mock.Mock())
-            remove_replica.assert_called()
-
-            self.assertEqual(
-                self.harness.charm.unit.status, WaitingStatus("waiting to reconfigure replica set")
-            )
-
-    @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongodbOperatorCharm._single_mongo_replica")
-    @patch("charm.MongodbOperatorCharm._need_replica_set_reconfiguration", return_value=True)
-    @patch("mongod_helpers.MongoDB.reconfigure_replica_set")
-    @patch("mongod_helpers.MongoDB.check_replica_status")
-    def test_storage_detaching_check_status_failure(
-        self, check_replica_status, mongodb_reconfigure, need_reconfiguration, single_replica
-    ):
-        """Test failure in checking status results in waiting when removing a unit.
-
-        Tests the scenario that a failure to check the current statuses of replica set hosts
-        results in WaitingStatus and no attempt to reconfigure is made.
-        """
-        # preset values
-        self.harness.set_leader(True)
-        single_replica.return_value.is_ready.return_value = True
-
-        for exception in PYMONGO_EXCEPTIONS:
-            # simulate failure to check replica status
-            check_replica_status.side_effect = exception
-
-            # simulate removal of unit
-            self.harness.charm.on.mongodb_storage_detaching.emit(mock.Mock())
-
-            # verify we go into waiting and don't reconfigure
-            self.assertEqual(
-                self.harness.charm.unit.status, WaitingStatus("waiting to reconfigure replica set")
-            )
-            mongodb_reconfigure.assert_not_called()
-
-    @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongodbOperatorCharm._single_mongo_replica")
-    @patch("charm.MongodbOperatorCharm._need_replica_set_reconfiguration", return_value=True)
-    @patch("mongod_helpers.MongoDB.reconfigure_replica_set")
-    @patch("mongod_helpers.MongoDB.all_replicas_ready", return_value=False)
-    def test_storage_detaching_all_replicas_not_ready(
-        self, all_replicas_ready, mongodb_reconfigure, need_reconfiguration, single_replica
-    ):
-        """Tests that we go into waiting when current ReplicaSet hosts are not ready.
-
-        Tests the scenario that if the current hosts of MongoDB are not all ready that the
-        application waits before reconfiguring if the current unit is getting removed.
-        """
-        # preset values
-        self.harness.set_leader(True)
-        single_replica.return_value.is_ready.return_value = True
-
-        # simulate removal of unit
+        remove_replset_member.side_effect = RetryError(last_attempt=None)
+        event = mock.Mock()
         self.harness.charm.on.mongodb_storage_detaching.emit(mock.Mock())
-
-        # verify we go into waiting and don't reconfigure
-        self.assertEqual(
-            self.harness.charm.unit.status, WaitingStatus("waiting to reconfigure replica set")
-        )
-        mongodb_reconfigure.assert_not_called()
+        event.defer.assert_not_called()

@@ -27,10 +27,9 @@ from mongod_helpers import (
     ConfigurationError,
     ConnectionFailure,
     MongoDB,
+    NotReadyError,
     OperationFailure,
-    RetryError,
     PyMongoError,
-    NotReadyError
 )
 
 logger = logging.getLogger(__name__)
@@ -60,8 +59,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.framework.observe(self.on.get_primary_action, self._on_get_primary_action)
 
         # handle removal of replica
-        self.framework.observe(self.on.mongodb_storage_detaching,
-                               self._on_mongodb_storage_detaching)
+        self.framework.observe(
+            self.on.mongodb_storage_detaching, self._on_mongodb_storage_detaching
+        )
         # if a new leader has been elected update hosts of MongoDB
         self.framework.observe(self.on.leader_elected, self._update_hosts)
         # when a unit departs the replica set update the hosts of MongoDB
@@ -76,19 +76,19 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self.process_unremoved_units(event)
 
     def _on_mongodb_storage_detaching(self, event: ops.charm.StorageDetachingEvent) -> None:
-        """Handles storage detached by first aquiring a lock and then removing the replica."""
+        """Handles storage detached by first acquiring a lock and then removing the replica."""
         # remove replica, this function retries for one minute in an attempt to resolve conflicts
         # in race conditions as it is not possible to defer in storage detached.
         try:
             self._mongo.remove_replset_member(self._unit_ip(self.unit))
-        except RetryError:
-            logger.error("Failed to remove %s from replica set", self.unit.name)
+        except (NotReadyError, PyMongoError) as e:
+            logger.error("Failed to remove %s from replica set, error: %s", self.unit.name, e)
 
     def _relation_departed(self, event) -> None:
         """Removes unit from the MongoDB replica set config and steps down primary if necessary.
 
         Args:
-            event: The triggering storage detaching event.
+            event: The triggering relation departed event.
         """
         # allow leader to update hosts if it isn't leaving
         if self.unit.is_leader() and not event.departing_unit == self.unit:
@@ -96,6 +96,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self._update_hosts(event)
 
     def process_unremoved_units(self, event) -> None:
+        """Removes replica set members that are no longer running as a juju host."""
         juju_hosts = self._unit_ips
 
         try:
@@ -103,10 +104,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             for member in set(replica_hosts) - set(juju_hosts):
                 logger.debug("Removing %s from replica set", member)
                 self.mongo.remove_replset_member(member)
-        except NotReadyError:
-            logger.info("Deferring reconfigure: another member doing sync right now")
-            event.defer()
-        except PyMongoError as e:
+        except (NotReadyError, PyMongoError) as e:
             logger.info("Deferring reconfigure: error=%r", e)
             event.defer()
 
@@ -363,7 +361,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         return None
 
-    @ property
+    @property
     def _primary(self) -> str:
         """Retrieves the unit with the primary replica."""
         # get IP of current priamry
@@ -384,7 +382,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         return None
 
-    @ property
+    @property
     def _need_replica_set_reconfiguration(self) -> bool:
         """Does MongoDB replica set need reconfiguration.
 
@@ -394,7 +392,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # are the units for the application all assigned to a host
         return set(self._unit_ips) != set(self._replica_set_hosts)
 
-    @ property
+    @property
     def _unit_ips(self) -> List[str]:
         """Retrieve IP addresses associated with MongoDB application.
 
@@ -412,7 +410,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         addresses.append(self_address)
         return addresses
 
-    @ property
+    @property
     def _replica_set_hosts(self):
         """Fetch current list of hosts in the replica set.
 
@@ -421,7 +419,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         """
         return json.loads(self._peers.data[self.app].get("replica_set_hosts", "[]"))
 
-    @ property
+    @property
     def _config(self) -> dict:
         """Retrieve config options for MongoDB.
 
@@ -442,7 +440,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         }
         return config
 
-    @ property
+    @property
     def _mongo(self) -> MongoDB:
         """Fetch the MongoDB server interface object.
 
@@ -451,7 +449,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         """
         return MongoDB(self._config)
 
-    @ property
+    @property
     def _peers(self) -> Optional[Relation]:
         """Fetch the peer relation.
 

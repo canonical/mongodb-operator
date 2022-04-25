@@ -199,13 +199,7 @@ def count_primaries(ops_test: OpsTest) -> int:
 
 
 async def find_unit(ops_test: OpsTest, leader: bool) -> ops.model.Unit:
-    """Helper function identifies the a unit, based on need for leader or non-leader
-
-    Args:
-        leader: bool, specifies need for leader or non-leader unit
-    Returns:
-        leader unit
-    """
+    """Helper function identifies the a unit, based on need for leader or non-leader."""
     ret_unit = None
     for unit in ops_test.model.applications[APP_NAME].units:
         if await unit.is_leader_from_status() == leader:

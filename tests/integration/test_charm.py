@@ -164,7 +164,7 @@ async def test_scale_down_capablities(ops_test: OpsTest) -> None:
     1.  when a leader is deleted that the new leader, on calling leader_elected will reconfigure
     the replicaset.
     2. primary stepping down leads to a replica set with a new primary.
-    3. removing a majority of units (2 out of 5) is feasiable.
+    3. removing a minority of units (2 out of 5) is feasiable.
     4. race conditions due to removing multiple units is handled.
     5. deleting a non-leader unit is properly handled.
     """
@@ -182,7 +182,10 @@ async def test_scale_down_capablities(ops_test: OpsTest) -> None:
     deleted_unit_ips.append(non_leader_unit.public_address)
 
     # destroy 2 units simulatenously
-    await ops_test.model.destroy_units(leader_unit.name, non_leader_unit.name,)
+    await ops_test.model.destroy_units(
+        leader_unit.name,
+        non_leader_unit.name,
+    )
 
     # wait for app to be active after removal of unit
     await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=1000)

@@ -3,12 +3,25 @@
 # See LICENSE file for licensing details.
 
 import logging
-from typing import List, Dict
+from typing import Dict, List
 
-from pymongo import MongoClient
-from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure, PyMongoError
-from tenacity import Retrying, RetryError, retry, stop_after_attempt, wait_exponential, before_log, wait_fixed, stop_after_delay
 from bson.json_util import dumps
+from pymongo import MongoClient
+from pymongo.errors import (
+    ConfigurationError,
+    ConnectionFailure,
+    OperationFailure,
+    PyMongoError,
+)
+from tenacity import (
+    RetryError,
+    before_log,
+    retry,
+    stop_after_attempt,
+    stop_after_delay,
+    wait_exponential,
+    wait_fixed,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -111,10 +124,7 @@ class MongoDB:
         Args:
             rs_status: current state of replica set as reported by mongod.
         """
-        return any(
-            member["stateStr"] == "REMOVED"
-            for member in rs_status["members"]
-        )
+        return any(member["stateStr"] == "REMOVED" for member in rs_status["members"])
 
     def all_replicas_ready(self) -> bool:
         """Returns true if all replica hosts are ready."""
@@ -222,6 +232,7 @@ class MongoDB:
 
     def _is_primary(self, rs_status: Dict, hostname: str) -> bool:
         """Returns True if passed host is the replica set primary.
+
         Args:
             hostname: host of interest.
             rs_status: current state of replica set as reported by mongod.
@@ -296,7 +307,8 @@ class MongoDB:
         # To avoid issues when a majority of replica set members are removed, only remove a member
         # if no other members are being removed.
         if self._is_any_removing(rs_status):
-            # removing from replicaset is fast operation, lets @retry(for one minute with a 5s second delay) before giving up.
+            # removing from replicaset is fast operation, lets @retry(for one minute with a 5s
+            # second delay) before giving up.
             logger.debug("one or more units are currently removing")
             raise NotReadyError
 
@@ -311,7 +323,8 @@ class MongoDB:
         # thread safe execution.
         rs_config["config"]["version"] += 1
         rs_config["config"]["members"][:] = [
-            member for member in rs_config["config"]["members"]
+            member
+            for member in rs_config["config"]["members"]
             if hostname != self._hostname_from_hostport(member["host"])
         ]
         logger.debug("rs_config: %r", dumps(rs_config["config"]))
