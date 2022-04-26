@@ -472,8 +472,9 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongodbOperatorCharm._need_replica_set_reconfiguration", return_value=True)
     @patch("mongod_helpers.MongoDB.reconfigure_replica_set")
     @patch("mongod_helpers.MongoDB.check_replica_status")
+    @patch("charm.MongodbOperatorCharm._replica_set_hosts")
     def test_mongodb_relation_joined_check_status_failure(
-        self, check_replica_status, mongodb_reconfigure, need_reconfiguration, single_replica
+        self, _, check_replica_status, mongodb_reconfigure, need_reconfiguration, single_replica
     ):
         """Test failure in checking status results in waiting.
 
@@ -481,6 +482,7 @@ class TestCharm(unittest.TestCase):
         results in WaitingStatus and no attempt to reconfigure is made.
         """
         # preset values
+        self.harness.charm._replica_set_hosts = ["1.1.1.1"]
         self.harness.set_leader(True)
         single_replica.return_value.is_ready.return_value = True
 
@@ -745,11 +747,19 @@ class TestCharm(unittest.TestCase):
         self.assertEqual(self.harness.charm._need_replica_set_reconfiguration, False)
 
     @patch_network_get(private_address="1.1.1.1")
-    def test_on_leader_elected_updates_relation_data(self):
+    @patch("charm.MongodbOperatorCharm.app")
+    @patch("charm.MongodbOperatorCharm._peers")
+    def test_on_leader_elected_updates_relation_data(self, peers, app):
         """Test that leader elected properly handles relation data.
 
         Verifies that when a leader gets re-elected it properly sets up the replica set hosts.
         """
+        peers_data = {}
+        peers_data[app] = {
+            "replset_initialised": "True",
+        }
+        peers.data = peers_data
+
         self.harness.set_leader(True)
         self.harness.charm.on.leader_elected.emit()
 

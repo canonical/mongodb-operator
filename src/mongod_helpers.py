@@ -110,7 +110,7 @@ class MongoDB:
         finally:
             client.close()
 
-        hosts = [member["name"].split(":")[0] for member in status["members"]]
+        hosts = [self._hostname_from_hostport(member["name"]) for member in status["members"]]
 
         return hosts
 

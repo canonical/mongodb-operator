@@ -66,7 +66,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def _update_hosts(self, event) -> None:
         """Update replica set hosts and remove any unremoved replicas from the config."""
-        if not self.unit.is_leader() and "replset_initialised" not in self._peers.data[self.app]:
+        if not self.unit.is_leader() or "replset_initialised" not in self._peers.data[self.app]:
             return
 
         self.process_unremoved_units(event)
@@ -86,10 +86,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             logger.info(
                 "Failed to remove %s from replica set, another member is syncing", self.unit.name
             )
-            event.defer()
         except PyMongoError as e:
-            logger.info("Deferring reconfigure: error=%r", e)
-            event.defer()
+            logger.info("Failed to remove %s from replica set, error=%r", self.unit.name, e)
 
     def _relation_departed(self, event: ops.charm.RelationDepartedEvent) -> None:
         """Remove peer from replica set if it wasn't able to remove itself.
