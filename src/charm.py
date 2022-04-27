@@ -27,7 +27,9 @@ from mongod_helpers import (
     ConfigurationError,
     ConnectionFailure,
     MongoDB,
+    NotReadyError,
     OperationFailure,
+    PyMongoError,
 )
 
 logger = logging.getLogger(__name__)
@@ -55,57 +57,63 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         self.framework.observe(self.on.update_status, self._on_update_status)
         self.framework.observe(self.on.get_primary_action, self._on_get_primary_action)
-
-        # handle removal of replica
-        self.framework.observe(self.on.mongodb_storage_detaching, self._on_mongodb_remove_replica)
+        self.framework.observe(
+            self.on.mongodb_storage_detaching, self._on_mongodb_storage_detaching
+        )
         # if a new leader has been elected update hosts of MongoDB
         self.framework.observe(self.on.leader_elected, self._update_hosts)
-        # when a unit departs the replica set update the hosts of MongoDB
-        self.framework.observe(self.on.mongodb_relation_departed, self._update_hosts)
+        self.framework.observe(self.on.mongodb_relation_departed, self._relation_departed)
 
-    def _update_hosts(self, _) -> None:
-        """Update replica set hosts."""
-        # allow leader to reset which hosts are being used
-        if self.unit.is_leader():
-            self._peers.data[self.app]["replica_set_hosts"] = json.dumps(self._unit_ips)
+    def _update_hosts(self, event) -> None:
+        """Update replica set hosts and remove any unremoved replicas from the config."""
+        if not self.unit.is_leader() or "replset_initialised" not in self._peers.data[self.app]:
+            return
 
-    def _on_mongodb_remove_replica(self, event: ops.charm.StorageDetachingEvent) -> None:
-        """Removes unit from the MongoDB replica set config and steps down primary if necessary.
+        self.process_unremoved_units(event)
+        self._peers.data[self.app]["replica_set_hosts"] = json.dumps(self._unit_ips)
+
+    def _on_mongodb_storage_detaching(self, event: ops.charm.StorageDetachingEvent) -> None:
+        """Before storage detaches, allow removing unit to remove itself from the set.
+
+        If the removing unit is primary also allow it to step down and elect another unit as
+        primary while it still has access to its storage.
+        """
+        try:
+            # remove_replset_member retries for one minute in an attempt to resolve race conditions
+            # it is not possible to defer in storage detached.
+            self._mongo.remove_replset_member(self._unit_ip(self.unit))
+        except NotReadyError:
+            logger.info(
+                "Failed to remove %s from replica set, another member is syncing", self.unit.name
+            )
+        except PyMongoError as e:
+            logger.info("Failed to remove %s from replica set, error=%r", self.unit.name, e)
+
+    def _relation_departed(self, event: ops.charm.RelationDepartedEvent) -> None:
+        """Remove peer from replica set if it wasn't able to remove itself.
 
         Args:
-            event: The triggering storage detaching event.
+            event: The triggering relation departed event.
         """
-        # only remove and reconfigure if all replicas of MongoDB application are in ready state
-        if not self._mongo.all_replicas_ready():
-            self.unit.status = WaitingStatus("waiting to reconfigure replica set")
-            logger.debug("waiting for all replica set hosts to be ready")
-            event.defer()
-            return
+        # allow leader to update hosts if it isn't leaving
+        if self.unit.is_leader() and not event.departing_unit == self.unit:
+            self._update_hosts(event)
 
-        # if the unit that is leaving is the primary allow it to step down
-        logger.debug("current primary is %s. current unit is %s", self._primary, self.unit.name)
-        if self.unit.name == self._primary:
-            try:
-                self._mongo.primary_step_down()
-                logger.debug("the current primary is %s", self._primary)
-            except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
-                logger.error(
-                    "deferring removal of unit: %s for reason: %s", self.unit.name, str(e)
-                )
-                self.unit.status = WaitingStatus("waiting to reconfigure replica set")
-                event.defer()
-                return
+    def process_unremoved_units(self, event) -> None:
+        """Removes replica set members that are no longer running as a juju hosts."""
+        juju_hosts = self._unit_ips
 
-        # reconfigure the replica set without this unit
         try:
-            self._mongo.remove_replica(remove_replica_ip=self._unit_ip(self.unit))
-            logger.debug("Replica set successfully reconfigured")
-            self.unit.status = ActiveStatus()
-        except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
-            logger.error("deferring removal of unit: %s for reason: %s", self.unit.name, str(e))
-            self.unit.status = WaitingStatus("waiting to reconfigure replica set")
+            replica_hosts = self._mongo.member_ips()
+            for member in set(replica_hosts) - set(juju_hosts):
+                logger.debug("Removing %s from replica set", member)
+                self._mongo.remove_replset_member(member)
+        except NotReadyError:
+            logger.info("Deferring process_unremoved_units: another member is syncing")
             event.defer()
-            return
+        except PyMongoError as e:
+            logger.info("Deferring process_unremoved_units: error=%r", e)
+            event.defer()
 
     def _on_mongodb_relation_handler(self, event: ops.charm.RelationEvent) -> None:
         """Adds the unit as a replica to the MongoDB replica set.
@@ -243,6 +251,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             return
 
         # replica set initialised properly and ready to go
+        self._peers.data[self.app]["replset_initialised"] = "True"
         self.unit.status = ActiveStatus()
 
     def _on_update_status(self, _):

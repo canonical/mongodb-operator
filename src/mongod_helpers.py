@@ -3,17 +3,35 @@
 # See LICENSE file for licensing details.
 
 import logging
-from typing import List
+from typing import Dict, List
 
+from bson.json_util import dumps
 from pymongo import MongoClient
-from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
-from tenacity import RetryError, retry, stop_after_attempt, wait_exponential
+from pymongo.errors import (
+    ConfigurationError,
+    ConnectionFailure,
+    OperationFailure,
+    PyMongoError,
+)
+from tenacity import (
+    RetryError,
+    before_log,
+    retry,
+    stop_after_attempt,
+    stop_after_delay,
+    wait_exponential,
+    wait_fixed,
+)
 
 logger = logging.getLogger(__name__)
 
 # We expect the MongoDB container to use the
 # default ports
 MONGODB_PORT = 27017
+
+
+class NotReadyError(PyMongoError):
+    """Raised when not all replica set members healthy or finished initial sync."""
 
 
 class MongoDB:
@@ -80,6 +98,33 @@ class MongoDB:
                 return member["stateStr"]
 
         return None
+
+    def member_ips(self):
+        """Returns IP addresses of current replicas."""
+        # grab the replica set status
+        client = self.client()
+        try:
+            status = client.admin.command("replSetGetStatus")
+        except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
+            raise e
+        finally:
+            client.close()
+
+        hosts = [self._hostname_from_hostport(member["name"]) for member in status["members"]]
+
+        return hosts
+
+    @staticmethod
+    def _is_any_removing(rs_status: Dict) -> bool:
+        """Returns true if any replica set members are being removed.
+
+        Checks if any members in replica set are getting removed. It is recommended to run only one
+        removal in the cluster at a time as to not have huge performance degradation.
+
+        Args:
+            rs_status: current state of replica set as reported by mongod.
+        """
+        return any(member["stateStr"] == "REMOVED" for member in rs_status["members"])
 
     def all_replicas_ready(self) -> bool:
         """Returns true if all replica hosts are ready."""
@@ -185,6 +230,19 @@ class MongoDB:
 
         return primary
 
+    def _is_primary(self, rs_status: Dict, hostname: str) -> bool:
+        """Returns True if passed host is the replica set primary.
+
+        Args:
+            hostname: host of interest.
+            rs_status: current state of replica set as reported by mongod.
+        """
+        return any(
+            hostname == self._hostname_from_hostport(member["name"])
+            and member["stateStr"] == "PRIMARY"
+            for member in rs_status["members"]
+        )
+
     def primary_step_down(self) -> None:
         """Steps primary replica down, enabling one of the secondaries to become primary."""
         client = self.client()
@@ -229,41 +287,49 @@ class MongoDB:
         finally:
             client.close()
 
-    def remove_replica(self, remove_replica_ip: str) -> None:
-        """Removes the replica with remove_replica_ip from the MongoDB replica set config.
+    @retry(
+        stop=stop_after_delay(60),
+        wait=wait_fixed(5),
+        reraise=True,
+        before=before_log(logger, logging.DEBUG),
+    )
+    def remove_replset_member(self, hostname: str) -> None:
+        """Remove member from replica set config inside MongoDB and steps down primary if needed.
 
-        Using the current MongoDB configuration from mongod, remove_replica reconfigures the
-        replica set such that it no longer contains the replica with remove_replica_ip.
-
-        Args:
-            remove_replica_ip: the ip of the replica to remove.
+        Raises:
+            ConfigurationError, ConfigurationError, OperationFailure, NotReadyError
         """
-        replica_set_client = self.client()
-        try:
-            # get current configuration and update with correct hosts
-            rs_config = replica_set_client.admin.command("replSetGetConfig")
-            rs_config["config"]["version"] += 1
+        client = self.client()
 
-            # acquire current members in config
-            current_members = rs_config["config"]["members"]
-            logger.debug("current config for replica set: %s", current_members)
-            new_members = []
+        rs_config = client.admin.command("replSetGetConfig")
+        rs_status = client.admin.command("replSetGetStatus")
 
-            # add members to new config that aren't getting removed
-            for member in current_members:
-                # get member ip without ":PORT"
-                member_ip = member["host"].split(":")[0]
+        # To avoid issues when a majority of replica set members are removed, only remove a member
+        # if no other members are being removed.
+        if self._is_any_removing(rs_status):
+            # removing from replicaset is fast operation, lets @retry(for one minute with a 5s
+            # second delay) before giving up.
+            logger.debug("one or more units are currently removing")
+            raise NotReadyError
 
-                # if this ip is still being used retain it in new config
-                if member_ip != remove_replica_ip:
-                    new_members.append(member)
+        # avoid downtime we need to reelect new primary if removable member is the primary.
+        logger.debug("primary: %r", self._is_primary(rs_status, hostname))
+        if self._is_primary(rs_status, hostname):
+            logger.debug("setting down primary")
+            client.admin.command("replSetStepDown", {"stepDownSecs": "60"})
 
-            rs_config["config"]["members"] = new_members
-            replica_set_client.admin.command("replSetReconfig", rs_config["config"])
-        except (ConfigurationError, ConfigurationError, OperationFailure):
-            raise
-        finally:
-            replica_set_client.close()
+        # if multiple units are removing at the same time, they will have conflicting config
+        # versions and `replSetReconfig` operation will fail leading us to @retry. This ensures
+        # thread safe execution.
+        rs_config["config"]["version"] += 1
+        rs_config["config"]["members"][:] = [
+            member
+            for member in rs_config["config"]["members"]
+            if hostname != self._hostname_from_hostport(member["host"])
+        ]
+        logger.debug("rs_config: %r", dumps(rs_config["config"]))
+        client.admin.command("replSetReconfig", rs_config["config"])
+        client.close()
 
     def reconfigure_replica_set(self) -> None:
         """Reconfigure the MongoDB replica set.
@@ -373,3 +439,14 @@ class MongoDB:
         uri += "/"
         logger.debug("uri %s", uri)
         return uri
+
+    @staticmethod
+    def _hostname_from_hostport(hostname: str) -> str:
+        """Returns parsed host from MongoDB replica set hostname.
+
+        For hostnames MongoDB typically returns a value that contains both, hostname and port.
+        This function parses the host from this.
+        e.g. input: mongodb-1:27015
+             output: mongodb-1
+        """
+        return hostname.split(":")[0]
