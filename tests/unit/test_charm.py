@@ -2,9 +2,8 @@
 # See LICENSE file for licensing details.
 
 import unittest
-from typing import List
 from unittest import mock
-from unittest.mock import call, mock_open, patch
+from unittest.mock import call, patch
 
 import requests
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
@@ -44,23 +43,6 @@ class TestCharm(unittest.TestCase):
         self.harness.begin()
         self.peer_rel_id = self.harness.add_relation("mongodb", "mongodb")
 
-    @property
-    def mongodb_config_args(self) -> List[str]:
-        """Retrieves and parses config args."""
-        with open("tests/unit/data/mongodb_config_args.txt") as f:
-            config_args = f.read().splitlines()
-            config_args_formatted = ["\n" if arg == "\\n" else arg for arg in config_args]
-
-        return config_args_formatted
-
-    @property
-    def mongodb_config(self) -> str:
-        """Retrieves config from file."""
-        with open("tests/unit/data/mongodb_config.txt") as f:
-            config = f.read()
-
-        return config
-
     @patch("charm.MongodbOperatorCharm._unit_ip")
     @patch("charm.os.chown")
     @patch("charm.pwd.getpwnam")
@@ -83,19 +65,6 @@ class TestCharm(unittest.TestCase):
             daemon_reload.assert_called()
             getpwnam.assert_called()
             chown.assert_called()
-
-    @patch_network_get(private_address="1.1.1.1")
-    def test_on_config_changed(self):
-        """Test config change event properly writes to mongo.conf file."""
-        open_mock = mock_open(read_data=self.mongodb_config)
-        with patch("builtins.open", open_mock, create=True):
-            self.harness.charm.on.config_changed.emit()
-
-        # TODO change expected output based on config options,(once config options are implemented)
-        open_mock.assert_called_with("/etc/mongod.conf", "w")
-        open_mock.return_value.write.assert_has_calls(
-            [mock.call(arg) for arg in self.mongodb_config_args]
-        )
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("mongod_helpers.MongoDB.is_replica_ready", return_value=True)

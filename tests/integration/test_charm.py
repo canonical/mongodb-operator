@@ -13,10 +13,8 @@ from helpers import (
     count_primaries,
     fetch_replica_set_members,
     find_unit,
-    pull_content_from_unit_file,
     replica_set_primary,
     unit_uri,
-    update_bind_ip,
 )
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
@@ -43,22 +41,6 @@ async def test_status(ops_test: OpsTest) -> None:
     """Verifies that the application and unit are active."""
     await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=1000)
     assert len(ops_test.model.applications[APP_NAME].units) == len(UNIT_IDS)
-
-
-@pytest.mark.parametrize("unit_id", UNIT_IDS)
-async def test_config_files_are_correct(ops_test: OpsTest, unit_id: int) -> None:
-    """Tests that mongo.conf as expected content."""
-    # Get the expected contents from files.
-    with open("tests/data/mongod.conf") as file:
-        expected_mongodb_conf = file.read()
-
-    # Pull the configuration files from MongoDB instance.
-    unit = ops_test.model.applications[f"{APP_NAME}"].units[unit_id]
-
-    # Check that the conf settings are as expected.
-    unit_mongodb_conf_data = await pull_content_from_unit_file(unit, "/etc/mongod.conf")
-    expected_mongodb_conf = update_bind_ip(expected_mongodb_conf, unit.public_address)
-    assert expected_mongodb_conf == unit_mongodb_conf_data
 
 
 @pytest.mark.parametrize("unit_id", UNIT_IDS)
