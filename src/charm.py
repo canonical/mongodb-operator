@@ -2,6 +2,9 @@
 """Charm code for MongoDB service."""
 # Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
+import os
+import pwd
+import shutil
 import json
 import logging
 import subprocess
@@ -12,7 +15,7 @@ from urllib.request import URLError, urlopen
 import ops.charm
 import yaml
 from charms.operator_libs_linux.v0 import apt
-from charms.operator_libs_linux.v0.systemd import service_resume, service_running
+from charms.operator_libs_linux.v1 import systemd
 from ops.main import main
 from ops.model import (
     ActiveStatus,
@@ -40,6 +43,9 @@ REPO_ENTRY = (
     "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/5.0 multiverse"
 )
 GPG_URL = "https://www.mongodb.org/static/pgp/server-5.0.asc"
+MONGO_EXEC_LINE = 10
+MONGO_USER = "mongodb"
+MONGO_DATA_DIR = "/data/db"
 
 
 class MongodbOperatorCharm(ops.charm.CharmBase):
@@ -186,6 +192,37 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         except (apt.InvalidSourceError, ValueError, apt.GPGKeyError, URLError):
             self.unit.status = BlockedStatus("couldn't install MongoDB")
 
+        # Construct the mongod startup commandline args for systemd
+        machine_ip = self._unit_ip(self.unit)
+        mongod_start_args = " ".join([
+            "ExecStart=/usr/bin/mongod",
+            # bind to localhost and external interfaces
+            "--bind_ip",
+            f"localhost,{machine_ip}",
+            # part of replicaset
+            "--replSet",
+            "rs0",
+            "\n"
+        ])
+
+        # mongod.service file passes commandline args to mongod service
+        shutil.copy("src/data/mongod.service", "/etc/systemd/system/mongod.service")
+
+        with open('/etc/systemd/system/mongod.service', 'r') as service_template:
+            mongodb_service = service_template.readlines()
+
+        mongodb_service[MONGO_EXEC_LINE] = mongod_start_args
+
+        with open('/etc/systemd/system/mongod.service', 'w') as service_file:
+            service_file.writelines(mongodb_service)
+
+        # changes to service files are only applied after reloading
+        systemd.daemon_reload()
+
+        # mongod requires permissions to /data/db
+        mongodb_user = pwd.getpwnam(MONGO_USER)
+        os.chown(MONGO_DATA_DIR, mongodb_user.pw_uid, mongodb_user.pw_gid)
+
     def _on_config_changed(self, _) -> None:
         """Event handler for configuration changed events."""
         # TODO
@@ -211,9 +248,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         """
         # start mongo service
         self.unit.status = MaintenanceStatus("starting MongoDB")
-        if not service_running("mongod.service"):
+        if not systemd.service_running("mongod.service"):
             logger.debug("starting mongod.service")
-            mongod_enabled = service_resume("mongod.service")
+            mongod_enabled = systemd.service_start("mongod.service")
             if not mongod_enabled:
                 logger.error("failed to enable mongod.service")
                 self.unit.status = BlockedStatus("couldn't start MongoDB")
@@ -370,7 +407,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         else:
             raise ApplicationHostNotFoundError
 
-    @property
+    @ property
     def _primary(self) -> str:
         """Retrieves the unit with the primary replica."""
         # get IP of current priamry
@@ -391,7 +428,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         return None
 
-    @property
+    @ property
     def _need_replica_set_reconfiguration(self) -> bool:
         """Does MongoDB replica set need reconfiguration.
 
@@ -401,7 +438,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # are the units for the application all assigned to a host
         return set(self._unit_ips) != set(self._replica_set_hosts)
 
-    @property
+    @ property
     def _unit_ips(self) -> List[str]:
         """Retrieve IP addresses associated with MongoDB application.
 
@@ -419,7 +456,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         addresses.append(self_address)
         return addresses
 
-    @property
+    @ property
     def _replica_set_hosts(self):
         """Fetch current list of hosts in the replica set.
 
@@ -428,7 +465,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         """
         return json.loads(self._peers.data[self.app].get("replica_set_hosts", "[]"))
 
-    @property
+    @ property
     def _config(self) -> dict:
         """Retrieve config options for MongoDB.
 
@@ -449,7 +486,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         }
         return config
 
-    @property
+    @ property
     def _mongo(self) -> MongoDB:
         """Fetch the MongoDB server interface object.
 
@@ -458,7 +495,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         """
         return MongoDB(self._config)
 
-    @property
+    @ property
     def _peers(self) -> Optional[Relation]:
         """Fetch the peer relation.
 

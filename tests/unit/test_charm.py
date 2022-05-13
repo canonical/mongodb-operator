@@ -61,14 +61,28 @@ class TestCharm(unittest.TestCase):
 
         return config
 
+    @patch("charm.MongodbOperatorCharm._unit_ip")
+    @patch("charm.os.chown")
+    @patch("charm.pwd.getpwnam")
+    @patch("charm.systemd.daemon_reload")
+    @patch("charm.shutil")
     @patch("charm.MongodbOperatorCharm._add_repository")
     @patch("charm.MongodbOperatorCharm._install_apt_packages")
-    def test_mongodb_install(self, _add, _install):
+    def test_mongodb_install(self, _add, _install, shutil, daemon_reload, getpwnam, chown, _):
         """Test install calls correct functions."""
-        self.harness.charm.on.install.emit()
-        self.assertEqual(self.harness.charm.unit.status, MaintenanceStatus("installing MongoDB"))
-        _install.assert_called_once()
-        _add.assert_called_with(["mongodb-org"])
+        with mock.patch("builtins.open"):
+            self.harness.charm.on.install.emit()
+            self.assertEqual(
+                self.harness.charm.unit.status, MaintenanceStatus("installing MongoDB")
+            )
+            _install.assert_called_once()
+            _add.assert_called_with(["mongodb-org"])
+            shutil.copy.assert_called_with(
+                "src/data/mongod.service", "/etc/systemd/system/mongod.service"
+            )
+            daemon_reload.assert_called()
+            getpwnam.assert_called()
+            chown.assert_called()
 
     @patch_network_get(private_address="1.1.1.1")
     def test_on_config_changed(self):
@@ -88,12 +102,12 @@ class TestCharm(unittest.TestCase):
     @patch("mongod_helpers.MongoDB.is_mongod_ready", return_value=True)
     @patch("mongod_helpers.MongoDB.initialise_replica_set")
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
-    @patch("charm.service_resume")
+    @patch("charm.systemd.service_start")
     @patch("mongod_helpers.MongoDB.is_replica_set")
     def test_on_start_full_successful_execution(
         self,
         is_replica,
-        service_resume,
+        service_start,
         _open_port_tcp,
         initialise_replica_set,
         is_mongod_ready,
@@ -110,7 +124,7 @@ class TestCharm(unittest.TestCase):
         self.harness.charm.on.start.emit()
 
         # Check if mongod is started
-        service_resume.assert_called_with("mongod.service")
+        service_start.assert_called_with("mongod.service")
 
         # Make sure the port is opened
         _open_port_tcp.assert_called_with(27017)
@@ -131,12 +145,12 @@ class TestCharm(unittest.TestCase):
     @patch("mongod_helpers.MongoDB.is_mongod_ready", return_value=True)
     @patch("mongod_helpers.MongoDB.initialise_replica_set")
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
-    @patch("charm.service_resume")
+    @patch("charm.systemd.service_start")
     @patch("charm.MongodbOperatorCharm._initialise_replica_set")
     def test_on_start_not_leader_doesnt_initialise_replica_set(
         self,
         _initialise_replica_set,
-        service_resume,
+        service_start,
         _open_port_tcp,
         initialise_replica_set,
         is_ready,
@@ -145,7 +159,7 @@ class TestCharm(unittest.TestCase):
         self.harness.set_leader(False)
         self.harness.charm.on.start.emit()
 
-        service_resume.assert_called()
+        service_start.assert_called()
         _open_port_tcp.assert_called()
         is_ready.assert_called()
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus())
@@ -155,15 +169,15 @@ class TestCharm(unittest.TestCase):
     @patch("mongod_helpers.MongoDB.is_mongod_ready")
     @patch("charm.MongodbOperatorCharm._initialise_replica_set")
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
-    @patch("charm.service_resume", return_value=False)
-    @patch("charm.service_running", return_value=False)
+    @patch("charm.systemd.service_start", return_value=False)
+    @patch("charm.systemd.service_running", return_value=False)
     def test_on_start_systemd_failure_leads_to_blocked_status(
-        self, service_running, service_resume, _open_port_tcp, initialise_replica_set, is_ready
+        self, service_running, service_start, _open_port_tcp, initialise_replica_set, is_ready
     ):
         """Test failures on systemd result in blocked status."""
         with self.assertLogs("charm", "ERROR") as logs:
             self.harness.charm.on.start.emit()
-            service_resume.assert_called()
+            service_start.assert_called()
             self.assertIn("ERROR:charm:failed to enable mongod.service", logs.output)
         self.assertEqual(self.harness.charm.unit.status, BlockedStatus("couldn't start MongoDB"))
         _open_port_tcp.assert_not_called()
@@ -172,24 +186,24 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("mongod_helpers.MongoDB.is_mongod_ready", return_value=True)
-    @patch("charm.service_resume")
-    @patch("charm.service_running", return_value=True)
+    @patch("charm.systemd.service_start")
+    @patch("charm.systemd.service_running", return_value=True)
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
     @patch("mongod_helpers.MongoDB.is_replica_set", return_value=False)
     def test_on_start_mongo_service_ready_doesnt_reenable(
-        self, is_replica, _open_port_tcp, service_running, service_resume, is_ready
+        self, is_replica, _open_port_tcp, service_running, service_start, is_ready
     ):
         """Test verifies that is MongoDB service is available that we don't re-enable it."""
         self.harness.set_leader(True)
         self.harness.charm.on.start.emit()
         service_running.assert_called()
-        service_resume.assert_not_called()
+        service_start.assert_not_called()
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("mongod_helpers.MongoDB.is_mongod_ready", return_value=False)
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
     @patch("charm.MongodbOperatorCharm._initialise_replica_set")
-    @patch("charm.service_running", return_value=True)
+    @patch("charm.systemd.service_running", return_value=True)
     def test_on_start_mongod_not_ready_defer(
         self, service_running, initialise_replica_set, _open_port_tcp, is_ready
     ):
@@ -208,7 +222,7 @@ class TestCharm(unittest.TestCase):
     @patch("mongod_helpers.MongoDB.is_mongod_ready", return_value=True)
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
     @patch("charm.MongodbOperatorCharm._initialise_replica_set")
-    @patch("charm.service_running", return_value=True)
+    @patch("charm.systemd.service_running", return_value=True)
     def test_on_start_replica_not_ready_waits(
         self,
         service_running,
@@ -230,7 +244,7 @@ class TestCharm(unittest.TestCase):
     @patch("mongod_helpers.MongoDB.is_mongod_ready", return_value=True)
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
     @patch("charm.MongodbOperatorCharm._initialise_replica_set")
-    @patch("charm.service_running", return_value=True)
+    @patch("charm.systemd.service_running", return_value=True)
     def test_on_start_cannot_check_replica_status(
         self,
         service_running,
@@ -251,7 +265,7 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("mongod_helpers.MongoDB.is_mongod_ready")
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
-    @patch("charm.service_running", return_value=True)
+    @patch("charm.systemd.service_running", return_value=True)
     def test_start_unable_to_open_tcp_moves_to_blocked(
         self, service_running, _open_port_tcp, is_ready
     ):
@@ -561,11 +575,11 @@ class TestCharm(unittest.TestCase):
     @patch("mongod_helpers.MongoDB.is_mongod_ready", return_value=True)
     @patch("mongod_helpers.MongoDB.initialise_replica_set")
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
-    @patch("charm.service_resume")
+    @patch("charm.systemd.service_start")
     @patch("charm.MongodbOperatorCharm.app")
     @patch("mongod_helpers.MongoDB.is_replica_set", return_value=False)
     def test_initialise_replica_failure_leads_to_waiting_state(
-        self, is_replica, app, service_resume, _, initialise_replica_set, is_ready, peers
+        self, is_replica, app, service_start, _, initialise_replica_set, is_ready, peers
     ):
         """Tests that failure to initialise replica set goes into Waiting Status."""
         # set peer data so that leader doesn't reconfigure set on set_leader
@@ -598,7 +612,7 @@ class TestCharm(unittest.TestCase):
     @patch("mongod_helpers.MongoDB.is_mongod_ready", return_value=True)
     @patch("mongod_helpers.MongoDB.initialise_replica_set")
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
-    @patch("charm.service_running", return_value=True)
+    @patch("charm.systemd.service_running", return_value=True)
     @patch("mongod_helpers.MongoDB.is_replica_set")
     def test_initialise_replica_success(
         self,
