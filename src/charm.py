@@ -6,7 +6,6 @@ import json
 import logging
 import os
 import pwd
-import shutil
 import subprocess
 from subprocess import check_call
 from typing import List, Optional
@@ -206,23 +205,25 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             ]
         )
 
-        # mongod.service file passes commandline args to mongod service
-        shutil.copy("src/data/mongod.service", "/etc/systemd/system/mongod.service")
-
-        with open("/etc/systemd/system/mongod.service", "r") as service_template:
+        with open("/lib/systemd/system/mongod.service", "r") as service_template:
             mongodb_service = service_template.readlines()
 
-        mongodb_service[MONGO_EXEC_LINE] = mongod_start_args
+        # replace start command with our parameterized one
+        for i in range(len(mongodb_service)):
+            if "ExecStart" in mongodb_service[i]:
+                mongodb_service[i] = mongod_start_args
 
+        # systemd gives files in /etc/systemd/system/ precedence over those in /lib/systemd/system/
+        # hence our changed file in /etc will be read while maintaining the original one in /lib.
         with open("/etc/systemd/system/mongod.service", "w") as service_file:
             service_file.writelines(mongodb_service)
-
-        # changes to service files are only applied after reloading
-        systemd.daemon_reload()
 
         # mongod requires permissions to /data/db
         mongodb_user = pwd.getpwnam(MONGO_USER)
         os.chown(MONGO_DATA_DIR, mongodb_user.pw_uid, mongodb_user.pw_gid)
+
+        # changes to service files are only applied after reloading
+        systemd.daemon_reload()
 
     def _on_config_changed(self, _) -> None:
         """Event handler for configuration changed events."""
@@ -241,8 +242,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.unit.status = MaintenanceStatus("starting MongoDB")
         if not systemd.service_running("mongod.service"):
             logger.debug("starting mongod.service")
-            mongod_enabled = systemd.service_start("mongod.service")
-            if not mongod_enabled:
+            try:
+                systemd.service_start("mongod.service")
+            except systemd.SystemdError:
                 logger.error("failed to enable mongod.service")
                 self.unit.status = BlockedStatus("couldn't start MongoDB")
                 return

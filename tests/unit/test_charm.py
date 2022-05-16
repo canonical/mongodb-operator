@@ -6,7 +6,8 @@ from unittest import mock
 from unittest.mock import call, patch
 
 import requests
-from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
+from charms.operator_libs_linux.v1 import systemd
+from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 from ops.testing import Harness
 
 from charm import (
@@ -42,29 +43,6 @@ class TestCharm(unittest.TestCase):
         self.addCleanup(self.harness.cleanup)
         self.harness.begin()
         self.peer_rel_id = self.harness.add_relation("mongodb", "mongodb")
-
-    @patch("charm.MongodbOperatorCharm._unit_ip")
-    @patch("charm.os.chown")
-    @patch("charm.pwd.getpwnam")
-    @patch("charm.systemd.daemon_reload")
-    @patch("charm.shutil")
-    @patch("charm.MongodbOperatorCharm._add_repository")
-    @patch("charm.MongodbOperatorCharm._install_apt_packages")
-    def test_mongodb_install(self, _add, _install, shutil, daemon_reload, getpwnam, chown, _):
-        """Test install calls correct functions."""
-        with mock.patch("builtins.open"):
-            self.harness.charm.on.install.emit()
-            self.assertEqual(
-                self.harness.charm.unit.status, MaintenanceStatus("installing MongoDB")
-            )
-            _install.assert_called_once()
-            _add.assert_called_with(["mongodb-org"])
-            shutil.copy.assert_called_with(
-                "src/data/mongod.service", "/etc/systemd/system/mongod.service"
-            )
-            daemon_reload.assert_called()
-            getpwnam.assert_called()
-            chown.assert_called()
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("mongod_helpers.MongoDB.is_replica_ready", return_value=True)
@@ -138,7 +116,7 @@ class TestCharm(unittest.TestCase):
     @patch("mongod_helpers.MongoDB.is_mongod_ready")
     @patch("charm.MongodbOperatorCharm._initialise_replica_set")
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
-    @patch("charm.systemd.service_start", return_value=False)
+    @patch("charm.systemd.service_start", side_effect=systemd.SystemdError)
     @patch("charm.systemd.service_running", return_value=False)
     def test_on_start_systemd_failure_leads_to_blocked_status(
         self, service_running, service_start, _open_port_tcp, initialise_replica_set, is_ready
@@ -148,7 +126,8 @@ class TestCharm(unittest.TestCase):
             self.harness.charm.on.start.emit()
             service_start.assert_called()
             self.assertIn("ERROR:charm:failed to enable mongod.service", logs.output)
-        self.assertEqual(self.harness.charm.unit.status, BlockedStatus("couldn't start MongoDB"))
+
+        self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
         _open_port_tcp.assert_not_called()
         is_ready.assert_not_called()
         initialise_replica_set.assert_not_called()
