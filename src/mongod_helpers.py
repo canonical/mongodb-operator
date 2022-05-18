@@ -58,6 +58,14 @@ class MongoDB:
         Returns:
             A pymongo `MongoClient` object.
         """
+        if self._calling_unit_ip == "localhost":
+            return MongoClient(
+                "localhost",
+                directConnection=True,
+                connect=False,
+                serverSelectionTimeoutMS=1000,
+                connectTimeoutMS=2000,
+            )
         return MongoClient(self.replica_uri(standalone), serverSelectionTimeoutMS=1000)
 
     @retry(stop=stop_after_attempt(10), wait=wait_exponential(multiplier=1, min=2, max=30))
@@ -70,7 +78,11 @@ class MongoDB:
         Returns:
             client.server_info information about the server.
         """
-        return client.server_info()
+        try:
+            client.server_info()
+        except Exception as e:
+            logger.debug(e)
+            raise e
 
     def check_replica_status(self, replica_ip) -> str:
         """Retrieves the status of replica.
@@ -280,10 +292,15 @@ class MongoDB:
             logger.error("cannot initialise replica set: incorrect credentials: error: %s", str(e))
             raise e
         except OperationFailure as e:
-            logger.error(
-                "cannot initialise replica set: database operation failed: error: %s", str(e)
-            )
-            raise e
+            if e.code not in (13, 23):  # Unauthorized, AlreadyInitialized
+                # Unauthorized error can be raised only if initial user were
+                #     created the step after this.
+                # AlreadyInitialized error can be raised only if this step
+                #     finished.
+                logger.error(
+                    "cannot initialise replica set: database operation failed: error: %s", str(e)
+                )
+                raise e
         finally:
             client.close()
 
@@ -427,16 +444,20 @@ class MongoDB:
             A string URI that may be used to access the MongoDB
             replica set.
         """
-        # TODO add password configuration in future patch
-
         uri = "mongodb://"
         if not standalone:
             hosts = ["{}:{}".format(unit_ip, self._port) for unit_ip in self._unit_ips]
-            uri += ",".join(hosts)
+            hosts += ",".join(hosts)
         else:
-            uri += "{}:{}".format(self._calling_unit_ip, self._port)
+            hosts += "{}:{}".format(self._calling_unit_ip, self._port)
 
-        uri += "/"
+        uri = (
+            f"mongodb://operator:"
+            f"{self._root_password}@"
+            f"{hosts}/admin"
+            f"replicaSet={self._replica_set_name}"
+        )
+
         logger.debug("uri %s", uri)
         return uri
 
