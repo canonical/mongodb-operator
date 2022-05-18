@@ -35,7 +35,8 @@ from mongod_helpers import (
 )
 
 from charms.mongodb_libs.v0.mongodb import (
-    MongoDBConfiguration
+    MongoDBConfiguration,
+    MongoDBConnection
 )
 
 from charms.mongodb_libs.v0.helpers import (
@@ -226,7 +227,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 "--replSet",
                 "rs0",
                 # TODO enable auth
-                # "--auth",
+                "--auth",
                 # keyFile used for authentication replica set peers
                 # TODO: replace with x509
                 "--clusterAuthMode=keyFile",
@@ -318,26 +319,30 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         if not self.unit.is_leader():
             return
 
-        # initialise replica set
-        self._initialise_replica_set()
+        with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
+            if not direct_mongo.is_ready:
+                logger.debug("mongodb service is not ready yet.")
+                event.defer()
+                return
+            try:
+                logger.info("Replica Set initialization")
+                direct_mongo.init_replset()
+                logger.info("User initialization")
+                self._init_admin_user()
+            except subprocess.CalledProcessError as e:
+                logger.error(
+                    "Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr
+                )
+                event.defer()
+                return
+            except PyMongoError as e:
+                logger.error("Deferring on_start since: error=%r", e)
+                event.defer()
+                return
 
-        # add password
-        try:
-            self._init_user()
-        except subprocess.CalledProcessError as e:
-            logger.debug(e)
-            raise
-
-        # verify that leader is in replica set mode
-        if not self._mongo.is_replica_set() or not self._mongo.is_replica_ready():
-            logger.debug("Replica set for leader is not ready")
-            self.unit.status = WaitingStatus("waiting to initialise replica set")
-            event.defer()
-            return
-
-        # replica set initialised properly and ready to go
-        self.app_data["replset_initialised"] = "True"
-        self.unit.status = ActiveStatus()
+            # replica set initialised properly and ready to go
+            self.app_data["replset_initialised"] = "True"
+            self.unit.status = ActiveStatus()
 
     def _on_update_status(self, _):
         # if unit is primary then update status
@@ -423,8 +428,11 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.unit.status = MaintenanceStatus("initialising MongoDB replica set")
         logger.debug("initialising replica set for leader")
         try:
+            # check if this unit's deployment of MongoDB is ready
+            mongo_local = self._single_mongo_replica("localhost")
+
             leader_ip = self._unit_ip(self.unit)
-            self._mongo.initialise_replica_set([leader_ip])
+            mongo_local.initialise_replica_set([leader_ip])
             self.app_data["replica_set_hosts"] = json.dumps([leader_ip])
         except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
             logger.error("error initialising replica sets in _on_start: error: %s", str(e))
@@ -540,11 +548,12 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
     # the src/mongod_helpers.py file with the lib/charms/mongodb_libs/v0/mongodb.py. When the
     # src/mongod_helpers.py file is fully phased out the property _config will be removed and only
     # mongodb_config will be present
+    @property
     def mongodb_config(self) -> MongoDBConfiguration:
         hosts = self._unit_ips
 
         return MongoDBConfiguration(
-            replset=self.app.name,
+            replset="rs0",  # TODO update this to self.app.name
             database="admin",
             username="operator",
             password=self.app_data.get("admin_password"),
@@ -581,8 +590,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         reraise=True,
         before=before_log(logger, logging.DEBUG),
     )
-    def _init_user(self) -> None:
+    def _init_admin_user(self) -> None:
         """Creates initial admin user for MongoDB.
+
         Initial admin user can be created only through localhost connection.
         see https://www.mongodb.com/docs/manual/core/localhost-exception/
         unfortunately, pymongo unable to create connection that considered
@@ -591,16 +601,22 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         It is needed to install mongodb-clients inside charm container to make
         this function work correctly.
         """
-        subprocess.run(
+        out = subprocess.run(
             get_create_user_cmd(self.mongodb_config),
-            stdin=self.mongodb_config.password,
+            input=self.mongodb_config.password.encode(),
         )
+        if out.returncode == 0:
+            raise AdminUserCreationError
         logger.debug("User created")
+
+
+class AdminUserCreationError(Exception):
+    """Raised when a commands to create an admin user on MongoDB fail."""
+    pass
 
 
 class ApplicationHostNotFoundError(Exception):
     """Raised when a queried host is not in the application peers or the current host."""
-
     pass
 
 
