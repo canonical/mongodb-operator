@@ -133,9 +133,11 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         juju_hosts = self._unit_ips
 
         try:
+            # TODO in a future PR update this use of self._mongo to be with MongoDBConnection
             replica_hosts = self._mongo.member_ips()
             for member in set(replica_hosts) - set(juju_hosts):
                 logger.debug("Removing %s from replica set", member)
+                # TODO in a future PR update this use of self._mongo to be with MongoDBConnection
                 self._mongo.remove_replset_member(member)
         except NotReadyError:
             logger.info("Deferring process_unremoved_units: another member is syncing")
@@ -158,16 +160,16 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         #  only add the calling unit to the replica set if it has mongod running
         calling_unit = event.unit
         calling_unit_ip = str(self._peers.data[calling_unit].get("private-address"))
-        mongo_peer = self._single_mongo_replica(calling_unit_ip)
-        if not mongo_peer.is_mongod_ready():
-            self.unit.status = WaitingStatus("waiting to reconfigure replica set")
-            logger.debug(
-                "unit is not ready, cannot initialise replica set unit: %s is ready, deferring on relation-joined",
-                calling_unit.name,
-            )
-            event.defer()
-            return
+        logger.debug("Adding %s to replica set", calling_unit_ip)
+        with MongoDBConnection(
+            self.mongodb_config, calling_unit_ip, direct=True
+        ) as direct_mongo:
+            if not direct_mongo.is_ready:
+                logger.debug("Deferring reconfigure: %s is not ready yet.", calling_unit_ip)
+                event.defer()
+                return
 
+        # TODO in a future PR update this use of self._mongo to be with MongoDBConnection
         # only reconfigure if all current replicas of MongoDB application are in ready state
         if not self._mongo.all_replicas_ready():
             self.unit.status = WaitingStatus("waiting to reconfigure replica set")
@@ -192,6 +194,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             return
 
         try:
+            # TODO in a future PR update this use of self._mongo to be with MongoDBConnection
             self._mongo.reconfigure_replica_set()
             # update the set of replica set hosts
             self.app_data["replica_set_hosts"] = json.dumps(self._unit_ips)
@@ -275,6 +278,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # wait for keyFile to be created
         if "keyfile" not in self.app_data:
             event.defer()
+            return
 
         # put keyfile on the machine with appropriate permissions
         from pathlib import Path
@@ -468,6 +472,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         """Retrieves the unit with the primary replica."""
         # get IP of current priamry
         try:
+            # TODO in a future PR update this use of self._mongo to be with MongoDBConnection
             primary_ip = self._mongo.primary()
         except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
             logger.error("Unable to access primary due to: %s", e)

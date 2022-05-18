@@ -66,6 +66,14 @@ class MongoDB:
                 serverSelectionTimeoutMS=1000,
                 connectTimeoutMS=2000,
             )
+        elif standalone:
+            return MongoClient(
+                self.replica_uri(standalone),
+                directConnection=True,
+                connect=False,
+                serverSelectionTimeoutMS=1000,
+                connectTimeoutMS=2000,
+            )
         return MongoClient(self.replica_uri(standalone), serverSelectionTimeoutMS=1000)
 
     @retry(stop=stop_after_attempt(10), wait=wait_exponential(multiplier=1, min=2, max=30))
@@ -447,15 +455,15 @@ class MongoDB:
         uri = "mongodb://"
         if not standalone:
             hosts = ["{}:{}".format(unit_ip, self._port) for unit_ip in self._unit_ips]
-            hosts += ",".join(hosts)
+            hosts = ",".join(hosts)
         else:
-            hosts += "{}:{}".format(self._calling_unit_ip, self._port)
+            hosts = "{}:{}".format(self._calling_unit_ip, self._port)
 
         uri = (
             f"mongodb://operator:"
             f"{self._root_password}@"
             f"{hosts}/admin"
-            f"replicaSet={self._replica_set_name}"
+            f"?replicaSet={self._replica_set_name}"
         )
 
         logger.debug("uri %s", uri)
