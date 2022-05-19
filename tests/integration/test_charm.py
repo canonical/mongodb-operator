@@ -15,6 +15,7 @@ from helpers import (
     find_unit,
     replica_set_primary,
     unit_uri,
+    get_password
 )
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
@@ -70,7 +71,8 @@ async def test_leader_is_primary_on_deployment(ops_test: OpsTest) -> None:
     assert leader_unit is not None, "No unit is leader"
 
     # connect to mongod
-    client = MongoClient(unit_uri(leader_unit.public_address))
+    password = await get_password(ops_test)
+    client = MongoClient(unit_uri(leader_unit.public_address, password), directConnection=True)
 
     # verify primary status
     assert client.is_primary, "Leader is not primary"
@@ -80,7 +82,8 @@ async def test_leader_is_primary_on_deployment(ops_test: OpsTest) -> None:
 async def test_exactly_one_primary(ops_test: OpsTest) -> None:
     """Tests that there is exactly one primary in the deployed units."""
     try:
-        number_of_primaries = count_primaries(ops_test)
+        password = await get_password(ops_test)
+        number_of_primaries = count_primaries(ops_test, password)
     except RetryError:
         number_of_primaries = 0
 
@@ -96,7 +99,8 @@ async def test_get_primary_action(ops_test: OpsTest) -> None:
     expected_primary = None
     for unit in ops_test.model.applications[APP_NAME].units:
         # connect to mongod
-        client = MongoClient(unit_uri(unit.public_address))
+        password = await get_password(ops_test)
+        client = MongoClient(unit_uri(unit.public_address, password), directConnection=True)
 
         # check primary status
         if client.is_primary:
@@ -133,7 +137,7 @@ async def test_add_units(ops_test: OpsTest) -> None:
     ip_addresses = [unit.public_address for unit in ops_test.model.applications[APP_NAME].units]
 
     # connect to replica set uri and get replica set members
-    member_ips = fetch_replica_set_members(ip_addresses)
+    member_ips = await fetch_replica_set_members(ip_addresses, ops_test)
 
     # verify that the replica set members have the correct units
     assert set(member_ips) == set(ip_addresses)
@@ -180,7 +184,7 @@ async def test_scale_down_capablities(ops_test: OpsTest) -> None:
 
     # check that the replica set with the remaining units has a primary
     try:
-        primary = replica_set_primary(ip_addresses)
+        primary = await replica_set_primary(ip_addresses, ops_test)
     except RetryError:
         primary = None
 
@@ -191,6 +195,6 @@ async def test_scale_down_capablities(ops_test: OpsTest) -> None:
     assert primary in ip_addresses, "replica set primary is not one of the available units"
 
     # verify that the configuration of mongodb no longer has the deleted ip
-    member_ips = fetch_replica_set_members(ip_addresses)
+    member_ips = await fetch_replica_set_members(ip_addresses, ops_test)
 
     assert set(member_ips) == set(ip_addresses), "mongod config contains deleted units"

@@ -80,6 +80,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # if a new leader has been elected update hosts of MongoDB
         self.framework.observe(self.on.leader_elected, self._update_hosts)
         self.framework.observe(self.on.mongodb_relation_departed, self._relation_departed)
+        self.framework.observe(self.on.get_admin_password_action, self._on_get_admin_password)
 
     def _generate_passwords(self) -> None:
         """Generate passwords and put them into peer relation.
@@ -355,6 +356,10 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def _on_get_primary_action(self, event: ops.charm.ActionEvent):
         event.set_results({"replica-set-primary": self._primary})
+
+    def _on_get_admin_password(self, event: ops.charm.ActionEvent) -> None:
+        """Returns the password for the user as an action response."""
+        event.set_results({"admin-password": self.app_data.get("admin_password")})
 
     def _open_port_tcp(self, port: int) -> None:
         """Open the given port.

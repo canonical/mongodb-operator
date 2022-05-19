@@ -33,31 +33,32 @@ async def run_command_on_unit(unit, command: str) -> Optional[str]:
     return action.results.get("Stdout", None)
 
 
-def replica_set_client(replica_ips: List[str]) -> MongoClient:
+def replica_set_client(replica_ips: List[str], password: str) -> MongoClient:
     """Generates the replica set URI for multiple IP addresses.
 
     Args:
         replica_ips: list of ips hosting the replica set.
     """
-    if len(replica_ips) == 1:
-        replica_set_uri = replica_ips[0] + ":" + str(PORT)
-        return MongoClient(replica_set_uri, replicaset="rs0")
-    else:
-        replica_set_uri = "mongodb://"
-        hosts = ["{}:{}".format(replica_ip, PORT) for replica_ip in replica_ips]
-        replica_set_uri += ",".join(hosts)
-        replica_set_uri += "/replicaSet=rs0"
-        return MongoClient(replica_set_uri)
+    hosts = ["{}:{}".format(replica_ip, PORT) for replica_ip in replica_ips]
+    hosts = ",".join(hosts)
+
+    replica_set_uri = (
+        f"mongodb://operator:"
+        f"{password}@"
+        f"{hosts}/admin?replicaSet=rs0"
+    )
+    return MongoClient(replica_set_uri)
 
 
-def fetch_replica_set_members(replica_ips: List[str]):
+async def fetch_replica_set_members(replica_ips: List[str], ops_test: OpsTest):
     """Fetches the IPs listed as replica set members in the MongoDB replica set configuration.
 
     Args:
         replica_ips: list of ips hosting the replica set.
     """
     # connect to replica set uri
-    client = replica_set_client(replica_ips)
+    password = await get_password(ops_test)
+    client = replica_set_client(replica_ips, password)
 
     # get ips from MongoDB replica set configuration
     rs_config = client.admin.command("replSetGetConfig")
@@ -71,19 +72,40 @@ def fetch_replica_set_members(replica_ips: List[str]):
     return member_ips
 
 
-def unit_uri(ip_address: str) -> str:
+def unit_uri(ip_address: str, password) -> str:
     """Generates URI that is used by MongoDB to connect to a single replica.
 
     Args:
         ip_address: ip address of replica/unit
     """
-    return "mongodb://{}:{}/".format(ip_address, PORT)
+    return (
+        f"mongodb://operator:"
+        f"{password}@"
+        f"{ip_address}:{PORT}/admin?replicaSet=rs0"
+    )
 
 
-def fetch_primary(replica_set_hosts: List[str]) -> str:
+async def get_password(ops_test: OpsTest) -> str:
+    """Use the charm action to retrieve the password from provided unit.
+    Returns:
+        String with the password stored on the peer relation databag.
+    """
+    # can retrieve from any unit running unit so we pick the first
+    unit_name = ops_test.model.applications[APP_NAME].units[0].name
+    unit_id = unit_name.split("/")[1]
+
+    action = await ops_test.model.units.get(f"{APP_NAME}/{unit_id}").run_action(
+        "get-admin-password"
+    )
+    action = await action.wait()
+    return action.results["admin-password"]
+
+
+async def fetch_primary(replica_set_hosts: List[str], ops_test: OpsTest) -> str:
     """Returns IP address of current replica set primary."""
     # connect to MongoDB client
-    client = replica_set_client(replica_set_hosts)
+    password = await get_password(ops_test)
+    client = replica_set_client(replica_set_hosts, password)
 
     # grab the replica set status
     try:
@@ -109,7 +131,7 @@ def fetch_primary(replica_set_hosts: List[str]) -> str:
     stop=stop_after_attempt(5),
     wait=wait_exponential(multiplier=1, min=2, max=30),
 )
-def replica_set_primary(replica_set_hosts: List[str]) -> str:
+async def replica_set_primary(replica_set_hosts: List[str], ops_test: OpsTest) -> str:
     """Returns the primary of the replica set.
 
     Retrying 5 times to give the replica set time to elect a new primary, also checks against the
@@ -120,7 +142,7 @@ def replica_set_primary(replica_set_hosts: List[str]) -> str:
     valid_ips:
         list of ips that are currently in the replica set.
     """
-    primary = fetch_primary(replica_set_hosts)
+    primary = await fetch_primary(replica_set_hosts, ops_test)
     # return None if primary is no longer in the replica set
     if primary is not None and primary not in replica_set_hosts:
         return None
@@ -133,7 +155,7 @@ def replica_set_primary(replica_set_hosts: List[str]) -> str:
     stop=stop_after_attempt(5),
     wait=wait_exponential(multiplier=1, min=2, max=30),
 )
-def count_primaries(ops_test: OpsTest) -> int:
+def count_primaries(ops_test: OpsTest, password: str) -> int:
     """Counts the number of primaries in a replica set.
 
     Will retry counting when the number of primaries is 0 at most 5 times.
@@ -144,7 +166,7 @@ def count_primaries(ops_test: OpsTest) -> int:
         unit = ops_test.model.applications[APP_NAME].units[unit_id]
 
         # connect to mongod
-        client = MongoClient(unit_uri(unit.public_address))
+        client = MongoClient(unit_uri(unit.public_address, password), directConnection=True)
 
         # check primary status
         if client.is_primary:
