@@ -38,15 +38,12 @@ def replica_set_client(replica_ips: List[str], password: str) -> MongoClient:
 
     Args:
         replica_ips: list of ips hosting the replica set.
+        password: password of database.
     """
     hosts = ["{}:{}".format(replica_ip, PORT) for replica_ip in replica_ips]
     hosts = ",".join(hosts)
 
-    replica_set_uri = (
-        f"mongodb://operator:"
-        f"{password}@"
-        f"{hosts}/admin?replicaSet=rs0"
-    )
+    replica_set_uri = f"mongodb://operator:" f"{password}@" f"{hosts}/admin?replicaSet=rs0"
     return MongoClient(replica_set_uri)
 
 
@@ -55,6 +52,7 @@ async def fetch_replica_set_members(replica_ips: List[str], ops_test: OpsTest):
 
     Args:
         replica_ips: list of ips hosting the replica set.
+        ops_test: reference to deployment.
     """
     # connect to replica set uri
     password = await get_password(ops_test)
@@ -77,16 +75,14 @@ def unit_uri(ip_address: str, password) -> str:
 
     Args:
         ip_address: ip address of replica/unit
+        password: password of database.
     """
-    return (
-        f"mongodb://operator:"
-        f"{password}@"
-        f"{ip_address}:{PORT}/admin?replicaSet=rs0"
-    )
+    return f"mongodb://operator:" f"{password}@" f"{ip_address}:{PORT}/admin?replicaSet=rs0"
 
 
 async def get_password(ops_test: OpsTest) -> str:
     """Use the charm action to retrieve the password from provided unit.
+
     Returns:
         String with the password stored on the peer relation databag.
     """

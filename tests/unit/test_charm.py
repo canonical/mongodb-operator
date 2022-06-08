@@ -54,12 +54,7 @@ class TestCharm(unittest.TestCase):
     @patch("charm.os")
     @patch("charm.pwd")
     def test_on_start_not_leader_doesnt_initialise_replica_set(
-        self,
-        pwd, os, open, path,
-        service_start,
-        _open_port_tcp,
-        init_admin,
-        connection
+        self, pwd, os, open, path, service_start, _open_port_tcp, init_admin, connection
     ):
         """Tests that a non leader unit does not initialise the replica set."""
         # Only leader can set RelationData
@@ -86,7 +81,16 @@ class TestCharm(unittest.TestCase):
     @patch("charm.os")
     @patch("charm.pwd")
     def test_on_start_systemd_failure_leads_to_blocked_status(
-        self, pwd, os, open, path, service_running, service_start, _open_port_tcp, init_admin, connection
+        self,
+        pwd,
+        os,
+        open,
+        path,
+        service_running,
+        service_start,
+        _open_port_tcp,
+        init_admin,
+        connection,
     ):
         """Test failures on systemd result in blocked status."""
         self.harness.set_leader(True)
@@ -110,7 +114,16 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongoDBConnection")
     @patch("charm.MongodbOperatorCharm._init_admin_user")
     def test_on_start_mongo_service_ready_doesnt_reenable(
-        self, init_admin, connection, pwd, os, open, path, _open_port_tcp, service_running, service_start
+        self,
+        init_admin,
+        connection,
+        pwd,
+        os,
+        open,
+        path,
+        _open_port_tcp,
+        service_running,
+        service_start,
     ):
         """Test verifies that is MongoDB service is available that we don't re-enable it."""
         self.harness.set_leader(True)
@@ -129,7 +142,16 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongoDBConnection")
     @patch("charm.MongodbOperatorCharm._init_admin_user")
     def test_on_start_mongod_not_ready_defer(
-        self, init_admin, connection, pwd, os, open, path, service_running, initialise_replica_set, _open_port_tcp,
+        self,
+        init_admin,
+        connection,
+        pwd,
+        os,
+        open,
+        path,
+        service_running,
+        initialise_replica_set,
+        _open_port_tcp,
     ):
         """Test verifies that we wait to initialise replica set when mongod is not running."""
         self.harness.set_leader(True)
@@ -462,7 +484,15 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongoDBConnection")
     @patch("charm.MongodbOperatorCharm._init_admin_user")
     def test_initialise_replica_failure_leads_to_waiting_state(
-        self, init_admin, connection, pwd, os, open, path, service_start, _,
+        self,
+        init_admin,
+        connection,
+        pwd,
+        os,
+        open,
+        path,
+        service_start,
+        _,
     ):
         """Tests that failure to initialise replica set goes into Waiting Status."""
         # set peer data so that leader doesn't reconfigure set on set_leader

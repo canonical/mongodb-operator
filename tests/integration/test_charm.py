@@ -13,9 +13,9 @@ from helpers import (
     count_primaries,
     fetch_replica_set_members,
     find_unit,
+    get_password,
     replica_set_primary,
     unit_uri,
-    get_password
 )
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
