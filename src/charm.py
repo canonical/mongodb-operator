@@ -12,6 +12,8 @@ from typing import List, Optional, Dict
 from urllib.request import URLError, urlopen
 from tenacity import before_log, retry, stop_after_attempt, wait_fixed
 
+from pathlib import Path
+
 import ops.charm
 from charms.operator_libs_linux.v0 import apt
 from charms.operator_libs_linux.v1 import systemd
@@ -281,8 +283,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             event.defer()
             return
 
+        # TODO in follow up PR add error handling for keyfile creation & permissions
         # put keyfile on the machine with appropriate permissions
-        from pathlib import Path
         Path("/etc/mongodb/").mkdir(parents=True, exist_ok=True)
         with open(KEY_FILE, "w") as key_file:
             key_file.write(self.app_data.get("keyfile"))
@@ -309,13 +311,12 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             return
 
         # check if this unit's deployment of MongoDB is ready
-        mongo_local = self._single_mongo_replica("localhost")
-
-        if not mongo_local.is_mongod_ready():
-            logger.debug("mongoDB not ready, deferring on start event")
-            self.unit.status = WaitingStatus("waiting for MongoDB to start")
-            event.defer()
-            return
+        with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
+            if not direct_mongo.is_ready:
+                logger.debug("mongodb service is not ready yet.")
+                self.unit.status = WaitingStatus("waiting for MongoDB to start")
+                event.defer()
+                return
 
         # mongod is now active
         self.unit.status = ActiveStatus()
@@ -325,13 +326,11 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             return
 
         with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
-            if not direct_mongo.is_ready:
-                logger.debug("mongodb service is not ready yet.")
-                event.defer()
-                return
             try:
                 logger.info("Replica Set initialization")
                 direct_mongo.init_replset()
+                self._peers.data[self.app]["replica_set_hosts"] = json.dumps(
+                    [self._unit_ip(self.unit)])
                 logger.info("User initialization")
                 self._init_admin_user()
             except subprocess.CalledProcessError as e:
@@ -339,10 +338,12 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                     "Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr
                 )
                 event.defer()
+                self.unit.status = WaitingStatus("waiting to initialise replica set")
                 return
             except PyMongoError as e:
                 logger.error("Deferring on_start since: error=%r", e)
                 event.defer()
+                self.unit.status = WaitingStatus("waiting to initialise replica set")
                 return
 
             # replica set initialised properly and ready to go
@@ -432,6 +433,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             logger.error("could not add package(s) to install: %s", str(e))
             self.unit.status = BlockedStatus("couldn't install MongoDB")
 
+    # TODO in a future PR remove this function along with anything related to it
     def _initialise_replica_set(self) -> None:
         # initialise as a replica set with one replica
         self.unit.status = MaintenanceStatus("initialising MongoDB replica set")
