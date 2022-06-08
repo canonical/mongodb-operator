@@ -181,6 +181,7 @@ class MongoDBConnection:
                 logger.error("Cannot initialize replica set. error=%r", e)
                 raise e
 
+    @property
     def get_replset_members(self) -> Set[str]:
         """Get a replica set members.
 
