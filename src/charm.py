@@ -74,7 +74,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self.on.mongodb_storage_detaching, self._on_mongodb_storage_detaching
         )
         # if a new leader has been elected update hosts of MongoDB
-        self.framework.observe(self.on.leader_elected, self._update_hosts)
+        self.framework.observe(self.on.leader_elected, self._on_leader_elected)
         self.framework.observe(self.on.mongodb_relation_departed, self._relation_departed)
         self.framework.observe(self.on.get_admin_password_action, self._on_get_admin_password)
 
@@ -90,12 +90,16 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         if "keyfile" not in self.app_data:
             self.app_data["keyfile"] = generate_keyfile()
 
-    def _update_hosts(self, event) -> None:
-        """Update replica set hosts and remove any unremoved replicas from the config."""
+    def _on_leader_elected(self, event) -> None:
+        """Generates necessary keyfile and updates replica hosts."""
         if "keyfile" not in self.app_data:
             self._generate_passwords()
 
-        if not self.unit.is_leader() or "replset_initialised" not in self.app_data:
+        self._update_hosts(event)
+
+    def _update_hosts(self, event) -> None:
+        """Update replica set hosts and remove any unremoved replicas from the config."""
+        if "replset_initialised" not in self.app_data:
             return
 
         self.process_unremoved_units(event)
@@ -395,6 +399,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
     def _instatiate_keyfile(self, event: ops.charm.StartEvent) -> None:
         # wait for keyFile to be created by leader unit
         if "keyfile" not in self.app_data:
+            logger.debug("waiting for leader unit to generate keyfile contents")
             event.defer()
             return
 
