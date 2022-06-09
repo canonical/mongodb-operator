@@ -501,12 +501,7 @@ class TestCharm(unittest.TestCase):
         self.harness.charm.app_data["_new_leader_must_reconfigure"] = "False"
         connection.return_value.__enter__.return_value.is_ready = True
 
-        log_messages = [
-            "ERROR:charm:error initialising replica sets in _on_start: error: error message",
-            "ERROR:charm:error initialising replica sets in _on_start: error: error message",
-            "ERROR:charm:error initialising replica sets in _on_start: error: error message",
-        ]
-        for exception, log_message in zip(PYMONGO_EXCEPTIONS, log_messages):
+        for exception in PYMONGO_EXCEPTIONS:
             connection.return_value.__enter__.return_value.init_replset.side_effect = exception
             self.harness.charm.on.start.emit()
             connection.return_value.__enter__.return_value.init_replset.assert_called()

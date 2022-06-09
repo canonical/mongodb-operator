@@ -266,22 +266,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # - add additional configurations as according to spec doc
         pass
 
-    def _instatiate_keyfile(self, event: ops.charm.StartEvent) -> None:
-        # wait for keyFile to be created by leader unit
-        if "keyfile" not in self.app_data:
-            event.defer()
-            return
-
-        # TODO in follow up PR add error handling for keyfile creation & permissions
-        # put keyfile on the machine with appropriate permissions
-        Path("/etc/mongodb/").mkdir(parents=True, exist_ok=True)
-        with open(KEY_FILE, "w") as key_file:
-            key_file.write(self.app_data.get("keyfile"))
-
-        os.chmod(KEY_FILE, 0o400)
-        mongodb_user = pwd.getpwnam(MONGO_USER)
-        os.chown(KEY_FILE, mongodb_user.pw_uid, mongodb_user.pw_gid)
-
     def _on_start(self, event: ops.charm.StartEvent) -> None:
         """Enables MongoDB service and initialises replica set.
 
@@ -407,6 +391,22 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         except TypeError as e:
             logger.error("could not add package(s) to install: %s", str(e))
             self.unit.status = BlockedStatus("couldn't install MongoDB")
+
+    def _instatiate_keyfile(self, event: ops.charm.StartEvent) -> None:
+        # wait for keyFile to be created by leader unit
+        if "keyfile" not in self.app_data:
+            event.defer()
+            return
+
+        # TODO in follow up PR add error handling for keyfile creation & permissions
+        # put keyfile on the machine with appropriate permissions
+        Path("/etc/mongodb/").mkdir(parents=True, exist_ok=True)
+        with open(KEY_FILE, "w") as key_file:
+            key_file.write(self.app_data.get("keyfile"))
+
+        os.chmod(KEY_FILE, 0o400)
+        mongodb_user = pwd.getpwnam(MONGO_USER)
+        os.chown(KEY_FILE, mongodb_user.pw_uid, mongodb_user.pw_gid)
 
     def _initialise_replica_set(self, event: ops.charm.StartEvent) -> None:
         with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
