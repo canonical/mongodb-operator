@@ -216,7 +216,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         except (apt.InvalidSourceError, ValueError, apt.GPGKeyError, URLError):
             self.unit.status = BlockedStatus("couldn't install MongoDB")
 
-        # Construct the mongod startup commandline args for systemd
+        # Construct the mongod startup commandline args for systemd, note that commandline
+        # arguments take priority over any user set config file options. User options will be
+        # configured in the config file. MongoDB handles this merge of these two options.
         machine_ip = self._unit_ip(self.unit)
         mongod_start_args = " ".join(
             [
@@ -237,13 +239,13 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             ]
         )
 
-        with open("/lib/systemd/system/mongod.service", "r") as service_template:
-            mongodb_service = service_template.readlines()
+        with open("/lib/systemd/system/mongod.service", "r") as mongodb_service_file:
+            mongodb_service = mongodb_service_file.readlines()
 
         # replace start command with our parameterized one
-        for i in range(len(mongodb_service)):
-            if "ExecStart" in mongodb_service[i]:
-                mongodb_service[i] = mongod_start_args
+        for index, line in enumerate(mongodb_service):
+            if "ExecStart" in line:
+                mongodb_service[index] = mongod_start_args
 
         # systemd gives files in /etc/systemd/system/ precedence over those in /lib/systemd/system/
         # hence our changed file in /etc will be read while maintaining the original one in /lib.
