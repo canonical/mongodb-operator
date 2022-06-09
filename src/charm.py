@@ -4,15 +4,16 @@
 # See LICENSE file for licensing details.
 import json
 import logging
+import os
+import pwd
 import subprocess
 from subprocess import check_call
 from typing import List, Optional
 from urllib.request import URLError, urlopen
 
 import ops.charm
-import yaml
 from charms.operator_libs_linux.v0 import apt
-from charms.operator_libs_linux.v0.systemd import service_resume, service_running
+from charms.operator_libs_linux.v1 import systemd
 from ops.main import main
 from ops.model import (
     ActiveStatus,
@@ -40,6 +41,9 @@ REPO_ENTRY = (
     "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/5.0 multiverse"
 )
 GPG_URL = "https://www.mongodb.org/static/pgp/server-5.0.asc"
+MONGO_EXEC_LINE = 10
+MONGO_USER = "mongodb"
+MONGO_DATA_DIR = "/data/db"
 
 
 class MongodbOperatorCharm(ops.charm.CharmBase):
@@ -186,22 +190,49 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         except (apt.InvalidSourceError, ValueError, apt.GPGKeyError, URLError):
             self.unit.status = BlockedStatus("couldn't install MongoDB")
 
+        # Construct the mongod startup commandline args for systemd, note that commandline
+        # arguments take priority over any user set config file options. User options will be
+        # configured in the config file. MongoDB handles this merge of these two options.
+        machine_ip = self._unit_ip(self.unit)
+        mongod_start_args = " ".join(
+            [
+                "ExecStart=/usr/bin/mongod",
+                # bind to localhost and external interfaces
+                "--bind_ip",
+                f"localhost,{machine_ip}",
+                # part of replicaset
+                "--replSet",
+                "rs0",
+                "\n",
+            ]
+        )
+
+        with open("/lib/systemd/system/mongod.service", "r") as mongodb_service_file:
+            mongodb_service = mongodb_service_file.readlines()
+
+        # replace start command with our parameterized one
+        for index, line in enumerate(mongodb_service):
+            if "ExecStart" in line:
+                mongodb_service[index] = mongod_start_args
+
+        # systemd gives files in /etc/systemd/system/ precedence over those in /lib/systemd/system/
+        # hence our changed file in /etc will be read while maintaining the original one in /lib.
+        with open("/etc/systemd/system/mongod.service", "w") as service_file:
+            service_file.writelines(mongodb_service)
+
+        # mongod requires permissions to /data/db
+        mongodb_user = pwd.getpwnam(MONGO_USER)
+        os.chown(MONGO_DATA_DIR, mongodb_user.pw_uid, mongodb_user.pw_gid)
+
+        # changes to service files are only applied after reloading
+        systemd.daemon_reload()
+
     def _on_config_changed(self, _) -> None:
         """Event handler for configuration changed events."""
         # TODO
         # - update existing mongo configurations based on user preferences
         # - add additional configurations as according to spec doc
-        with open("/etc/mongod.conf", "r") as mongo_config_file:
-            mongo_config = yaml.safe_load(mongo_config_file)
-
-        machine_ip = self._unit_ip(self.unit)
-        mongo_config["net"]["bindIp"] = "localhost,{}".format(machine_ip)
-        if "replication" not in mongo_config:
-            mongo_config["replication"] = {}
-
-        mongo_config["replication"]["replSetName"] = "rs0"
-        with open("/etc/mongod.conf", "w") as mongo_config_file:
-            yaml.dump(mongo_config, mongo_config_file)
+        pass
 
     def _on_start(self, event: ops.charm.StartEvent) -> None:
         """Enables MongoDB service and initialises replica set.
@@ -211,10 +242,11 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         """
         # start mongo service
         self.unit.status = MaintenanceStatus("starting MongoDB")
-        if not service_running("mongod.service"):
+        if not systemd.service_running("mongod.service"):
             logger.debug("starting mongod.service")
-            mongod_enabled = service_resume("mongod.service")
-            if not mongod_enabled:
+            try:
+                systemd.service_start("mongod.service")
+            except systemd.SystemdError:
                 logger.error("failed to enable mongod.service")
                 self.unit.status = BlockedStatus("couldn't start MongoDB")
                 return
