@@ -7,11 +7,19 @@ import logging
 import os
 import pwd
 import subprocess
+from pathlib import Path
 from subprocess import check_call
-from typing import List, Optional
+from typing import Dict, List, Optional
 from urllib.request import URLError, urlopen
 
 import ops.charm
+from charms.mongodb_libs.v0.helpers import (
+    KEY_FILE,
+    generate_keyfile,
+    generate_password,
+    get_create_user_cmd,
+)
+from charms.mongodb_libs.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 from charms.operator_libs_linux.v0 import apt
 from charms.operator_libs_linux.v1 import systemd
 from ops.main import main
@@ -22,6 +30,7 @@ from ops.model import (
     Relation,
     WaitingStatus,
 )
+from tenacity import before_log, retry, stop_after_attempt, wait_fixed
 
 from mongod_helpers import (
     MONGODB_PORT,
@@ -65,16 +74,36 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self.on.mongodb_storage_detaching, self._on_mongodb_storage_detaching
         )
         # if a new leader has been elected update hosts of MongoDB
-        self.framework.observe(self.on.leader_elected, self._update_hosts)
+        self.framework.observe(self.on.leader_elected, self._on_leader_elected)
         self.framework.observe(self.on.mongodb_relation_departed, self._relation_departed)
+        self.framework.observe(self.on.get_admin_password_action, self._on_get_admin_password)
+
+    def _generate_passwords(self) -> None:
+        """Generate passwords and put them into peer relation.
+
+        The same keyFile and admin password on all members needed, hence it is generated once and
+        share between members via the app data.
+        """
+        if "admin_password" not in self.app_data:
+            self.app_data["admin_password"] = generate_password()
+
+        if "keyfile" not in self.app_data:
+            self.app_data["keyfile"] = generate_keyfile()
+
+    def _on_leader_elected(self, event) -> None:
+        """Generates necessary keyfile and updates replica hosts."""
+        if "keyfile" not in self.app_data:
+            self._generate_passwords()
+
+        self._update_hosts(event)
 
     def _update_hosts(self, event) -> None:
         """Update replica set hosts and remove any unremoved replicas from the config."""
-        if not self.unit.is_leader() or "replset_initialised" not in self._peers.data[self.app]:
+        if "replset_initialised" not in self.app_data:
             return
 
         self.process_unremoved_units(event)
-        self._peers.data[self.app]["replica_set_hosts"] = json.dumps(self._unit_ips)
+        self.app_data["replica_set_hosts"] = json.dumps(self._unit_ips)
 
     def _on_mongodb_storage_detaching(self, event: ops.charm.StorageDetachingEvent) -> None:
         """Before storage detaches, allow removing unit to remove itself from the set.
@@ -108,9 +137,11 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         juju_hosts = self._unit_ips
 
         try:
+            # TODO in a future PR update this use of self._mongo to be with MongoDBConnection
             replica_hosts = self._mongo.member_ips()
             for member in set(replica_hosts) - set(juju_hosts):
                 logger.debug("Removing %s from replica set", member)
+                # TODO in a future PR update this use of self._mongo to be with MongoDBConnection
                 self._mongo.remove_replset_member(member)
         except NotReadyError:
             logger.info("Deferring process_unremoved_units: another member is syncing")
@@ -133,16 +164,14 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         #  only add the calling unit to the replica set if it has mongod running
         calling_unit = event.unit
         calling_unit_ip = str(self._peers.data[calling_unit].get("private-address"))
-        mongo_peer = self._single_mongo_replica(calling_unit_ip)
-        if not mongo_peer.is_mongod_ready():
-            self.unit.status = WaitingStatus("waiting to reconfigure replica set")
-            logger.debug(
-                "unit is not ready, cannot initialise replica set unit: %s is ready, deferring on relation-joined",
-                calling_unit.name,
-            )
-            event.defer()
-            return
+        logger.debug("Adding %s to replica set", calling_unit_ip)
+        with MongoDBConnection(self.mongodb_config, calling_unit_ip, direct=True) as direct_mongo:
+            if not direct_mongo.is_ready:
+                logger.debug("Deferring reconfigure: %s is not ready yet.", calling_unit_ip)
+                event.defer()
+                return
 
+        # TODO in a future PR update this use of self._mongo to be with MongoDBConnection
         # only reconfigure if all current replicas of MongoDB application are in ready state
         if not self._mongo.all_replicas_ready():
             self.unit.status = WaitingStatus("waiting to reconfigure replica set")
@@ -167,9 +196,10 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             return
 
         try:
+            # TODO in a future PR update this use of self._mongo to be with MongoDBConnection
             self._mongo.reconfigure_replica_set()
             # update the set of replica set hosts
-            self._peers.data[self.app]["replica_set_hosts"] = json.dumps(self._unit_ips)
+            self.app_data["replica_set_hosts"] = json.dumps(self._unit_ips)
             logger.debug("Replica set successfully reconfigured")
             self.unit.status = ActiveStatus()
         except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
@@ -177,7 +207,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self.unit.status = WaitingStatus("waiting to reconfigure replica set")
             event.defer()
 
-    def _on_install(self, _) -> None:
+    def _on_install(self, event) -> None:
         """Handle the install event (fired on startup).
 
         Handles the startup install event -- installs updates the apt cache,
@@ -203,6 +233,11 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 # part of replicaset
                 "--replSet",
                 "rs0",
+                "--auth",
+                # keyFile used for authentication replica set peers
+                # TODO: replace with x509
+                "--clusterAuthMode=keyFile",
+                f"--keyFile={KEY_FILE}",
                 "\n",
             ]
         )
@@ -240,6 +275,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         Args:
             event: The triggering start event.
         """
+        # MongoDB with authentication requires a keyfile
+        self._instatiate_keyfile(event)
+
         # start mongo service
         self.unit.status = MaintenanceStatus("starting MongoDB")
         if not systemd.service_running("mongod.service"):
@@ -258,11 +296,12 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             return
 
         # check if this unit's deployment of MongoDB is ready
-        if not self._mongo.is_mongod_ready():
-            logger.debug("mongoDB not ready, deferring on start event")
-            self.unit.status = WaitingStatus("waiting for MongoDB to start")
-            event.defer()
-            return
+        with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
+            if not direct_mongo.is_ready:
+                logger.debug("mongodb service is not ready yet.")
+                self.unit.status = WaitingStatus("waiting for MongoDB to start")
+                event.defer()
+                return
 
         # mongod is now active
         self.unit.status = ActiveStatus()
@@ -271,20 +310,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         if not self.unit.is_leader():
             return
 
-        # initialise replica set if not already a replica set
-        if not self._mongo.is_replica_set():
-            self._initialise_replica_set()
-
-        # verify that leader is in replica set mode
-        if not self._mongo.is_replica_set() or not self._mongo.is_replica_ready():
-            logger.debug("Replica set for leader is not ready")
-            self.unit.status = WaitingStatus("waiting to initialise replica set")
-            event.defer()
-            return
-
-        # replica set initialised properly and ready to go
-        self._peers.data[self.app]["replset_initialised"] = "True"
-        self.unit.status = ActiveStatus()
+        self._initialise_replica_set(event)
 
     def _on_update_status(self, _):
         # if unit is primary then update status
@@ -293,6 +319,10 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def _on_get_primary_action(self, event: ops.charm.ActionEvent):
         event.set_results({"replica-set-primary": self._primary})
+
+    def _on_get_admin_password(self, event: ops.charm.ActionEvent) -> None:
+        """Returns the password for the user as an action response."""
+        event.set_results({"admin-password": self.app_data.get("admin_password")})
 
     def _open_port_tcp(self, port: int) -> None:
         """Open the given port.
@@ -365,17 +395,50 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             logger.error("could not add package(s) to install: %s", str(e))
             self.unit.status = BlockedStatus("couldn't install MongoDB")
 
-    def _initialise_replica_set(self) -> None:
-        # initialise as a replica set with one replica
-        self.unit.status = MaintenanceStatus("initialising MongoDB replica set")
-        logger.debug("initialising replica set for leader")
-        try:
-            leader_ip = self._unit_ip(self.unit)
-            self._mongo.initialise_replica_set([leader_ip])
-            self._peers.data[self.app]["replica_set_hosts"] = json.dumps([leader_ip])
-        except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
-            logger.error("error initialising replica sets in _on_start: error: %s", str(e))
-            self.unit.status = WaitingStatus("waiting to initialise replica set")
+    def _instatiate_keyfile(self, event: ops.charm.StartEvent) -> None:
+        # wait for keyFile to be created by leader unit
+        if "keyfile" not in self.app_data:
+            logger.debug("waiting for leader unit to generate keyfile contents")
+            self.unit.status = WaitingStatus("waiting for MongoDB to start")
+            event.defer()
+            return
+
+        # TODO in follow up PR add error handling for keyfile creation & permissions
+        # put keyfile on the machine with appropriate permissions
+        Path("/etc/mongodb/").mkdir(parents=True, exist_ok=True)
+        with open(KEY_FILE, "w") as key_file:
+            key_file.write(self.app_data.get("keyfile"))
+
+        os.chmod(KEY_FILE, 0o400)
+        mongodb_user = pwd.getpwnam(MONGO_USER)
+        os.chown(KEY_FILE, mongodb_user.pw_uid, mongodb_user.pw_gid)
+
+    def _initialise_replica_set(self, event: ops.charm.StartEvent) -> None:
+        with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
+            try:
+                logger.info("Replica Set initialization")
+                direct_mongo.init_replset()
+                self._peers.data[self.app]["replica_set_hosts"] = json.dumps(
+                    [self._unit_ip(self.unit)]
+                )
+                logger.info("User initialization")
+                self._init_admin_user()
+            except subprocess.CalledProcessError as e:
+                logger.error(
+                    "Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr
+                )
+                event.defer()
+                self.unit.status = WaitingStatus("waiting to initialise replica set")
+                return
+            except PyMongoError as e:
+                logger.error("Deferring on_start since: error=%r", e)
+                event.defer()
+                self.unit.status = WaitingStatus("waiting to initialise replica set")
+                return
+
+            # replica set initialised properly and ready to go
+            self.app_data["replset_initialised"] = "True"
+            self.unit.status = ActiveStatus()
 
     def _single_mongo_replica(self, ip_address: str) -> MongoDB:
         """Fetch the MongoDB server interface object for a single replica.
@@ -407,6 +470,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         """Retrieves the unit with the primary replica."""
         # get IP of current priamry
         try:
+            # TODO in a future PR update this use of self._mongo to be with MongoDBConnection
             primary_ip = self._mongo.primary()
         except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
             logger.error("Unable to access primary due to: %s", e)
@@ -458,7 +522,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         Returns:
             A list of hosts addresses (strings).
         """
-        return json.loads(self._peers.data[self.app].get("replica_set_hosts", "[]"))
+        return json.loads(self.app_data.get("replica_set_hosts", "[]"))
 
     @property
     def _config(self) -> dict:
@@ -473,13 +537,33 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             "replica_set_name": "rs0",
             "num_hosts": len(self._unit_ips),
             "port": self._port,
-            "root_password": "password",
+            "root_password": self.app_data.get("admin_password"),
             "security_key": "",
             "unit_ips": self._unit_ips,
             "replica_set_hosts": self._replica_set_hosts,
             "calling_unit_ip": self._unit_ip(self.unit),
+            "username": "operator",
         }
         return config
+
+    # TODO remove one of the mongodb configs.
+    # there are two mongodb configs, because we are currently in the process of slowly phasing out
+    # the src/mongod_helpers.py file with the lib/charms/mongodb_libs/v0/mongodb.py. When the
+    # src/mongod_helpers.py file is fully phased out the property _config will be removed and only
+    # mongodb_config will be present
+    @property
+    def mongodb_config(self) -> MongoDBConfiguration:
+        """Generates a MongoDBConfiguration object for this deployment of MongoDB."""
+        hosts = self._unit_ips
+
+        return MongoDBConfiguration(
+            replset="rs0",  # TODO update this to self.app.name
+            database="admin",
+            username="operator",
+            password=self.app_data.get("admin_password"),
+            hosts=set(hosts),
+            roles={"default"},
+        )
 
     @property
     def _mongo(self) -> MongoDB:
@@ -491,6 +575,11 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         return MongoDB(self._config)
 
     @property
+    def app_data(self) -> Dict:
+        """Peer relation data object."""
+        return self.model.get_relation(PEER).data[self.app]
+
+    @property
     def _peers(self) -> Optional[Relation]:
         """Fetch the peer relation.
 
@@ -498,6 +587,37 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
              An `ops.model.Relation` object representing the peer relation.
         """
         return self.model.get_relation(PEER)
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(5),
+        reraise=True,
+        before=before_log(logger, logging.DEBUG),
+    )
+    def _init_admin_user(self) -> None:
+        """Creates initial admin user for MongoDB.
+
+        Initial admin user can be created only through localhost connection.
+        see https://www.mongodb.com/docs/manual/core/localhost-exception/
+        unfortunately, pymongo unable to create connection that considered
+        as local connection by MongoDB, even if socket connection used.
+        As a result, where are only hackish ways to create initial user.
+        It is needed to install mongodb-clients inside charm container to make
+        this function work correctly.
+        """
+        out = subprocess.run(
+            get_create_user_cmd(self.mongodb_config),
+            input=self.mongodb_config.password.encode(),
+        )
+        if out.returncode == 0:
+            raise AdminUserCreationError
+        logger.debug("User created")
+
+
+class AdminUserCreationError(Exception):
+    """Raised when a commands to create an admin user on MongoDB fail."""
+
+    pass
 
 
 class ApplicationHostNotFoundError(Exception):
