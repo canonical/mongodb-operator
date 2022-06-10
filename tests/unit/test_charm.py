@@ -316,7 +316,7 @@ class TestCharm(unittest.TestCase):
         expected_ips = ["127.4.5.6", "1.1.1.1"]
         self.assertEqual(resulting_ips, expected_ips)
 
-    @patch("charm.MongodbOperatorCharm._reconfigure")
+    @patch("mongod_helpers.MongoDB.reconfigure_replica_set")
     def test_mongodb_relation_joined_non_leader_does_nothing(self, reconfigure):
         """Test verifies that non-leader units don't reconfigure the replica set on joined."""
         rel = self.harness.charm.model.get_relation("mongodb")
@@ -516,33 +516,34 @@ class TestCharm(unittest.TestCase):
         self.assertEqual(mongo_replica._calling_unit_ip, ip_address)
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("mongod_helpers.MongoDB.primary", return_value="1.1.1.1")
-    def test_update_status_primary(self, primary):
+    @patch("charm.MongoDBConnection")
+    def test_update_status_primary(self, connection):
         """Tests that update status identifies the primary unit and updates status."""
+        connection.return_value.__enter__.return_value.primary.return_value = "1.1.1.1"
         self.harness.charm.on.update_status.emit()
-        primary.assert_called()
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus("Replica set primary"))
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("mongod_helpers.MongoDB.primary", return_value="2.2.2.2")
+    @patch("charm.MongoDBConnection")
     @patch("ops.model.ActiveStatus")
-    def test_update_status_secondary(self, active_status, primary):
+    def test_update_status_secondary(self, active_status, connection):
         """Tests that update status identifies secondary units and doesn't update status."""
+        connection.return_value.__enter__.return_value.primary.return_value = "2.2.2.2"
         self.harness.charm.on.update_status.emit()
-        primary.assert_called()
         active_status.assert_not_called()
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("mongod_helpers.MongoDB.primary", return_value="1.1.1.1")
-    def test_get_primary_current_unit_primary(self, primary):
+    @patch("charm.MongoDBConnection")
+    def test_get_primary_current_unit_primary(self, connection):
         """Tests get primary outputs correct primary when called on a primary replica."""
         mock_event = mock.Mock()
+        connection.return_value.__enter__.return_value.primary.return_value = "1.1.1.1"
         self.harness.charm._on_get_primary_action(mock_event)
         mock_event.set_results.assert_called_with({"replica-set-primary": "mongodb/0"})
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("mongod_helpers.MongoDB.primary")
-    def test_get_primary_peer_unit_primary(self, primary):
+    @patch("charm.MongoDBConnection")
+    def test_get_primary_peer_unit_primary(self, connection):
         """Tests get primary outputs correct primary when called on a secondary replica."""
         # add peer unit
         rel_id = self.harness.charm.model.get_relation("mongodb").id
@@ -550,7 +551,7 @@ class TestCharm(unittest.TestCase):
         self.harness.update_relation_data(rel_id, "mongodb/1", {"private-address": "2.2.2.2"})
 
         # mock out the self unit not being primary but its peer being primary
-        primary.return_value = "2.2.2.2"
+        connection.return_value.__enter__.return_value.primary.return_value = "2.2.2.2"
 
         mock_event = mock.Mock()
 
@@ -558,8 +559,8 @@ class TestCharm(unittest.TestCase):
         mock_event.set_results.assert_called_with({"replica-set-primary": "mongodb/1"})
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("mongod_helpers.MongoDB.primary")
-    def test_primary_no_primary(self, primary_helper):
+    @patch("charm.MongoDBConnection")
+    def test_primary_no_primary(self, connection):
         """Test that that the primary property can handle the case when there is no primary.
 
         Verifies that when there is no primary, the property _primary returns None.
@@ -570,48 +571,19 @@ class TestCharm(unittest.TestCase):
         self.harness.update_relation_data(rel_id, "mongodb/1", {"private-address": "2.2.2.2"})
 
         # mock out no units being primary
-        primary_helper.return_value = None
+        connection.return_value.__enter__.return_value.primary.return_value = None
 
         # verify no primary identified
         primary = self.harness.charm._primary
         self.assertEqual(primary, None)
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("mongod_helpers.MongoDB.primary", return_value="1.1.1.1")
-    def test_primary_self_primary(self, primary_helper):
-        """Test that that the primary property can identify itself as primary.
-
-        Verifies that when the calling unit is primary, the calling unit is identified as primary.
-        """
-        primary = self.harness.charm._primary
-        self.assertEqual(primary, "mongodb/0")
-
-    @patch_network_get(private_address="1.1.1.1")
-    @patch("mongod_helpers.MongoDB.primary")
-    def test_primary_peer_primary(self, primary_helper):
-        """Test that that the primary property can identify a peer unit as primary.
-
-        Verifies that when a non-calling unit is primary, the non-calling unit is identified as
-        primary.
-        """
-        # add peer unit
-        rel_id = self.harness.charm.model.get_relation("mongodb").id
-        self.harness.add_relation_unit(rel_id, "mongodb/1")
-        self.harness.update_relation_data(rel_id, "mongodb/1", {"private-address": "2.2.2.2"})
-
-        # mock out the self unit not being primary but its peer being primary
-        primary_helper.return_value = "2.2.2.2"
-
-        primary = self.harness.charm._primary
-        self.assertEqual(primary, "mongodb/1")
-
-    @patch_network_get(private_address="1.1.1.1")
-    @patch("mongod_helpers.MongoDB.primary")
-    def test_primary_failure(self, primary_helper):
+    @patch("charm.MongoDBConnection")
+    def test_primary_failure(self, connection):
         """Tests that when getting the primary fails that no replica is reported as primary."""
         # verify that we raise the correct exception
         for exception in PYMONGO_EXCEPTIONS:
-            primary_helper.side_effect = exception
+            connection.return_value.__enter__.return_value.primary.side_effect = exception
             self.assertEqual(self.harness.charm._primary, None)
 
     @patch("charm.MongodbOperatorCharm._unit_ips")
@@ -627,8 +599,8 @@ class TestCharm(unittest.TestCase):
         self.assertEqual(self.harness.charm._need_replica_set_reconfiguration, False)
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("mongod_helpers.MongoDB.remove_replset_member")
-    def test_storage_detaching_failure_does_not_defer(self, remove_replset_member):
+    @patch("charm.MongoDBConnection")
+    def test_storage_detaching_failure_does_not_defer(self, connection):
         """Test that failure in removing replica does not defer the hook.
 
         Deferring Storage Detached hooks can result in un-predicable behavior and while it is
@@ -636,23 +608,24 @@ class TestCharm(unittest.TestCase):
         attempt to defer storage detached as made.
         """
         for exception in [PYMONGO_EXCEPTIONS, NotReadyError]:
-            remove_replset_member.side_effect = exception
+            connection.return_value.__enter__.return_value.remove_replset_member.side_effect = (
+                exception
+            )
             event = mock.Mock()
             self.harness.charm.on.mongodb_storage_detaching.emit(mock.Mock())
             event.defer.assert_not_called()
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongodbOperatorCharm._unit_ips")
-    @patch("mongod_helpers.MongoDB.remove_replset_member")
-    @patch("mongod_helpers.MongoDB.member_ips")
-    def test_process_unremoved_units_handles_errors(
-        self, member_ips, remove_replset_member, _unit_ips
-    ):
+    @patch("charm.MongoDBConnection")
+    def test_process_unremoved_units_handles_errors(self, connection, _unit_ips):
         """Test failures in process_unremoved_units are handled and not raised."""
-        member_ips.return_value = ["1.1.1.1", "2.2.2.2"]
+        connection.return_value.__enter__.return_value.get_replset_members = {"1.1.1.1", "2.2.2.2"}
         self.harness.charm._unit_ips = ["2.2.2.2"]
 
         for exception in [PYMONGO_EXCEPTIONS, NotReadyError]:
-            remove_replset_member.side_effect = exception
+            connection.return_value.__enter__.return_value.remove_replset_member.side_effect = (
+                exception
+            )
             self.harness.charm.process_unremoved_units(mock.Mock())
-            remove_replset_member.assert_called()
+            connection.return_value.__enter__.return_value.remove_replset_member.assert_called()
