@@ -230,7 +230,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 # part of replicaset
                 "--replSet",
                 "rs0",
-                # TODO enable auth
                 "--auth",
                 # keyFile used for authentication replica set peers
                 # TODO: replace with x509
@@ -397,6 +396,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # wait for keyFile to be created by leader unit
         if "keyfile" not in self.app_data:
             logger.debug("waiting for leader unit to generate keyfile contents")
+            self.unit.status = WaitingStatus("waiting for MongoDB to start")
             event.defer()
             return
 
