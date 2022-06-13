@@ -138,7 +138,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         """Removes replica set members that are no longer running as a juju hosts."""
         with MongoDBConnection(self.mongodb_config) as mongo:
             try:
-                replset_members = mongo.get_replset_members
+                replset_members = mongo.get_replset_members()
                 for member in replset_members - self.mongodb_config.hosts:
                     logger.debug("Removing %s from replica set", member)
                     mongo.remove_replset_member(member)
@@ -162,8 +162,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         with MongoDBConnection(self.mongodb_config) as mongo:
             try:
-                replset_members = mongo.get_replset_members
-
+                replset_members = mongo.get_replset_members()
                 # compare set of mongod replica set members and juju hosts to avoid the unnecessary
                 # reconfiguration.
                 if replset_members == self.mongodb_config.hosts:
@@ -175,14 +174,17 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                         self.mongodb_config, member, direct=True
                     ) as direct_mongo:
                         if not direct_mongo.is_ready:
+                            self.unit.status = WaitingStatus("waiting to reconfigure replica set")
                             logger.debug("Deferring reconfigure: %s is not ready yet.", member)
                             event.defer()
                             return
                     mongo.add_replset_member(member)
             except NotReadyError:
+                self.unit.status = WaitingStatus("waiting to reconfigure replica set")
                 logger.info("Deferring reconfigure: another member doing sync right now")
                 event.defer()
             except PyMongoError as e:
+                self.unit.status = WaitingStatus("waiting to reconfigure replica set")
                 logger.info("Deferring reconfigure: error=%r", e)
                 event.defer()
 
@@ -464,16 +466,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 return unit.name
 
         return None
-
-    @property
-    def _need_replica_set_reconfiguration(self) -> bool:
-        """Does MongoDB replica set need reconfiguration.
-
-        Returns:
-            bool: that indicates if the replica set hosts should be reconfigured
-        """
-        # are the units for the application all assigned to a host
-        return set(self._unit_ips) != set(self._replica_set_hosts)
 
     @property
     def _unit_ips(self) -> List[str]:

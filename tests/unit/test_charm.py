@@ -9,17 +9,9 @@ import requests
 from charms.operator_libs_linux.v1 import systemd
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 from ops.testing import Harness
+from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
 
-from charm import (
-    ConfigurationError,
-    ConnectionFailure,
-    MongodbOperatorCharm,
-    NotReadyError,
-    OperationFailure,
-    URLError,
-    apt,
-    subprocess,
-)
+from charm import MongodbOperatorCharm, NotReadyError, URLError, apt, subprocess
 from tests.unit.helpers import patch_network_get
 
 REPO_NAME = "deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"
@@ -163,7 +155,6 @@ class TestCharm(unittest.TestCase):
         init_admin.assert_not_called()
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("mongod_helpers.MongoDB.is_mongod_ready")
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
     @patch("charm.systemd.service_running", return_value=True)
     @patch("charm.Path")
@@ -171,7 +162,7 @@ class TestCharm(unittest.TestCase):
     @patch("charm.os")
     @patch("charm.pwd")
     def test_start_unable_to_open_tcp_moves_to_blocked(
-        self, pwd, os, open, path, service_running, _open_port_tcp, is_ready
+        self, pwd, os, open, path, service_running, _open_port_tcp
     ):
         """Test verifies that if TCP port cannot be opened we go to the blocked state."""
         self.harness.set_leader(True)
@@ -316,117 +307,17 @@ class TestCharm(unittest.TestCase):
         expected_ips = ["127.4.5.6", "1.1.1.1"]
         self.assertEqual(resulting_ips, expected_ips)
 
-    @patch("mongod_helpers.MongoDB.reconfigure_replica_set")
-    def test_mongodb_relation_joined_non_leader_does_nothing(self, reconfigure):
+    @patch("charm.MongoDBConnection")
+    def test_mongodb_relation_joined_non_leader_does_nothing(self, connection):
         """Test verifies that non-leader units don't reconfigure the replica set on joined."""
         rel = self.harness.charm.model.get_relation("mongodb")
         self.harness.set_leader(False)
         self.harness.charm.on.mongodb_relation_joined.emit(relation=rel)
-
-        reconfigure.assert_not_called()
-
-    @patch_network_get(private_address="1.1.1.1")
-    @patch("mongod_helpers.MongoDB.reconfigure_replica_set")
-    @patch("charm.MongoDBConnection")
-    def test_mongodb_relation_joined_peers_not_ready(self, connection, mongo_reconfigure):
-        """Test that leader unit won't reconfigure the replica set until unit is ready.
-
-        If the peer unit that is joining the replica set and doesn't have mongod running the
-        leader unit must not reconfigure.
-        """
-        # preset values
-        self.harness.set_leader(True)
-        connection.return_value.__enter__.return_value.is_ready = False
-
-        # simulate 2nd MongoDB unit
-        rel = self.harness.charm.model.get_relation("mongodb")
-        self.harness.add_relation_unit(rel.id, "mongodb/1")
-        self.harness.update_relation_data(rel.id, "mongodb/1", PEER_ADDR)
-
-        # verify that we do not reconfigure replica set
-        mongo_reconfigure.assert_not_called()
+        connection.return_value.__enter__.assert_not_called()
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    @patch("charm.MongodbOperatorCharm._need_replica_set_reconfiguration")
-    @patch("mongod_helpers.MongoDB.reconfigure_replica_set")
-    @patch("mongod_helpers.MongoDB.all_replicas_ready", return_value=True)
-    def test_mongodb_relation_joined_peer_ready(
-        self, all_replicas_ready, mongodb_reconfigure, need_reconfiguration, connection
-    ):
-        """Test leader unit operations when peer unit is ready to join the replica set.
-
-        Verifies that when a new peer is ready to join the replica set hosts get updated
-        accordingly and reconfigured if necessary.
-        """
-        # preset values
-        self.harness.set_leader(True)
-        connection.return_value.__enter__.return_value.is_ready = True
-
-        # test cases where replica set should and shouldn't be reconfigured
-        for reconfiguration in [False, True]:
-            self.harness.charm._need_replica_set_reconfiguration = reconfiguration
-
-            # simulate 2nd MongoDB unit
-            rel = self.harness.charm.model.get_relation("mongodb")
-            self.harness.add_relation_unit(rel.id, "mongodb/1")
-            self.harness.update_relation_data(rel.id, "mongodb/1", PEER_ADDR)
-
-            # check if mongod reconfigured replica set
-            if reconfiguration:
-                mongodb_reconfigure.assert_called()
-
-                # verify replica set hosts updated accordingly
-                self.assertEqual(
-                    self.harness.charm._replica_set_hosts,
-                    ["127.4.5.6", "1.1.1.1"],
-                )
-
-            else:
-                mongodb_reconfigure.assert_not_called()
-
-    @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongoDBConnection")
-    @patch("charm.MongodbOperatorCharm._need_replica_set_reconfiguration", return_value=True)
-    @patch("mongod_helpers.MongoDB.reconfigure_replica_set")
-    @patch("mongod_helpers.MongoDB.check_replica_status")
-    @patch("charm.MongodbOperatorCharm._replica_set_hosts")
-    def test_mongodb_relation_joined_check_status_failure(
-        self, _, check_replica_status, mongodb_reconfigure, need_reconfiguration, connection
-    ):
-        """Test failure in checking status results in waiting.
-
-        Tests the scenario that a failure to check the current statuses of replica set hosts
-        results in WaitingStatus and no attempt to reconfigure is made.
-        """
-        # preset values
-        self.harness.charm._replica_set_hosts = ["1.1.1.1"]
-        self.harness.set_leader(True)
-        connection.return_value.__enter__.return_value.is_ready = True
-
-        for exception in PYMONGO_EXCEPTIONS:
-            # simulate failure to check replica status
-            check_replica_status.side_effect = exception
-
-            # simulate 2nd MongoDB unit
-            rel = self.harness.charm.model.get_relation("mongodb")
-            self.harness.add_relation_unit(rel.id, "mongodb/1")
-            self.harness.update_relation_data(rel.id, "mongodb/1", PEER_ADDR)
-
-            # verify we go into waiting and don't reconfigure
-            self.assertEqual(
-                self.harness.charm.unit.status, WaitingStatus("waiting to reconfigure replica set")
-            )
-            mongodb_reconfigure.assert_not_called()
-
-    @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongoDBConnection")
-    @patch("charm.MongodbOperatorCharm._need_replica_set_reconfiguration", return_value=True)
-    @patch("mongod_helpers.MongoDB.reconfigure_replica_set")
-    @patch("mongod_helpers.MongoDB.all_replicas_ready", return_value=False)
-    def test_mongodb_relation_joined_all_replicas_not_ready(
-        self, all_replicas_ready, mongodb_reconfigure, need_reconfiguration, connection
-    ):
+    def test_mongodb_relation_joined_all_replicas_not_ready(self, connection):
         """Tests that we go into waiting when current ReplicaSet hosts are not ready.
 
         Tests the scenario that if current replica set hosts are not ready, the leader goes into
@@ -434,7 +325,10 @@ class TestCharm(unittest.TestCase):
         """
         # preset values
         self.harness.set_leader(True)
-        connection.return_value.__enter__.return_value.is_ready = True
+        connection.return_value.__enter__.return_value.is_ready = False
+        connection.return_value.__enter__.return_value.get_replset_members.return_value = {
+            "1.1.1.1"
+        }
 
         # simulate 2nd MongoDB unit
         rel = self.harness.charm.model.get_relation("mongodb")
@@ -442,37 +336,76 @@ class TestCharm(unittest.TestCase):
         self.harness.update_relation_data(rel.id, "mongodb/1", PEER_ADDR)
 
         # verify we go into waiting and don't reconfigure
-        self.assertEqual(
-            self.harness.charm.unit.status, WaitingStatus("waiting to reconfigure replica set")
-        )
-        mongodb_reconfigure.assert_not_called()
+        self.assertTrue(isinstance(self.harness.charm.unit.status, WaitingStatus))
+        connection.return_value.__enter__.return_value.add_replset_member.assert_not_called()
 
     @patch_network_get(private_address="1.1.1.1")
+    @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBConnection")
-    @patch("charm.MongodbOperatorCharm._need_replica_set_reconfiguration")
-    @patch("mongod_helpers.MongoDB.reconfigure_replica_set")
-    def test_mongodb_relation_joined_failure(
-        self, mongodb_reconfigure, need_reconfiguration, connection
-    ):
-        """Tests that when reconfigure operations fail we go into the Waiting Status."""
-        # preset values
+    @patch("lib.charms.mongodb_libs.v0.mongodb.MongoClient")
+    def test_relation_joined_get_members_failure(self, client, connection, defer):
+        """Tests reconfigure does not execute when unable to get the replica set members.
+
+        Verifies in case of relation_joined and relation departed, that when the the database
+        cannot retrieve the replica set members that no attempts to remove/add units are made and
+        that the the event is deferred.
+        """
+        # presets
         self.harness.set_leader(True)
-        connection.return_value.__enter__.return_value.is_ready = True
-        self.harness.charm._need_replica_set_reconfiguration = True
+        self.harness.charm.app_data["db_initialised"] = "True"
+        rel = self.harness.charm.model.get_relation("mongodb")
 
-        # test cases where replica set should and shouldn't be reconfigured
         for exception in PYMONGO_EXCEPTIONS:
-            mongodb_reconfigure.side_effect = exception
+            connection.return_value.__enter__.return_value.get_replset_members.side_effect = (
+                exception
+            )
 
-            # simulate 2nd MongoDB unit
-            rel = self.harness.charm.model.get_relation("mongodb")
+            # test both relation events
+            for departed in [False, True]:
+                if departed:
+                    # simulate removing 2nd MongoDB unit
+                    self.harness.remove_relation_unit(rel.id, "mongodb/1")
+                else:
+                    # simulate 2nd MongoDB unit joining
+                    self.harness.add_relation_unit(rel.id, "mongodb/1")
+                    self.harness.update_relation_data(rel.id, "mongodb/1", PEER_ADDR)
+
+                if departed:
+                    connection.return_value.__enter__.return_value.add_replset_member.assert_not_called()
+                else:
+                    connection.return_value.__enter__.return_value.remove_replset_member.assert_not_called()
+
+                defer.assert_called()
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("ops.framework.EventBase.defer")
+    @patch("charm.MongoDBConnection")
+    def test_reconfigure_add_member_failure(self, connection, defer):
+        """Tests reconfigure does not proceed when unable to add a member.
+
+        Verifies in relation joined events, that when the database cannot add a member that the
+        event is deferred.
+        """
+        # presets
+        self.harness.set_leader(True)
+        connection.return_value.__enter__.return_value.get_replset_members.return_value = {
+            "1.1.1.1"
+        }
+        rel = self.harness.charm.model.get_relation("mongodb")
+
+        exceptions = PYMONGO_EXCEPTIONS
+        exceptions.append(NotReadyError)
+        for exception in exceptions:
+            connection.return_value.__enter__.return_value.add_replset_member.side_effect = (
+                exception
+            )
+
+            # simulate 2nd MongoDB unit joining( need a unit to join before removing a unit)
             self.harness.add_relation_unit(rel.id, "mongodb/1")
             self.harness.update_relation_data(rel.id, "mongodb/1", PEER_ADDR)
 
-            # charm waits
-            self.assertEqual(
-                self.harness.charm.unit.status, WaitingStatus("waiting to reconfigure replica set")
-            )
+            connection.return_value.__enter__.return_value.add_replset_member.assert_called()
+            defer.assert_called()
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
@@ -586,18 +519,6 @@ class TestCharm(unittest.TestCase):
             connection.return_value.__enter__.return_value.primary.side_effect = exception
             self.assertEqual(self.harness.charm._primary, None)
 
-    @patch("charm.MongodbOperatorCharm._unit_ips")
-    @patch("charm.MongodbOperatorCharm._replica_set_hosts")
-    def test_need_replica_set_reconfiguration(self, units, hosts):
-        """Tests that boolean helper _need_replica_set_reconfiguration operates as expected."""
-        self.harness.charm._unit_ips = ["1.1.1.1", "2.2.2.2"]
-        self.harness.charm._replica_set_hosts = ["1.1.1.1"]
-        self.assertEqual(self.harness.charm._need_replica_set_reconfiguration, True)
-
-        self.harness.charm._unit_ips = ["1.1.1.1", "2.2.2.2"]
-        self.harness.charm._replica_set_hosts = ["1.1.1.1", "2.2.2.2"]
-        self.assertEqual(self.harness.charm._need_replica_set_reconfiguration, False)
-
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
     def test_storage_detaching_failure_does_not_defer(self, connection):
@@ -620,7 +541,10 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongoDBConnection")
     def test_process_unremoved_units_handles_errors(self, connection, _unit_ips):
         """Test failures in process_unremoved_units are handled and not raised."""
-        connection.return_value.__enter__.return_value.get_replset_members = {"1.1.1.1", "2.2.2.2"}
+        connection.return_value.__enter__.return_value.get_replset_members.return_value = {
+            "1.1.1.1",
+            "2.2.2.2",
+        }
         self.harness.charm._unit_ips = ["2.2.2.2"]
 
         for exception in [PYMONGO_EXCEPTIONS, NotReadyError]:
