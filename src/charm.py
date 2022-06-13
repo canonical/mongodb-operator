@@ -19,7 +19,12 @@ from charms.mongodb_libs.v0.helpers import (
     generate_password,
     get_create_user_cmd,
 )
-from charms.mongodb_libs.v0.mongodb import MongoDBConfiguration, MongoDBConnection
+from charms.mongodb_libs.v0.mongodb import (
+    MongoDBConfiguration,
+    MongoDBConnection,
+    NotReadyError,
+    PyMongoError,
+)
 from charms.operator_libs_linux.v0 import apt
 from charms.operator_libs_linux.v1 import systemd
 from ops.main import main
@@ -32,15 +37,7 @@ from ops.model import (
 )
 from tenacity import before_log, retry, stop_after_attempt, wait_fixed
 
-from mongod_helpers import (
-    MONGODB_PORT,
-    ConfigurationError,
-    ConnectionFailure,
-    MongoDB,
-    NotReadyError,
-    OperationFailure,
-    PyMongoError,
-)
+from mongod_helpers import MongoDB
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +50,9 @@ GPG_URL = "https://www.mongodb.org/static/pgp/server-5.0.asc"
 MONGO_EXEC_LINE = 10
 MONGO_USER = "mongodb"
 MONGO_DATA_DIR = "/data/db"
+
+# We expect the MongoDB container to use the default ports
+MONGODB_PORT = 27017
 
 
 class MongodbOperatorCharm(ops.charm.CharmBase):
@@ -160,49 +160,31 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         if not (self.unit.is_leader() and event.unit):
             return
 
-        #  only add the calling unit to the replica set if it has mongod running
-        calling_unit = event.unit
-        calling_unit_ip = str(self._peers.data[calling_unit].get("private-address"))
-        logger.debug("Adding %s to replica set", calling_unit_ip)
-        with MongoDBConnection(self.mongodb_config, calling_unit_ip, direct=True) as direct_mongo:
-            if not direct_mongo.is_ready:
-                logger.debug("Deferring reconfigure: %s is not ready yet.", calling_unit_ip)
+        with MongoDBConnection(self.mongodb_config) as mongo:
+            try:
+                replset_members = mongo.get_replset_members
+
+                # compare set of mongod replica set members and juju hosts to avoid the unnecessary
+                # reconfiguration.
+                if replset_members == self.mongodb_config.hosts:
+                    return
+
+                for member in self.mongodb_config.hosts - replset_members:
+                    logger.debug("Adding %s to replica set", member)
+                    with MongoDBConnection(
+                        self.mongodb_config, member, direct=True
+                    ) as direct_mongo:
+                        if not direct_mongo.is_ready:
+                            logger.debug("Deferring reconfigure: %s is not ready yet.", member)
+                            event.defer()
+                            return
+                    mongo.add_replset_member(member)
+            except NotReadyError:
+                logger.info("Deferring reconfigure: another member doing sync right now")
                 event.defer()
-                return
-
-        # TODO in a future PR update this use of self._mongo to be with MongoDBConnection
-        # only reconfigure if all current replicas of MongoDB application are in ready state
-        if not self._mongo.all_replicas_ready():
-            self.unit.status = WaitingStatus("waiting to reconfigure replica set")
-            logger.debug("waiting for all replica set hosts to be ready")
-            event.defer()
-            return
-
-        logger.debug("unit: %s is ready to join the replica set", calling_unit.name)
-        self._add_replica(event)
-
-    def _add_replica(self, event: ops.charm.RelationEvent) -> None:
-        """Adds RelationEvent triggering unit from the replica set.
-
-        Args:
-            event: The triggering relation event.
-        """
-        # check if reconfiguration is necessary
-        if not self._need_replica_set_reconfiguration:
-            self.unit.status = ActiveStatus()
-            return
-
-        try:
-            # TODO in a future PR update this use of self._mongo to be with MongoDBConnection
-            self._mongo.reconfigure_replica_set()
-            # update the set of replica set hosts
-            self.app_data["replica_set_hosts"] = json.dumps(self._unit_ips)
-            logger.debug("Replica set successfully reconfigured")
-            self.unit.status = ActiveStatus()
-        except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
-            logger.error("deferring reconfigure of replica set: %s", str(e))
-            self.unit.status = WaitingStatus("waiting to reconfigure replica set")
-            event.defer()
+            except PyMongoError as e:
+                logger.info("Deferring reconfigure: error=%r", e)
+                event.defer()
 
     def _on_install(self, event) -> None:
         """Handle the install event (fired on startup).
