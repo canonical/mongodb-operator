@@ -120,7 +120,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 "Failed to remove %s from replica set, another member is syncing", self.unit.name
             )
         except PyMongoError as e:
-            logger.info("Failed to remove %s from replica set, error=%r", self.unit.name, e)
+            logger.error("Failed to remove %s from replica set, error=%r", self.unit.name, e)
 
     def _relation_departed(self, event: ops.charm.RelationDepartedEvent) -> None:
         """Remove peer from replica set if it wasn't able to remove itself.
@@ -144,7 +144,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 logger.info("Deferring process_unremoved_units: another member is syncing")
                 event.defer()
             except PyMongoError as e:
-                logger.info("Deferring process_unremoved_units: error=%r", e)
+                logger.error("Deferring process_unremoved_units: error=%r", e)
                 event.defer()
 
     def _on_mongodb_relation_handler(self, event: ops.charm.RelationEvent) -> None:
@@ -179,11 +179,11 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                     mongo.add_replset_member(member)
             except NotReadyError:
                 self.unit.status = WaitingStatus("waiting to reconfigure replica set")
-                logger.info("Deferring reconfigure: another member doing sync right now")
+                logger.error("Deferring reconfigure: another member doing sync right now")
                 event.defer()
             except PyMongoError as e:
                 self.unit.status = WaitingStatus("waiting to reconfigure replica set")
-                logger.info("Deferring reconfigure: error=%r", e)
+                logger.error("Deferring reconfigure: error=%r", e)
                 event.defer()
 
     def _on_install(self, event) -> None:
@@ -241,10 +241,10 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # changes to service files are only applied after reloading
         try:
             systemd.daemon_reload()
-        except systemd.SystemdError:
-            logger.error("failed to install MongoDB")
-            self.unit.status = BlockedStatus("couldn't start MongoDB")
-            return
+        except systemd.SystemdError as e:
+            logger.error("failed to reload /etc/systemd/system/mongod.service file, error: %s", e)
+            self.unit.status = BlockedStatus("failed to reload MongoDB service")
+            raise
 
     def _on_config_changed(self, _) -> None:
         """Event handler for configuration changed events."""

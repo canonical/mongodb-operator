@@ -201,7 +201,9 @@ class TestCharm(unittest.TestCase):
     @patch("charm.systemd.daemon_reload", side_effect=systemd.SystemdError)
     def test_on_install_reload_failure(self, daemon_reload, pwd, os, open, install_apt, add_repo):
         """Tests failure to reload service file results in blocked status."""
-        self.harness.charm._on_install(mock.Mock())
+        with self.assertRaises(systemd.SystemdError):
+            self.harness.charm._on_install(mock.Mock())
+
         self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
 
     @patch("charm.apt.add_package")
@@ -376,14 +378,11 @@ class TestCharm(unittest.TestCase):
                 if departed:
                     # simulate removing 2nd MongoDB unit
                     self.harness.remove_relation_unit(rel.id, "mongodb/1")
+                    connection.return_value.__enter__.return_value.add_replset_member.assert_not_called()
                 else:
                     # simulate 2nd MongoDB unit joining
                     self.harness.add_relation_unit(rel.id, "mongodb/1")
                     self.harness.update_relation_data(rel.id, "mongodb/1", PEER_ADDR)
-
-                if departed:
-                    connection.return_value.__enter__.return_value.add_replset_member.assert_not_called()
-                else:
                     connection.return_value.__enter__.return_value.remove_replset_member.assert_not_called()
 
                 defer.assert_called()
