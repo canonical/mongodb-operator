@@ -317,9 +317,7 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    def test_mongodb_relation_joined_all_replicas_not_ready(
-        self, connection
-    ):
+    def test_mongodb_relation_joined_all_replicas_not_ready(self, connection):
         """Tests that we go into waiting when current ReplicaSet hosts are not ready.
 
         Tests the scenario that if current replica set hosts are not ready, the leader goes into
@@ -354,11 +352,12 @@ class TestCharm(unittest.TestCase):
         """
         # presets
         self.harness.set_leader(True)
-        self.harness.charm.app_data["db_initialised"] = "True"
         rel = self.harness.charm.model.get_relation("mongodb")
 
         for exception in PYMONGO_EXCEPTIONS:
-            connection.return_value.__enter__.return_value.get_replset_members.side_effect = exception
+            connection.return_value.__enter__.return_value.get_replset_members.side_effect = (
+                exception
+            )
 
             # test both relation events
             for departed in [False, True]:
@@ -535,7 +534,9 @@ class TestCharm(unittest.TestCase):
     def test_process_unremoved_units_handles_errors(self, connection, _unit_ips):
         """Test failures in process_unremoved_units are handled and not raised."""
         connection.return_value.__enter__.return_value.get_replset_members.return_value = {
-            "1.1.1.1", "2.2.2.2"}
+            "1.1.1.1",
+            "2.2.2.2",
+        }
         self.harness.charm._unit_ips = ["2.2.2.2"]
 
         for exception in [PYMONGO_EXCEPTIONS, NotReadyError]:

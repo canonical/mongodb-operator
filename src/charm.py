@@ -212,7 +212,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 # part of replicaset
                 "--replSet",
                 "rs0",
-                # TODO enable auth
                 "--auth",
                 # keyFile used for authentication replica set peers
                 # TODO: replace with x509
