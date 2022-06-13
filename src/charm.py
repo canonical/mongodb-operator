@@ -182,7 +182,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self._add_replica(event)
 
     def _add_replica(self, event: ops.charm.RelationEvent) -> None:
-        """Adds RelationEvent triggering unit from the replica set.
+        """Adds RelationEvent triggering unit to the replica set.
 
         Args:
             event: The triggering relation event.
