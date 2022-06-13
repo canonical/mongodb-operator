@@ -239,7 +239,12 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         os.chown(MONGO_DATA_DIR, mongodb_user.pw_uid, mongodb_user.pw_gid)
 
         # changes to service files are only applied after reloading
-        systemd.daemon_reload()
+        try:
+            systemd.daemon_reload()
+        except systemd.SystemdError:
+            logger.error("failed to install MongoDB")
+            self.unit.status = BlockedStatus("couldn't start MongoDB")
+            return
 
     def _on_config_changed(self, _) -> None:
         """Event handler for configuration changed events."""

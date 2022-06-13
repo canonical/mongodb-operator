@@ -192,6 +192,18 @@ class TestCharm(unittest.TestCase):
                 self.harness.charm._open_port_tcp(27017)
                 self.assertIn("failed opening port 27017", "".join(logs.output))
 
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongodbOperatorCharm._add_repository")
+    @patch("charm.MongodbOperatorCharm._install_apt_packages")
+    @patch("builtins.open")
+    @patch("charm.os")
+    @patch("charm.pwd")
+    @patch("charm.systemd.daemon_reload", side_effect=systemd.SystemdError)
+    def test_on_install_reload_failure(self, daemon_reload, pwd, os, open, install_apt, add_repo):
+        """Tests failure to reload service file results in blocked status."""
+        self.harness.charm._on_install(mock.Mock())
+        self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
+
     @patch("charm.apt.add_package")
     @patch("charm.apt.update")
     def test_install_apt_packages_sucess(self, update, add_package):
