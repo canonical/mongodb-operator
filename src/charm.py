@@ -19,7 +19,12 @@ from charms.mongodb_libs.v0.helpers import (
     generate_password,
     get_create_user_cmd,
 )
-from charms.mongodb_libs.v0.mongodb import MongoDBConfiguration, MongoDBConnection
+from charms.mongodb_libs.v0.mongodb import (
+    MongoDBConfiguration,
+    MongoDBConnection,
+    NotReadyError,
+    PyMongoError,
+)
 from charms.operator_libs_linux.v0 import apt
 from charms.operator_libs_linux.v1 import systemd
 from ops.main import main
@@ -32,16 +37,6 @@ from ops.model import (
 )
 from tenacity import before_log, retry, stop_after_attempt, wait_fixed
 
-from mongod_helpers import (
-    MONGODB_PORT,
-    ConfigurationError,
-    ConnectionFailure,
-    MongoDB,
-    NotReadyError,
-    OperationFailure,
-    PyMongoError,
-)
-
 logger = logging.getLogger(__name__)
 
 PEER = "mongodb"
@@ -53,6 +48,9 @@ GPG_URL = "https://www.mongodb.org/static/pgp/server-5.0.asc"
 MONGO_EXEC_LINE = 10
 MONGO_USER = "mongodb"
 MONGO_DATA_DIR = "/data/db"
+
+# We expect the MongoDB container to use the default ports
+MONGODB_PORT = 27017
 
 
 class MongodbOperatorCharm(ops.charm.CharmBase):
@@ -122,7 +120,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 "Failed to remove %s from replica set, another member is syncing", self.unit.name
             )
         except PyMongoError as e:
-            logger.info("Failed to remove %s from replica set, error=%r", self.unit.name, e)
+            logger.error("Failed to remove %s from replica set, error=%r", self.unit.name, e)
 
     def _relation_departed(self, event: ops.charm.RelationDepartedEvent) -> None:
         """Remove peer from replica set if it wasn't able to remove itself.
@@ -138,7 +136,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         """Removes replica set members that are no longer running as a juju hosts."""
         with MongoDBConnection(self.mongodb_config) as mongo:
             try:
-                replset_members = mongo.get_replset_members
+                replset_members = mongo.get_replset_members()
                 for member in replset_members - self.mongodb_config.hosts:
                     logger.debug("Removing %s from replica set", member)
                     mongo.remove_replset_member(member)
@@ -146,7 +144,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 logger.info("Deferring process_unremoved_units: another member is syncing")
                 event.defer()
             except PyMongoError as e:
-                logger.info("Deferring process_unremoved_units: error=%r", e)
+                logger.error("Deferring process_unremoved_units: error=%r", e)
                 event.defer()
 
     def _on_mongodb_relation_handler(self, event: ops.charm.RelationEvent) -> None:
@@ -160,49 +158,33 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         if not (self.unit.is_leader() and event.unit):
             return
 
-        #  only add the calling unit to the replica set if it has mongod running
-        calling_unit = event.unit
-        calling_unit_ip = str(self._peers.data[calling_unit].get("private-address"))
-        logger.debug("Adding %s to replica set", calling_unit_ip)
-        with MongoDBConnection(self.mongodb_config, calling_unit_ip, direct=True) as direct_mongo:
-            if not direct_mongo.is_ready:
-                logger.debug("Deferring reconfigure: %s is not ready yet.", calling_unit_ip)
+        with MongoDBConnection(self.mongodb_config) as mongo:
+            try:
+                replset_members = mongo.get_replset_members()
+                # compare set of mongod replica set members and juju hosts to avoid the unnecessary
+                # reconfiguration.
+                if replset_members == self.mongodb_config.hosts:
+                    return
+
+                for member in self.mongodb_config.hosts - replset_members:
+                    logger.debug("Adding %s to replica set", member)
+                    with MongoDBConnection(
+                        self.mongodb_config, member, direct=True
+                    ) as direct_mongo:
+                        if not direct_mongo.is_ready:
+                            self.unit.status = WaitingStatus("waiting to reconfigure replica set")
+                            logger.debug("Deferring reconfigure: %s is not ready yet.", member)
+                            event.defer()
+                            return
+                    mongo.add_replset_member(member)
+            except NotReadyError:
+                self.unit.status = WaitingStatus("waiting to reconfigure replica set")
+                logger.error("Deferring reconfigure: another member doing sync right now")
                 event.defer()
-                return
-
-        # TODO in a future PR update this use of self._mongo to be with MongoDBConnection
-        # only reconfigure if all current replicas of MongoDB application are in ready state
-        if not self._mongo.all_replicas_ready():
-            self.unit.status = WaitingStatus("waiting to reconfigure replica set")
-            logger.debug("waiting for all replica set hosts to be ready")
-            event.defer()
-            return
-
-        logger.debug("unit: %s is ready to join the replica set", calling_unit.name)
-        self._add_replica(event)
-
-    def _add_replica(self, event: ops.charm.RelationEvent) -> None:
-        """Adds RelationEvent triggering unit to the replica set.
-
-        Args:
-            event: The triggering relation event.
-        """
-        # check if reconfiguration is necessary
-        if not self._need_replica_set_reconfiguration:
-            self.unit.status = ActiveStatus()
-            return
-
-        try:
-            # TODO in a future PR update this use of self._mongo to be with MongoDBConnection
-            self._mongo.reconfigure_replica_set()
-            # update the set of replica set hosts
-            self.app_data["replica_set_hosts"] = json.dumps(self._unit_ips)
-            logger.debug("Replica set successfully reconfigured")
-            self.unit.status = ActiveStatus()
-        except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
-            logger.error("deferring reconfigure of replica set: %s", str(e))
-            self.unit.status = WaitingStatus("waiting to reconfigure replica set")
-            event.defer()
+            except PyMongoError as e:
+                self.unit.status = WaitingStatus("waiting to reconfigure replica set")
+                logger.error("Deferring reconfigure: error=%r", e)
+                event.defer()
 
     def _on_install(self, event) -> None:
         """Handle the install event (fired on startup).
@@ -396,7 +378,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # wait for keyFile to be created by leader unit
         if "keyfile" not in self.app_data:
             logger.debug("waiting for leader unit to generate keyfile contents")
-            self.unit.status = WaitingStatus("waiting for MongoDB to start")
             event.defer()
             return
 
@@ -437,19 +418,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self.app_data["replset_initialised"] = "True"
             self.unit.status = ActiveStatus()
 
-    def _single_mongo_replica(self, ip_address: str) -> MongoDB:
-        """Fetch the MongoDB server interface object for a single replica.
-
-        Args:
-            ip_address: ip_address for the replica of interest.
-
-        Returns:
-            A MongoDB server object.
-        """
-        unit_config = self._config
-        unit_config["calling_unit_ip"] = ip_address
-        return MongoDB(unit_config)
-
     def _unit_ip(self, unit: ops.model.Unit) -> str:
         """Returns the ip address of a given unit."""
         # check if host is current host
@@ -484,16 +452,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         return None
 
     @property
-    def _need_replica_set_reconfiguration(self) -> bool:
-        """Does MongoDB replica set need reconfiguration.
-
-        Returns:
-            bool: that indicates if the replica set hosts should be reconfigured
-        """
-        # are the units for the application all assigned to a host
-        return set(self._unit_ips) != set(self._replica_set_hosts)
-
-    @property
     def _unit_ips(self) -> List[str]:
         """Retrieve IP addresses associated with MongoDB application.
 
@@ -521,33 +479,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         return json.loads(self.app_data.get("replica_set_hosts", "[]"))
 
     @property
-    def _config(self) -> dict:
-        """Retrieve config options for MongoDB.
-
-        Returns:
-            A dictionary representation of MongoDB config options.
-        """
-        # TODO parameterize remaining config options
-        config = {
-            "app_name": self.app.name,
-            "replica_set_name": "rs0",
-            "num_hosts": len(self._unit_ips),
-            "port": self._port,
-            "root_password": self.app_data.get("admin_password"),
-            "security_key": "",
-            "unit_ips": self._unit_ips,
-            "replica_set_hosts": self._replica_set_hosts,
-            "calling_unit_ip": self._unit_ip(self.unit),
-            "username": "operator",
-        }
-        return config
-
-    # TODO remove one of the mongodb configs.
-    # there are two mongodb configs, because we are currently in the process of slowly phasing out
-    # the src/mongod_helpers.py file with the lib/charms/mongodb_libs/v0/mongodb.py. When the
-    # src/mongod_helpers.py file is fully phased out the property _config will be removed and only
-    # mongodb_config will be present
-    @property
     def mongodb_config(self) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for this deployment of MongoDB."""
         return MongoDBConfiguration(
@@ -558,15 +489,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             hosts=set(self._unit_ips),
             roles={"default"},
         )
-
-    @property
-    def _mongo(self) -> MongoDB:
-        """Fetch the MongoDB server interface object.
-
-        Returns:
-            A MongoDB server object.
-        """
-        return MongoDB(self._config)
 
     @property
     def app_data(self) -> Dict:
