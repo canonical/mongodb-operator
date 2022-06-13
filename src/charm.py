@@ -37,8 +37,6 @@ from ops.model import (
 )
 from tenacity import before_log, retry, stop_after_attempt, wait_fixed
 
-from mongod_helpers import MongoDB
-
 logger = logging.getLogger(__name__)
 
 PEER = "mongodb"
@@ -421,19 +419,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self.app_data["replset_initialised"] = "True"
             self.unit.status = ActiveStatus()
 
-    def _single_mongo_replica(self, ip_address: str) -> MongoDB:
-        """Fetch the MongoDB server interface object for a single replica.
-
-        Args:
-            ip_address: ip_address for the replica of interest.
-
-        Returns:
-            A MongoDB server object.
-        """
-        unit_config = self._config
-        unit_config["calling_unit_ip"] = ip_address
-        return MongoDB(unit_config)
-
     def _unit_ip(self, unit: ops.model.Unit) -> str:
         """Returns the ip address of a given unit."""
         # check if host is current host
@@ -495,33 +480,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         return json.loads(self.app_data.get("replica_set_hosts", "[]"))
 
     @property
-    def _config(self) -> dict:
-        """Retrieve config options for MongoDB.
-
-        Returns:
-            A dictionary representation of MongoDB config options.
-        """
-        # TODO parameterize remaining config options
-        config = {
-            "app_name": self.app.name,
-            "replica_set_name": "rs0",
-            "num_hosts": len(self._unit_ips),
-            "port": self._port,
-            "root_password": self.app_data.get("admin_password"),
-            "security_key": "",
-            "unit_ips": self._unit_ips,
-            "replica_set_hosts": self._replica_set_hosts,
-            "calling_unit_ip": self._unit_ip(self.unit),
-            "username": "operator",
-        }
-        return config
-
-    # TODO remove one of the mongodb configs.
-    # there are two mongodb configs, because we are currently in the process of slowly phasing out
-    # the src/mongod_helpers.py file with the lib/charms/mongodb_libs/v0/mongodb.py. When the
-    # src/mongod_helpers.py file is fully phased out the property _config will be removed and only
-    # mongodb_config will be present
-    @property
     def mongodb_config(self) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for this deployment of MongoDB."""
         return MongoDBConfiguration(
@@ -532,15 +490,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             hosts=set(self._unit_ips),
             roles={"default"},
         )
-
-    @property
-    def _mongo(self) -> MongoDB:
-        """Fetch the MongoDB server interface object.
-
-        Returns:
-            A MongoDB server object.
-        """
-        return MongoDB(self._config)
 
     @property
     def app_data(self) -> Dict:
