@@ -114,7 +114,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         try:
             # remove_replset_member retries for one minute in an attempt to resolve race conditions
             # it is not possible to defer in storage detached.
-            self._mongo.remove_replset_member(self._unit_ip(self.unit))
+            with MongoDBConnection(self.mongodb_config) as mongo:
+                logger.debug("Removing %s from replica set", self._unit_ip(self.unit))
+                mongo.remove_replset_member(self._unit_ip(self.unit))
         except NotReadyError:
             logger.info(
                 "Failed to remove %s from replica set, another member is syncing", self.unit.name
@@ -134,21 +136,18 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def process_unremoved_units(self, event) -> None:
         """Removes replica set members that are no longer running as a juju hosts."""
-        juju_hosts = self._unit_ips
-
-        try:
-            # TODO in a future PR update this use of self._mongo to be with MongoDBConnection
-            replica_hosts = self._mongo.member_ips()
-            for member in set(replica_hosts) - set(juju_hosts):
-                logger.debug("Removing %s from replica set", member)
-                # TODO in a future PR update this use of self._mongo to be with MongoDBConnection
-                self._mongo.remove_replset_member(member)
-        except NotReadyError:
-            logger.info("Deferring process_unremoved_units: another member is syncing")
-            event.defer()
-        except PyMongoError as e:
-            logger.info("Deferring process_unremoved_units: error=%r", e)
-            event.defer()
+        with MongoDBConnection(self.mongodb_config) as mongo:
+            try:
+                replset_members = mongo.get_replset_members
+                for member in replset_members - self.mongodb_config.hosts:
+                    logger.debug("Removing %s from replica set", member)
+                    mongo.remove_replset_member(member)
+            except NotReadyError:
+                logger.info("Deferring process_unremoved_units: another member is syncing")
+                event.defer()
+            except PyMongoError as e:
+                logger.info("Deferring process_unremoved_units: error=%r", e)
+                event.defer()
 
     def _on_mongodb_relation_handler(self, event: ops.charm.RelationEvent) -> None:
         """Adds the unit as a replica to the MongoDB replica set.
@@ -180,12 +179,10 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             return
 
         logger.debug("unit: %s is ready to join the replica set", calling_unit.name)
-        self._reconfigure(event)
+        self._add_replica(event)
 
-    def _reconfigure(self, event: ops.charm.RelationEvent) -> None:
-        """Adds/removes RelationEvent triggering unit from the replica set.
-
-        Note: Removal funcationality will be implemented in the following PR.
+    def _add_replica(self, event: ops.charm.RelationEvent) -> None:
+        """Adds RelationEvent triggering unit to the replica set.
 
         Args:
             event: The triggering relation event.
@@ -468,11 +465,10 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
     @property
     def _primary(self) -> str:
         """Retrieves the unit with the primary replica."""
-        # get IP of current priamry
         try:
-            # TODO in a future PR update this use of self._mongo to be with MongoDBConnection
-            primary_ip = self._mongo.primary()
-        except (ConnectionFailure, ConfigurationError, OperationFailure) as e:
+            with MongoDBConnection(self.mongodb_config) as mongo:
+                primary_ip = mongo.primary()
+        except PyMongoError as e:
             logger.error("Unable to access primary due to: %s", e)
             return None
 
@@ -554,14 +550,12 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
     @property
     def mongodb_config(self) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for this deployment of MongoDB."""
-        hosts = self._unit_ips
-
         return MongoDBConfiguration(
             replset="rs0",  # TODO update this to self.app.name
             database="admin",
             username="operator",
             password=self.app_data.get("admin_password"),
-            hosts=set(hosts),
+            hosts=set(self._unit_ips),
             roles={"default"},
         )
 

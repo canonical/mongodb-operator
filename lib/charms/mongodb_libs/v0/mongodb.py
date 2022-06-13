@@ -340,6 +340,19 @@ class MongoDBConnection:
             for member in rs_status["members"]
         )
 
+    def primary(self) -> str:
+        """Returns primary replica host."""
+        status = self.client.admin.command("replSetGetStatus")
+
+        primary = None
+        # loop through all members in the replica set
+        for member in status["members"]:
+            # check replica's current state
+            if member["stateStr"] == "PRIMARY":
+                primary = self._hostname_from_hostport(member["name"])
+
+        return primary
+
     @staticmethod
     def _is_any_sync(rs_status: Dict) -> bool:
         """Returns true if any replica set members are syncing data.
