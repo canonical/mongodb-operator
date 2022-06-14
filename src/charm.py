@@ -39,7 +39,7 @@ from tenacity import before_log, retry, stop_after_attempt, wait_fixed
 
 logger = logging.getLogger(__name__)
 
-PEER = "mongodb"
+PEER = "database-peers"
 REPO_URL = "deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"
 REPO_ENTRY = (
     "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/5.0 multiverse"
@@ -63,8 +63,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(self.on.start, self._on_start)
-        self.framework.observe(self.on.mongodb_relation_joined, self._on_mongodb_relation_handler)
-        self.framework.observe(self.on.mongodb_relation_changed, self._on_mongodb_relation_handler)
+        self.framework.observe(self.on[PEER].relation_joined, self._on_mongodb_relation_handler)
+        self.framework.observe(self.on[PEER].relation_changed, self._on_mongodb_relation_handler)
 
         self.framework.observe(self.on.update_status, self._on_update_status)
         self.framework.observe(self.on.get_primary_action, self._on_get_primary_action)
@@ -73,7 +73,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         )
         # if a new leader has been elected update hosts of MongoDB
         self.framework.observe(self.on.leader_elected, self._on_leader_elected)
-        self.framework.observe(self.on.mongodb_relation_departed, self._relation_departed)
+        self.framework.observe(self.on[PEER].relation_departed, self._relation_departed)
         self.framework.observe(self.on.get_admin_password_action, self._on_get_admin_password)
 
     def _generate_passwords(self) -> None:
