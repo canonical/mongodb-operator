@@ -11,8 +11,9 @@ from pathlib import Path
 from subprocess import check_call
 from typing import Dict, List, Optional
 from urllib.request import URLError, urlopen
-
 import ops.charm
+
+from charms.mongodb_libs.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb_libs.v0.helpers import (
     KEY_FILE,
     generate_keyfile,
@@ -75,6 +76,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.framework.observe(self.on.leader_elected, self._on_leader_elected)
         self.framework.observe(self.on.mongodb_relation_departed, self._relation_departed)
         self.framework.observe(self.on.get_admin_password_action, self._on_get_admin_password)
+
+        # handle provider side of relations
+        self.client_relations = MongoDBProvider(self)
 
     def _generate_passwords(self) -> None:
         """Generate passwords and put them into peer relation.
@@ -381,7 +385,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             event.defer()
             return
 
-        # TODO in follow up PR add error handling for keyfile creation & permissions
         # put keyfile on the machine with appropriate permissions
         Path("/etc/mongodb/").mkdir(parents=True, exist_ok=True)
         with open(KEY_FILE, "w") as key_file:
@@ -401,6 +404,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 )
                 logger.info("User initialization")
                 self._init_admin_user()
+                logger.info("Manage relations")
+                self.client_relations.oversee_users(None)
             except subprocess.CalledProcessError as e:
                 logger.error(
                     "Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr

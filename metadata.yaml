@@ -9,6 +9,12 @@ summary: A MongoDB operator charm
 series:
   - focal
 
+provides:
+  database:
+    interface: database-client
+  obsolete:
+    interface: mongodb
+
 storage:
   mongodb:
     type: filesystem
