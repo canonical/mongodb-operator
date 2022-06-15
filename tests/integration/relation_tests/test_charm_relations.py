@@ -9,6 +9,10 @@ import pytest
 import yaml
 from pytest_operator.plugin import OpsTest
 
+from tests.integration.relation_tests.helpers import (
+    build_connection_string,
+)
+
 logger = logging.getLogger(__name__)
 
 APPLICATION_APP_NAME = "application"
@@ -48,3 +52,8 @@ async def test_database_relation_with_charm_libraries(ops_test: OpsTest):
     await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active")
 
     # TODO verify relation with database by writing/reading some data
+    # Get the connection string to connect to the database.
+    connection_string = await build_connection_string(
+        ops_test, APPLICATION_APP_NAME
+    )
+    print(connection_string)

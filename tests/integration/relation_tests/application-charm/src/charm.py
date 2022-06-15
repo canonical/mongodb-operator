@@ -43,13 +43,14 @@ class ApplicationCharm(CharmBase):
 
     def _on_start(self, _) -> None:
         """Only sets an Active status."""
+        logger.error("starting")
         self.unit.status = ActiveStatus()
 
     # First database events.
     def _on_database_created(self, event: DatabaseCreatedEvent) -> None:
         """Event triggered when a database was created for this application."""
         # Retrieve the credentials using the charm library.
-        logger.info(f"_on_database_created called: {event.username} {event.password}")
+        logger.error(f"_on_database_created called: {event.username} {event.password} {event}")
         self.unit.status = ActiveStatus("received database credentials")
 
     def _on_endpoints_changed(self, event: DatabaseEndpointsChangedEvent) -> None:
