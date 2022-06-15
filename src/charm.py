@@ -11,9 +11,8 @@ from pathlib import Path
 from subprocess import check_call
 from typing import Dict, List, Optional
 from urllib.request import URLError, urlopen
-import ops.charm
 
-from charms.mongodb_libs.v0.mongodb_provider import MongoDBProvider
+import ops.charm
 from charms.mongodb_libs.v0.helpers import (
     KEY_FILE,
     generate_keyfile,
@@ -26,6 +25,7 @@ from charms.mongodb_libs.v0.mongodb import (
     NotReadyError,
     PyMongoError,
 )
+from charms.mongodb_libs.v0.mongodb_provider import MongoDBProvider
 from charms.operator_libs_linux.v0 import apt
 from charms.operator_libs_linux.v1 import systemd
 from ops.main import main
