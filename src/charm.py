@@ -25,6 +25,7 @@ from charms.mongodb_libs.v0.mongodb import (
     NotReadyError,
     PyMongoError,
 )
+from charms.mongodb_libs.v0.mongodb_provider import MongoDBProvider
 from charms.operator_libs_linux.v0 import apt
 from charms.operator_libs_linux.v1 import systemd
 from ops.main import main
@@ -76,6 +77,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.framework.observe(self.on[PEER].relation_departed, self._relation_departed)
         self.framework.observe(self.on.get_admin_password_action, self._on_get_admin_password)
 
+        # handle provider side of relations
+        self.client_relations = MongoDBProvider(self)
+
     def _generate_passwords(self) -> None:
         """Generate passwords and put them into peer relation.
 
@@ -97,7 +101,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def _update_hosts(self, event) -> None:
         """Update replica set hosts and remove any unremoved replicas from the config."""
-        if "replset_initialised" not in self.app_data:
+        if "db_initialised" not in self.app_data:
             return
 
         self.process_unremoved_units(event)
@@ -155,7 +159,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         """
         # only leader should configure replica set and app-changed-events can trigger the relation
         # changed hook resulting in no JUJU_REMOTE_UNIT if this is the case we should return
-        if not (self.unit.is_leader() and event.unit):
+        # further reconfiguration can be successful only if a replica set is initialised.
+        if not (self.unit.is_leader() and event.unit) or "db_initialised" not in self.app_data:
             return
 
         with MongoDBConnection(self.mongodb_config) as mongo:
@@ -381,7 +386,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             event.defer()
             return
 
-        # TODO in follow up PR add error handling for keyfile creation & permissions
         # put keyfile on the machine with appropriate permissions
         Path("/etc/mongodb/").mkdir(parents=True, exist_ok=True)
         with open(KEY_FILE, "w") as key_file:
@@ -392,6 +396,13 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         os.chown(KEY_FILE, mongodb_user.pw_uid, mongodb_user.pw_gid)
 
     def _initialise_replica_set(self, event: ops.charm.StartEvent) -> None:
+        if "db_initialised" in self.app_data:
+            # The replica set should be initialised only once. Check should be
+            # external (e.g., check initialisation inside peer relation). We
+            # shouldn't rely on MongoDB response because the data directory
+            # can be corrupted.
+            return
+
         with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
             try:
                 logger.info("Replica Set initialization")
@@ -401,6 +412,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 )
                 logger.info("User initialization")
                 self._init_admin_user()
+                logger.info("Manage relations")
+                self.client_relations.oversee_users(None)
             except subprocess.CalledProcessError as e:
                 logger.error(
                     "Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr
@@ -415,7 +428,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 return
 
             # replica set initialised properly and ready to go
-            self.app_data["replset_initialised"] = "True"
+            self.app_data["db_initialised"] = "True"
             self.unit.status = ActiveStatus()
 
     def _unit_ip(self, unit: ops.model.Unit) -> str:
