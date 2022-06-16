@@ -354,7 +354,7 @@ class TestCharm(unittest.TestCase):
         # presets
         self.harness.set_leader(True)
         self.harness.charm.app_data["db_initialised"] = "True"
-        rel = self.harness.charm.model.get_relation("mongodb")
+        rel = self.harness.charm.model.get_relation("database-peers")
 
         for exception in PYMONGO_EXCEPTIONS:
             connection.return_value.__enter__.return_value.get_replset_members.side_effect = (
