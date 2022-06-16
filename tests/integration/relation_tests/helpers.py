@@ -11,41 +11,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-async def build_connection_string(ops_test: OpsTest, application_name: str) -> str:
-    """Build a PostgreSQL connection string.
-
-    Args:
-        ops_test: The ops test framework instance
-        application_name: The name of the application
-
-    Returns:
-        a PostgreSQL connection string
-    """
-    # Get the connection data exposed to the application through the relation.
-    username = await get_application_relation_data(ops_test, application_name, "username")
-    password = await get_application_relation_data(ops_test, application_name, "password")
-    replset = await get_application_relation_data(ops_test, application_name, "replset")
-    endpoints = await get_application_relation_data(ops_test, application_name, "endpoints")
-    database = await get_application_relation_data(ops_test, application_name, "database")
-
-    logger.error("helpful stuff %s, %s, %s, %s, %s, ", username,
-                 password, replset, endpoints, database)
-
-    hosts = endpoints.split(",")[0].split(":")[0]
-    auth_source = ""
-    if database != "admin":
-        auth_source = "&authSource=admin"
-
-    # Build the complete connection string to connect to the database.
-    return (
-        f"mongodb://{quote_plus(username)}:"
-        f"{quote_plus(password)}@"
-        f"{hosts}/{quote_plus(database)}?"
-        f"replicaSet={quote_plus(replset)}"
-        f"{auth_source}"
-    )
-
-
 async def get_application_relation_data(
     ops_test: OpsTest, application_name: str, key: str
 ) -> Optional[str]:

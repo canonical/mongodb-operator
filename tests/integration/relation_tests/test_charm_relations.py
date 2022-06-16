@@ -8,9 +8,10 @@ from pathlib import Path
 import pytest
 import yaml
 from pytest_operator.plugin import OpsTest
+from pymongo import MongoClient
 
 from tests.integration.relation_tests.helpers import (
-    build_connection_string,
+    get_application_relation_data,
 )
 
 logger = logging.getLogger(__name__)
@@ -20,7 +21,6 @@ APPLICATION_APP_NAME = "application"
 DATABASE_METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 PORT = 27017
 DATABASE_APP_NAME = DATABASE_METADATA["name"]
-
 APP_NAMES = [APPLICATION_APP_NAME, DATABASE_APP_NAME]
 
 
@@ -52,8 +52,36 @@ async def test_database_relation_with_charm_libraries(ops_test: OpsTest):
     await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active")
 
     # TODO verify relation with database by writing/reading some data
-    # Get the connection string to connect to the database.
-    connection_string = await build_connection_string(
-        ops_test, APPLICATION_APP_NAME
+    connection_string = await get_application_relation_data(ops_test, APPLICATION_APP_NAME, "uris")
+    database = await get_application_relation_data(ops_test, APPLICATION_APP_NAME, "database")
+    logger.info("%s", connection_string)
+    client = MongoClient(
+        connection_string,
+        directConnection=False,
+        connect=False,
+        serverSelectionTimeoutMS=1000,
+        connectTimeoutMS=2000,
     )
-    print(connection_string)
+    # test crud operations
+    db = client[database]
+    test_collection = db['test_collection']
+    ubuntu = {'release_name': 'Focal Fossa', 'version': 20.04, 'LTS': True}
+    test_collection.insert(ubuntu)
+
+    query = test_collection.find({}, {'release_name': 1})
+    logger.error(query)
+    assert query[0]['release_name'] == 'Focal Fossa'
+
+    ubuntu_version = {'version': 20.04}
+    ubuntu_name_updated = {'$set': {'release_name': 'Fancy Fossa'}}
+    test_collection.update_one(ubuntu_version, ubuntu_name_updated)
+
+    query = test_collection.find({}, {'release_name': 1})
+    logger.error(query)
+    assert query[0]['release_name'] == 'Fancy Fossa'
+
+    test_collection.delete_one({'release_name': 'Fancy Fossa'})
+    query = test_collection.find({}, {'release_name': 1})
+    assert query.count() == 0
+
+    client.close()

@@ -40,7 +40,7 @@ from tenacity import before_log, retry, stop_after_attempt, wait_fixed
 
 logger = logging.getLogger(__name__)
 
-PEER = "mongodb"
+PEER = "database-peers"
 REPO_URL = "deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"
 REPO_ENTRY = (
     "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/5.0 multiverse"
@@ -64,8 +64,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(self.on.start, self._on_start)
-        self.framework.observe(self.on.mongodb_relation_joined, self._on_mongodb_relation_handler)
-        self.framework.observe(self.on.mongodb_relation_changed, self._on_mongodb_relation_handler)
+        self.framework.observe(self.on[PEER].relation_joined, self._on_mongodb_relation_handler)
+        self.framework.observe(self.on[PEER].relation_changed, self._on_mongodb_relation_handler)
 
         self.framework.observe(self.on.update_status, self._on_update_status)
         self.framework.observe(self.on.get_primary_action, self._on_get_primary_action)
@@ -74,7 +74,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         )
         # if a new leader has been elected update hosts of MongoDB
         self.framework.observe(self.on.leader_elected, self._on_leader_elected)
-        self.framework.observe(self.on.mongodb_relation_departed, self._relation_departed)
+        self.framework.observe(self.on[PEER].relation_departed, self._relation_departed)
         self.framework.observe(self.on.get_admin_password_action, self._on_get_admin_password)
 
         # handle provider side of relations
@@ -101,7 +101,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def _update_hosts(self, event) -> None:
         """Update replica set hosts and remove any unremoved replicas from the config."""
-        if "replset_initialised" not in self.app_data:
+        if "db_initialised" not in self.app_data:
             return
 
         self.process_unremoved_units(event)
@@ -216,7 +216,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 f"localhost,{machine_ip}",
                 # part of replicaset
                 "--replSet",
-                "rs0",
+                f"{self.app.name}",
                 "--auth",
                 # keyFile used for authentication replica set peers
                 # TODO: replace with x509
@@ -428,7 +428,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 return
 
             # replica set initialised properly and ready to go
-            self.app_data["replset_initialised"] = "True"
             self.app_data["db_initialised"] = "True"
             self.unit.status = ActiveStatus()
 
@@ -496,7 +495,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
     def mongodb_config(self) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for this deployment of MongoDB."""
         return MongoDBConfiguration(
-            replset="rs0",  # TODO update this to self.app.name
+            replset=self.app.name,  # TODO update this to self.app.name
             database="admin",
             username="operator",
             password=self.app_data.get("admin_password"),

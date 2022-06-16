@@ -34,7 +34,7 @@ class TestCharm(unittest.TestCase):
         self.harness = Harness(MongodbOperatorCharm)
         self.addCleanup(self.harness.cleanup)
         self.harness.begin()
-        self.peer_rel_id = self.harness.add_relation("mongodb", "mongodb")
+        self.peer_rel_id = self.harness.add_relation("database-peers", "database-peers")
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
@@ -299,7 +299,7 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     def test_unit_ips(self):
-        rel_id = self.harness.charm.model.get_relation("mongodb").id
+        rel_id = self.harness.charm.model.get_relation("database-peers").id
         self.harness.add_relation_unit(rel_id, "mongodb/1")
         self.harness.update_relation_data(rel_id, "mongodb/1", PEER_ADDR)
 
@@ -310,9 +310,9 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongoDBConnection")
     def test_mongodb_relation_joined_non_leader_does_nothing(self, connection):
         """Test verifies that non-leader units don't reconfigure the replica set on joined."""
-        rel = self.harness.charm.model.get_relation("mongodb")
+        rel = self.harness.charm.model.get_relation("database-peers")
         self.harness.set_leader(False)
-        self.harness.charm.on.mongodb_relation_joined.emit(relation=rel)
+        self.harness.charm.on.database_peers_relation_joined.emit(relation=rel)
         connection.return_value.__enter__.assert_not_called()
 
     @patch_network_get(private_address="1.1.1.1")
@@ -325,13 +325,14 @@ class TestCharm(unittest.TestCase):
         """
         # preset values
         self.harness.set_leader(True)
+        self.harness.charm.app_data["db_initialised"] = "True"
         connection.return_value.__enter__.return_value.is_ready = False
         connection.return_value.__enter__.return_value.get_replset_members.return_value = {
             "1.1.1.1"
         }
 
         # simulate 2nd MongoDB unit
-        rel = self.harness.charm.model.get_relation("mongodb")
+        rel = self.harness.charm.model.get_relation("database-peers")
         self.harness.add_relation_unit(rel.id, "mongodb/1")
         self.harness.update_relation_data(rel.id, "mongodb/1", PEER_ADDR)
 
@@ -352,7 +353,8 @@ class TestCharm(unittest.TestCase):
         """
         # presets
         self.harness.set_leader(True)
-        rel = self.harness.charm.model.get_relation("mongodb")
+        self.harness.charm.app_data["db_initialised"] = "True"
+        rel = self.harness.charm.model.get_relation("database-peers")
 
         for exception in PYMONGO_EXCEPTIONS:
             connection.return_value.__enter__.return_value.get_replset_members.side_effect = (
@@ -384,10 +386,11 @@ class TestCharm(unittest.TestCase):
         """
         # presets
         self.harness.set_leader(True)
+        self.harness.charm.app_data["db_initialised"] = "True"
         connection.return_value.__enter__.return_value.get_replset_members.return_value = {
             "1.1.1.1"
         }
-        rel = self.harness.charm.model.get_relation("mongodb")
+        rel = self.harness.charm.model.get_relation("database-peers")
 
         exceptions = PYMONGO_EXCEPTIONS
         exceptions.append(NotReadyError)
@@ -468,7 +471,7 @@ class TestCharm(unittest.TestCase):
     def test_get_primary_peer_unit_primary(self, connection):
         """Tests get primary outputs correct primary when called on a secondary replica."""
         # add peer unit
-        rel_id = self.harness.charm.model.get_relation("mongodb").id
+        rel_id = self.harness.charm.model.get_relation("database-peers").id
         self.harness.add_relation_unit(rel_id, "mongodb/1")
         self.harness.update_relation_data(rel_id, "mongodb/1", {"private-address": "2.2.2.2"})
 
@@ -488,7 +491,7 @@ class TestCharm(unittest.TestCase):
         Verifies that when there is no primary, the property _primary returns None.
         """
         # add peer unit
-        rel_id = self.harness.charm.model.get_relation("mongodb").id
+        rel_id = self.harness.charm.model.get_relation("database-peers").id
         self.harness.add_relation_unit(rel_id, "mongodb/1")
         self.harness.update_relation_data(rel_id, "mongodb/1", {"private-address": "2.2.2.2"})
 

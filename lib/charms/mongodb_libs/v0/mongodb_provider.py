@@ -206,7 +206,7 @@ class MongoDBProvider(Object):
             if unit.app is self.charm.app:
                 # it is peer relation, skip
                 continue
-            roles = relation.data[unit].get("extra-user-roles", None)
+            roles = relation.data[relation.app].get("extra-user-roles", None)
             if roles is not None:
                 return set(roles.split(","))
         return {"default"}
