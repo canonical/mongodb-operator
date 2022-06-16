@@ -159,7 +159,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         """
         # only leader should configure replica set and app-changed-events can trigger the relation
         # changed hook resulting in no JUJU_REMOTE_UNIT if this is the case we should return
-        if not (self.unit.is_leader() and event.unit):
+        # further reconfiguration can be successful only if a replica set is initialised.
+        if not (self.unit.is_leader() and event.unit) or "db_initialised" not in self.app_data:
             return
 
         with MongoDBConnection(self.mongodb_config) as mongo:
@@ -395,6 +396,13 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         os.chown(KEY_FILE, mongodb_user.pw_uid, mongodb_user.pw_gid)
 
     def _initialise_replica_set(self, event: ops.charm.StartEvent) -> None:
+        if "db_initialised" in self.app_data:
+            # The replica set should be initialised only once. Check should be
+            # external (e.g., check initialisation inside peer relation). We
+            # shouldn't rely on MongoDB response because the data directory
+            # can be corrupted.
+            return
+
         with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
             try:
                 logger.info("Replica Set initialization")
@@ -421,6 +429,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
             # replica set initialised properly and ready to go
             self.app_data["replset_initialised"] = "True"
+            self.app_data["db_initialised"] = "True"
             self.unit.status = ActiveStatus()
 
     def _unit_ip(self, unit: ops.model.Unit) -> str:

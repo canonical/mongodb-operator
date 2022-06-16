@@ -195,7 +195,7 @@ class MongoDBProvider(Object):
             if unit.app is self.charm.app:
                 # it is peer relation, skip
                 continue
-            database = relation.data[unit].get("database", None)
+            database = relation.data[relation.app].get("database", None)
             if database is not None:
                 return database
         return None
