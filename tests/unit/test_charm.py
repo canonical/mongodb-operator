@@ -325,6 +325,7 @@ class TestCharm(unittest.TestCase):
         """
         # preset values
         self.harness.set_leader(True)
+        self.harness.charm.app_data["db_initialised"] = "True"
         connection.return_value.__enter__.return_value.is_ready = False
         connection.return_value.__enter__.return_value.get_replset_members.return_value = {
             "1.1.1.1"
@@ -352,6 +353,7 @@ class TestCharm(unittest.TestCase):
         """
         # presets
         self.harness.set_leader(True)
+        self.harness.charm.app_data["db_initialised"] = "True"
         rel = self.harness.charm.model.get_relation("mongodb")
 
         for exception in PYMONGO_EXCEPTIONS:
@@ -384,6 +386,7 @@ class TestCharm(unittest.TestCase):
         """
         # presets
         self.harness.set_leader(True)
+        self.harness.charm.app_data["db_initialised"] = "True"
         connection.return_value.__enter__.return_value.get_replset_members.return_value = {
             "1.1.1.1"
         }
