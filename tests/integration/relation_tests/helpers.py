@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
+import logging
 from typing import Optional
-from urllib.parse import quote_plus
 
 import yaml
 from pytest_operator.plugin import OpsTest
 
-import logging
 logger = logging.getLogger(__name__)
 
 
