@@ -495,7 +495,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
     def mongodb_config(self) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for this deployment of MongoDB."""
         return MongoDBConfiguration(
-            replset=self.app.name,  # TODO update this to self.app.name
+            replset=self.app.name,
             database="admin",
             username="operator",
             password=self.app_data.get("admin_password"),
