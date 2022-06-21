@@ -18,6 +18,11 @@ logger = logging.getLogger(__name__)
 
 APPLICATION_APP_NAME = "application"
 
+FIRST_DATABASE_RELATION_NAME = "first-database"
+SECOND_DATABASE_RELATION_NAME = "second-database"
+MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME = "multiple-database-clusters"
+ALIASED_MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME = "aliased-multiple-database-clusters"
+
 DATABASE_METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 PORT = 27017
 DATABASE_APP_NAME = DATABASE_METADATA["name"]
@@ -48,10 +53,12 @@ async def test_deploy_charms(ops_test: OpsTest, application_charm, database_char
 async def test_database_relation_with_charm_libraries(ops_test: OpsTest):
     """Test basic functionality of database relation interface."""
     # Relate the charms and wait for them exchanging some connection data.
-    await ops_test.model.add_relation(APPLICATION_APP_NAME, DATABASE_APP_NAME)
+    logger.error("Relating %s and %s", APPLICATION_APP_NAME, DATABASE_APP_NAME)
+    await ops_test.model.add_relation(
+        APPLICATION_APP_NAME, DATABASE_APP_NAME
+    )
     await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active")
 
-    # TODO verify relation with database by writing/reading some data
     connection_string = await get_application_relation_data(ops_test, APPLICATION_APP_NAME, "uris")
     database = await get_application_relation_data(ops_test, APPLICATION_APP_NAME, "database")
     logger.info("%s", connection_string)
@@ -85,3 +92,184 @@ async def test_database_relation_with_charm_libraries(ops_test: OpsTest):
     assert query.count() == 0
 
     client.close()
+
+
+async def test_user_with_extra_roles(ops_test: OpsTest):
+    """Test superuser actions."""
+    # Connect to the database.
+    connection_string = await get_application_relation_data(ops_test, APPLICATION_APP_NAME, "uris")
+    database = await get_application_relation_data(ops_test, APPLICATION_APP_NAME, "database")
+    logger.info("%s", connection_string)
+
+    client = MongoClient(
+        connection_string,
+        directConnection=False,
+        connect=False,
+        serverSelectionTimeoutMS=1000,
+        connectTimeoutMS=2000,
+    )
+    client.admin.command(
+        'createUser', 'newTestUser', 
+        pwd='Test123',
+        roles=[{'role': 'readWrite', 'db': database}]
+    )
+
+    client["new_database"]
+
+    client.close()
+
+
+# async def test_two_applications_doesnt_share_the_same_relation_data(
+#     ops_test: OpsTest, application_charm
+# ):
+#     """Test that two different application connect to the database with different credentials."""
+#     # Set some variables to use in this test.
+#     another_application_app_name = "another-application"
+#     all_app_names = [another_application_app_name]
+#     all_app_names.extend(APP_NAMES)
+
+#     # Deploy another application.
+#     await ops_test.model.deploy(
+#         application_charm,
+#         application_name=another_application_app_name,
+#     )
+#     await ops_test.model.wait_for_idle(apps=all_app_names, status="active")
+
+#     # Relate the new application with the database
+#     # and wait for them exchanging some connection data.
+#     await ops_test.model.add_relation(
+#         f"{another_application_app_name}:{FIRST_DATABASE_RELATION_NAME}", DATABASE_APP_NAME
+#     )
+#     await ops_test.model.wait_for_idle(apps=all_app_names, status="active")
+
+#     # Assert the two application have different relation (connection) data.
+#     application_connection_string = await get_application_relation_data(
+#         ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME, "uris"
+#     )
+#     another_application_connection_string = await get_application_relation_data(
+#         ops_test, another_application_app_name, FIRST_DATABASE_RELATION_NAME, "uris"
+#     )
+#     assert application_connection_string != another_application_connection_string
+
+# async def test_two_applications_doesnt_share_the_same_relation_data(
+#     ops_test: OpsTest, application_charm
+# ):
+#     """Test that two different application connect to the database with different credentials."""
+#     # Set some variables to use in this test.
+#     another_application_app_name = "another-application"
+#     all_app_names = [another_application_app_name]
+#     all_app_names.extend(APP_NAMES)
+
+#     # Deploy another application.
+#     await ops_test.model.deploy(
+#         application_charm,
+#         application_name=another_application_app_name,
+#     )
+#     await ops_test.model.wait_for_idle(apps=all_app_names, status="active")
+
+#     # Relate the new application with the database
+#     # and wait for them exchanging some connection data.
+#     await ops_test.model.add_relation(
+#         f"{another_application_app_name}:{FIRST_DATABASE_RELATION_NAME}", DATABASE_APP_NAME
+#     )
+#     await ops_test.model.wait_for_idle(apps=all_app_names, status="active")
+
+#     # Assert the two application have different relation (connection) data.
+#     application_connection_string = await get_application_relation_data(
+#         ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME, "uris"
+#     )
+#     another_application_connection_string = await get_application_relation_data(
+#         ops_test, another_application_app_name, FIRST_DATABASE_RELATION_NAME, "uris"
+#     )
+#     assert application_connection_string != another_application_connection_string
+
+
+# async def test_an_application_can_connect_to_multiple_database_clusters(
+#     ops_test: OpsTest, database_charm
+# ):
+#     """Test that an application can connect to different clusters of the same database."""
+#     # Relate the application with both database clusters
+#     # and wait for them exchanging some connection data.
+#     first_cluster_relation = await ops_test.model.add_relation(
+#         f"{APPLICATION_APP_NAME}:{MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME}", DATABASE_APP_NAME
+#     )
+#     second_cluster_relation = await ops_test.model.add_relation(
+#         f"{APPLICATION_APP_NAME}:{MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME}",
+#         ANOTHER_DATABASE_APP_NAME,
+#     )
+#     await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active")
+
+#     # Retrieve the connection string to both database clusters using the relation aliases
+#     # and assert they are different.
+#     application_connection_string = await get_application_relation_data(
+#         ops_test,
+#         APPLICATION_APP_NAME,
+#         MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME,
+#         "uris",
+#         relation_id=first_cluster_relation.id,
+#     )
+#     another_application_connection_string = await get_application_relation_data(
+#         ops_test,
+#         APPLICATION_APP_NAME,
+#         MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME,
+#         "uris",
+#         relation_id=second_cluster_relation.id,
+#     )
+#     assert application_connection_string != another_application_connection_string
+
+
+# async def test_an_application_can_connect_to_multiple_aliased_database_clusters(
+#     ops_test: OpsTest, database_charm
+# ):
+#     """Test that an application can connect to different clusters of the same database."""
+#     # Relate the application with both database clusters
+#     # and wait for them exchanging some connection data.
+#     await asyncio.gather(
+#         ops_test.model.add_relation(
+#             f"{APPLICATION_APP_NAME}:{ALIASED_MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME}",
+#             DATABASE_APP_NAME,
+#         ),
+#         ops_test.model.add_relation(
+#             f"{APPLICATION_APP_NAME}:{ALIASED_MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME}",
+#             ANOTHER_DATABASE_APP_NAME,
+#         ),
+#     )
+#     await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active")
+
+#     # Retrieve the connection string to both database clusters using the relation aliases
+#     # and assert they are different.
+#     application_connection_string = await get_application_relation_data(
+#         ops_test,
+#         APPLICATION_APP_NAME,
+#         ALIASED_MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME,
+#         "uris",
+#         relation_alias="cluster1",
+#     )
+#     another_application_connection_string = await get_application_relation_data(
+#         ops_test,
+#         APPLICATION_APP_NAME,
+#         ALIASED_MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME,
+#         "uris",
+#         relation_alias="cluster2",
+#     )
+#     assert application_connection_string != another_application_connection_string
+
+
+# async def test_an_application_can_request_multiple_databases(ops_test: OpsTest, application_charm):
+#     """Test that an application can request additional databases using the same interface."""
+#     # Relate the charms using another relation and wait for them exchanging some connection data.
+#     await ops_test.model.add_relation(
+#         f"{APPLICATION_APP_NAME}:{SECOND_DATABASE_RELATION_NAME}", DATABASE_APP_NAME
+#     )
+#     await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active")
+
+#     # Get the connection strings to connect to both databases.
+#     first_database_connection_string = await get_application_relation_data(
+#         ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME, "uris"
+#     )
+#     second_database_connection_string = await get_application_relation_data(
+#         ops_test, APPLICATION_APP_NAME, SECOND_DATABASE_RELATION_NAME, "uris"
+#     )
+
+#     # Assert the two application have different relation (connection) data.
+#     assert first_database_connection_string != second_database_connection_string
