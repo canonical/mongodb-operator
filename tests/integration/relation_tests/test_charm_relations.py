@@ -2,21 +2,19 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 import asyncio
-import logging
 from pathlib import Path
 
 import pytest
 import yaml
+from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 
-logger = logging.getLogger(__name__)
+from tests.integration.relation_tests.helpers import get_application_relation_data
 
 APPLICATION_APP_NAME = "application"
-
 DATABASE_METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 PORT = 27017
 DATABASE_APP_NAME = DATABASE_METADATA["name"]
-
 APP_NAMES = [APPLICATION_APP_NAME, DATABASE_APP_NAME]
 
 
@@ -47,4 +45,53 @@ async def test_database_relation_with_charm_libraries(ops_test: OpsTest):
     await ops_test.model.add_relation(APPLICATION_APP_NAME, DATABASE_APP_NAME)
     await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active")
 
-    # TODO verify relation with database by writing/reading some data
+    connection_string = await get_application_relation_data(ops_test, APPLICATION_APP_NAME, "uris")
+    database = await get_application_relation_data(ops_test, APPLICATION_APP_NAME, "database")
+    client = MongoClient(
+        connection_string,
+        directConnection=False,
+        connect=False,
+        serverSelectionTimeoutMS=1000,
+        connectTimeoutMS=2000,
+    )
+    # test crud operations
+    db = client[database]
+    test_collection = db["test_collection"]
+    ubuntu = {"release_name": "Focal Fossa", "version": 20.04, "LTS": True}
+    test_collection.insert(ubuntu)
+
+    query = test_collection.find({}, {"release_name": 1})
+    assert query[0]["release_name"] == "Focal Fossa"
+
+    ubuntu_version = {"version": 20.04}
+    ubuntu_name_updated = {"$set": {"release_name": "Fancy Fossa"}}
+    test_collection.update_one(ubuntu_version, ubuntu_name_updated)
+
+    query = test_collection.find({}, {"release_name": 1})
+    assert query[0]["release_name"] == "Fancy Fossa"
+
+    test_collection.delete_one({"release_name": "Fancy Fossa"})
+    query = test_collection.find({}, {"release_name": 1})
+    assert query.count() == 0
+
+    client.close()
+
+
+async def test_user_with_extra_roles(ops_test: OpsTest):
+    """Test superuser actions (ie creating a new user and creating a new database)."""
+    connection_string = await get_application_relation_data(ops_test, APPLICATION_APP_NAME, "uris")
+    database = await get_application_relation_data(ops_test, APPLICATION_APP_NAME, "database")
+    client = MongoClient(
+        connection_string,
+        directConnection=False,
+        connect=False,
+        serverSelectionTimeoutMS=1000,
+        connectTimeoutMS=2000,
+    )
+    client.admin.command(
+        "createUser", "newTestUser", pwd="Test123", roles=[{"role": "readWrite", "db": database}]
+    )
+
+    client["new_database"]
+
+    client.close()

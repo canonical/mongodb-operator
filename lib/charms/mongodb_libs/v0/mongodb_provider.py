@@ -137,12 +137,15 @@ class MongoDBProvider(Object):
         relation = self._get_relation_from_username(config.username)
         if relation is None:
             return None
-        relation.data[self.charm.app]["username"] = config.username
-        relation.data[self.charm.app]["password"] = config.password
-        relation.data[self.charm.app]["database"] = config.database
-        relation.data[self.charm.app]["endpoints"] = ",".join(config.hosts)
-        relation.data[self.charm.app]["replset"] = config.replset
-        relation.data[self.charm.app]["uris"] = config.uri
+
+        data = relation.data[self.charm.app]
+        data["username"] = config.username
+        data["password"] = config.password
+        data["database"] = config.database
+        data["endpoints"] = ",".join(config.hosts)
+        data["replset"] = config.replset
+        data["uris"] = config.uri
+        relation.data[self.charm.app].update(data)
 
     @staticmethod
     def _get_username_from_relation_id(relation_id: str) -> str:
@@ -188,22 +191,14 @@ class MongoDBProvider(Object):
 
     def _get_database_from_relation(self, relation: Relation) -> Optional[str]:
         """Return database name from relation."""
-        for unit in relation.units:
-            if unit.app is self.charm.app:
-                # it is peer relation, skip
-                continue
-            database = relation.data[unit].get("database", None)
-            if database is not None:
-                return database
+        database = relation.data[relation.app].get("database", None)
+        if database is not None:
+            return database
         return None
 
     def _get_roles_from_relation(self, relation: Relation) -> Set[str]:
         """Return additional user roles from relation if specified or return None."""
-        for unit in relation.units:
-            if unit.app is self.charm.app:
-                # it is peer relation, skip
-                continue
-            roles = relation.data[unit].get("extra-user-roles", None)
-            if roles is not None:
-                return set(roles.split(","))
+        roles = relation.data[relation.app].get("extra-user-roles", None)
+        if roles is not None:
+            return set(roles.split(","))
         return {"default"}

@@ -216,7 +216,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 f"localhost,{machine_ip}",
                 # part of replicaset
                 "--replSet",
-                "rs0",
+                f"{self.app.name}",
                 "--auth",
                 # keyFile used for authentication replica set peers
                 # TODO: replace with x509
@@ -495,7 +495,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
     def mongodb_config(self) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for this deployment of MongoDB."""
         return MongoDBConfiguration(
-            replset="rs0",  # TODO update this to self.app.name
+            replset=self.app.name,
             database="admin",
             username="operator",
             password=self.app_data.get("admin_password"),
