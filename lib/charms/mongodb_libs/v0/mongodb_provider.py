@@ -191,22 +191,14 @@ class MongoDBProvider(Object):
 
     def _get_database_from_relation(self, relation: Relation) -> Optional[str]:
         """Return database name from relation."""
-        for unit in relation.units:
-            if unit.app is self.charm.app:
-                # it is peer relation, skip
-                continue
-            database = relation.data[relation.app].get("database", None)
-            if database is not None:
-                return database
+        database = relation.data[relation.app].get("database", None)
+        if database is not None:
+            return database
         return None
 
     def _get_roles_from_relation(self, relation: Relation) -> Set[str]:
         """Return additional user roles from relation if specified or return None."""
-        for unit in relation.units:
-            if unit.app is self.charm.app:
-                # it is peer relation, skip
-                continue
-            roles = relation.data[relation.app].get("extra-user-roles", None)
-            if roles is not None:
-                return set(roles.split(","))
+        roles = relation.data[relation.app].get("extra-user-roles", None)
+        if roles is not None:
+            return set(roles.split(","))
         return {"default"}

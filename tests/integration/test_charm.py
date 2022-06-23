@@ -50,7 +50,7 @@ async def test_unit_is_running_as_replica_set(ops_test: OpsTest, unit_id: int) -
     # connect to mongo replica set
     unit = ops_test.model.applications[APP_NAME].units[unit_id]
     connection = unit.public_address + ":" + str(PORT)
-    client = MongoClient(connection, replicaset="rs0")
+    client = MongoClient(connection, replicaset="mongodb")
 
     # check mongo replica set is ready
     try:
