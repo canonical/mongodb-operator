@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
-from typing import Optional
 import json
+from typing import Optional
+
 import yaml
 from pytest_operator.plugin import OpsTest
+
 
 async def get_application_relation_data(
     ops_test: OpsTest,
@@ -15,6 +17,7 @@ async def get_application_relation_data(
     relation_alias: str = None,
 ) -> Optional[str]:
     """Get relation data for an application.
+
     Args:
         ops_test: The ops test framework instance
         application_name: The name of the application
