@@ -7,6 +7,7 @@ This class creates user and database for each application relation
 and expose needed information for client connection via fields in
 external relation.
 """
+import ops.model
 import os
 import pwd
 import re
@@ -49,6 +50,7 @@ PEER = "database-peers"
 MONGO_USER = "mongodb"
 MONGO_DATA_DIR = "/data/db"
 
+
 class MongoDBProvider(Object):
     """In this class we manage client database relations."""
 
@@ -59,11 +61,15 @@ class MongoDBProvider(Object):
         self.framework.observe(self.charm.on[REL_NAME].relation_joined, self._on_relation_event)
         self.framework.observe(self.charm.on[REL_NAME].relation_changed, self._on_relation_event)
         self.framework.observe(self.charm.on[REL_NAME].relation_broken, self._on_relation_event)
-        self.framework.observe(self.charm.on[LEGACY_REL_NAME].relation_created, self._on_legacy_relation_created)
-        self.framework.observe(self.charm.on[LEGACY_REL_NAME].relation_joined, self._on_legacy_relation_joined)
+        self.framework.observe(
+            self.charm.on[LEGACY_REL_NAME].relation_created, self._on_legacy_relation_created
+        )
+        self.framework.observe(
+            self.charm.on[LEGACY_REL_NAME].relation_joined, self._on_legacy_relation_joined
+        )
 
     ################################################################################
-    # NEW RELATIONS 
+    # NEW RELATIONS
     ################################################################################
     def _on_relation_event(self, event):
         """Handle relation joined events.
@@ -139,19 +145,18 @@ class MongoDBProvider(Object):
                 mongo.drop_database(database)
 
     ################################################################################
-    # LEGACY RELATIONS 
+    # LEGACY RELATIONS
     ################################################################################
     def _on_legacy_relation_created(self, event):
-        """Legacy relations for MongoDB opporate without a password and so we update the server accordingly and 
-        set a flag. 
+        """Legacy relations for MongoDB opporate without a password and so we update the server accordingly and
+        set a flag.
         """
         logger.warning("DEPRECATION WARNING - `mongodb` interface is a legacy interface.")
 
         # TODO, future PR check if there are any new relations that are related to this charm and will be effected
-        # by loss of password. If so go into blocked state. 
+        # by loss of password. If so go into blocked state.
 
-
-        # TODO set to no password mode 
+        # TODO, future PR check if already running without auth
         self._stop_mongod_service()
         self._update_mongod_service(auth=False)
         self._start_mongod_service()
@@ -161,6 +166,9 @@ class MongoDBProvider(Object):
         NOTE: this is retro-fitted from the legacy mongodb charm: https://launchpad.net/charm-mongodb
         """
         logger.warning("DEPRECATION WARNING - `mongodb` interface is a legacy interface.")
+        if not self.charm.unit.is_leader:
+            return
+
         relation = self.model.get_relation(REL_NAME, event.relation.id)
 
         # reactive charms set relation data on "the current unit"
@@ -169,15 +177,12 @@ class MongoDBProvider(Object):
         data["port"] = str(MONGODB_PORT)
         data["type"] = "database"
         data["version"] = MONGODB_VERSION
-
-        if len(self.model.get_relation(PEER).units) > 0:
-            data["replset"] = self.charm.app.name
+        data["replset"] = self.charm.app.name
 
         # reactive charms set relation data on "the current unit"
         relation.data[self.charm.unit].update(data)
-        
 
-    # TODO move to helpers 
+    # TODO move to machine charm helpers
     def _stop_mongod_service(self):
         self.charm.unit.status = MaintenanceStatus("stopping MongoDB")
         if systemd.service_running("mongod.service"):
@@ -189,8 +194,8 @@ class MongoDBProvider(Object):
                 self.charm.unit.status = BlockedStatus("couldn't start MongoDB")
                 return
 
-    # TODO move to helpers 
-    def _update_mongod_service(self, auth:bool):
+    # TODO move to machine charm helpers
+    def _update_mongod_service(self, auth: bool):
         mongod_start_args = self._generate_service_args(auth)
 
         with open("/lib/systemd/system/mongod.service", "r") as mongodb_service_file:
@@ -213,38 +218,39 @@ class MongoDBProvider(Object):
         # changes to service files are only applied after reloading
         systemd.daemon_reload()
 
-    def _generate_service_args(self, auth:bool)-> str:
+    # TODO move to machine charm helpers
+    def _generate_service_args(self, auth: bool) -> str:
         # Construct the mongod startup commandline args for systemd, note that commandline
         # arguments take priority over any user set config file options. User options will be
         # configured in the config file. MongoDB handles this merge of these two options.
         machine_ip = self._unit_ip(self.charm.unit)
         mongod_start_args = [
-                "ExecStart=/usr/bin/mongod",
-                # bind to localhost and external interfaces
-                "--bind_ip",
-                f"localhost,{machine_ip}",
-                # part of replicaset
-                "--replSet",
-                f"{self.charm.app.name}"
+            "ExecStart=/usr/bin/mongod",
+            # bind to localhost and external interfaces
+            "--bind_ip",
+            f"localhost,{machine_ip}",
+            # part of replicaset
+            "--replSet",
+            f"{self.charm.app.name}",
         ]
 
         if auth:
-            mongod_start_args.append("--auth")
-        
-        mongod_start_args.extend([
-                # keyFile used for authentication replica set peers
-                # TODO: replace with x509
-                "--clusterAuthMode=keyFile",
-                f"--keyFile={KEY_FILE}",
-                "\n",
+            mongod_start_args.extend(
+                [
+                    "--auth",
+                    # keyFile used for authenti cation replica set peers, cluster auth, implies user authentication hence we cannot have cluster authentication without user authentication. see: https://www.mongodb.com/docs/manual/reference/configuration-options/#mongodb-setting-security.keyFile
+                    # TODO: replace with x509
+                    "--clusterAuthMode=keyFile",
+                    f"--keyFile={KEY_FILE}",
                 ]
             )
 
+        mongod_start_args.append("\n")
         mongod_start_args = " ".join(mongod_start_args)
 
         return mongod_start_args
 
-    # TODO move to helpers 
+    # TODO move to machine charm helpers
     def _start_mongod_service(self):
         self.charm.unit.status = MaintenanceStatus("starting MongoDB")
         if not systemd.service_running("mongod.service"):
@@ -258,9 +264,7 @@ class MongoDBProvider(Object):
 
             self.charm.unit.status = ActiveStatus()
 
-
-    # TODO move this somewhere appropriate
-    import ops.model
+    # TODO move to machine charm helpers
     def _unit_ip(self, unit: ops.model.Unit) -> str:
         """Returns the ip address of a given unit."""
         # check if host is current host
@@ -273,9 +277,8 @@ class MongoDBProvider(Object):
         else:
             raise ApplicationHostNotFoundError
 
-
     ################################################################################
-    # HELPERS 
+    # HELPERS
     ################################################################################
     def _get_config(self, username: str) -> MongoDBConfiguration:
         """Construct config object for future user creation."""
@@ -312,11 +315,13 @@ class MongoDBProvider(Object):
     def _get_users_from_relations(self, departed_relation_id: Optional[int]):
         """Return usernames for all relations except departed relation."""
         relations = self.model.relations[REL_NAME]
-        return set([
-            self._get_username_from_relation_id(relation.id)
-            for relation in relations
-            if relation.id != departed_relation_id
-        ])
+        return set(
+            [
+                self._get_username_from_relation_id(relation.id)
+                for relation in relations
+                if relation.id != departed_relation_id
+            ]
+        )
 
     def _get_databases_from_relations(self, departed_relation_id: Optional[int]) -> Set[str]:
         """Return database names from all relations.
@@ -359,6 +364,7 @@ class MongoDBProvider(Object):
         if roles is not None:
             return set(roles.split(","))
         return {"default"}
+
 
 # TODO move this somewhere appropriate
 class ApplicationHostNotFoundError(Exception):
