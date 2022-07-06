@@ -14,6 +14,10 @@ import re
 import logging
 from typing import Optional, Set
 
+import json
+from collections import namedtuple
+from ops.charm import RelationChangedEvent
+
 from charms.mongodb_libs.v0.helpers import generate_password
 from charms.mongodb_libs.v0.mongodb import (
     MongoDBConfiguration,
@@ -50,6 +54,13 @@ PEER = "database-peers"
 MONGO_USER = "mongodb"
 MONGO_DATA_DIR = "/data/db"
 
+Diff = namedtuple("Diff", "added changed deleted")
+Diff.__doc__ = """
+A tuple for storing the diff between two data mappings.
+added - keys that were added
+changed - keys that still exist but have new values
+deleted - key that were deleted"""
+
 
 class MongoDBProvider(Object):
     """In this class we manage client database relations."""
@@ -79,6 +90,7 @@ class MongoDBProvider(Object):
         data. As result, related charm gets credentials for accessing the
         MongoDB database.
         """
+        logger.debug("Relation event thinks relation event is %s", event.relation.id)
         if not self.charm.unit.is_leader():
             return
         # We shouldn't try to create or update users if the database is not
@@ -91,13 +103,13 @@ class MongoDBProvider(Object):
             departed_relation_id = event.relation.id
 
         try:
-            self.oversee_users(departed_relation_id)
+            self.oversee_users(departed_relation_id, event)
         except PyMongoError as e:
             logger.error("Deferring _on_relation_event since: error=%r", e)
             event.defer()
             return
 
-    def oversee_users(self, departed_relation_id: Optional[int]):
+    def oversee_users(self, departed_relation_id: Optional[int], event):
         """Oversees the users of the application.
 
         Function manages user relations by removing, updated, and creating
@@ -134,6 +146,8 @@ class MongoDBProvider(Object):
                 config = self._get_config(username)
                 logger.info("Update relation user: %s on %s", config.username, config.database)
                 mongo.update_user(config)
+                logger.info("Updating relation data according to diff")
+                self._diff(event)
 
             if not self.charm.model.config["auto-delete"]:
                 return
@@ -280,6 +294,40 @@ class MongoDBProvider(Object):
     ################################################################################
     # HELPERS
     ################################################################################
+    def _diff(self, event: RelationChangedEvent) -> Diff:
+        """Retrieves the diff of the data in the relation changed databag.
+        Args:
+            event: relation changed event.
+        Returns:
+            a Diff instance containing the added, deleted and changed
+                keys from the event relation databag.
+        """
+        # TODO import marcelos unit tests in a future PR
+        # Retrieve the old data from the data key in the application relation databag.
+        old_data = json.loads(event.relation.data[self.charm.model.app].get("data", "{}"))
+        # Retrieve the new data from the event relation databag.
+        new_data = {
+            key: value for key, value in event.relation.data[event.app].items() if key != "data"
+        }
+
+        # These are the keys that were added to the databag and triggered this event.
+        added = new_data.keys() - old_data.keys()
+        # These are the keys that were removed from the databag and triggered this event.
+        deleted = old_data.keys() - new_data.keys()
+        # These are the keys that already existed in the databag,
+        # but had their values changed.
+        changed = {
+            key for key in old_data.keys() & new_data.keys() if old_data[key] != new_data[key]
+        }
+
+        # TODO: update when evaluatation of the possibility of losing the diff is completed
+        # happens in the charm before the diff is completely checked (DPE-412).
+        # Convert the new_data to a serializable format and save it for a next diff check.
+        event.relation.data[self.charm.model.app].update({"data": json.dumps(new_data)})
+
+        # Return the diff with all possible changes.
+        return Diff(added, changed, deleted)
+
     def _get_config(self, username: str) -> MongoDBConfiguration:
         """Construct config object for future user creation."""
         relation = self._get_relation_from_username(username)
@@ -349,6 +397,7 @@ class MongoDBProvider(Object):
         # It means the username here MUST match to regex.
         assert match is not None, "No relation match"
         relation_id = int(match.group(1))
+        logger.debug("Relation ID: %s", relation_id)
         return self.model.get_relation(REL_NAME, relation_id)
 
     def _get_database_from_relation(self, relation: Relation) -> Optional[str]:

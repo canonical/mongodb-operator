@@ -8,5 +8,12 @@ summary: |
   only for testing of the libs in this repository.
 
 requires:
-  database:
+  first-database:
     interface: mongodb-client
+  second-database:
+    interface: mongodb-client
+  multiple-database-clusters:
+    interface: mongodb-client
+  aliased-multiple-database-clusters:
+    interface: mongodb-client
+    limit: 2
