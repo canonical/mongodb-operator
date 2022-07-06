@@ -37,11 +37,14 @@ async def test_build_deploy_charms(ops_test: OpsTest):
     await ops_test.model.deploy(db_charm, num_units=1)
 
     # must be related before checking for active status (graylog will go into blocked without
-    # necessary relations)
+    # necessary relations) we also choose not to raise on error since graylog and elasticsearch
+    # can go into error before becoming idle
     await ops_test.model.add_relation(GRAYLOG_APP_NAME, ELASTIC_APP_NAME)
     await ops_test.model.add_relation(GRAYLOG_APP_NAME, DATABASE_APP_NAME)
 
-    await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active", timeout=5000)
+    await ops_test.model.wait_for_idle(
+        apps=APP_NAMES, raise_on_error=False, status="active", timeout=5000
+    )
 
 
 async def test_relation_data(ops_test: OpsTest) -> None:
