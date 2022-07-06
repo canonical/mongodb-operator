@@ -51,6 +51,84 @@ class ApplicationCharm(CharmBase):
         # Set active status
         self.unit.status = ActiveStatus("received database credentials")
 ```
+
+As shown above, the library provides some custom events to handle specific situations,
+which are listed below:
+
+- database_created: event emitted when the requested database was created
+- endpoints_changed: event emitted when the read/write endpoints of the database have changed
+- read_only_endpoints_changed: event emitted when the read-only endpoints of the database
+  have changed
+
+If it's needed to connect multiple database clusters to the same relation endpoint
+the application charm can implement the same code as if it would connect to only
+one database cluster (like the above code example).
+
+To differentiate multiple clusters connected to the same relation endpoint
+the application charm can use the name of the remote application:
+
+```python
+
+def _on_database_created(self, event: DatabaseCreatedEvent) -> None:
+    # Get the remote app name of the cluster that triggered this event
+    cluster = event.relation.app.name
+```
+
+It's also possible to provide an alias for each different database cluster/relation.
+
+So, it's possible to differentiate the clusters in two ways.
+The first is to use the remote application name, ie `event.relation.app.name`, as mentioned above.
+
+The second way is to use different event handlers to handle each cluster events.
+The implementation would be something like the following code:
+
+```python
+
+from charms.data_platform_libs.v0.database_requires import DatabaseRequires
+
+class ApplicationCharm(CharmBase):
+    # Application charm that connects to database charms.
+
+    def __init__(self, *args):
+        super().__init__(*args)
+
+        # Define the cluster aliases and one handler for each cluster database created event.
+        self.database = DatabaseRequires(
+            self,
+            relation_name="database",
+            database_name="database",
+            relations_aliases = ["cluster1", "cluster2"],
+        )
+        self.framework.observe(
+            self.database.on.cluster1_database_created, self._on_cluster1_database_created
+        )
+        self.framework.observe(
+            self.database.on.cluster2_database_created, self._on_cluster2_database_created
+        )
+
+    def _on_cluster1_database_created(self, event: DatabaseCreatedEvent) -> None:
+        # Handle the created database on the cluster named cluster1
+
+        # Create configuration file for app
+        config_file = self._render_app_config_file(
+            event.username,
+            event.password,
+            event.endpoints,
+        )
+        ...
+
+    def _on_cluster2_database_created(self, event: DatabaseCreatedEvent) -> None:
+        # Handle the created database on the cluster named cluster2
+
+        # Create configuration file for app
+        config_file = self._render_app_config_file(
+            event.username,
+            event.password,
+            event.endpoints,
+        )
+        ...
+
+```
 """
 
 import json
@@ -182,6 +260,7 @@ class DatabaseRequires(Object):
         relation_name: str,
         database_name: str,
         extra_user_roles: str = None,
+        relations_aliases: List[str] = None,
     ):
         """Manager of database client relations."""
         super().__init__(charm, relation_name)
@@ -191,12 +270,67 @@ class DatabaseRequires(Object):
         self.local_app = self.charm.model.app
         self.local_unit = self.charm.unit
         self.relation_name = relation_name
+        self.relations_aliases = relations_aliases
         self.framework.observe(
             self.charm.on[relation_name].relation_joined, self._on_relation_joined_event
         )
         self.framework.observe(
             self.charm.on[relation_name].relation_changed, self._on_relation_changed_event
         )
+
+        # Define custom event names for each alias.
+        if relations_aliases:
+            # Ensure the number of aliases match the maximum number
+            # of connections allowed in the specific relation.
+            relation_connection_limit = self.charm.meta.requires[relation_name].limit
+            if len(relations_aliases) != relation_connection_limit:
+                raise ValueError(
+                    f"The number of aliases must match the maximum number of connections allowed in the relation. "
+                    f"Expected {relation_connection_limit}, got {len(relations_aliases)}"
+                )
+
+            for relation_alias in relations_aliases:
+                self.on.define_event(f"{relation_alias}_database_created", DatabaseCreatedEvent)
+                self.on.define_event(
+                    f"{relation_alias}_endpoints_changed", DatabaseEndpointsChangedEvent
+                )
+                self.on.define_event(
+                    f"{relation_alias}_read_only_endpoints_changed",
+                    DatabaseReadOnlyEndpointsChangedEvent,
+                )
+
+    def _assign_relation_alias(self, relation_id: int) -> None:
+        """Assigns an alias to a relation.
+
+        This function writes in the application data bag, therefore,
+        only the leader unit can call it.
+
+        Args:
+            relation_id: the identifier for a particular relation.
+        """
+        # If this unit isn't the leader or no aliases were provided, return immediately.
+        if not self.local_unit.is_leader() or not self.relations_aliases:
+            return
+
+        # Return if an alias was already assigned to this relation
+        # (like when there are more than one unit joining the relation).
+        if (
+            self.charm.model.get_relation(self.relation_name, relation_id)
+            .data[self.local_app]
+            .get("alias")
+        ):
+            return
+
+        # Retrieve the available aliases (the ones that weren't assigned to any relation).
+        available_aliases = self.relations_aliases[:]
+        for relation in self.charm.model.relations[self.relation_name]:
+            alias = relation.data[self.local_app].get("alias")
+            if alias:
+                logger.debug(f"Alias {alias} was already assigned to relation {relation.id}")
+                available_aliases.remove(alias)
+
+        # Set the alias in the application relation databag of the specific relation.
+        self._update_relation_data(relation_id, {"alias": available_aliases[0]})
 
     def _diff(self, event: RelationChangedEvent) -> Diff:
         """Retrieves the diff of the data in the relation changed databag.
@@ -233,6 +367,31 @@ class DatabaseRequires(Object):
         # Return the diff with all possible changes.
         return Diff(added, changed, deleted)
 
+    def _emit_aliased_event(self, relation: Relation, event_name: str) -> None:
+        """Emit an aliased event to a particular relation if it has an alias.
+
+        Args:
+            relation: a particular relation.
+            event_name: the name of the event to emit.
+        """
+        alias = self._get_relation_alias(relation.id)
+        if alias:
+            getattr(self.on, f"{alias}_{event_name}").emit(relation)
+
+    def _get_relation_alias(self, relation_id: int) -> Optional[str]:
+        """Returns the relation alias.
+
+        Args:
+            relation_id: the identifier for a particular relation.
+
+        Returns:
+            the relation alias or None if the relation wasn't found.
+        """
+        for relation in self.charm.model.relations[self.relation_name]:
+            if relation.id == relation_id:
+                return relation.data[self.local_app].get("alias")
+        return None
+
     def fetch_relation_data(self) -> dict:
         """Retrieves data from relation.
 
@@ -267,6 +426,9 @@ class DatabaseRequires(Object):
 
     def _on_relation_joined_event(self, event: RelationJoinedEvent) -> None:
         """Event emitted when the application joins the database relation."""
+        # If relations aliases were provided, assign one to the relation.
+        self._assign_relation_alias(event.relation.id)
+
         # Sets both database and extra user roles in the relation
         # if the roles are provided. Otherwise, sets only the database.
         if self.extra_user_roles:
@@ -292,19 +454,31 @@ class DatabaseRequires(Object):
         # Check if the database is created
         # (the database charm shared the credentials).
         if "username" in diff.added and "password" in diff.added:
+            # Emit the default event (the one without an alias).
             self.on.database_created.emit(event.relation)
+
+            # Emit the aliased event (if any).
+            self._emit_aliased_event(event.relation, "database_created")
 
         # Emit an endpoints changed event if the database
         # added or changed this info in the relation databag.
         if "endpoints" in diff.added or "endpoints" in diff.changed:
+            # Emit the default event (the one without an alias).
             logger.info(f"endpoints changed on {datetime.now()}")
             self.on.endpoints_changed.emit(event.relation)
+
+            # Emit the aliased event (if any).
+            self._emit_aliased_event(event.relation, "endpoints_changed")
 
         # Emit a read only endpoints changed event if the database
         # added or changed this info in the relation databag.
         if "read-only-endpoints" in diff.added or "read-only-endpoints" in diff.changed:
+            # Emit the default event (the one without an alias).
             logger.info(f"read-only-endpoints changed on {datetime.now()}")
             self.on.read_only_endpoints_changed.emit(event.relation)
+
+            # Emit the aliased event (if any).
+            self._emit_aliased_event(event.relation, "read_only_endpoints_changed")
 
     @property
     def relations(self) -> List[Relation]:

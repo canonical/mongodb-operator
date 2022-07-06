@@ -413,7 +413,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 logger.info("User initialization")
                 self._init_admin_user()
                 logger.info("Manage relations")
-                self.client_relations.oversee_users(None)
+                self.client_relations.oversee_users(None, None)
             except subprocess.CalledProcessError as e:
                 logger.error(
                     "Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr
