@@ -33,24 +33,16 @@ async def test_build_deploy_charms(ops_test: OpsTest):
     # set data in the relation application databag using only the leader unit).
     db_charm = await ops_test.build_charm(".")
 
-    await asyncio.gather(
-        ops_test.model.deploy(
-            GRAYLOG_APP_NAME,
-            num_units=1,
-        ),
-        ops_test.model.deploy(ELASTIC_APP_NAME, num_units=1, constraints="mem=4G"),
-        ops_test.model.deploy(
-            db_charm,
-            num_units=1,
-        ),
-    )
+    await ops_test.model.deploy(GRAYLOG_APP_NAME, num_units=1)
+    await ops_test.model.deploy(ELASTIC_APP_NAME, num_units=1, constraints="mem=4G")
+    await ops_test.model.deploy(db_charm, num_units=1)
 
     # must be related before checking for active status (graylog will go into blocked without
     # necessary relations)
     await ops_test.model.add_relation(GRAYLOG_APP_NAME, ELASTIC_APP_NAME)
     await ops_test.model.add_relation(GRAYLOG_APP_NAME, DATABASE_APP_NAME)
 
-    await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active")
+    await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active", timeout=5000)
 
 
 async def test_relation_data(ops_test: OpsTest) -> None:
