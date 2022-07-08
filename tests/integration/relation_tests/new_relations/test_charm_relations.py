@@ -9,7 +9,9 @@ import yaml
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 
-from tests.integration.relation_tests.helpers import get_application_relation_data
+from tests.integration.relation_tests.new_relations.helpers import (
+    get_application_relation_data,
+)
 
 APPLICATION_APP_NAME = "application"
 DATABASE_METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())

@@ -9,7 +9,7 @@ from pytest_operator.plugin import OpsTest
 @pytest.fixture(scope="module")
 async def application_charm(ops_test: OpsTest):
     """Build the application charm."""
-    charm_path = "tests/integration/relation_tests/application-charm"
+    charm_path = "tests/integration/relation_tests/new_relations/application-charm"
     charm = await ops_test.build_charm(charm_path)
     return charm
 
