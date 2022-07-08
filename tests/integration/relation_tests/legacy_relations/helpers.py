@@ -6,6 +6,8 @@ import time
 from typing import Optional
 
 import yaml
+from pymongo import MongoClient
+from pymongo.errors import OperationFailure
 from pytest_operator.plugin import OpsTest
 
 from tests.integration.relation_tests.legacy_relations.api import GraylogApi
@@ -84,6 +86,23 @@ async def get_password(ops_test: OpsTest, app_name: str) -> str:
     )
     action = await action.wait()
     return action.results["admin-password"]
+
+
+async def auth_enabled(ops_test: OpsTest, connection: str) -> None:
+    # try to access the database without password authentication
+
+    client = MongoClient(connection, replicaset="mongodb")
+    try:
+        client.admin.command("replSetGetStatus")
+    except OperationFailure as e:
+        # error code 13 for OperationFailure is an authentication error, meaning disabling of
+        # authentication was unsuccessful
+        if e.code == 13:
+            return False
+        else:
+            raise
+
+    return True
 
 
 class ApiTimeoutError(Exception):

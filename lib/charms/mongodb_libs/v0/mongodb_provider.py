@@ -98,6 +98,22 @@ class MongoDBProvider(Object):
         if "db_initialised" not in self.charm.app_data:
             return
 
+        # legacy relations disable auth.
+        legacy_relation_users = self.get_users_from_legacy_relations()
+        if len(legacy_relation_users) > 0:
+            self.charm.unit.status = BlockedStatus("failed to create database relation")
+            logger.error("Auth disabled due to existing connections to legacy relations")
+            return
+
+        # If auth is disabled but there are no legacy relation users, this means that legacy
+        # users have left and auth can be re-enabled.
+        # TODO: find a way for this to be generalised for K8s charm.
+        if not self._auth_enabled:
+            logger.debug("Enabling authentication.")
+            self._stop_mongod_service()
+            self._update_mongod_service(auth=True)
+            self._start_mongod_service()
+
         departed_relation_id = None
         if type(event) is RelationBrokenEvent:
             departed_relation_id = event.relation.id
@@ -167,13 +183,27 @@ class MongoDBProvider(Object):
         """
         logger.warning("DEPRECATION WARNING - `mongodb` interface is a legacy interface.")
 
-        # TODO, future PR check if there are any new relations that are related to this charm and will be effected
-        # by loss of password. If so go into blocked state.
+        # legacy relations turn off authentication, therefore disabling authentication for current
+        # users (which connect over the new relation interface). If current users exist that use
+        # auth it is necessary to not proceed and go into blocked state.
+        relation_users = self._get_users_from_relations(departed_relation_id=None)
+        if len(relation_users) > 0:
+            self.charm.unit.status = BlockedStatus("failed to create legacy relation")
+            logger.error(
+                "Creating legacy relation would turn off auth effecting the new relations: %s",
+                relation_users,
+            )
+            return
 
-        # TODO, future PR check if already running without auth
-        self._stop_mongod_service()
-        self._update_mongod_service(auth=False)
-        self._start_mongod_service()
+        # If auth is already disabled its likely it has a connection with another legacy relation
+        # user. Shutting down and restarting mongod would lead to downtime for the other legacy
+        # relation user and hence shouldn't be done. Not to mention there is no need to disable
+        # auth if it is already disabled.
+        if self._auth_enabled:
+            logger.debug("Disabling authentication.")
+            self._stop_mongod_service()
+            self._update_mongod_service(auth=False)
+            self._start_mongod_service()
 
     def _on_legacy_relation_joined(self, event):
         """
@@ -195,6 +225,28 @@ class MongoDBProvider(Object):
 
         # reactive charms set relation data on "the current unit"
         relation.data[self.charm.unit].update(data)
+
+    def get_users_from_legacy_relations(self):
+        """Return usernames for legacy relation."""
+        relations = self.model.relations[LEGACY_REL_NAME]
+        return set([self._get_username_from_relation_id(relation.id) for relation in relations])
+
+    # TODO move to machine charm helpers
+    def _auth_enabled(self):
+        """Checks if mongod service is running with auth enabled."""
+        if not os.path.exists("/lib/systemd/system/mongod.service"):
+            return False
+
+        with open("/lib/systemd/system/mongod.service", "r") as mongodb_service_file:
+            mongodb_service = mongodb_service_file.readlines()
+
+        for index, line in enumerate(mongodb_service):
+            # ExecStart contains the line with the arguments to start mongod service.
+            if "ExecStart" in line:
+                if "--auth" in line:
+                    return True
+
+        return False
 
     # TODO move to machine charm helpers
     def _stop_mongod_service(self):
