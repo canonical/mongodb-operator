@@ -7,25 +7,21 @@ This class creates user and database for each application relation
 and expose needed information for client connection via fields in
 external relation.
 """
-import ops.model
+import json
+import logging
 import os
 import pwd
 import re
-import logging
+from collections import namedtuple
 from typing import Optional, Set
 
-import json
-from collections import namedtuple
-from ops.charm import RelationChangedEvent
-
-from charms.mongodb_libs.v0.helpers import generate_password
-from charms.mongodb_libs.v0.mongodb import (
-    MongoDBConfiguration,
-    MongoDBConnection,
-)
+import ops.model
+from charms.mongodb_libs.v0.helpers import KEY_FILE, generate_password
+from charms.mongodb_libs.v0.mongodb import MongoDBConfiguration, MongoDBConnection
+from charms.operator_libs_linux.v1 import systemd
+from ops.charm import RelationBrokenEvent, RelationChangedEvent
 from ops.framework import Object
-from ops.model import Relation, ActiveStatus, BlockedStatus, MaintenanceStatus
-from ops.charm import RelationBrokenEvent
+from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, Relation
 from pymongo.errors import PyMongoError
 
 from charms.operator_libs_linux.v1 import systemd
@@ -98,22 +94,6 @@ class MongoDBProvider(Object):
         if "db_initialised" not in self.charm.app_data:
             return
 
-        # legacy relations disable auth.
-        legacy_relation_users = self.get_users_from_legacy_relations()
-        if len(legacy_relation_users) > 0:
-            self.charm.unit.status = BlockedStatus("failed to create database relation")
-            logger.error("Auth disabled due to existing connections to legacy relations")
-            return
-
-        # If auth is disabled but there are no legacy relation users, this means that legacy
-        # users have left and auth can be re-enabled.
-        # TODO: find a way for this to be generalised for K8s charm.
-        if not self._auth_enabled:
-            logger.debug("Enabling authentication.")
-            self._stop_mongod_service()
-            self._update_mongod_service(auth=True)
-            self._start_mongod_service()
-
         departed_relation_id = None
         if type(event) is RelationBrokenEvent:
             departed_relation_id = event.relation.id
@@ -140,6 +120,23 @@ class MongoDBProvider(Object):
         relation is still in the list of all relations. Therefore, for proper
         work of the function, we need to exclude departed relation from the list.
         """
+
+        # legacy relations disable auth.
+        legacy_relation_users = self.get_users_from_legacy_relations()
+        if len(legacy_relation_users) > 0:
+            self.charm.unit.status = BlockedStatus("cannot have both legacy and new relations")
+            logger.error("Auth disabled due to existing connections to legacy relations")
+            return
+
+        # If auth is disabled but there are no legacy relation users, this means that legacy
+        # users have left and auth can be re-enabled.
+        # TODO: find a way for this to be generalised for K8s charm.
+        if not self._auth_enabled:
+            logger.debug("Enabling authentication.")
+            self._stop_mongod_service()
+            self._update_mongod_service(auth=True)
+            self._start_mongod_service()
+
         with MongoDBConnection(self.charm.mongodb_config) as mongo:
             database_users = mongo.get_users()
             relation_users = self._get_users_from_relations(departed_relation_id)
@@ -178,7 +175,7 @@ class MongoDBProvider(Object):
     # LEGACY RELATIONS
     ################################################################################
     def _on_legacy_relation_created(self, event):
-        """Legacy relations for MongoDB opporate without a password and so we update the server accordingly and
+        """Legacy relations for MongoDB operate without a password and so we update the server accordingly and
         set a flag.
         """
         logger.warning("DEPRECATION WARNING - `mongodb` interface is a legacy interface.")
@@ -188,7 +185,7 @@ class MongoDBProvider(Object):
         # auth it is necessary to not proceed and go into blocked state.
         relation_users = self._get_users_from_relations(departed_relation_id=None)
         if len(relation_users) > 0:
-            self.charm.unit.status = BlockedStatus("failed to create legacy relation")
+            self.charm.unit.status = BlockedStatus("cannot have both legacy and new relations")
             logger.error(
                 "Creating legacy relation would turn off auth effecting the new relations: %s",
                 relation_users,
@@ -200,35 +197,39 @@ class MongoDBProvider(Object):
         # relation user and hence shouldn't be done. Not to mention there is no need to disable
         # auth if it is already disabled.
         if self._auth_enabled:
-            logger.debug("Disabling authentication.")
-            self._stop_mongod_service()
-            self._update_mongod_service(auth=False)
-            self._start_mongod_service()
+            try:
+                logger.debug("Disabling authentication.")
+                self._stop_mongod_service()
+                self._update_mongod_service(auth=False)
+                self._start_mongod_service()
+            except systemd.SystemdError:
+                self.charm.unit.status = BlockedStatus("couldn't restart MongoDB")
+                return
 
     def _on_legacy_relation_joined(self, event):
         """
         NOTE: this is retro-fitted from the legacy mongodb charm: https://launchpad.net/charm-mongodb
         """
         logger.warning("DEPRECATION WARNING - `mongodb` interface is a legacy interface.")
-        if not self.charm.unit.is_leader:
+        if not self.charm.unit.is_leader():
             return
 
+        updates = {
+            "hostname": str(self.model.get_binding(PEER).network.bind_address),
+            "port": str(MONGODB_PORT),
+            "type": "database",
+            "version": MONGODB_VERSION,
+            "replset": self.charm.app.name,
+        }
+
+        # reactive charms set relation data on "the current unit"
         relation = self.model.get_relation(REL_NAME, event.relation.id)
-
-        # reactive charms set relation data on "the current unit"
-        data = relation.data[self.charm.unit]
-        data["hostname"] = str(self.model.get_binding(PEER).network.bind_address)
-        data["port"] = str(MONGODB_PORT)
-        data["type"] = "database"
-        data["version"] = MONGODB_VERSION
-        data["replset"] = self.charm.app.name
-
-        # reactive charms set relation data on "the current unit"
-        relation.data[self.charm.unit].update(data)
+        relation.data[self.charm.unit].update(updates)
 
     def get_users_from_legacy_relations(self):
         """Return usernames for legacy relation."""
         relations = self.model.relations[LEGACY_REL_NAME]
+        logger.debug(relations)
         return set([self._get_username_from_relation_id(relation.id) for relation in relations])
 
     # TODO move to machine charm helpers
@@ -250,15 +251,16 @@ class MongoDBProvider(Object):
 
     # TODO move to machine charm helpers
     def _stop_mongod_service(self):
+        if not systemd.service_running("mongod.service"):
+            return
+
         self.charm.unit.status = MaintenanceStatus("stopping MongoDB")
-        if systemd.service_running("mongod.service"):
-            logger.debug("stopping mongod.service")
-            try:
-                systemd.service_stop("mongod.service")
-            except systemd.SystemdError:
-                logger.error("failed to stop mongod.service")
-                self.charm.unit.status = BlockedStatus("couldn't start MongoDB")
-                return
+        logger.debug("stopping mongod.service")
+        try:
+            systemd.service_stop("mongod.service")
+        except systemd.SystemdError as e:
+            logger.error("failed to stop mongod.service, error:", e)
+            raise
 
     # TODO move to machine charm helpers
     def _update_mongod_service(self, auth: bool):
@@ -318,17 +320,18 @@ class MongoDBProvider(Object):
 
     # TODO move to machine charm helpers
     def _start_mongod_service(self):
-        self.charm.unit.status = MaintenanceStatus("starting MongoDB")
-        if not systemd.service_running("mongod.service"):
-            logger.debug("starting mongod.service")
-            try:
-                systemd.service_start("mongod.service")
-            except systemd.SystemdError:
-                logger.error("failed to enable mongod.service")
-                self.charm.unit.status = BlockedStatus("couldn't start MongoDB")
-                return
+        if systemd.service_running("mongod.service"):
+            return
 
-            self.charm.unit.status = ActiveStatus()
+        self.charm.unit.status = MaintenanceStatus("starting MongoDB")
+        logger.debug("starting mongod.service")
+        try:
+            systemd.service_start("mongod.service")
+        except systemd.SystemdError as e:
+            logger.error("failed to enable mongod.service, error:", e)
+            raise
+
+        self.charm.unit.status = ActiveStatus()
 
     # TODO move to machine charm helpers
     def _unit_ip(self, unit: ops.model.Unit) -> str:
@@ -372,7 +375,7 @@ class MongoDBProvider(Object):
             key for key in old_data.keys() & new_data.keys() if old_data[key] != new_data[key]
         }
 
-        # TODO: update when evaluatation of the possibility of losing the diff is completed
+        # TODO: update when evaluation of the possibility of losing the diff is completed
         # happens in the charm before the diff is completely checked (DPE-412).
         # Convert the new_data to a serializable format and save it for a next diff check.
         event.relation.data[self.charm.model.app].update({"data": json.dumps(new_data)})
@@ -470,5 +473,3 @@ class MongoDBProvider(Object):
 # TODO move this somewhere appropriate
 class ApplicationHostNotFoundError(Exception):
     """Raised when a queried host is not in the application peers or the current host."""
-
-    pass

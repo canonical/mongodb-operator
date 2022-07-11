@@ -312,6 +312,14 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self._initialise_replica_set(event)
 
     def _on_update_status(self, _):
+        # cannot have both legacy and new relations since they have different auth requirements
+        if (
+            self.client_relations.get_users_from_legacy_relations()
+            and self.client_relations._get_users_from_relations(None)
+        ):
+            self.unit.status = BlockedStatus("cannot have both legacy and new relations")
+            return
+
         # if unit is primary then update status
         if self._primary == self.unit.name:
             self.unit.status = ActiveStatus("Replica set primary")
