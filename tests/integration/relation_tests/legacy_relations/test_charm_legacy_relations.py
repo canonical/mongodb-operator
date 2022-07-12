@@ -48,17 +48,17 @@ async def test_build_deploy_charms(ops_test: OpsTest):
         apps=[ELASTIC_APP_NAME, DATABASE_APP_NAME],
         raise_on_error=False,
         status="active",
-        timeout=5000,
+        timeout=500,
     )
     await ops_test.model.wait_for_idle(
-        apps=[GRAYLOG_APP_NAME], raise_on_error=False, status="blocked", timeout=5000
+        apps=[GRAYLOG_APP_NAME], raise_on_error=False, status="blocked", timeout=2000
     )
 
     await ops_test.model.add_relation(GRAYLOG_APP_NAME, ELASTIC_APP_NAME)
     await ops_test.model.add_relation(GRAYLOG_APP_NAME, DATABASE_APP_NAME)
 
     await ops_test.model.wait_for_idle(
-        apps=APP_NAMES, raise_on_error=False, status="active", timeout=5000
+        apps=APP_NAMES, raise_on_error=False, status="active", timeout=2000
     )
 
 

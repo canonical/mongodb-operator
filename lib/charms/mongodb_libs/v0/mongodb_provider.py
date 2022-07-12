@@ -211,8 +211,6 @@ class MongoDBProvider(Object):
         NOTE: this is retro-fitted from the legacy mongodb charm: https://launchpad.net/charm-mongodb
         """
         logger.warning("DEPRECATION WARNING - `mongodb` interface is a legacy interface.")
-        if not self.charm.unit.is_leader():
-            return
 
         updates = {
             "hostname": str(self.model.get_binding(PEER).network.bind_address),
@@ -222,7 +220,9 @@ class MongoDBProvider(Object):
             "replset": self.charm.app.name,
         }
 
-        # reactive charms set relation data on "the current unit"
+        # reactive charms set relation data on "the current unit" the reactive mongodb charm sets
+        # the relation data for all units, hence all units setting the relation data and not just
+        # the leader
         relation = self.model.get_relation(REL_NAME, event.relation.id)
         relation.data[self.charm.unit].update(updates)
 
