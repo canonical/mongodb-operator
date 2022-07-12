@@ -33,7 +33,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version.
-LIBPATCH = 0
+LIBPATCH = 1
 
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
@@ -165,10 +165,7 @@ class MongoDBConnection:
         """
         config = {
             "_id": self.mongodb_config.replset,
-            "members": [
-                {"_id": i, "host": h}
-                for i, h in enumerate(self.mongodb_config.hosts)
-            ],
+            "members": [{"_id": i, "host": h} for i, h in enumerate(self.mongodb_config.hosts)],
         }
         try:
             self.client.admin.command("replSetInitiate", config)
@@ -215,9 +212,7 @@ class MongoDBConnection:
 
         # Avoid reusing IDs, according to the doc
         # https://www.mongodb.com/docs/manual/reference/replica-configuration/
-        max_id = max([
-            int(member["_id"]) for member in rs_config["config"]["members"]
-        ])
+        max_id = max([int(member["_id"]) for member in rs_config["config"]["members"]])
         new_member = {"_id": int(max_id + 1), "host": hostname}
 
         rs_config["config"]["version"] += 1
@@ -254,7 +249,8 @@ class MongoDBConnection:
 
         rs_config["config"]["version"] += 1
         rs_config["config"]["members"][:] = [
-            member for member in rs_config["config"]["members"]
+            member
+            for member in rs_config["config"]["members"]
             if hostname != self._hostname_from_hostport(member["host"])
         ]
         logger.debug("rs_config: %r", dumps(rs_config["config"]))
@@ -287,17 +283,13 @@ class MongoDBConnection:
             "admin": [
                 {"role": "userAdminAnyDatabase", "db": "admin"},
                 {"role": "readWriteAnyDatabase", "db": "admin"},
-                {"role": "userAdmin", "db": "admin"}
+                {"role": "userAdmin", "db": "admin"},
             ],
             "default": [
                 {"role": "readWrite", "db": config.database},
             ],
         }
-        return [
-            role_dict
-            for role in config.roles
-            for role_dict in supported_roles[role]
-        ]
+        return [role_dict for role in config.roles for role_dict in supported_roles[role]]
 
     def drop_user(self, username: str):
         """Drop user"""
@@ -306,19 +298,19 @@ class MongoDBConnection:
     def get_users(self) -> Set[str]:
         """Add a new member to replica set config inside MongoDB."""
         users_info = self.client.admin.command("usersInfo")
-        return set([
-            user_obj["user"]
-            for user_obj in users_info["users"]
-            if re.match(r"^relation-\d+$", user_obj["user"])
-        ])
+        return set(
+            [
+                user_obj["user"]
+                for user_obj in users_info["users"]
+                if re.match(r"^relation-\d+$", user_obj["user"])
+            ]
+        )
 
     def get_databases(self) -> Set[str]:
         """Return list of all non-default databases."""
         system_dbs = ("admin", "local", "config")
         databases = self.client.list_database_names()
-        return set([
-            db for db in databases if db not in system_dbs
-        ])
+        return set([db for db in databases if db not in system_dbs])
 
     def drop_database(self, database: str):
         """Drop a non-default database."""
@@ -381,10 +373,7 @@ class MongoDBConnection:
         Args:
             rs_status: current state of replica set as reported by mongod.
         """
-        return any(
-            member["stateStr"] == "REMOVED"
-            for member in rs_status["members"]
-        )
+        return any(member["stateStr"] == "REMOVED" for member in rs_status["members"])
 
     @staticmethod
     def _hostname_from_hostport(hostname: str) -> str:
