@@ -222,8 +222,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         ]
 
         # if a new unit is joining a cluster with a legacy relation it should start without auth
-        requires_auth = len(self.client_relations.get_users_from_legacy_relations()) == 0
-        if requires_auth:
+        if not self.client_relations.get_users_from_legacy_relations():
             # keyFile used for authentication replica set peers, cluster auth, implies user
             # authentication hence we cannot have cluster authentication without user
             # authentication. see:

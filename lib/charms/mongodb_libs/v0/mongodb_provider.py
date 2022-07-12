@@ -229,8 +229,7 @@ class MongoDBProvider(Object):
     def get_users_from_legacy_relations(self):
         """Return usernames for legacy relation."""
         relations = self.model.relations[LEGACY_REL_NAME]
-        logger.debug(relations)
-        return set([self._get_username_from_relation_id(relation.id) for relation in relations])
+        return {self._get_username_from_relation_id(relation.id) for relation in relations}
 
     # TODO move to machine charm helpers
     def _auth_enabled(self):
@@ -241,11 +240,10 @@ class MongoDBProvider(Object):
         with open("/lib/systemd/system/mongod.service", "r") as mongodb_service_file:
             mongodb_service = mongodb_service_file.readlines()
 
-        for index, line in enumerate(mongodb_service):
+        for _, line in enumerate(mongodb_service):
             # ExecStart contains the line with the arguments to start mongod service.
-            if "ExecStart" in line:
-                if "--auth" in line:
-                    return True
+            if "ExecStart" in line and "--auth" in line:
+                return True
 
         return False
 

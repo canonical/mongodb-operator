@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 import yaml
 from pytest_operator.plugin import OpsTest
+from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from tests.integration.relation_tests.legacy_relations.helpers import (
     GRAYLOG_APP_NAME,
@@ -153,10 +154,6 @@ async def test_new_relation_fails_with_legacy(ops_test: OpsTest) -> None:
     # a new relation to mongodb while its related to legacy relation should result in failure
     await ops_test.model.add_relation(f"{NEW_APP_NAME}:{NEW_RELATION_NAME}", DATABASE_APP_NAME)
     await ops_test.model.wait_for_idle(apps=[DATABASE_APP_NAME], status="blocked", timeout=1000)
-    assert (
-        ops_test.model.applications[DATABASE_APP_NAME].units[0].workload_status_message
-        == "cannot have both legacy and new relations"
-    )
 
     assert (
         ops_test.model.applications[DATABASE_APP_NAME].units[0].workload_status == "blocked"
@@ -186,15 +183,27 @@ async def test_legacy_relation_fails_with_new(ops_test: OpsTest) -> None:
         apps=[NEW_APP_NAME, ANOTHER_DATABASE_APP_NAME], status="active", timeout=1000
     )
 
+    # wait for new relation up to 5 minutes before adding legacy relation to prevent race
+    # condition. TODO update when juju has a wait_for_relation function.
+    try:
+        for attempt in Retrying(stop=stop_after_delay(5 * 60), wait=wait_fixed(3)):
+            with attempt:
+                for rel in ops_test.model.relations:
+                    endpoints = [endpoint.name for endpoint in rel.endpoints]
+                    if "first-database" in endpoints and "database" in endpoints:
+                        new_relation_joined = True
+                        break
+
+                if new_relation_joined:
+                    break
+
+    except RetryError:
+        assert False, "New relation failed to join mongodb after 5 minutes."
+
     # add legacy relation
     await ops_test.model.add_relation(GRAYLOG_APP_NAME, ANOTHER_DATABASE_APP_NAME)
     await ops_test.model.wait_for_idle(
         apps=[ANOTHER_DATABASE_APP_NAME], status="blocked", timeout=1000
-    )
-
-    assert (
-        ops_test.model.applications[ANOTHER_DATABASE_APP_NAME].units[0].workload_status_message
-        == "cannot have both legacy and new relations"
     )
 
     assert (
