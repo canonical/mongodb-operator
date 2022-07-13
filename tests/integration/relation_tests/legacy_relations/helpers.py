@@ -5,6 +5,8 @@ import logging
 from typing import Optional
 
 import yaml
+from pymongo import MongoClient
+from pymongo.errors import OperationFailure
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
@@ -40,7 +42,7 @@ async def get_application_relation_data(
         raise ValueError(f"no unit info could be grabbed for {unit_name}")
 
     data = yaml.safe_load(raw_data)
-
+    logger.debug("data: %s", data)
     for relation in data[unit_name]["relation-info"]:
         if relation["endpoint"] == related_app:
             return relation["related-units"][related_unit_name]["data"][key]
@@ -85,6 +87,23 @@ async def get_password(ops_test: OpsTest, app_name: str) -> str:
     )
     action = await action.wait()
     return action.results["admin-password"]
+
+
+async def auth_enabled(connection: str, replset="mongodb") -> None:
+    # try to access the database without password authentication
+
+    client = MongoClient(connection, replicaset=replset)
+    try:
+        client.admin.command("replSetGetStatus")
+    except OperationFailure as e:
+        # error code 13 for OperationFailure is an authentication error, meaning we are not
+        # authenticated to access the database. Thus auth is enabled.
+        if e.code == 13:
+            return True
+        else:
+            raise
+
+    return False
 
 
 class ApiTimeoutError(Exception):

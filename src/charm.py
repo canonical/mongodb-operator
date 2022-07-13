@@ -204,27 +204,41 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         except (apt.InvalidSourceError, ValueError, apt.GPGKeyError, URLError):
             self.unit.status = BlockedStatus("couldn't install MongoDB")
 
+        # TODO future PR, this mongod start args is duplicated code and should be put somewhere
+        # else
+
         # Construct the mongod startup commandline args for systemd, note that commandline
         # arguments take priority over any user set config file options. User options will be
         # configured in the config file. MongoDB handles this merge of these two options.
         machine_ip = self._unit_ip(self.unit)
-        mongod_start_args = " ".join(
-            [
-                "ExecStart=/usr/bin/mongod",
-                # bind to localhost and external interfaces
-                "--bind_ip",
-                f"localhost,{machine_ip}",
-                # part of replicaset
-                "--replSet",
-                f"{self.app.name}",
-                "--auth",
-                # keyFile used for authentication replica set peers
-                # TODO: replace with x509
-                "--clusterAuthMode=keyFile",
-                f"--keyFile={KEY_FILE}",
-                "\n",
-            ]
-        )
+        mongod_start_args = [
+            "ExecStart=/usr/bin/mongod",
+            # bind to localhost and external interfaces
+            "--bind_ip",
+            f"localhost,{machine_ip}",
+            # part of replicaset
+            "--replSet",
+            f"{self.app.name}",
+        ]
+
+        # if a new unit is joining a cluster with a legacy relation it should start without auth
+        if not self.client_relations.get_users_from_legacy_relations():
+            # keyFile used for authentication replica set peers, cluster auth, implies user
+            # authentication hence we cannot have cluster authentication without user
+            # authentication. see:
+            # https://www.mongodb.com/docs/manual/reference/configuration-options/#mongodb-setting-security.keyFile
+
+            mongod_start_args.extend(
+                [
+                    "--auth",
+                    # TODO: replace with x509
+                    "--clusterAuthMode=keyFile",
+                    f"--keyFile={KEY_FILE}",
+                ]
+            )
+
+        mongod_start_args.append("\n")
+        mongod_start_args = " ".join(mongod_start_args)
 
         with open("/lib/systemd/system/mongod.service", "r") as mongodb_service_file:
             mongodb_service = mongodb_service_file.readlines()
@@ -297,6 +311,14 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self._initialise_replica_set(event)
 
     def _on_update_status(self, _):
+        # cannot have both legacy and new relations since they have different auth requirements
+        if (
+            self.client_relations.get_users_from_legacy_relations()
+            and self.client_relations._get_users_from_relations(None)
+        ):
+            self.unit.status = BlockedStatus("cannot have both legacy and new relations")
+            return
+
         # if unit is primary then update status
         if self._primary == self.unit.name:
             self.unit.status = ActiveStatus("Replica set primary")
