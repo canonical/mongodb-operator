@@ -371,13 +371,3 @@ class MongoDBProvider(Object):
         if roles is not None:
             return set(roles.split(","))
         return {"default"}
-
-
-# TODO move this somewhere appropriate
-
-# # TODO replace functions to not start with "_"
-
-auth_enabled,
-stop_mongod_service,
-start_mongod_service,
-update_mongod_service,

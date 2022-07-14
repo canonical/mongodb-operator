@@ -7,6 +7,7 @@ import pwd
 
 from charms.operator_libs_linux.v1 import systemd
 from charms.mongodb_libs.v0.helpers import KEY_FILE
+from charms.mongodb_libs.v0.helpers import KEY_FILE
 
 # The unique Charmhub library identifier, never change it
 LIBID = "6q947ainc54837t38yhuidshahfgw8f"
@@ -20,10 +21,6 @@ LIBPATCH = 0
 
 logger = logging.getLogger(__name__)
 
-# We expect the MongoDB container to use the default ports
-MONGODB_PORT = 27017
-MONGODB_VERSION = "5.0"
-PEER = "database-peers"
 MONGO_USER = "mongodb"
 MONGO_DATA_DIR = "/data/db"
 
@@ -69,6 +66,12 @@ def start_mongod_service():
 
 
 def update_mongod_service(auth: bool, machine_ip: str, replset: str):
+    """Construct the mongod startup commandline args for systemd.
+
+    Note that commandline arguments take priority over any user set config file options. User
+    options will be configured in the config file. MongoDB handles this merge of these two
+    options.
+    """
     mongod_start_args = generate_service_args(auth, machine_ip, replset)
 
     with open("/lib/systemd/system/mongod.service", "r") as mongodb_service_file:
