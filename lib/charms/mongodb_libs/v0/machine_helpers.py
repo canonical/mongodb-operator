@@ -49,7 +49,7 @@ def stop_mongod_service():
     try:
         systemd.service_stop("mongod.service")
     except systemd.SystemdError as e:
-        logger.error("failed to stop mongod.service, error:", e)
+        logger.error("failed to stop mongod.service, error: %s", str(e))
         raise
 
 
@@ -61,7 +61,7 @@ def start_mongod_service():
     try:
         systemd.service_start("mongod.service")
     except systemd.SystemdError as e:
-        logger.error("failed to enable mongod.service, error:", e)
+        logger.error("failed to enable mongod.service, error: %s", str(e))
         raise
 
 

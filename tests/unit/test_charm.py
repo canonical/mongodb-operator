@@ -96,6 +96,7 @@ class TestCharm(unittest.TestCase):
         init_admin.assert_not_called()
 
     @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.systemd._systemctl", side_effect=systemd.SystemdError)
     @patch("charm.systemd.service_start")
     @patch("charm.systemd.service_running", return_value=True)
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
@@ -116,6 +117,7 @@ class TestCharm(unittest.TestCase):
         _open_port_tcp,
         service_running,
         service_start,
+        _systemctl,
     ):
         """Test verifies that is MongoDB service is available that we don't re-enable it."""
         self.harness.set_leader(True)
