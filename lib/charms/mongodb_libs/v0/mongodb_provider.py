@@ -131,11 +131,21 @@ class MongoDBProvider(Object):
         # If auth is disabled but there are no legacy relation users, this means that legacy
         # users have left and auth can be re-enabled.
         # TODO: find a way for this to be generalised for K8s charm.
-        if not self._auth_enabled:
-            logger.debug("Enabling authentication.")
-            self._stop_mongod_service()
-            self._update_mongod_service(auth=True)
-            self._start_mongod_service()
+        if not auth_enabled():
+            try:
+                logger.debug("Enabling authentication.")
+                self.charm.unit.status = MaintenanceStatus("re-enabling authentication")
+                stop_mongod_service()
+                update_mongod_service(
+                    auth=True,
+                    machine_ip=self.charm._unit_ip(self.charm.unit),
+                    replset=self.charm.app.name,
+                )
+                start_mongod_service()
+                self.charm.unit.status = ActiveStatus()
+            except systemd.SystemdError:
+                self.charm.unit.status = BlockedStatus("couldn't restart MongoDB")
+                return
 
         with MongoDBConnection(self.charm.mongodb_config) as mongo:
             database_users = mongo.get_users()
@@ -196,12 +206,18 @@ class MongoDBProvider(Object):
         # user. Shutting down and restarting mongod would lead to downtime for the other legacy
         # relation user and hence shouldn't be done. Not to mention there is no need to disable
         # auth if it is already disabled.
-        if self._auth_enabled:
+        if auth_enabled():
             try:
                 logger.debug("Disabling authentication.")
-                self._stop_mongod_service()
-                self._update_mongod_service(auth=False)
-                self._start_mongod_service()
+                self.charm.unit.status = MaintenanceStatus("disabling authentication")
+                stop_mongod_service()
+                update_mongod_service(
+                    auth=False,
+                    machine_ip=self.charm._unit_ip(self.charm.unit),
+                    replset=self.charm.app.name,
+                )
+                start_mongod_service()
+                self.charm.unit.status = ActiveStatus()
             except systemd.SystemdError:
                 self.charm.unit.status = BlockedStatus("couldn't restart MongoDB")
                 return
@@ -231,118 +247,105 @@ class MongoDBProvider(Object):
         relations = self.model.relations[LEGACY_REL_NAME]
         return {self._get_username_from_relation_id(relation.id) for relation in relations}
 
-    # TODO move to machine charm helpers
-    def _auth_enabled(self):
-        """Checks if mongod service is running with auth enabled."""
-        if not os.path.exists("/lib/systemd/system/mongod.service"):
-            return False
+    # # TODO move to machine charm helpers
+    # def auth_enabled(self):
+    #     """Checks if mongod service is running with auth enabled."""
+    #     if not os.path.exists("/lib/systemd/system/mongod.service"):
+    #         return False
 
-        with open("/lib/systemd/system/mongod.service", "r") as mongodb_service_file:
-            mongodb_service = mongodb_service_file.readlines()
+    #     with open("/lib/systemd/system/mongod.service", "r") as mongodb_service_file:
+    #         mongodb_service = mongodb_service_file.readlines()
 
-        for _, line in enumerate(mongodb_service):
-            # ExecStart contains the line with the arguments to start mongod service.
-            if "ExecStart" in line and "--auth" in line:
-                return True
+    #     for _, line in enumerate(mongodb_service):
+    #         # ExecStart contains the line with the arguments to start mongod service.
+    #         if "ExecStart" in line and "--auth" in line:
+    #             return True
 
-        return False
+    #     return False
 
-    # TODO move to machine charm helpers
-    def _stop_mongod_service(self):
-        if not systemd.service_running("mongod.service"):
-            return
+    # # TODO move to machine charm helpers
+    # def stop_mongod_service(self):
+    #     if not systemd.service_running("mongod.service"):
+    #         return
 
-        self.charm.unit.status = MaintenanceStatus("stopping MongoDB")
-        logger.debug("stopping mongod.service")
-        try:
-            systemd.service_stop("mongod.service")
-        except systemd.SystemdError as e:
-            logger.error("failed to stop mongod.service, error:", e)
-            raise
+    #     self.charm.unit.status = MaintenanceStatus("stopping MongoDB")
+    #     logger.debug("stopping mongod.service")
+    #     try:
+    #         systemd.service_stop("mongod.service")
+    #     except systemd.SystemdError as e:
+    #         logger.error("failed to stop mongod.service, error:", e)
+    #         raise
 
-    # TODO move to machine charm helpers
-    def _update_mongod_service(self, auth: bool):
-        mongod_start_args = self._generate_service_args(auth)
+    # # TODO move to machine charm helpers
+    # def update_mongod_service(self, auth: bool):
+    #     mongod_start_args = generate_service_args(auth)
 
-        with open("/lib/systemd/system/mongod.service", "r") as mongodb_service_file:
-            mongodb_service = mongodb_service_file.readlines()
+    #     with open("/lib/systemd/system/mongod.service", "r") as mongodb_service_file:
+    #         mongodb_service = mongodb_service_file.readlines()
 
-        # replace start command with our parameterized one
-        for index, line in enumerate(mongodb_service):
-            if "ExecStart" in line:
-                mongodb_service[index] = mongod_start_args
+    #     # replace start command with our parameterized one
+    #     for index, line in enumerate(mongodb_service):
+    #         if "ExecStart" in line:
+    #             mongodb_service[index] = mongod_start_args
 
-        # systemd gives files in /etc/systemd/system/ precedence over those in /lib/systemd/system/
-        # hence our changed file in /etc will be read while maintaining the original one in /lib.
-        with open("/etc/systemd/system/mongod.service", "w") as service_file:
-            service_file.writelines(mongodb_service)
+    #     # systemd gives files in /etc/systemd/system/ precedence over those in /lib/systemd/system/
+    #     # hence our changed file in /etc will be read while maintaining the original one in /lib.
+    #     with open("/etc/systemd/system/mongod.service", "w") as service_file:
+    #         service_file.writelines(mongodb_service)
 
-        # mongod requires permissions to /data/db
-        mongodb_user = pwd.getpwnam(MONGO_USER)
-        os.chown(MONGO_DATA_DIR, mongodb_user.pw_uid, mongodb_user.pw_gid)
+    #     # mongod requires permissions to /data/db
+    #     mongodb_user = pwd.getpwnam(MONGO_USER)
+    #     os.chown(MONGO_DATA_DIR, mongodb_user.pw_uid, mongodb_user.pw_gid)
 
-        # changes to service files are only applied after reloading
-        systemd.daemon_reload()
+    #     # changes to service files are only applied after reloading
+    #     systemd.daemon_reload()
 
-    # TODO move to machine charm helpers
-    def _generate_service_args(self, auth: bool) -> str:
-        # Construct the mongod startup commandline args for systemd, note that commandline
-        # arguments take priority over any user set config file options. User options will be
-        # configured in the config file. MongoDB handles this merge of these two options.
-        machine_ip = self._unit_ip(self.charm.unit)
-        mongod_start_args = [
-            "ExecStart=/usr/bin/mongod",
-            # bind to localhost and external interfaces
-            "--bind_ip",
-            f"localhost,{machine_ip}",
-            # part of replicaset
-            "--replSet",
-            f"{self.charm.app.name}",
-        ]
+    # # TODO move to machine charm helpers
+    # def generate_service_args(self, auth: bool) -> str:
+    #     # Construct the mongod startup commandline args for systemd, note that commandline
+    #     # arguments take priority over any user set config file options. User options will be
+    #     # configured in the config file. MongoDB handles this merge of these two options.
+    #     machine_ip = self.charm._unit_ip(self.charm.unit)
+    #     mongod_start_args = [
+    #         "ExecStart=/usr/bin/mongod",
+    #         # bind to localhost and external interfaces
+    #         "--bind_ip",
+    #         f"localhost,{machine_ip}",
+    #         # part of replicaset
+    #         "--replSet",
+    #         f"{self.charm.app.name}",
+    #     ]
 
-        if auth:
-            mongod_start_args.extend(
-                [
-                    "--auth",
-                    # keyFile used for authenti cation replica set peers, cluster auth, implies user authentication hence we cannot have cluster authentication without user authentication. see: https://www.mongodb.com/docs/manual/reference/configuration-options/#mongodb-setting-security.keyFile
-                    # TODO: replace with x509
-                    "--clusterAuthMode=keyFile",
-                    f"--keyFile={KEY_FILE}",
-                ]
-            )
+    #     if auth:
+    #         mongod_start_args.extend(
+    #             [
+    #                 "--auth",
+    #                 # keyFile used for authenti cation replica set peers, cluster auth, implies user authentication hence we cannot have cluster authentication without user authentication. see: https://www.mongodb.com/docs/manual/reference/configuration-options/#mongodb-setting-security.keyFile
+    #                 # TODO: replace with x509
+    #                 "--clusterAuthMode=keyFile",
+    #                 f"--keyFile={KEY_FILE}",
+    #             ]
+    #         )
 
-        mongod_start_args.append("\n")
-        mongod_start_args = " ".join(mongod_start_args)
+    #     mongod_start_args.append("\n")
+    #     mongod_start_args = " ".join(mongod_start_args)
 
-        return mongod_start_args
+    #     return mongod_start_args
 
-    # TODO move to machine charm helpers
-    def _start_mongod_service(self):
-        if systemd.service_running("mongod.service"):
-            return
+    # # TODO move to machine charm helpers
+    # def start_mongod_service(self):
+    #     if systemd.service_running("mongod.service"):
+    #         return
 
-        self.charm.unit.status = MaintenanceStatus("starting MongoDB")
-        logger.debug("starting mongod.service")
-        try:
-            systemd.service_start("mongod.service")
-        except systemd.SystemdError as e:
-            logger.error("failed to enable mongod.service, error:", e)
-            raise
+    #     self.charm.unit.status = MaintenanceStatus("starting MongoDB")
+    #     logger.debug("starting mongod.service")
+    #     try:
+    #         systemd.service_start("mongod.service")
+    #     except systemd.SystemdError as e:
+    #         logger.error("failed to enable mongod.service, error:", e)
+    #         raise
 
-        self.charm.unit.status = ActiveStatus()
-
-    # TODO move to machine charm helpers
-    def _unit_ip(self, unit: ops.model.Unit) -> str:
-        """Returns the ip address of a given unit."""
-        # check if host is current host
-        if unit == self.charm.unit:
-            return str(self.model.get_binding(PEER).network.bind_address)
-        # check if host is a peer
-        elif unit in self._peers.data:
-            return str(self._peers.data[unit].get("private-address"))
-        # raise exception if host not found
-        else:
-            raise ApplicationHostNotFoundError
+    #     self.charm.unit.status = ActiveStatus()
 
     ################################################################################
     # HELPERS
@@ -469,5 +472,108 @@ class MongoDBProvider(Object):
 
 
 # TODO move this somewhere appropriate
+
+# # TODO replace functions to not start with "_"
+# update uses of self.charm
+def auth_enabled():
+    """Checks if mongod service is running with auth enabled."""
+    if not os.path.exists("/lib/systemd/system/mongod.service"):
+        return False
+
+    with open("/etc/systemd/system/mongod.service", "r") as mongodb_service_file:
+        mongodb_service = mongodb_service_file.readlines()
+
+    for _, line in enumerate(mongodb_service):
+        # ExecStart contains the line with the arguments to start mongod service.
+        if "ExecStart" in line and "--auth" in line:
+            return True
+
+    return False
+
+
+def stop_mongod_service():
+    if not systemd.service_running("mongod.service"):
+        return
+
+    logger.debug("stopping mongod.service")
+    try:
+        systemd.service_stop("mongod.service")
+    except systemd.SystemdError as e:
+        logger.error("failed to stop mongod.service, error:", e)
+        raise
+
+
+def start_mongod_service():
+    if systemd.service_running("mongod.service"):
+        return
+
+    logger.debug("starting mongod.service")
+    try:
+        systemd.service_start("mongod.service")
+    except systemd.SystemdError as e:
+        logger.error("failed to enable mongod.service, error:", e)
+        raise
+
+
+def update_mongod_service(auth: bool, machine_ip: str, replset: str):
+    mongod_start_args = generate_service_args(auth, machine_ip, replset)
+
+    with open("/lib/systemd/system/mongod.service", "r") as mongodb_service_file:
+        mongodb_service = mongodb_service_file.readlines()
+
+    # replace start command with our parameterized one
+    for index, line in enumerate(mongodb_service):
+        if "ExecStart" in line:
+            mongodb_service[index] = mongod_start_args
+
+    # systemd gives files in /etc/systemd/system/ precedence over those in /lib/systemd/system/
+    # hence our changed file in /etc will be read while maintaining the original one in /lib.
+    with open("/etc/systemd/system/mongod.service", "w") as service_file:
+        service_file.writelines(mongodb_service)
+
+    # mongod requires permissions to /data/db
+    mongodb_user = pwd.getpwnam(MONGO_USER)
+    os.chown(MONGO_DATA_DIR, mongodb_user.pw_uid, mongodb_user.pw_gid)
+
+    # changes to service files are only applied after reloading
+    systemd.daemon_reload()
+
+
+# TODO replace calls of this with machine_ip=self._unit_ip(self.charm.unit)
+def generate_service_args(auth: bool, machine_ip: str, replset: str) -> str:
+    # Construct the mongod startup commandline args for systemd, note that commandline
+    # arguments take priority over any user set config file options. User options will be
+    # configured in the config file. MongoDB handles this merge of these two options.
+    mongod_start_args = [
+        "ExecStart=/usr/bin/mongod",
+        # bind to localhost and external interfaces
+        "--bind_ip",
+        f"localhost,{machine_ip}",
+        # part of replicaset
+        "--replSet",
+        f"{replset}",
+    ]
+
+    if auth:
+        mongod_start_args.extend(
+            [
+                "--auth",
+                # keyFile used for authenti cation replica set peers, cluster auth, implies user authentication hence we cannot have cluster authentication without user authentication. see: https://www.mongodb.com/docs/manual/reference/configuration-options/#mongodb-setting-security.keyFile
+                # TODO: replace with x509
+                "--clusterAuthMode=keyFile",
+                f"--keyFile={KEY_FILE}",
+            ]
+        )
+
+    mongod_start_args.append("\n")
+    mongod_start_args = " ".join(mongod_start_args)
+
+    return mongod_start_args
+
+
+class ApplicationHostNotFoundError(Exception):
+    """Raised when a queried host is not in the application peers or the current host."""
+
+
 class ApplicationHostNotFoundError(Exception):
     """Raised when a queried host is not in the application peers or the current host."""
