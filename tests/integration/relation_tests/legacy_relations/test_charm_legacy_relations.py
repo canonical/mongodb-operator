@@ -5,21 +5,27 @@ from pathlib import Path
 
 import pytest
 import yaml
-from pymongo import MongoClient
-from pymongo.errors import OperationFailure
 from pytest_operator.plugin import OpsTest
+from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from tests.integration.relation_tests.legacy_relations.helpers import (
     GRAYLOG_APP_NAME,
     ApiTimeoutError,
     _verify_rest_api_is_alive,
+    auth_enabled,
     get_application_relation_data,
     get_graylog_client,
 )
 
 DATABASE_METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 DATABASE_APP_NAME = DATABASE_METADATA["name"]
+ANOTHER_DATABASE_APP_NAME = "another-database"
 PORT = 27017
+
+NEW_RELATION_NAME = "first-database"
+SECOND_NEW_RELATION_NAME = "second-database"
+NEW_APP_PATH = "tests/integration/relation_tests/new_relations/application-charm"
+NEW_APP_NAME = "application"
 
 ELASTIC_APP_NAME = "elasticsearch"
 APP_NAMES = [GRAYLOG_APP_NAME, ELASTIC_APP_NAME, DATABASE_APP_NAME]
@@ -34,16 +40,26 @@ async def test_build_deploy_charms(ops_test: OpsTest):
 
     await ops_test.model.deploy(GRAYLOG_APP_NAME, num_units=1)
     await ops_test.model.deploy(ELASTIC_APP_NAME, num_units=1, constraints="mem=4G")
-    await ops_test.model.deploy(db_charm, num_units=1)
+    await ops_test.model.deploy(db_charm, num_units=2)
 
     # must be related before checking for active status (graylog will go into blocked without
     # necessary relations) we also choose not to raise on error since graylog and elasticsearch
-    # can go into error before becoming idle
+    # can go into error before becoming idle/active  with necessary relations
+    await ops_test.model.wait_for_idle(
+        apps=[ELASTIC_APP_NAME, DATABASE_APP_NAME],
+        raise_on_error=False,
+        status="active",
+        timeout=500,
+    )
+    await ops_test.model.wait_for_idle(
+        apps=[GRAYLOG_APP_NAME], raise_on_error=False, status="blocked", timeout=2000
+    )
+
     await ops_test.model.add_relation(GRAYLOG_APP_NAME, ELASTIC_APP_NAME)
     await ops_test.model.add_relation(GRAYLOG_APP_NAME, DATABASE_APP_NAME)
 
     await ops_test.model.wait_for_idle(
-        apps=APP_NAMES, raise_on_error=False, status="active", timeout=5000
+        apps=APP_NAMES, raise_on_error=False, status="active", timeout=2000
     )
 
 
@@ -78,20 +94,11 @@ async def test_relation_data(ops_test: OpsTest) -> None:
 
 async def test_mongodb_auth_disabled(ops_test: OpsTest) -> None:
     """Test mongodb no longer uses auth after relating to a legacy relation."""
-    # try to access the database without password authentication
-
     unit = ops_test.model.applications[DATABASE_APP_NAME].units[0]
     connection = unit.public_address + ":" + str(PORT)
-    client = MongoClient(connection, replicaset="mongodb")
-    try:
-        client.admin.command("replSetGetStatus")
-    except OperationFailure as e:
-        # error code 13 for OperationFailure is an authentication error, meaning disabling of
-        # authentication was unsuccessful
-        if e.code == 13:
-            assert False, "MongoDB requires authentication after legacy relation"
-        else:
-            raise
+    assert not await auth_enabled(
+        connection
+    ), "MongoDB requires authentication after legacy relation"
 
 
 async def test_legacy_db_ops(ops_test: OpsTest) -> None:
@@ -119,3 +126,94 @@ async def test_legacy_db_ops(ops_test: OpsTest) -> None:
     g.user_permissions_clear("focal")
     user_info = g.user_get("focal")
     assert "users:tokenlist" not in user_info["permissions"], "unable to perform delete operations"
+
+
+async def test_add_unit_joins_without_auth(ops_test: OpsTest):
+    """Verify scaling mongodb with legacy relations supports no auth."""
+    await ops_test.model.applications[DATABASE_APP_NAME].add_unit(count=1)
+    await ops_test.model.wait_for_idle(apps=[DATABASE_APP_NAME], status="active", timeout=1000)
+
+    # verify auth is still disabled
+    unit = ops_test.model.applications[DATABASE_APP_NAME].units[2]
+    connection = unit.public_address + ":" + str(PORT)
+    assert not await auth_enabled(
+        connection
+    ), "MongoDB requires disabled authentication to support legacy relations"
+
+
+async def test_new_relation_fails_with_legacy(ops_test: OpsTest) -> None:
+    """Verify new relation joining results in blocked when legacy relations exist.
+
+    Legacy relations disable auth, therefore new relations should be prevented from joining
+    """
+    # app charm uses new relation interface
+    app_charm = await ops_test.build_charm(NEW_APP_PATH)
+    await ops_test.model.deploy(app_charm, num_units=1, application_name=NEW_APP_NAME)
+    await ops_test.model.wait_for_idle(apps=[NEW_APP_NAME], status="active", timeout=1000)
+
+    # a new relation to mongodb while its related to legacy relation should result in failure
+    await ops_test.model.add_relation(f"{NEW_APP_NAME}:{NEW_RELATION_NAME}", DATABASE_APP_NAME)
+    await ops_test.model.wait_for_idle(apps=[DATABASE_APP_NAME], status="blocked", timeout=1000)
+
+    assert (
+        ops_test.model.applications[DATABASE_APP_NAME].units[0].workload_status == "blocked"
+    ), "unit should go into blocked state when new relation and legacy relations are both added"
+
+    # verify auth is still disabled
+    unit = ops_test.model.applications[DATABASE_APP_NAME].units[0]
+    connection = unit.public_address + ":" + str(PORT)
+    assert not await auth_enabled(
+        connection
+    ), "MongoDB requires disabled authentication to support legacy relations"
+
+
+async def test_legacy_relation_fails_with_new(ops_test: OpsTest) -> None:
+    """Verify legacy relation joining results in blocked when new relations exist."""
+    database = await ops_test.build_charm(".")
+    await ops_test.model.deploy(database, num_units=1, application_name=ANOTHER_DATABASE_APP_NAME)
+    await ops_test.model.wait_for_idle(
+        apps=[ANOTHER_DATABASE_APP_NAME], status="active", timeout=1000
+    )
+
+    # add new relation to pre-existing application from previous test
+    await ops_test.model.add_relation(
+        f"{NEW_APP_NAME}:{SECOND_NEW_RELATION_NAME}", ANOTHER_DATABASE_APP_NAME
+    )
+    await ops_test.model.wait_for_idle(
+        apps=[NEW_APP_NAME, ANOTHER_DATABASE_APP_NAME], status="active", timeout=1000
+    )
+
+    # wait for new relation up to 5 minutes before adding legacy relation to prevent race
+    # condition. TODO update when juju has a wait_for_relation function.
+    try:
+        for attempt in Retrying(stop=stop_after_delay(5 * 60), wait=wait_fixed(3)):
+            with attempt:
+                for rel in ops_test.model.relations:
+                    endpoints = [endpoint.name for endpoint in rel.endpoints]
+                    if "first-database" in endpoints and "database" in endpoints:
+                        new_relation_joined = True
+                        break
+
+                if new_relation_joined:
+                    break
+
+    except RetryError:
+        assert False, "New relation failed to join mongodb after 5 minutes."
+
+    # add legacy relation
+    await ops_test.model.add_relation(GRAYLOG_APP_NAME, ANOTHER_DATABASE_APP_NAME)
+    await ops_test.model.wait_for_idle(
+        apps=[ANOTHER_DATABASE_APP_NAME], status="blocked", timeout=1000
+    )
+
+    assert (
+        ops_test.model.applications[ANOTHER_DATABASE_APP_NAME].units[0].workload_status
+        == "blocked"
+    ), "unit should go into blocked state when new relation and legacy relations are both added"
+
+    # verify auth is still enabled
+    unit = ops_test.model.applications[ANOTHER_DATABASE_APP_NAME].units[0]
+    connection = unit.public_address + ":" + str(PORT)
+    assert await auth_enabled(
+        connection, replset=ANOTHER_DATABASE_APP_NAME
+    ), "MongoDB requires authentication to support new relations"
