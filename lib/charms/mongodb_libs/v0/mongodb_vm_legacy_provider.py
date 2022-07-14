@@ -130,3 +130,8 @@ class MongoDBLegacyProvider(Object):
                 if relation.id != departed_relation_id
             ]
         )
+
+    @staticmethod
+    def _get_username_from_relation_id(relation_id: str) -> str:
+        """Construct username."""
+        return f"relation-{relation_id}"

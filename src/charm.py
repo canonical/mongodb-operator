@@ -83,7 +83,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.framework.observe(self.on.get_admin_password_action, self._on_get_admin_password)
 
         # handle provider side of relations
-        self.client_relations = MongoDBProvider(self)
+        self.client_relations = MongoDBProvider(self, substrate="vm")
         self.legacy_client_relations = MongoDBLegacyProvider(self)
 
     def _generate_passwords(self) -> None:

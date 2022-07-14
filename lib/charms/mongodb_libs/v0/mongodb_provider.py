@@ -62,10 +62,11 @@ deleted - key that were deleted"""
 class MongoDBProvider(Object):
     """In this class we manage client database relations."""
 
-    def __init__(self, charm):
+    def __init__(self, charm, substrate="k8s"):
         """Manager of MongoDB client relations."""
         super().__init__(charm, "client-relations")
         self.charm = charm
+        self.substrate = substrate
         self.framework.observe(self.charm.on[REL_NAME].relation_joined, self._on_relation_event)
         self.framework.observe(self.charm.on[REL_NAME].relation_changed, self._on_relation_event)
         self.framework.observe(self.charm.on[REL_NAME].relation_broken, self._on_relation_event)
@@ -102,26 +103,24 @@ class MongoDBProvider(Object):
             logger.error("Auth disabled due to existing connections to legacy relations")
             return
 
-        # TODO find a better way to do this
-        machine_charm = True
-        if machine_charm:
-            # If auth is disabled but there are no legacy relation users, this means that legacy
-            # users have left and auth can be re-enabled.
-            if not auth_enabled():
-                try:
-                    logger.debug("Enabling authentication.")
-                    self.charm.unit.status = MaintenanceStatus("re-enabling authentication")
-                    stop_mongod_service()
-                    update_mongod_service(
-                        auth=True,
-                        machine_ip=self.charm._unit_ip(self.charm.unit),
-                        replset=self.charm.app.name,
-                    )
-                    start_mongod_service()
-                    self.charm.unit.status = ActiveStatus()
-                except systemd.SystemdError:
-                    self.charm.unit.status = BlockedStatus("couldn't restart MongoDB")
-                    return
+        # If auth is disabled but there are no legacy relation users, this means that legacy
+        # users have left and auth can be re-enabled.
+        # Note: VM charms use systemd to restart processes
+        if self.substrate == "vm" and not auth_enabled():
+            try:
+                logger.debug("Enabling authentication.")
+                self.charm.unit.status = MaintenanceStatus("re-enabling authentication")
+                stop_mongod_service()
+                update_mongod_service(
+                    auth=True,
+                    machine_ip=self.charm._unit_ip(self.charm.unit),
+                    replset=self.charm.app.name,
+                )
+                start_mongod_service()
+                self.charm.unit.status = ActiveStatus()
+            except systemd.SystemdError:
+                self.charm.unit.status = BlockedStatus("couldn't restart MongoDB")
+                return
 
         departed_relation_id = None
         if type(event) is RelationBrokenEvent:
