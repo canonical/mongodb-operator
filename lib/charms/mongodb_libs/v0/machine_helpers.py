@@ -17,7 +17,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version.
-LIBPATCH = 0
+LIBPATCH = 1
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ MONGO_USER = "mongodb"
 MONGO_DATA_DIR = "/data/db"
 
 
-def auth_enabled():
+def auth_enabled() -> bool:
     """Checks if mongod service is running with auth enabled."""
     if not os.path.exists("/lib/systemd/system/mongod.service"):
         return False
@@ -41,7 +41,8 @@ def auth_enabled():
     return False
 
 
-def stop_mongod_service():
+def stop_mongod_service() -> None:
+    """Stop the mongod service if running."""
     if not systemd.service_running("mongod.service"):
         return
 
@@ -53,7 +54,8 @@ def stop_mongod_service():
         raise
 
 
-def start_mongod_service():
+def start_mongod_service() -> None:
+    """Starts the mongod service if stopped."""
     if systemd.service_running("mongod.service"):
         return
 
@@ -65,13 +67,8 @@ def start_mongod_service():
         raise
 
 
-def update_mongod_service(auth: bool, machine_ip: str, replset: str):
-    """Construct the mongod startup commandline args for systemd.
-
-    Note that commandline arguments take priority over any user set config file options. User
-    options will be configured in the config file. MongoDB handles this merge of these two
-    options.
-    """
+def update_mongod_service(auth: bool, machine_ip: str, replset: str) -> None:
+    """Updates the mongod service file with the new options for starting."""
     mongod_start_args = generate_service_args(auth, machine_ip, replset)
 
     with open("/lib/systemd/system/mongod.service", "r") as mongodb_service_file:
@@ -95,11 +92,13 @@ def update_mongod_service(auth: bool, machine_ip: str, replset: str):
     systemd.daemon_reload()
 
 
-# TODO replace calls of this with machine_ip=self._unit_ip(self.charm.unit)
 def generate_service_args(auth: bool, machine_ip: str, replset: str) -> str:
-    # Construct the mongod startup commandline args for systemd, note that commandline
-    # arguments take priority over any user set config file options. User options will be
-    # configured in the config file. MongoDB handles this merge of these two options.
+    """Construct the mongod startup commandline args for systemd.
+
+    Note that commandline arguments take priority over any user set config file options. User
+    options will be configured in the config file. MongoDB handles this merge of these two
+    options.
+    """
     mongod_start_args = [
         "ExecStart=/usr/bin/mongod",
         # bind to localhost and external interfaces
@@ -114,7 +113,9 @@ def generate_service_args(auth: bool, machine_ip: str, replset: str) -> str:
         mongod_start_args.extend(
             [
                 "--auth",
-                # keyFile used for authenti cation replica set peers, cluster auth, implies user authentication hence we cannot have cluster authentication without user authentication. see: https://www.mongodb.com/docs/manual/reference/configuration-options/#mongodb-setting-security.keyFile
+                # keyFile used for authentication replica set peers, cluster auth, implies user
+                # authentication hence we cannot have cluster authentication without user authentication.
+                # see: https://www.mongodb.com/docs/manual/reference/configuration-options/#mongodb-setting-security.keyFile
                 # TODO: replace with x509
                 "--clusterAuthMode=keyFile",
                 f"--keyFile={KEY_FILE}",
