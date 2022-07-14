@@ -30,6 +30,7 @@ from charms.mongodb_libs.v0.mongodb import (
     PyMongoError,
 )
 from charms.mongodb_libs.v0.mongodb_provider import MongoDBProvider
+from charms.mongodb_libs.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
 from charms.operator_libs_linux.v0 import apt
 from charms.operator_libs_linux.v1 import systemd
 from ops.main import main
@@ -83,6 +84,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         # handle provider side of relations
         self.client_relations = MongoDBProvider(self)
+        self.legacy_client_relations = MongoDBLegacyProvider(self)
 
     def _generate_passwords(self) -> None:
         """Generate passwords and put them into peer relation.
@@ -209,7 +211,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self.unit.status = BlockedStatus("couldn't install MongoDB")
 
         # if a new unit is joining a cluster with a legacy relation it should start without auth
-        auth = not self.client_relations.get_users_from_legacy_relations()
+        auth = not self.client_relations._get_users_from_relations(None, rel="obsolete")
 
         # Construct the mongod startup commandline args for systemd and reload the daemon.
         update_mongod_service(
@@ -266,10 +268,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def _on_update_status(self, _):
         # cannot have both legacy and new relations since they have different auth requirements
-        if (
-            self.client_relations.get_users_from_legacy_relations()
-            and self.client_relations._get_users_from_relations(None)
-        ):
+        if self.client_relations._get_users_from_relations(
+            None, rel="obsolete"
+        ) and self.client_relations._get_users_from_relations(None):
             self.unit.status = BlockedStatus("cannot have both legacy and new relations")
             return
 

@@ -9,8 +9,7 @@ external relation.
 """
 import json
 import logging
-import os
-import pwd
+from platform import machine
 import re
 from collections import namedtuple
 from typing import Optional, Set
@@ -96,6 +95,34 @@ class MongoDBProvider(Object):
         if "db_initialised" not in self.charm.app_data:
             return
 
+        # legacy relations have auth disabled, which new relations require
+        legacy_relation_users = self._get_users_from_relations(None, rel=LEGACY_REL_NAME)
+        if len(legacy_relation_users) > 0:
+            self.charm.unit.status = BlockedStatus("cannot have both legacy and new relations")
+            logger.error("Auth disabled due to existing connections to legacy relations")
+            return
+
+        # TODO find a better way to do this
+        machine_charm = True
+        if machine_charm:
+            # If auth is disabled but there are no legacy relation users, this means that legacy
+            # users have left and auth can be re-enabled.
+            if not auth_enabled():
+                try:
+                    logger.debug("Enabling authentication.")
+                    self.charm.unit.status = MaintenanceStatus("re-enabling authentication")
+                    stop_mongod_service()
+                    update_mongod_service(
+                        auth=True,
+                        machine_ip=self.charm._unit_ip(self.charm.unit),
+                        replset=self.charm.app.name,
+                    )
+                    start_mongod_service()
+                    self.charm.unit.status = ActiveStatus()
+                except systemd.SystemdError:
+                    self.charm.unit.status = BlockedStatus("couldn't restart MongoDB")
+                    return
+
         departed_relation_id = None
         if type(event) is RelationBrokenEvent:
             departed_relation_id = event.relation.id
@@ -122,32 +149,6 @@ class MongoDBProvider(Object):
         relation is still in the list of all relations. Therefore, for proper
         work of the function, we need to exclude departed relation from the list.
         """
-
-        # legacy relations disable auth.
-        legacy_relation_users = self.get_users_from_legacy_relations()
-        if len(legacy_relation_users) > 0:
-            self.charm.unit.status = BlockedStatus("cannot have both legacy and new relations")
-            logger.error("Auth disabled due to existing connections to legacy relations")
-            return
-
-        # If auth is disabled but there are no legacy relation users, this means that legacy
-        # users have left and auth can be re-enabled.
-        # TODO: find a way for this to be generalised for K8s charm.
-        if not auth_enabled():
-            try:
-                logger.debug("Enabling authentication.")
-                self.charm.unit.status = MaintenanceStatus("re-enabling authentication")
-                stop_mongod_service()
-                update_mongod_service(
-                    auth=True,
-                    machine_ip=self.charm._unit_ip(self.charm.unit),
-                    replset=self.charm.app.name,
-                )
-                start_mongod_service()
-                self.charm.unit.status = ActiveStatus()
-            except systemd.SystemdError:
-                self.charm.unit.status = BlockedStatus("couldn't restart MongoDB")
-                return
 
         with MongoDBConnection(self.charm.mongodb_config) as mongo:
             database_users = mongo.get_users()
@@ -184,7 +185,7 @@ class MongoDBProvider(Object):
                 mongo.drop_database(database)
 
     ################################################################################
-    # LEGACY RELATIONS
+    # LEGACY RELATIONS VM
     ################################################################################
     def _on_legacy_relation_created(self, event):
         """Legacy relations for MongoDB operate without a password and so we update the server accordingly and
@@ -318,9 +319,9 @@ class MongoDBProvider(Object):
         """Construct username."""
         return f"relation-{relation_id}"
 
-    def _get_users_from_relations(self, departed_relation_id: Optional[int]):
+    def _get_users_from_relations(self, departed_relation_id: Optional[int], rel=REL_NAME):
         """Return usernames for all relations except departed relation."""
-        relations = self.model.relations[REL_NAME]
+        relations = self.model.relations[rel]
         return set(
             [
                 self._get_username_from_relation_id(relation.id)
