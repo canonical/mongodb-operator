@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 from pymongo import MongoClient
+from pymongo.errors import OperationFailure
 from pytest_operator.plugin import OpsTest
 
 from tests.integration.relation_tests.new_relations.helpers import (
@@ -240,3 +241,37 @@ async def test_an_application_can_request_multiple_databases(ops_test: OpsTest, 
 
     # Assert the two application have different relation (connection) data.
     assert first_database_connection_string != second_database_connection_string
+
+
+async def test_removed_relation_no_longer_has_access(ops_test: OpsTest):
+    """Verify removed applications no longer have access to the database."""
+    # before removing relation we need its authorisation via connection string
+    connection_string = await get_application_relation_data(
+        ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME, "uris"
+    )
+
+    await ops_test.model.applications[DATABASE_APP_NAME].remove_relation(
+        f"{APPLICATION_APP_NAME}:{FIRST_DATABASE_RELATION_NAME}", f"{DATABASE_APP_NAME}:database"
+    )
+
+    client = MongoClient(
+        connection_string,
+        directConnection=False,
+        connect=False,
+        serverSelectionTimeoutMS=1000,
+        connectTimeoutMS=2000,
+    )
+    removed_access = False
+    try:
+        client.admin.command("replSetGetStatus")
+    except OperationFailure as e:
+        # error code 13 for OperationFailure is an authentication error, meaning disabling of
+        # authentication was unsuccessful
+        if e.code == 13:
+            removed_access = True
+        else:
+            raise
+
+    assert (
+        removed_access
+    ), "application: {APPLICATION_APP_NAME} still has access to mongodb after relation removal."
