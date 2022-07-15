@@ -9,14 +9,18 @@ external relation.
 """
 import json
 import logging
-import os
-import pwd
+from platform import machine
 import re
 from collections import namedtuple
 from typing import Optional, Set
 
-import ops.model
-from charms.mongodb_libs.v0.helpers import KEY_FILE, generate_password
+from charms.mongodb_libs.v0.machine_helpers import (
+    auth_enabled,
+    stop_mongod_service,
+    start_mongod_service,
+    update_mongod_service,
+)
+from charms.mongodb_libs.v0.helpers import generate_password
 from charms.mongodb_libs.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 from charms.operator_libs_linux.v1 import systemd
 from ops.charm import RelationBrokenEvent, RelationChangedEvent
@@ -25,7 +29,6 @@ from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, Relation
 from pymongo.errors import PyMongoError
 
 from charms.operator_libs_linux.v1 import systemd
-from charms.mongodb_libs.v0.helpers import KEY_FILE
 
 
 # The unique Charmhub library identifier, never change it
@@ -47,8 +50,6 @@ LEGACY_REL_NAME = "obsolete"
 MONGODB_PORT = 27017
 MONGODB_VERSION = "5.0"
 PEER = "database-peers"
-MONGO_USER = "mongodb"
-MONGO_DATA_DIR = "/data/db"
 
 Diff = namedtuple("Diff", "added changed deleted")
 Diff.__doc__ = """
@@ -61,10 +62,11 @@ deleted - key that were deleted"""
 class MongoDBProvider(Object):
     """In this class we manage client database relations."""
 
-    def __init__(self, charm):
+    def __init__(self, charm, substrate="k8s"):
         """Manager of MongoDB client relations."""
         super().__init__(charm, "client-relations")
         self.charm = charm
+        self.substrate = substrate
         self.framework.observe(self.charm.on[REL_NAME].relation_joined, self._on_relation_event)
         self.framework.observe(self.charm.on[REL_NAME].relation_changed, self._on_relation_event)
         self.framework.observe(self.charm.on[REL_NAME].relation_broken, self._on_relation_event)
@@ -94,6 +96,32 @@ class MongoDBProvider(Object):
         if "db_initialised" not in self.charm.app_data:
             return
 
+        # legacy relations have auth disabled, which new relations require
+        legacy_relation_users = self._get_users_from_relations(None, rel=LEGACY_REL_NAME)
+        if len(legacy_relation_users) > 0:
+            self.charm.unit.status = BlockedStatus("cannot have both legacy and new relations")
+            logger.error("Auth disabled due to existing connections to legacy relations")
+            return
+
+        # If auth is disabled but there are no legacy relation users, this means that legacy
+        # users have left and auth can be re-enabled.
+        # Note: VM charms use systemd to restart processes
+        if self.substrate == "vm" and not auth_enabled():
+            try:
+                logger.debug("Enabling authentication.")
+                self.charm.unit.status = MaintenanceStatus("re-enabling authentication")
+                stop_mongod_service()
+                update_mongod_service(
+                    auth=True,
+                    machine_ip=self.charm._unit_ip(self.charm.unit),
+                    replset=self.charm.app.name,
+                )
+                start_mongod_service()
+                self.charm.unit.status = ActiveStatus()
+            except systemd.SystemdError:
+                self.charm.unit.status = BlockedStatus("couldn't restart MongoDB")
+                return
+
         departed_relation_id = None
         if type(event) is RelationBrokenEvent:
             departed_relation_id = event.relation.id
@@ -120,22 +148,6 @@ class MongoDBProvider(Object):
         relation is still in the list of all relations. Therefore, for proper
         work of the function, we need to exclude departed relation from the list.
         """
-
-        # legacy relations disable auth.
-        legacy_relation_users = self.get_users_from_legacy_relations()
-        if len(legacy_relation_users) > 0:
-            self.charm.unit.status = BlockedStatus("cannot have both legacy and new relations")
-            logger.error("Auth disabled due to existing connections to legacy relations")
-            return
-
-        # If auth is disabled but there are no legacy relation users, this means that legacy
-        # users have left and auth can be re-enabled.
-        # TODO: find a way for this to be generalised for K8s charm.
-        if not self._auth_enabled:
-            logger.debug("Enabling authentication.")
-            self._stop_mongod_service()
-            self._update_mongod_service(auth=True)
-            self._start_mongod_service()
 
         with MongoDBConnection(self.charm.mongodb_config) as mongo:
             database_users = mongo.get_users()
@@ -172,7 +184,7 @@ class MongoDBProvider(Object):
                 mongo.drop_database(database)
 
     ################################################################################
-    # LEGACY RELATIONS
+    # LEGACY RELATIONS VM
     ################################################################################
     def _on_legacy_relation_created(self, event):
         """Legacy relations for MongoDB operate without a password and so we update the server accordingly and
@@ -196,12 +208,18 @@ class MongoDBProvider(Object):
         # user. Shutting down and restarting mongod would lead to downtime for the other legacy
         # relation user and hence shouldn't be done. Not to mention there is no need to disable
         # auth if it is already disabled.
-        if self._auth_enabled:
+        if auth_enabled():
             try:
                 logger.debug("Disabling authentication.")
-                self._stop_mongod_service()
-                self._update_mongod_service(auth=False)
-                self._start_mongod_service()
+                self.charm.unit.status = MaintenanceStatus("disabling authentication")
+                stop_mongod_service()
+                update_mongod_service(
+                    auth=False,
+                    machine_ip=self.charm._unit_ip(self.charm.unit),
+                    replset=self.charm.app.name,
+                )
+                start_mongod_service()
+                self.charm.unit.status = ActiveStatus()
             except systemd.SystemdError:
                 self.charm.unit.status = BlockedStatus("couldn't restart MongoDB")
                 return
@@ -230,119 +248,6 @@ class MongoDBProvider(Object):
         """Return usernames for legacy relation."""
         relations = self.model.relations[LEGACY_REL_NAME]
         return {self._get_username_from_relation_id(relation.id) for relation in relations}
-
-    # TODO move to machine charm helpers
-    def _auth_enabled(self):
-        """Checks if mongod service is running with auth enabled."""
-        if not os.path.exists("/lib/systemd/system/mongod.service"):
-            return False
-
-        with open("/lib/systemd/system/mongod.service", "r") as mongodb_service_file:
-            mongodb_service = mongodb_service_file.readlines()
-
-        for _, line in enumerate(mongodb_service):
-            # ExecStart contains the line with the arguments to start mongod service.
-            if "ExecStart" in line and "--auth" in line:
-                return True
-
-        return False
-
-    # TODO move to machine charm helpers
-    def _stop_mongod_service(self):
-        if not systemd.service_running("mongod.service"):
-            return
-
-        self.charm.unit.status = MaintenanceStatus("stopping MongoDB")
-        logger.debug("stopping mongod.service")
-        try:
-            systemd.service_stop("mongod.service")
-        except systemd.SystemdError as e:
-            logger.error("failed to stop mongod.service, error:", e)
-            raise
-
-    # TODO move to machine charm helpers
-    def _update_mongod_service(self, auth: bool):
-        mongod_start_args = self._generate_service_args(auth)
-
-        with open("/lib/systemd/system/mongod.service", "r") as mongodb_service_file:
-            mongodb_service = mongodb_service_file.readlines()
-
-        # replace start command with our parameterized one
-        for index, line in enumerate(mongodb_service):
-            if "ExecStart" in line:
-                mongodb_service[index] = mongod_start_args
-
-        # systemd gives files in /etc/systemd/system/ precedence over those in /lib/systemd/system/
-        # hence our changed file in /etc will be read while maintaining the original one in /lib.
-        with open("/etc/systemd/system/mongod.service", "w") as service_file:
-            service_file.writelines(mongodb_service)
-
-        # mongod requires permissions to /data/db
-        mongodb_user = pwd.getpwnam(MONGO_USER)
-        os.chown(MONGO_DATA_DIR, mongodb_user.pw_uid, mongodb_user.pw_gid)
-
-        # changes to service files are only applied after reloading
-        systemd.daemon_reload()
-
-    # TODO move to machine charm helpers
-    def _generate_service_args(self, auth: bool) -> str:
-        # Construct the mongod startup commandline args for systemd, note that commandline
-        # arguments take priority over any user set config file options. User options will be
-        # configured in the config file. MongoDB handles this merge of these two options.
-        machine_ip = self._unit_ip(self.charm.unit)
-        mongod_start_args = [
-            "ExecStart=/usr/bin/mongod",
-            # bind to localhost and external interfaces
-            "--bind_ip",
-            f"localhost,{machine_ip}",
-            # part of replicaset
-            "--replSet",
-            f"{self.charm.app.name}",
-        ]
-
-        if auth:
-            mongod_start_args.extend(
-                [
-                    "--auth",
-                    # keyFile used for authenti cation replica set peers, cluster auth, implies user authentication hence we cannot have cluster authentication without user authentication. see: https://www.mongodb.com/docs/manual/reference/configuration-options/#mongodb-setting-security.keyFile
-                    # TODO: replace with x509
-                    "--clusterAuthMode=keyFile",
-                    f"--keyFile={KEY_FILE}",
-                ]
-            )
-
-        mongod_start_args.append("\n")
-        mongod_start_args = " ".join(mongod_start_args)
-
-        return mongod_start_args
-
-    # TODO move to machine charm helpers
-    def _start_mongod_service(self):
-        if systemd.service_running("mongod.service"):
-            return
-
-        self.charm.unit.status = MaintenanceStatus("starting MongoDB")
-        logger.debug("starting mongod.service")
-        try:
-            systemd.service_start("mongod.service")
-        except systemd.SystemdError as e:
-            logger.error("failed to enable mongod.service, error:", e)
-            raise
-
-        self.charm.unit.status = ActiveStatus()
-
-    # TODO move to machine charm helpers
-    def _unit_ip(self, unit: ops.model.Unit) -> str:
-        """Returns the ip address of a given unit."""
-        # check if host is current host
-        if unit == self.charm.unit:
-            return str(self.model.get_binding(PEER).network.bind_address)
-        # check if host is a peer
-        elif unit in self._peers.data:
-            return str(self._peers.data[unit].get("private-address"))
-        # raise exception if host not found
-        else:
-            raise ApplicationHostNotFoundError
 
     ################################################################################
     # HELPERS
@@ -413,9 +318,9 @@ class MongoDBProvider(Object):
         """Construct username."""
         return f"relation-{relation_id}"
 
-    def _get_users_from_relations(self, departed_relation_id: Optional[int]):
+    def _get_users_from_relations(self, departed_relation_id: Optional[int], rel=REL_NAME):
         """Return usernames for all relations except departed relation."""
-        relations = self.model.relations[REL_NAME]
+        relations = self.model.relations[rel]
         return set(
             [
                 self._get_username_from_relation_id(relation.id)
@@ -466,8 +371,3 @@ class MongoDBProvider(Object):
         if roles is not None:
             return set(roles.split(","))
         return {"default"}
-
-
-# TODO move this somewhere appropriate
-class ApplicationHostNotFoundError(Exception):
-    """Raised when a queried host is not in the application peers or the current host."""

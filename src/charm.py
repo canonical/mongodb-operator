@@ -19,6 +19,10 @@ from charms.mongodb_libs.v0.helpers import (
     generate_password,
     get_create_user_cmd,
 )
+from charms.mongodb_libs.v0.machine_helpers import (
+    start_mongod_service,
+    update_mongod_service,
+)
 from charms.mongodb_libs.v0.mongodb import (
     MongoDBConfiguration,
     MongoDBConnection,
@@ -26,6 +30,7 @@ from charms.mongodb_libs.v0.mongodb import (
     PyMongoError,
 )
 from charms.mongodb_libs.v0.mongodb_provider import MongoDBProvider
+from charms.mongodb_libs.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
 from charms.operator_libs_linux.v0 import apt
 from charms.operator_libs_linux.v1 import systemd
 from ops.main import main
@@ -78,7 +83,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.framework.observe(self.on.get_admin_password_action, self._on_get_admin_password)
 
         # handle provider side of relations
-        self.client_relations = MongoDBProvider(self)
+        self.client_relations = MongoDBProvider(self, substrate="vm")
+        self.legacy_client_relations = MongoDBLegacyProvider(self)
 
     def _generate_passwords(self) -> None:
         """Generate passwords and put them into peer relation.
@@ -204,61 +210,13 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         except (apt.InvalidSourceError, ValueError, apt.GPGKeyError, URLError):
             self.unit.status = BlockedStatus("couldn't install MongoDB")
 
-        # TODO future PR, this mongod start args is duplicated code and should be put somewhere
-        # else
-
-        # Construct the mongod startup commandline args for systemd, note that commandline
-        # arguments take priority over any user set config file options. User options will be
-        # configured in the config file. MongoDB handles this merge of these two options.
-        machine_ip = self._unit_ip(self.unit)
-        mongod_start_args = [
-            "ExecStart=/usr/bin/mongod",
-            # bind to localhost and external interfaces
-            "--bind_ip",
-            f"localhost,{machine_ip}",
-            # part of replicaset
-            "--replSet",
-            f"{self.app.name}",
-        ]
-
         # if a new unit is joining a cluster with a legacy relation it should start without auth
-        if not self.client_relations.get_users_from_legacy_relations():
-            # keyFile used for authentication replica set peers, cluster auth, implies user
-            # authentication hence we cannot have cluster authentication without user
-            # authentication. see:
-            # https://www.mongodb.com/docs/manual/reference/configuration-options/#mongodb-setting-security.keyFile
+        auth = not self.client_relations._get_users_from_relations(None, rel="obsolete")
 
-            mongod_start_args.extend(
-                [
-                    "--auth",
-                    # TODO: replace with x509
-                    "--clusterAuthMode=keyFile",
-                    f"--keyFile={KEY_FILE}",
-                ]
-            )
-
-        mongod_start_args.append("\n")
-        mongod_start_args = " ".join(mongod_start_args)
-
-        with open("/lib/systemd/system/mongod.service", "r") as mongodb_service_file:
-            mongodb_service = mongodb_service_file.readlines()
-
-        # replace start command with our parameterized one
-        for index, line in enumerate(mongodb_service):
-            if "ExecStart" in line:
-                mongodb_service[index] = mongod_start_args
-
-        # systemd gives files in /etc/systemd/system/ precedence over those in /lib/systemd/system/
-        # hence our changed file in /etc will be read while maintaining the original one in /lib.
-        with open("/etc/systemd/system/mongod.service", "w") as service_file:
-            service_file.writelines(mongodb_service)
-
-        # mongod requires permissions to /data/db
-        mongodb_user = pwd.getpwnam(MONGO_USER)
-        os.chown(MONGO_DATA_DIR, mongodb_user.pw_uid, mongodb_user.pw_gid)
-
-        # changes to service files are only applied after reloading
-        systemd.daemon_reload()
+        # Construct the mongod startup commandline args for systemd and reload the daemon.
+        update_mongod_service(
+            auth=auth, machine_ip=self._unit_ip(self.unit), replset=self.app.name
+        )
 
     def _on_config_changed(self, _) -> None:
         """Event handler for configuration changed events."""
@@ -276,16 +234,14 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # MongoDB with authentication requires a keyfile
         self._instatiate_keyfile(event)
 
-        # start mongo service
-        self.unit.status = MaintenanceStatus("starting MongoDB")
-        if not systemd.service_running("mongod.service"):
-            logger.debug("starting mongod.service")
-            try:
-                systemd.service_start("mongod.service")
-            except systemd.SystemdError:
-                logger.error("failed to enable mongod.service")
-                self.unit.status = BlockedStatus("couldn't start MongoDB")
-                return
+        try:
+            logger.debug("starting MongoDB.")
+            self.unit.status = MaintenanceStatus("starting MongoDB")
+            start_mongod_service()
+            self.unit.status = ActiveStatus()
+        except systemd.SystemdError:
+            self.unit.status = BlockedStatus("couldn't start MongoDB")
+            return
 
         try:
             self._open_port_tcp(self._port)
@@ -312,10 +268,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def _on_update_status(self, _):
         # cannot have both legacy and new relations since they have different auth requirements
-        if (
-            self.client_relations.get_users_from_legacy_relations()
-            and self.client_relations._get_users_from_relations(None)
-        ):
+        if self.client_relations._get_users_from_relations(
+            None, rel="obsolete"
+        ) and self.client_relations._get_users_from_relations(None):
             self.unit.status = BlockedStatus("cannot have both legacy and new relations")
             return
 
