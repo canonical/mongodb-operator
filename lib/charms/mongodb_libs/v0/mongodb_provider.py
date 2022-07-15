@@ -9,27 +9,23 @@ external relation.
 """
 import json
 import logging
-from platform import machine
 import re
 from collections import namedtuple
 from typing import Optional, Set
 
+from charms.mongodb_libs.v0.helpers import generate_password
 from charms.mongodb_libs.v0.machine_helpers import (
     auth_enabled,
-    stop_mongod_service,
     start_mongod_service,
+    stop_mongod_service,
     update_mongod_service,
 )
-from charms.mongodb_libs.v0.helpers import generate_password
 from charms.mongodb_libs.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 from charms.operator_libs_linux.v1 import systemd
 from ops.charm import RelationBrokenEvent, RelationChangedEvent
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, Relation
 from pymongo.errors import PyMongoError
-
-from charms.operator_libs_linux.v1 import systemd
-
 
 # The unique Charmhub library identifier, never change it
 LIBID = "1057f353503741a98ed79309b5be7e32"
@@ -70,16 +66,7 @@ class MongoDBProvider(Object):
         self.framework.observe(self.charm.on[REL_NAME].relation_joined, self._on_relation_event)
         self.framework.observe(self.charm.on[REL_NAME].relation_changed, self._on_relation_event)
         self.framework.observe(self.charm.on[REL_NAME].relation_broken, self._on_relation_event)
-        self.framework.observe(
-            self.charm.on[LEGACY_REL_NAME].relation_created, self._on_legacy_relation_created
-        )
-        self.framework.observe(
-            self.charm.on[LEGACY_REL_NAME].relation_joined, self._on_legacy_relation_joined
-        )
 
-    ################################################################################
-    # NEW RELATIONS
-    ################################################################################
     def _on_relation_event(self, event):
         """Handle relation joined events.
 
@@ -143,12 +130,12 @@ class MongoDBProvider(Object):
             departed_relation_id: When specified execution of functions
                 makes sure to exclude the users and databases and remove
                 them if necessary.
+            event: relation event.
 
         When the function is executed in relation departed event, the departed
         relation is still in the list of all relations. Therefore, for proper
         work of the function, we need to exclude departed relation from the list.
         """
-
         with MongoDBConnection(self.charm.mongodb_config) as mongo:
             database_users = mongo.get_users()
             relation_users = self._get_users_from_relations(departed_relation_id)
@@ -183,79 +170,12 @@ class MongoDBProvider(Object):
                 logger.info("Drop database: %s", database)
                 mongo.drop_database(database)
 
-    ################################################################################
-    # LEGACY RELATIONS VM
-    ################################################################################
-    def _on_legacy_relation_created(self, event):
-        """Legacy relations for MongoDB operate without a password and so we update the server accordingly and
-        set a flag.
-        """
-        logger.warning("DEPRECATION WARNING - `mongodb` interface is a legacy interface.")
-
-        # legacy relations turn off authentication, therefore disabling authentication for current
-        # users (which connect over the new relation interface). If current users exist that use
-        # auth it is necessary to not proceed and go into blocked state.
-        relation_users = self._get_users_from_relations(departed_relation_id=None)
-        if len(relation_users) > 0:
-            self.charm.unit.status = BlockedStatus("cannot have both legacy and new relations")
-            logger.error(
-                "Creating legacy relation would turn off auth effecting the new relations: %s",
-                relation_users,
-            )
-            return
-
-        # If auth is already disabled its likely it has a connection with another legacy relation
-        # user. Shutting down and restarting mongod would lead to downtime for the other legacy
-        # relation user and hence shouldn't be done. Not to mention there is no need to disable
-        # auth if it is already disabled.
-        if auth_enabled():
-            try:
-                logger.debug("Disabling authentication.")
-                self.charm.unit.status = MaintenanceStatus("disabling authentication")
-                stop_mongod_service()
-                update_mongod_service(
-                    auth=False,
-                    machine_ip=self.charm._unit_ip(self.charm.unit),
-                    replset=self.charm.app.name,
-                )
-                start_mongod_service()
-                self.charm.unit.status = ActiveStatus()
-            except systemd.SystemdError:
-                self.charm.unit.status = BlockedStatus("couldn't restart MongoDB")
-                return
-
-    def _on_legacy_relation_joined(self, event):
-        """
-        NOTE: this is retro-fitted from the legacy mongodb charm: https://launchpad.net/charm-mongodb
-        """
-        logger.warning("DEPRECATION WARNING - `mongodb` interface is a legacy interface.")
-
-        updates = {
-            "hostname": str(self.model.get_binding(PEER).network.bind_address),
-            "port": str(MONGODB_PORT),
-            "type": "database",
-            "version": MONGODB_VERSION,
-            "replset": self.charm.app.name,
-        }
-
-        # reactive charms set relation data on "the current unit" the reactive mongodb charm sets
-        # the relation data for all units, hence all units setting the relation data and not just
-        # the leader
-        relation = self.model.get_relation(REL_NAME, event.relation.id)
-        relation.data[self.charm.unit].update(updates)
-
-    def get_users_from_legacy_relations(self):
-        """Return usernames for legacy relation."""
-        relations = self.model.relations[LEGACY_REL_NAME]
-        return {self._get_username_from_relation_id(relation.id) for relation in relations}
-
-    ################################################################################
-    # HELPERS
-    ################################################################################
     def _diff(self, event: RelationChangedEvent) -> Diff:
         """Retrieves the diff of the data in the relation changed databag.
+
         Args:
             event: relation changed event.
+
         Returns:
             a Diff instance containing the added, deleted and changed
                 keys from the event relation databag.

@@ -2,10 +2,11 @@
 # Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-import string
-import secrets
 import logging
+import secrets
+import string
 from typing import List
+
 from charms.mongodb_libs.v0.mongodb import MongoDBConfiguration
 
 # The unique Charmhub library identifier, never change it
@@ -27,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 # noinspection GrazieInspection
 def get_create_user_cmd(config: MongoDBConfiguration) -> List[str]:
-    """Creates initial admin user for MongoDB
+    """Creates initial admin user for MongoDB.
 
     Initial admin user can be created only through localhost connection.
     see https://www.mongodb.com/docs/manual/core/localhost-exception/
@@ -92,7 +93,7 @@ def generate_password() -> str:
 
 
 def generate_keyfile() -> str:
-    """keyFile used for authentication between replica set peers.
+    """Key file used for authentication between replica set peers.
 
     Returns:
        A maximum allowed random string.
