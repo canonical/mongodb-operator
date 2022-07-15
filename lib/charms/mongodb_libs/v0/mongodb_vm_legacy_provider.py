@@ -11,16 +11,13 @@ from typing import Optional
 
 from charms.mongodb_libs.v0.machine_helpers import (
     auth_enabled,
-    stop_mongod_service,
     start_mongod_service,
+    stop_mongod_service,
     update_mongod_service,
 )
 from charms.operator_libs_linux.v1 import systemd
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
-
-from charms.operator_libs_linux.v1 import systemd
-
 
 # The unique Charmhub library identifier, never change it
 LIBID = "9t384yt02t8fj9iecin83r20359ruij"
@@ -58,13 +55,8 @@ class MongoDBLegacyProvider(Object):
             self.charm.on[LEGACY_REL_NAME].relation_joined, self._on_legacy_relation_joined
         )
 
-    ################################################################################
-    # LEGACY RELATIONS VM
-    ################################################################################
     def _on_legacy_relation_created(self, event):
-        """Legacy relations for MongoDB operate without a password and so we update the server accordingly and
-        set a flag.
-        """
+        """Disable auth (legacy relations operate without auth)."""
         logger.warning("DEPRECATION WARNING - `mongodb` interface is a legacy interface.")
 
         # legacy relations turn off authentication, therefore disabling authentication for current
@@ -100,7 +92,8 @@ class MongoDBLegacyProvider(Object):
                 return
 
     def _on_legacy_relation_joined(self, event):
-        """
+        """Sets the expected data for legacy relations.
+
         NOTE: this is retro-fitted from the legacy mongodb charm:
         https://git.launchpad.net/charm-mongodb/tree/hooks/hooks.py#n1423
         """

@@ -1,13 +1,12 @@
+"""Machine Charm specific functions for operating MongoDB."""
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
-import os
 import logging
+import os
 import pwd
 
-
+from charms.mongodb_libs.v0.helpers import KEY_FILE
 from charms.operator_libs_linux.v1 import systemd
-from charms.mongodb_libs.v0.helpers import KEY_FILE
-from charms.mongodb_libs.v0.helpers import KEY_FILE
 
 # The unique Charmhub library identifier, never change it
 LIBID = "6q947ainc54837t38yhuidshahfgw8f"
@@ -114,8 +113,9 @@ def generate_service_args(auth: bool, machine_ip: str, replset: str) -> str:
             [
                 "--auth",
                 # keyFile used for authentication replica set peers, cluster auth, implies user
-                # authentication hence we cannot have cluster authentication without user authentication.
-                # see: https://www.mongodb.com/docs/manual/reference/configuration-options/#mongodb-setting-security.keyFile
+                # authentication hence we cannot have cluster authentication without user
+                # authentication see:
+                # https://www.mongodb.com/docs/manual/reference/configuration-options/#mongodb-setting-security.keyFile
                 # TODO: replace with x509
                 "--clusterAuthMode=keyFile",
                 f"--keyFile={KEY_FILE}",
