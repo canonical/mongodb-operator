@@ -75,7 +75,6 @@ class MongoDBProvider(Object):
         data. As result, related charm gets credentials for accessing the
         MongoDB database.
         """
-        logger.debug("Relation event thinks relation event is %s", event.relation.id)
         if not self.charm.unit.is_leader():
             return
         # We shouldn't try to create or update users if the database is not
