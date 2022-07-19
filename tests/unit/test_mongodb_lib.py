@@ -32,6 +32,7 @@ class TestMongoServer(unittest.TestCase):
 
         Test also verifies that when an exception is raised we still close the client connection.
         """
+        # TODO figure out how to disable tenacity for faster unit testing
 
         for exception, _ in PYMONGO_EXCEPTIONS:
             with MongoDBConnection(config) as mongo:
