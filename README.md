@@ -18,7 +18,7 @@ juju deploy mongodb --channel dpe/edge
 
 It is customary to use MongoDB with replication. Hence usually more than one unit (preferably an odd number to prohibit a "split-brain" scenario) is deployed. To deploy MongoDB with multiple replicas, specify the number of desired units with the `-n` option.
 ```shell
-juju deploy mongodb --channel dpe/edge-n <number_of_replicas>
+juju deploy mongodb --channel dpe/edge -n <number_of_replicas>
 ```
 
 To retrieve primary replica one can use the action `get-primary` on any of the units running MongoDB
