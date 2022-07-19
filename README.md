@@ -11,16 +11,14 @@ MongoDB is a general purpose distributed document database. This operator charm 
 ## Usage
 
 ### Basic Usage
-Until the MongoDB Machine Charm is published, you need to follow the build & deploy instructions from [CONTRIBUTING.md](https://github.com/canonical/mongodb-operator/blob/main/CONTRIBUTING.md) to deploy the charm.
-
-After building the charm you may deploy a single unit of MongoDB using its default configuration
+To deploy a single unit of MongoDB using its default configuration
 ```shell
-juju deploy ./mongodb_ubuntu-20.04-amd64.charm
+juju deploy mongodb --channel dpe/edge
 ```
 
 It is customary to use MongoDB with replication. Hence usually more than one unit (preferably an odd number to prohibit a "split-brain" scenario) is deployed. To deploy MongoDB with multiple replicas, specify the number of desired units with the `-n` option.
 ```shell
-juju deploy ./mongodb_ubuntu-20.04-amd64.charm -n <number_of_replicas>
+juju deploy mongodb --channel dpe/edge-n <number_of_replicas>
 ```
 
 To retrieve primary replica one can use the action `get-primary` on any of the units running MongoDB
@@ -28,7 +26,7 @@ To retrieve primary replica one can use the action `get-primary` on any of the u
 juju run-action mongodb/<unit_number> get-primary --wait
 ```
 
-Similarly, the primary replica is displayed as a status message in `juju status`, however one should note that this hook gets called on regular time intervals and the primary may be outdated if the status hook has not been called recently.
+Similarly, the primary replica is displayed as a status message in `juju status`, however one should note that this hook gets called on regular time intervals and the primary may be outdated if the status hook has not been called recently. 
 
 ### Replication
 #### Adding Replicas
@@ -51,8 +49,24 @@ The implementation of `remove-unit` allows the operator to remove more than one 
 
 Supported [relations](https://juju.is/docs/olm/relations):
 
-There are currently no supported relations.
+#### New `mongodb-client` interface:
 
+Relations to new applications are supported via the `mongodb-client` interface. To create a relation: 
+
+```shell
+juju relate mongodb application
+```
+
+To remove a relation:
+```shell
+juju remove-relation mongodb application
+```
+
+#### Legacy `mongodb` interface:
+We have also added support for the database legacy relation from the [original version](https://launchpad.net/charm-mongodb) of the charm via the `mongodb` interface. Currently legacy relations operate without authentication and hence cannot be used with pre-existing new relations. Please note that these relations will be deprecated.
+ ```shell
+juju relate mongodb graylog
+```
 
 ## License
 The Charmed MongoDB Operator is free software, distributed under the Apache Software License, version 2.0. See [LICENSE](https://github.com/canonical/mongodb-operator/blob/main/LICENSE) for more information.
