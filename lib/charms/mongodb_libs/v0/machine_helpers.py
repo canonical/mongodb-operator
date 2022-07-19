@@ -20,16 +20,34 @@ LIBPATCH = 1
 
 logger = logging.getLogger(__name__)
 
+# systemd gives files in /etc/systemd/system/ precedence over those in /lib/systemd/system/ hence
+# our changed file in /etc will be read while maintaining the original one in /lib.
+MONGOD_SERVICE_UPSTREAM_PATH = "/lib/systemd/system/mongod.service"
+MONGOD_SERVICE_DEFAULT_PATH = "/etc/systemd/system/mongod.service"
+
 MONGO_USER = "mongodb"
 MONGO_DATA_DIR = "/data/db"
 
 
 def auth_enabled() -> bool:
-    """Checks if mongod service is running with auth enabled."""
-    if not os.path.exists("/lib/systemd/system/mongod.service"):
+    """Checks if mongod service is has auth enabled."""
+    # if there are no service files then auth is not enabled
+    if not os.path.exists(MONGOD_SERVICE_UPSTREAM_PATH) and not os.path.exists(
+        MONGOD_SERVICE_DEFAULT_PATH
+    ):
         return False
 
-    with open("/etc/systemd/system/mongod.service", "r") as mongodb_service_file:
+    # The default file has previority over the upstream, but when the default file doesn't exist
+    # then the upstream configurations are used.
+    if not os.path.exists(MONGOD_SERVICE_DEFAULT_PATH):
+        return start_with_auth(MONGOD_SERVICE_UPSTREAM_PATH)
+
+    return start_with_auth(MONGOD_SERVICE_DEFAULT_PATH)
+
+
+def start_with_auth(path):
+    """Returns true is a mongod service file has the auth configuration."""
+    with open(path, "r") as mongodb_service_file:
         mongodb_service = mongodb_service_file.readlines()
 
     for _, line in enumerate(mongodb_service):
@@ -70,7 +88,7 @@ def update_mongod_service(auth: bool, machine_ip: str, replset: str) -> None:
     """Updates the mongod service file with the new options for starting."""
     mongod_start_args = generate_service_args(auth, machine_ip, replset)
 
-    with open("/lib/systemd/system/mongod.service", "r") as mongodb_service_file:
+    with open(MONGOD_SERVICE_UPSTREAM_PATH, "r") as mongodb_service_file:
         mongodb_service = mongodb_service_file.readlines()
 
     # replace start command with our parameterized one
@@ -80,7 +98,7 @@ def update_mongod_service(auth: bool, machine_ip: str, replset: str) -> None:
 
     # systemd gives files in /etc/systemd/system/ precedence over those in /lib/systemd/system/
     # hence our changed file in /etc will be read while maintaining the original one in /lib.
-    with open("/etc/systemd/system/mongod.service", "w") as service_file:
+    with open(MONGOD_SERVICE_DEFAULT_PATH, "w") as service_file:
         service_file.writelines(mongodb_service)
 
     # mongod requires permissions to /data/db
