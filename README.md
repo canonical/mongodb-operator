@@ -32,7 +32,7 @@ Similarly, the primary replica is displayed as a status message in `juju status`
 #### Adding Replicas
 To add more replicas one can use the `juju add-unit` functionality i.e.
 ```shell
-juju add-unit -n <num_of_replicas_to_add>
+juju add-unit mongodb -n <num_of_replicas_to_add>
 ```
 The implementation of `add-unit` allows the operator to add more than one unit, but functions internally by adding one replica at a time, as specified by the [constraints](https://www.mongodb.com/docs/manual/reference/command/replSetReconfig/#reconfiguration-can-add-or-remove-no-more-than-one-voting-member-at-a-time) of MongoDB.
 
