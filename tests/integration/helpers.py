@@ -179,3 +179,28 @@ async def find_unit(ops_test: OpsTest, leader: bool) -> ops.model.Unit:
             ret_unit = unit
 
     return ret_unit
+
+
+async def unit_ids(ops_test: OpsTest) -> List[int]:
+    """Provides a function for generating unit_ids in case a cluster is provided."""
+    provided_cluster = ha_on_provided_cluster(ops_test)
+    if not provided_cluster:
+        return UNIT_IDS
+    unit_ids = [
+        unit.name.split("/")[1] for unit in ops_test.model.applications[provided_cluster].units
+    ]
+    return unit_ids
+
+
+async def ha_on_provided_cluster(ops_test: OpsTest) -> str:
+    """Returns the name of a cluster provided for HA testing.
+    This is important since not all deployments of the MongoDB charm have the application name
+    MongoDB.
+    """
+    status = await ops_test.model.get_status()
+    for app in ops_test.model.applications:
+        # note that format of the charm field is not exactly "mongodb" but instead takes the form
+        # of `local:focal/mongodb-6`
+        if "mongodb" in status["applications"][app]["charm"]:
+            return app
+    return None
