@@ -2,16 +2,13 @@
 # See LICENSE file for licensing details.
 
 from pathlib import Path
-from typing import List, Optional
 
 import ops
 import yaml
 from pymongo import MongoClient
-from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
 from pytest_operator.plugin import OpsTest
 from tenacity import retry, retry_if_result, stop_after_attempt, wait_exponential
 
-_PERMISSION_MASK_FOR_SCP = 644
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 PORT = 27017
 APP_NAME = METADATA["name"]

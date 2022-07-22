@@ -18,7 +18,7 @@ from helpers import (
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
 from pytest_operator.plugin import OpsTest
-from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
+from tenacity import RetryError
 
 logger = logging.getLogger(__name__)
 

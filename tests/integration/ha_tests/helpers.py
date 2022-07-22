@@ -2,7 +2,7 @@
 # See LICENSE file for licensing details.
 
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 import ops
 import yaml
