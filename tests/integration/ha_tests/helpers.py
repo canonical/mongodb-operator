@@ -7,6 +7,7 @@ from typing import List
 import ops
 import yaml
 from pymongo import MongoClient
+from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
 from pytest_operator.plugin import OpsTest
 from tenacity import retry, retry_if_result, stop_after_attempt, wait_exponential
 
@@ -14,6 +15,45 @@ METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 PORT = 27017
 APP_NAME = METADATA["name"]
 UNIT_IDS = [0, 1, 2]
+
+
+def replica_set_client(replica_ips: List[str], password: str, app=APP_NAME) -> MongoClient:
+    """Generates the replica set URI for multiple IP addresses.
+
+    Args:
+        replica_ips: list of ips hosting the replica set.
+        password: password of database.
+        app: name of application which hosts the cluster.
+    """
+    hosts = ["{}:{}".format(replica_ip, PORT) for replica_ip in replica_ips]
+    hosts = ",".join(hosts)
+
+    replica_set_uri = f"mongodb://operator:" f"{password}@" f"{hosts}/admin?replicaSet={app}"
+    return MongoClient(replica_set_uri)
+
+
+async def fetch_replica_set_members(replica_ips: List[str], ops_test: OpsTest, app=APP_NAME):
+    """Fetches the IPs listed as replica set members in the MongoDB replica set configuration.
+
+    Args:
+        replica_ips: list of ips hosting the replica set.
+        ops_test: reference to deployment.
+        app: name of application which has the cluster.
+    """
+    # connect to replica set uri
+    password = await get_password(ops_test, app)
+    client = replica_set_client(replica_ips, password, app)
+
+    # get ips from MongoDB replica set configuration
+    rs_config = client.admin.command("replSetGetConfig")
+    member_ips = []
+    for member in rs_config["config"]["members"]:
+        # get member ip without ":PORT"
+        member_ips.append(member["host"].split(":")[0])
+
+    client.close()
+
+    return member_ips
 
 
 def unit_uri(ip_address: str, password, app=APP_NAME) -> str:
@@ -42,29 +82,55 @@ async def get_password(ops_test: OpsTest, app=APP_NAME) -> str:
     return action.results["admin-password"]
 
 
+async def fetch_primary(replica_set_hosts: List[str], ops_test: OpsTest, app=APP_NAME) -> str:
+    """Returns IP address of current replica set primary."""
+    # connect to MongoDB client
+    password = await get_password(ops_test, app)
+    client = replica_set_client(replica_set_hosts, password, app)
+
+    # grab the replica set status
+    try:
+        status = client.admin.command("replSetGetStatus")
+    except (ConnectionFailure, ConfigurationError, OperationFailure):
+        return None
+    finally:
+        client.close()
+
+    primary = None
+    # loop through all members in the replica set
+    for member in status["members"]:
+        # check replica's current state
+        if member["stateStr"] == "PRIMARY":
+            # get member ip without ":PORT"
+            primary = member["name"].split(":")[0]
+
+    return primary
+
+
 @retry(
-    retry=retry_if_result(lambda x: x == 0),
+    retry=retry_if_result(lambda x: x is None),
     stop=stop_after_attempt(5),
     wait=wait_exponential(multiplier=1, min=2, max=30),
 )
-def count_primaries(ops_test: OpsTest, password: str) -> int:
-    """Counts the number of primaries in a replica set.
+async def replica_set_primary(
+    replica_set_hosts: List[str], ops_test: OpsTest, app=APP_NAME
+) -> str:
+    """Returns the primary of the replica set.
 
-    Will retry counting when the number of primaries is 0 at most 5 times.
+    Retrying 5 times to give the replica set time to elect a new primary, also checks against the
+    valid_ips to verify that the primary is not outdated.
+
+    client:
+        client of the replica set of interest.
+    valid_ips:
+        list of ips that are currently in the replica set.
     """
-    number_of_primaries = 0
-    for unit_id in UNIT_IDS:
-        # get unit
-        unit = ops_test.model.applications[APP_NAME].units[unit_id]
+    primary = await fetch_primary(replica_set_hosts, ops_test, app)
+    # return None if primary is no longer in the replica set
+    if primary is not None and primary not in replica_set_hosts:
+        return None
 
-        # connect to mongod
-        client = MongoClient(unit_uri(unit.public_address, password), directConnection=True)
-
-        # check primary status
-        if client.is_primary:
-            number_of_primaries += 1
-
-    return number_of_primaries
+    return str(primary)
 
 
 async def find_unit(ops_test: OpsTest, leader: bool, app=APP_NAME) -> ops.model.Unit:
@@ -77,38 +143,20 @@ async def find_unit(ops_test: OpsTest, leader: bool, app=APP_NAME) -> ops.model.
     return ret_unit
 
 
-async def unit_ids(ops_test: OpsTest) -> List[int]:
-    """Provides a function for generating unit_ids in case a cluster is provided."""
-    provided_cluster = await ha_on_provided_cluster(ops_test)
-    if not provided_cluster:
-        return UNIT_IDS
-    unit_ids = [
-        unit.name.split("/")[1] for unit in ops_test.model.applications[provided_cluster].units
-    ]
-    return unit_ids
+async def retrieve_entries(ops_test, app, db_name, collection_name, query_field):
+    """Retries entries from a specified collection within a specified database."""
+    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
+    password = await get_password(ops_test, app)
+    client = replica_set_client(ip_addresses, password, app)
 
+    db = client[db_name]
+    test_collection = db[collection_name]
 
-async def ha_on_provided_cluster(ops_test: OpsTest) -> str:
-    """Returns the name of a cluster provided for HA testing.
-    This is important since not all deployments of the MongoDB charm have the application name
-    MongoDB.
-    """
-    status = await ops_test.model.get_status()
-    for app in ops_test.model.applications:
-        # note that format of the charm field is not exactly "mongodb" but instead takes the form
-        # of `local:focal/mongodb-6`
-        if "mongodb" in status["applications"][app]["charm"]:
-            return app
-    return None
+    # read all entries from original cluster
+    cursor = test_collection.find({})
+    cluster_entries = set()
+    for document in cursor:
+        cluster_entries.add(document[query_field])
 
-
-async def app_name(ops_test: OpsTest) -> str:
-    """Returns the name of the app being used for testing."""
-    status = await ops_test.model.get_status()
-    for app in ops_test.model.applications:
-        # note that format of the charm field is not exactly "mongodb" but instead takes the form
-        # of `local:focal/mongodb-6`
-        if "mongodb" in status["applications"][app]["charm"]:
-            return app
-
-    return APP_NAME
+    client.close()
+    return cluster_entries
