@@ -160,10 +160,3 @@ async def retrieve_entries(ops_test, app, db_name, collection_name, query_field)
 
     client.close()
     return cluster_entries
-
-
-async def insert_entry(client, db_name, collection_name, entry):
-    """Inserts a new entry into the cluster database."""
-    db = client[db_name]
-    test_collection = db[collection_name]
-    test_collection.insert(entry)

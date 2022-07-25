@@ -16,7 +16,6 @@ from tests.integration.ha_tests.helpers import (
     fetch_replica_set_members,
     find_unit,
     get_password,
-    insert_entry,
     replica_set_client,
     replica_set_primary,
     retrieve_entries,
@@ -125,8 +124,9 @@ async def test_replication_across_members(ops_test: OpsTest) -> None:
     primary = await replica_set_primary(ip_addresses, ops_test)
     password = await get_password(ops_test)
     client = MongoClient(unit_uri(primary, password), directConnection=True)
-    entry = {"release_name": "Focal Fossa", "version": 20.04, "LTS": True}
-    insert_entry(client, db_name="new-db", collection_name="test_collection", entry=entry)
+    db = client["new-db"]
+    test_collection = db["test_collection"]
+    test_collection.insert({"release_name": "Focal Fossa", "version": 20.04, "LTS": True})
     client.close()
 
     secondaries = set(ip_addresses) - set([primary])
@@ -136,6 +136,9 @@ async def test_replication_across_members(ops_test: OpsTest) -> None:
         db = client["new-db"]
         test_collection = db["test_collection"]
         query = test_collection.find({}, {"release_name": 1})
+        logger.error(query)
+        logger.error(query[0])
+
         assert query[0]["release_name"] == "Focal Fossa"
 
         client.close()
@@ -155,8 +158,9 @@ async def test_unique_cluster_dbs(ops_test: OpsTest) -> None:
     ]
     password = await get_password(ops_test, app=ANOTHER_DATABASE_APP_NAME)
     client = replica_set_client(ip_addresses, password, app=ANOTHER_DATABASE_APP_NAME)
-    entry = {"release_name": "Jammy Jelly", "version": 22.04, "LTS": False}
-    insert_entry(client, db_name="new-db", collection_name="test_collection", entry=entry)
+    db = client["new-db"]
+    test_collection = db["test_collection"]
+    test_collection.insert({"release_name": "Jammy Jelly", "version": 22.04, "LTS": False})
 
     cluster_1_entries = await retrieve_entries(
         ops_test,
