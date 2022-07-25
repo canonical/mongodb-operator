@@ -16,8 +16,10 @@ from tests.integration.ha_tests.helpers import (
     fetch_replica_set_members,
     find_unit,
     get_password,
+    insert_entry,
     replica_set_client,
     replica_set_primary,
+    retrieve_entries,
     unit_uri,
 )
 
@@ -123,23 +125,17 @@ async def test_replication_across_members(ops_test: OpsTest) -> None:
     primary = await replica_set_primary(ip_addresses, ops_test)
     password = await get_password(ops_test)
     client = MongoClient(unit_uri(primary, password), directConnection=True)
-
-    db = client["new-db"]
-    test_collection = db["test_collection"]
-    ubuntu = {"release_name": "Focal Fossa", "version": 20.04, "LTS": True}
-    test_collection.insert(ubuntu)
-
+    entry = {"release_name": "Focal Fossa", "version": 20.04, "LTS": True}
+    insert_entry(client, db_name="new-db", collection_name="test_collection", entry=entry)
     client.close()
 
     secondaries = set(ip_addresses) - set([primary])
-    logger.error(secondaries)
     for secondary in secondaries:
         client = MongoClient(unit_uri(secondary, password), directConnection=True)
 
         db = client["new-db"]
         test_collection = db["test_collection"]
         query = test_collection.find({}, {"release_name": 1})
-        logger.error(query[0]["release_name"])
         assert query[0]["release_name"] == "Focal Fossa"
 
         client.close()
@@ -159,47 +155,33 @@ async def test_unique_cluster_dbs(ops_test: OpsTest) -> None:
     ]
     password = await get_password(ops_test, app=ANOTHER_DATABASE_APP_NAME)
     client = replica_set_client(ip_addresses, password, app=ANOTHER_DATABASE_APP_NAME)
+    entry = {"release_name": "Jammy Jelly", "version": 22.04, "LTS": False}
+    insert_entry(client, db_name="new-db", collection_name="test_collection", entry=entry)
 
-    db = client["new-db"]
-    test_collection = db["test_collection"]
-    ubuntu = {"release_name": "Jammy Jelly", "version": 22.04, "LTS": False}
-    test_collection.insert(ubuntu)
+    cluster_1_entries = await retrieve_entries(
+        ops_test,
+        app=ANOTHER_DATABASE_APP_NAME,
+        db_name="new-db",
+        collection_name="test_collection",
+        query_field="release_name",
+    )
 
-    # read all entries from new cluster
-    cursor = test_collection.find({})
-    cluster_1_entries = set()
-    for document in cursor:
-        logger.error(document)
-        cluster_1_entries.add(document["release_name"])
-
-    client.close()
-
-    # read all entries from other cluster
-    ip_addresses = [unit.public_address for unit in ops_test.model.applications[APP_NAME].units]
-    password = await get_password(ops_test)
-    client = replica_set_client(ip_addresses, password)
-
-    db = client["new-db"]
-    test_collection = db["test_collection"]
-
-    # read all entries from original cluster
-    cursor = test_collection.find({})
-    cluster_2_entries = set()
-    for document in cursor:
-        cluster_2_entries.add(document["release_name"])
-
-    client.close()
+    cluster_2_entries = await retrieve_entries(
+        ops_test,
+        app=APP_NAME,
+        db_name="new-db",
+        collection_name="test_collection",
+        query_field="release_name",
+    )
 
     common_entries = cluster_2_entries.intersection(cluster_1_entries)
-    logger.error(cluster_1_entries)
-    logger.error(cluster_2_entries)
     assert len(common_entries) == 0, "Writes from one cluster are replicated to another cluster."
 
 
 async def test_replication_member_scaling(ops_test: OpsTest) -> None:
     """Verify newly added and newly removed members properly replica data.
 
-    Verify newly members have replicated data and newly removed members are gone without data.
+    Verify newly add members have replicated data and newly removed members are gone without data.
     """
     original_ip_addresses = [
         unit.public_address for unit in ops_test.model.applications[APP_NAME].units
@@ -217,12 +199,11 @@ async def test_replication_member_scaling(ops_test: OpsTest) -> None:
 
     # check for replicated data while retrying to give time for replica to copy over data.
     try:
-        for attempt in Retrying(stop=stop_after_delay(2 * 60), wait=wait_fixed(3)):
+        for attempt in Retrying(stop=stop_after_delay(60), wait=wait_fixed(3)):
             with attempt:
                 db = client["new-db"]
                 test_collection = db["test_collection"]
                 query = test_collection.find({}, {"release_name": 1})
-                logger.error(query[0]["release_name"])
                 assert query[0]["release_name"] == "Focal Fossa"
 
     except RetryError:

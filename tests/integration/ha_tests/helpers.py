@@ -11,7 +11,6 @@ from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailu
 from pytest_operator.plugin import OpsTest
 from tenacity import retry, retry_if_result, stop_after_attempt, wait_exponential
 
-_PERMISSION_MASK_FOR_SCP = 644
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 PORT = 27017
 APP_NAME = METADATA["name"]
@@ -24,7 +23,7 @@ def replica_set_client(replica_ips: List[str], password: str, app=APP_NAME) -> M
     Args:
         replica_ips: list of ips hosting the replica set.
         password: password of database.
-        app: name of application which has the cluster.
+        app: name of application which hosts the cluster.
     """
     hosts = ["{}:{}".format(replica_ip, PORT) for replica_ip in replica_ips]
     hosts = ",".join(hosts)
@@ -43,7 +42,7 @@ async def fetch_replica_set_members(replica_ips: List[str], ops_test: OpsTest, a
     """
     # connect to replica set uri
     password = await get_password(ops_test, app)
-    client = replica_set_client(replica_ips, password)
+    client = replica_set_client(replica_ips, password, app)
 
     # get ips from MongoDB replica set configuration
     rs_config = client.admin.command("replSetGetConfig")
@@ -83,6 +82,31 @@ async def get_password(ops_test: OpsTest, app=APP_NAME) -> str:
     return action.results["admin-password"]
 
 
+async def fetch_primary(replica_set_hosts: List[str], ops_test: OpsTest, app=APP_NAME) -> str:
+    """Returns IP address of current replica set primary."""
+    # connect to MongoDB client
+    password = await get_password(ops_test, app)
+    client = replica_set_client(replica_set_hosts, password, app)
+
+    # grab the replica set status
+    try:
+        status = client.admin.command("replSetGetStatus")
+    except (ConnectionFailure, ConfigurationError, OperationFailure):
+        return None
+    finally:
+        client.close()
+
+    primary = None
+    # loop through all members in the replica set
+    for member in status["members"]:
+        # check replica's current state
+        if member["stateStr"] == "PRIMARY":
+            # get member ip without ":PORT"
+            primary = member["name"].split(":")[0]
+
+    return primary
+
+
 @retry(
     retry=retry_if_result(lambda x: x is None),
     stop=stop_after_attempt(5),
@@ -109,31 +133,6 @@ async def replica_set_primary(
     return str(primary)
 
 
-async def fetch_primary(replica_set_hosts: List[str], ops_test: OpsTest, app=APP_NAME) -> str:
-    """Returns IP address of current replica set primary."""
-    # connect to MongoDB client
-    password = await get_password(ops_test, app)
-    client = replica_set_client(replica_set_hosts, password)
-
-    # grab the replica set status
-    try:
-        status = client.admin.command("replSetGetStatus")
-    except (ConnectionFailure, ConfigurationError, OperationFailure):
-        return None
-    finally:
-        client.close()
-
-    primary = None
-    # loop through all members in the replica set
-    for member in status["members"]:
-        # check replica's current state
-        if member["stateStr"] == "PRIMARY":
-            # get member ip without ":PORT"
-            primary = member["name"].split(":")[0]
-
-    return primary
-
-
 async def find_unit(ops_test: OpsTest, leader: bool, app=APP_NAME) -> ops.model.Unit:
     """Helper function identifies the a unit, based on need for leader or non-leader."""
     ret_unit = None
@@ -142,3 +141,29 @@ async def find_unit(ops_test: OpsTest, leader: bool, app=APP_NAME) -> ops.model.
             ret_unit = unit
 
     return ret_unit
+
+
+async def retrieve_entries(ops_test, app, db_name, collection_name, query_field):
+    """Retries entries from a specified collection within a specified database."""
+    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
+    password = await get_password(ops_test, app)
+    client = replica_set_client(ip_addresses, password, app)
+
+    db = client[db_name]
+    test_collection = db[collection_name]
+
+    # read all entries from original cluster
+    cursor = test_collection.find({})
+    cluster_entries = set()
+    for document in cursor:
+        cluster_entries.add(document[query_field])
+
+    client.close()
+    return cluster_entries
+
+
+async def insert_entry(client, db_name, collection_name, entry):
+    """Inserts a new entry into the cluster database."""
+    db = client[db_name]
+    test_collection = db[collection_name]
+    test_collection.insert(entry)
