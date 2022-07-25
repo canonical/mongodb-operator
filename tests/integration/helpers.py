@@ -39,7 +39,7 @@ def replica_set_client(replica_ips: List[str], password: str, app=APP_NAME) -> M
     Args:
         replica_ips: list of ips hosting the replica set.
         password: password of database.
-        app: name of application which has the cluster.
+        app: name of application which hosts the cluster.
     """
     hosts = ["{}:{}".format(replica_ip, PORT) for replica_ip in replica_ips]
     hosts = ",".join(hosts)
@@ -182,3 +182,29 @@ async def find_unit(ops_test: OpsTest, leader: bool, app=APP_NAME) -> ops.model.
             ret_unit = unit
 
     return ret_unit
+
+
+async def retrieve_entries(ops_test, app, db_name, collection_name, query_field):
+    """Retries entries from a specified collection within a specified database."""
+    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
+    password = await get_password(ops_test)
+    client = replica_set_client(ip_addresses, password)
+
+    db = client[db_name]
+    test_collection = db[collection_name]
+
+    # read all entries from original cluster
+    cursor = test_collection.find({})
+    cluster_entries = set()
+    for document in cursor:
+        cluster_entries.add(document[query_field])
+
+    client.close()
+    return cluster_entries
+
+
+async def insert_entry(client, db_name, collection_name, entry):
+    """Inserts a new entry into the cluster database."""
+    db = client[db_name]
+    test_collection = db[collection_name]
+    test_collection.insert(entry)
