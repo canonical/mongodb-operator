@@ -14,15 +14,20 @@ from helpers import (
     fetch_replica_set_members,
     find_unit,
     get_password,
+    insert_entry,
+    replica_set_client,
     replica_set_primary,
+    retrieve_entries,
     unit_uri,
 )
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
 from pytest_operator.plugin import OpsTest
-from tenacity import RetryError
+from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 logger = logging.getLogger(__name__)
+
+ANOTHER_DATABASE_APP_NAME = "another-database-a"
 
 
 @pytest.mark.skipif(
@@ -198,3 +203,102 @@ async def test_scale_down_capablities(ops_test: OpsTest) -> None:
     member_ips = await fetch_replica_set_members(ip_addresses, ops_test)
 
     assert set(member_ips) == set(ip_addresses), "mongod config contains deleted units"
+
+
+async def test_replication_across_members(ops_test: OpsTest) -> None:
+    """Check consistency, ie write to primary, read data from secondaries."""
+    # first find primary, write to primary, then read from each unit
+    ip_addresses = [unit.public_address for unit in ops_test.model.applications[APP_NAME].units]
+    primary = await replica_set_primary(ip_addresses, ops_test)
+    password = await get_password(ops_test)
+    client = MongoClient(unit_uri(primary, password), directConnection=True)
+    entry = {"release_name": "Focal Fossa", "version": 20.04, "LTS": True}
+    insert_entry(client, db_name="new-db", collection_name="test_collection", entry=entry)
+    client.close()
+
+    secondaries = set(ip_addresses) - set([primary])
+    for secondary in secondaries:
+        client = MongoClient(unit_uri(secondary, password), directConnection=True)
+
+        db = client["new-db"]
+        test_collection = db["test_collection"]
+        query = test_collection.find({}, {"release_name": 1})
+        assert query[0]["release_name"] == "Focal Fossa"
+
+        client.close()
+
+
+async def test_unique_cluster_dbs(ops_test: OpsTest) -> None:
+    """Verify unique clusters do not share DBs."""
+    # deploy new cluster
+    my_charm = await ops_test.build_charm(".")
+    await ops_test.model.deploy(my_charm, num_units=1, application_name=ANOTHER_DATABASE_APP_NAME)
+    await ops_test.model.wait_for_idle()
+
+    # write data to new cluster
+    ip_addresses = [
+        unit.public_address
+        for unit in ops_test.model.applications[ANOTHER_DATABASE_APP_NAME].units
+    ]
+    password = await get_password(ops_test, app=ANOTHER_DATABASE_APP_NAME)
+    client = replica_set_client(ip_addresses, password, app=ANOTHER_DATABASE_APP_NAME)
+    entry = {"release_name": "Jammy Jelly", "version": 22.04, "LTS": False}
+    insert_entry(client, db_name="new-db", collection_name="test_collection", entry=entry)
+
+    cluster_1_entries = await retrieve_entries(
+        ops_test,
+        app=ANOTHER_DATABASE_APP_NAME,
+        db_name="new-db",
+        collection_name="test_collection",
+        query_field="release_name",
+    )
+
+    cluster_2_entries = await retrieve_entries(
+        ops_test,
+        app=APP_NAME,
+        db_name="new-db",
+        collection_name="test_collection",
+        query_field="release_name",
+    )
+
+    common_entries = cluster_2_entries.intersection(cluster_1_entries)
+    assert len(common_entries) == 0, "Writes from one cluster are replicated to another cluster."
+
+
+async def test_replication_member_scaling(ops_test: OpsTest) -> None:
+    """Verify newly added and newly removed members properly replica data.
+
+    Verify newly add members have replicated data and newly removed members are gone without data.
+    """
+    original_ip_addresses = [
+        unit.public_address for unit in ops_test.model.applications[APP_NAME].units
+    ]
+    await ops_test.model.applications[APP_NAME].add_unit(count=1)
+    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=1000)
+    assert len(ops_test.model.applications[APP_NAME].units) == 4
+
+    new_ip_addresses = [
+        unit.public_address for unit in ops_test.model.applications[APP_NAME].units
+    ]
+    new_member_ip = list(set(new_ip_addresses) - set(original_ip_addresses))[0]
+    password = await get_password(ops_test)
+    client = MongoClient(unit_uri(new_member_ip, password), directConnection=True)
+
+    # check for replicated data while retrying to give time for replica to copy over data.
+    try:
+        for attempt in Retrying(stop=stop_after_delay(60), wait=wait_fixed(3)):
+            with attempt:
+                db = client["new-db"]
+                test_collection = db["test_collection"]
+                query = test_collection.find({}, {"release_name": 1})
+                assert query[0]["release_name"] == "Focal Fossa"
+
+    except RetryError:
+        assert False, "Newly added unit doesn't replicate data."
+
+    client.close()
+
+    # TODO in a future PR implement: newly removed members are gone without data.
+    # TODO in a future PR implement: a test that option "preserves data on delete" works
+    # Note for above tests it will be necessary to test on a different substrate (ie AWS) see:
+    # https://chat.canonical.com/canonical/pl/eirmfogfx3rmufmom9thjx6pwr
