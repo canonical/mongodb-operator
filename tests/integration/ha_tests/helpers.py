@@ -1,4 +1,4 @@
-# Copyright 2021 Canonical Ltd.
+# # Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 from pathlib import Path
@@ -11,7 +11,6 @@ from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailu
 from pytest_operator.plugin import OpsTest
 from tenacity import retry, retry_if_result, stop_after_attempt, wait_exponential
 
-_PERMISSION_MASK_FOR_SCP = 644
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 PORT = 27017
 APP_NAME = METADATA["name"]
@@ -24,7 +23,7 @@ def replica_set_client(replica_ips: List[str], password: str, app=APP_NAME) -> M
     Args:
         replica_ips: list of ips hosting the replica set.
         password: password of database.
-        app: name of application which has the cluster.
+        app: name of application which hosts the cluster.
     """
     hosts = ["{}:{}".format(replica_ip, PORT) for replica_ip in replica_ips]
     hosts = ",".join(hosts)
@@ -76,32 +75,12 @@ async def get_password(ops_test: OpsTest, app) -> str:
         String with the password stored on the peer relation databag.
     """
     # can retrieve from any unit running unit so we pick the first
-    app = await cluster_name(ops_test)
     unit_name = ops_test.model.applications[app].units[0].name
     unit_id = unit_name.split("/")[1]
 
     action = await ops_test.model.units.get(f"{app}/{unit_id}").run_action("get-admin-password")
     action = await action.wait()
     return action.results["admin-password"]
-
-
-@retry(
-    retry=retry_if_result(lambda x: x is None),
-    stop=stop_after_attempt(5),
-    wait=wait_exponential(multiplier=1, min=2, max=30),
-)
-async def replica_set_primary(replica_set_hosts: List[str], ops_test: OpsTest) -> str:
-    """Returns the primary of the replica set.
-
-    Retrying 5 times to give the replica set time to elect a new primary, also checks against the
-    valid_ips to verify that the primary is not outdated.
-    """
-    primary = await fetch_primary(replica_set_hosts, ops_test)
-    # return None if primary is no longer in the replica set
-    if primary is not None and primary not in replica_set_hosts:
-        return None
-
-    return str(primary)
 
 
 async def fetch_primary(replica_set_hosts: List[str], ops_test: OpsTest) -> str:
@@ -128,6 +107,44 @@ async def fetch_primary(replica_set_hosts: List[str], ops_test: OpsTest) -> str:
             primary = member["name"].split(":")[0]
 
     return primary
+
+
+@retry(
+    retry=retry_if_result(lambda x: x is None),
+    stop=stop_after_attempt(5),
+    wait=wait_exponential(multiplier=1, min=2, max=30),
+)
+async def replica_set_primary(replica_set_hosts: List[str], ops_test: OpsTest) -> str:
+    """Returns the primary of the replica set.
+
+    Retrying 5 times to give the replica set time to elect a new primary, also checks against the
+    valid_ips to verify that the primary is not outdated.
+    """
+    primary = await fetch_primary(replica_set_hosts, ops_test)
+    # return None if primary is no longer in the replica set
+    if primary is not None and primary not in replica_set_hosts:
+        return None
+
+    return str(primary)
+
+
+async def retrieve_entries(ops_test, app, db_name, collection_name, query_field):
+    """Retries entries from a specified collection within a specified database."""
+    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
+    password = await get_password(ops_test, app)
+    client = replica_set_client(ip_addresses, password, app)
+
+    db = client[db_name]
+    test_collection = db[collection_name]
+
+    # read all entries from original cluster
+    cursor = test_collection.find({})
+    cluster_entries = set()
+    for document in cursor:
+        cluster_entries.add(document[query_field])
+
+    client.close()
+    return cluster_entries
 
 
 async def find_unit(ops_test: OpsTest, leader: bool) -> ops.model.Unit:

@@ -10,12 +10,14 @@ from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from tests.integration.ha_tests.helpers import (
+    APP_NAME,
     cluster_name,
     fetch_replica_set_members,
     find_unit,
     get_password,
     replica_set_client,
     replica_set_primary,
+    retrieve_entries,
     unit_ids,
     unit_uri,
 )
@@ -143,11 +145,9 @@ async def test_replication_across_members(ops_test: OpsTest) -> None:
     primary = await replica_set_primary(ip_addresses, ops_test)
     password = await get_password(ops_test, app)
     client = MongoClient(unit_uri(primary, password, app), directConnection=True)
-
     db = client["new-db"]
     test_collection = db["test_collection"]
-    ubuntu = {"release_name": "Focal Fossa", "version": 20.04, "LTS": True}
-    test_collection.insert(ubuntu)
+    test_collection.insert({"release_name": "Focal Fossa", "version": 20.04, "LTS": True})
 
     client.close()
 
@@ -177,36 +177,25 @@ async def test_unique_cluster_dbs(ops_test: OpsTest) -> None:
     ]
     password = await get_password(ops_test, app=ANOTHER_DATABASE_APP_NAME)
     client = replica_set_client(ip_addresses, password, app=ANOTHER_DATABASE_APP_NAME)
-
     db = client["new-db"]
     test_collection = db["test_collection"]
-    ubuntu = {"release_name": "Jammy Jelly", "version": 22.04, "LTS": False}
-    test_collection.insert(ubuntu)
+    test_collection.insert({"release_name": "Jammy Jelly", "version": 22.04, "LTS": False})
 
-    # read all entries from new cluster
-    cursor = test_collection.find({})
-    cluster_1_entries = set()
-    for document in cursor:
-        cluster_1_entries.add(document["release_name"])
+    cluster_1_entries = await retrieve_entries(
+        ops_test,
+        app=ANOTHER_DATABASE_APP_NAME,
+        db_name="new-db",
+        collection_name="test_collection",
+        query_field="release_name",
+    )
 
-    client.close()
-
-    # read all entries from other cluster
-    app = await cluster_name(ops_test)
-    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
-    password = await get_password(ops_test, app)
-    client = replica_set_client(ip_addresses, password, app)
-
-    db = client["new-db"]
-    test_collection = db["test_collection"]
-
-    # read all entries from original cluster
-    cursor = test_collection.find({})
-    cluster_2_entries = set()
-    for document in cursor:
-        cluster_2_entries.add(document["release_name"])
-
-    client.close()
+    cluster_2_entries = await retrieve_entries(
+        ops_test,
+        app=APP_NAME,
+        db_name="new-db",
+        collection_name="test_collection",
+        query_field="release_name",
+    )
 
     common_entries = cluster_2_entries.intersection(cluster_1_entries)
     assert len(common_entries) == 0, "Writes from one cluster are replicated to another cluster."
@@ -228,7 +217,7 @@ async def test_replication_member_scaling(ops_test: OpsTest) -> None:
 
     new_ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
     new_member_ip = list(set(new_ip_addresses) - set(original_ip_addresses))[0]
-    password = await get_password(ops_test)
+    password = await get_password(ops_test, app)
     client = MongoClient(unit_uri(new_member_ip, password, app), directConnection=True)
 
     # check for replicated data while retrying to give time for replica to copy over data.

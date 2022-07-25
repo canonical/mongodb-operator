@@ -22,6 +22,8 @@ from tenacity import RetryError
 
 logger = logging.getLogger(__name__)
 
+ANOTHER_DATABASE_APP_NAME = "another-database-a"
+
 
 @pytest.mark.skipif(
     os.environ.get("PYTEST_SKIP_DEPLOY", False),
