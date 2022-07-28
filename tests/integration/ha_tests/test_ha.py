@@ -39,6 +39,96 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await ops_test.model.deploy(my_charm, num_units=3)
     await ops_test.model.wait_for_idle()
 
+def storage_type(ops_test, app):
+    """Retrieves type of storage associated with application"""
+    import subprocess
+    model_name = ops_test.model.info.name
+    proc = subprocess.check_output(f"juju storage --model={model_name}".split())
+    proc = proc.decode("utf-8")
+    for line in  proc.splitlines():
+        if 'Storage' in line:
+            continue
+
+        if len(line) == 0:
+            continue
+
+        if "detached" in line:
+            continue
+
+        unit_name = line.split()[0]
+        app_name = unit_name.split("/")[0]
+        if app_name == app:
+            return line.split()[3]
+
+def storage_id(ops_test, unit_name):
+    """Retrieves  storage id associated with unit"""
+    import subprocess
+    model_name = ops_test.model.info.name
+    proc = subprocess.check_output(f"juju storage --model={model_name}".split())
+    proc = proc.decode("utf-8")
+    for line in  proc.splitlines():
+        if 'Storage' in line:
+            continue
+
+        if len(line) == 0:
+            continue
+
+        if "detached" in line:
+            continue
+
+        if line.split()[0] == unit_name:
+            return line.split()[1]
+
+
+async def add_unit_with_storage(ops_test, app, storage):
+    """Adds unit with storage.
+
+    jujulibs do not currently provide this functionality, until they do this is a proper workaround.
+    """
+    import subprocess
+    expected_units = len(ops_test.model.applications[app].units)+1
+    prev_units = [unit.name for unit in ops_test.model.applications[app].units]
+    model_name = ops_test.model.info.name
+    add_unit_cmd = f"add-unit {app} --model={model_name} --attach-storage={storage}".split()
+    logger.error(add_unit_cmd)
+    await ops_test.juju(*add_unit_cmd)
+    await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
+    assert len(ops_test.model.applications[app].units) == expected_units, "New unit not added to model"
+
+
+    # verify storage attached
+    curr_units = [unit.name for unit in ops_test.model.applications[app].units]
+    new_unit = list(set(curr_units) - set(prev_units))[0]
+    assert storage_id(ops_test, new_unit) == storage, "unit added with incorrect storage"
+
+    # return a reference to newly added unit
+    for unit in ops_test.model.applications[app].units:
+        if unit.name == new_unit:
+            return unit
+
+
+
+async def test_storage_re_use(ops_test):
+    app = await cluster_name(ops_test)
+    logger.error(storage_type(ops_test, app))
+    if storage_type(ops_test, app) == "rootfs":
+        pytest.skip("re-use of storage can only be used on deployments with persistent storage not on rootfs deployments")
+
+    # removing the only replica can be disasterous
+    if  len(ops_test.model.applications[app].units) <2:
+        await ops_test.model.applications[app].add_unit(count=1)
+        await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
+
+    unit = ops_test.model.applications[app].units[0]
+    unit_storage_id  = storage_id(ops_test, unit.name)
+    expected_units = len(ops_test.model.applications[app].units) -1
+    await ops_test.model.destroy_unit(unit.name)
+    await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
+    assert len(ops_test.model.applications[app].units) == expected_units
+
+    new_unit = await add_unit_with_storage(ops_test, app, unit_storage_id)
+    assert await reused_storage(ops_test, new_unit.public_address), "attached storage not properly re-used by MongoDB."
+
 
 @pytest.mark.abort_on_fail
 async def test_add_units(ops_test: OpsTest) -> None:
