@@ -3,8 +3,8 @@
 
 import unittest
 from unittest.mock import call, patch
-import tenacity
 
+import tenacity
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
 
 from lib.charms.mongodb_libs.v0.mongodb import MongoDBConnection, NotReadyError
