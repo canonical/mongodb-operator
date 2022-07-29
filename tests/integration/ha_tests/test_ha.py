@@ -11,7 +11,7 @@ from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from tests.integration.ha_tests.helpers import (
     APP_NAME,
-    cluster_name,
+    app_name,
     fetch_replica_set_members,
     find_unit,
     get_password,
@@ -32,7 +32,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy one unit of MongoDB."""
     # it is possible for users to provide their own cluster for HA testing. Hence check if there
     # is a pre-existing cluster.
-    if await cluster_name(ops_test):
+    if await app_name(ops_test):
         return
 
     my_charm = await ops_test.build_charm(".")
@@ -47,7 +47,7 @@ async def test_add_units(ops_test: OpsTest) -> None:
     Verifies that when a new unit is added to the MongoDB application that it is added to the
     MongoDB replica set configuration.
     """
-    app = await cluster_name(ops_test)
+    app = await app_name(ops_test)
 
     # add units and wait for idle
     expected_units = len(await unit_ids(ops_test)) + 2
@@ -81,7 +81,7 @@ async def test_scale_down_capablities(ops_test: OpsTest) -> None:
     5. deleting a non-leader unit is properly handled.
     """
     deleted_unit_ips = []
-    app = await cluster_name(ops_test)
+    app = await app_name(ops_test)
     units_to_remove = []
     minority_count = int(len(ops_test.model.applications[app].units) / 2)
 
@@ -106,7 +106,6 @@ async def test_scale_down_capablities(ops_test: OpsTest) -> None:
         units_to_remove.append(unit_to_remove.name)
 
     # destroy units simulatenously
-    # pass a lambda function here.
     expected_units = len(await unit_ids(ops_test)) - len(units_to_remove)
     await ops_test.model.destroy_units(*units_to_remove)
 
@@ -140,7 +139,7 @@ async def test_scale_down_capablities(ops_test: OpsTest) -> None:
 async def test_replication_across_members(ops_test: OpsTest) -> None:
     """Check consistency, ie write to primary, read data from secondaries."""
     # first find primary, write to primary, then read from each unit
-    app = await cluster_name(ops_test)
+    app = await app_name(ops_test)
     ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
     primary = await replica_set_primary(ip_addresses, ops_test)
     password = await get_password(ops_test, app)
@@ -206,7 +205,7 @@ async def test_replication_member_scaling(ops_test: OpsTest) -> None:
 
     Verify newly members have replicated data and newly removed members are gone without data.
     """
-    app = await cluster_name(ops_test)
+    app = await app_name(ops_test)
     original_ip_addresses = [
         unit.public_address for unit in ops_test.model.applications[app].units
     ]

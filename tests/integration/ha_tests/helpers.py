@@ -1,4 +1,4 @@
-# # Copyright 2021 Canonical Ltd.
+# Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 from pathlib import Path
@@ -41,7 +41,7 @@ async def fetch_replica_set_members(replica_ips: List[str], ops_test: OpsTest):
         app: name of application which has the cluster.
     """
     # connect to replica set uri
-    app = await cluster_name(ops_test)
+    app = await app_name(ops_test)
     password = await get_password(ops_test, app)
     client = replica_set_client(replica_ips, password, app)
 
@@ -86,7 +86,7 @@ async def get_password(ops_test: OpsTest, app) -> str:
 async def fetch_primary(replica_set_hosts: List[str], ops_test: OpsTest) -> str:
     """Returns IP address of current replica set primary."""
     # connect to MongoDB client
-    app = await cluster_name(ops_test)
+    app = await app_name(ops_test)
     password = await get_password(ops_test, app)
     client = replica_set_client(replica_set_hosts, password, app)
 
@@ -150,7 +150,7 @@ async def retrieve_entries(ops_test, app, db_name, collection_name, query_field)
 async def find_unit(ops_test: OpsTest, leader: bool) -> ops.model.Unit:
     """Helper function identifies the a unit, based on need for leader or non-leader."""
     ret_unit = None
-    app = await cluster_name(ops_test)
+    app = await app_name(ops_test)
     for unit in ops_test.model.applications[app].units:
         if await unit.is_leader_from_status() == leader:
             ret_unit = unit
@@ -160,7 +160,7 @@ async def find_unit(ops_test: OpsTest, leader: bool) -> ops.model.Unit:
 
 async def unit_ids(ops_test: OpsTest) -> List[int]:
     """Provides a function for generating unit_ids in case a cluster is provided."""
-    provided_cluster = await cluster_name(ops_test)
+    provided_cluster = await app_name(ops_test)
     if not provided_cluster:
         return UNIT_IDS
     unit_ids = [
@@ -169,7 +169,7 @@ async def unit_ids(ops_test: OpsTest) -> List[int]:
     return unit_ids
 
 
-async def cluster_name(ops_test: OpsTest) -> str:
+async def app_name(ops_test: OpsTest) -> str:
     """Returns the name of the cluster running MongoDB.
 
     This is important since not all deployments of the MongoDB charm have the application name
