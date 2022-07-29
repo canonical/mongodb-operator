@@ -24,19 +24,22 @@ PYMONGO_EXCEPTIONS = [
 ]
 
 
-class TestMongoServer(unittest.TestCase):
+class TestMongo(unittest.TestCase):
+    @patch("lib.charms.mongodb_libs.v0.mongodb.Retrying")
     @patch("lib.charms.mongodb_libs.v0.mongodb.MongoClient")
     @patch("lib.charms.mongodb_libs.v0.mongodb.MongoDBConfiguration")
-    def test_is_ready_error_handling(self, config, mock_client):
+    def test_is_ready_error_handling(self, config, mock_client, retrying):
         """Test failure to check ready of replica returns False.
 
         Test also verifies that when an exception is raised we still close the client connection.
         """
-        # TODO figure out how to disable tenacity for faster unit testing
-
         for exception, _ in PYMONGO_EXCEPTIONS:
             with MongoDBConnection(config) as mongo:
-                mock_client.return_value.admin.command.side_effect = exception
+                # TODO figure out how to disable tenacity for faster unit testing, see:
+                # https://stackoverflow.com/questions/73034657/disable-tenacity-for-loop-for-attempt-in-retrying-in-unit-tests
+                # until then we signal a tenacity RetryError, when resolved change to:
+                # mock_client.return_value.admin.command.side_effect = exception
+                retrying.side_effect = tenacity.RetryError(None)
 
                 #  verify ready is false when an error occurs
                 ready = mongo.is_ready
@@ -52,7 +55,6 @@ class TestMongoServer(unittest.TestCase):
 
         Test also verifies that when an exception is raised we still close the client connection.
         """
-
         for exception, expected_raise in PYMONGO_EXCEPTIONS:
             with self.assertRaises(expected_raise):
                 with MongoDBConnection(config) as mongo:
@@ -150,7 +152,6 @@ class TestMongoServer(unittest.TestCase):
         Test also verifies that when an exception is raised we still close the client connection
         and that no attempt to replSetReconfig is made.
         """
-
         any_remove.return_value = True
         with self.assertRaises(NotReadyError):
             with MongoDBConnection(config) as mongo:
