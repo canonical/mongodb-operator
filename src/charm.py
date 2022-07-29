@@ -484,7 +484,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
     def app_data(self) -> Dict:
         """Peer relation data object."""
         relation = self.model.get_relation(PEER)
-        if relation is None:
+        if not relation:
             return {}
 
         return relation.data[self.app]
