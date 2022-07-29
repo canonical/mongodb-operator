@@ -32,7 +32,7 @@ def replica_set_client(replica_ips: List[str], password: str, app=APP_NAME) -> M
     return MongoClient(replica_set_uri)
 
 
-async def fetch_replica_set_members(replica_ips: List[str], ops_test: OpsTest, app=APP_NAME):
+async def fetch_replica_set_members(replica_ips: List[str], ops_test: OpsTest):
     """Fetches the IPs listed as replica set members in the MongoDB replica set configuration.
 
     Args:
@@ -41,6 +41,7 @@ async def fetch_replica_set_members(replica_ips: List[str], ops_test: OpsTest, a
         app: name of application which has the cluster.
     """
     # connect to replica set uri
+    app = await app_name(ops_test)
     password = await get_password(ops_test, app)
     client = replica_set_client(replica_ips, password, app)
 
@@ -67,7 +68,7 @@ def unit_uri(ip_address: str, password, app=APP_NAME) -> str:
     return f"mongodb://operator:" f"{password}@" f"{ip_address}:{PORT}/admin?replicaSet={app}"
 
 
-async def get_password(ops_test: OpsTest, app=APP_NAME) -> str:
+async def get_password(ops_test: OpsTest, app) -> str:
     """Use the charm action to retrieve the password from provided unit.
 
     Returns:
@@ -82,9 +83,10 @@ async def get_password(ops_test: OpsTest, app=APP_NAME) -> str:
     return action.results["admin-password"]
 
 
-async def fetch_primary(replica_set_hosts: List[str], ops_test: OpsTest, app=APP_NAME) -> str:
+async def fetch_primary(replica_set_hosts: List[str], ops_test: OpsTest) -> str:
     """Returns IP address of current replica set primary."""
     # connect to MongoDB client
+    app = await app_name(ops_test)
     password = await get_password(ops_test, app)
     client = replica_set_client(replica_set_hosts, password, app)
 
@@ -112,35 +114,18 @@ async def fetch_primary(replica_set_hosts: List[str], ops_test: OpsTest, app=APP
     stop=stop_after_attempt(5),
     wait=wait_exponential(multiplier=1, min=2, max=30),
 )
-async def replica_set_primary(
-    replica_set_hosts: List[str], ops_test: OpsTest, app=APP_NAME
-) -> str:
+async def replica_set_primary(replica_set_hosts: List[str], ops_test: OpsTest) -> str:
     """Returns the primary of the replica set.
 
     Retrying 5 times to give the replica set time to elect a new primary, also checks against the
     valid_ips to verify that the primary is not outdated.
-
-    client:
-        client of the replica set of interest.
-    valid_ips:
-        list of ips that are currently in the replica set.
     """
-    primary = await fetch_primary(replica_set_hosts, ops_test, app)
+    primary = await fetch_primary(replica_set_hosts, ops_test)
     # return None if primary is no longer in the replica set
     if primary is not None and primary not in replica_set_hosts:
         return None
 
     return str(primary)
-
-
-async def find_unit(ops_test: OpsTest, leader: bool, app=APP_NAME) -> ops.model.Unit:
-    """Helper function identifies the a unit, based on need for leader or non-leader."""
-    ret_unit = None
-    for unit in ops_test.model.applications[app].units:
-        if await unit.is_leader_from_status() == leader:
-            ret_unit = unit
-
-    return ret_unit
 
 
 async def retrieve_entries(ops_test, app, db_name, collection_name, query_field):
@@ -160,3 +145,43 @@ async def retrieve_entries(ops_test, app, db_name, collection_name, query_field)
 
     client.close()
     return cluster_entries
+
+
+async def find_unit(ops_test: OpsTest, leader: bool) -> ops.model.Unit:
+    """Helper function identifies the a unit, based on need for leader or non-leader."""
+    ret_unit = None
+    app = await app_name(ops_test)
+    for unit in ops_test.model.applications[app].units:
+        if await unit.is_leader_from_status() == leader:
+            ret_unit = unit
+
+    return ret_unit
+
+
+async def unit_ids(ops_test: OpsTest) -> List[int]:
+    """Provides a function for generating unit_ids in case a cluster is provided."""
+    provided_cluster = await app_name(ops_test)
+    if not provided_cluster:
+        return UNIT_IDS
+    unit_ids = [
+        unit.name.split("/")[1] for unit in ops_test.model.applications[provided_cluster].units
+    ]
+    return unit_ids
+
+
+async def app_name(ops_test: OpsTest) -> str:
+    """Returns the name of the cluster running MongoDB.
+
+    This is important since not all deployments of the MongoDB charm have the application name
+    "mongodb".
+
+    Note: if multiple clusters are running MongoDB this will return the one first found.
+    """
+    status = await ops_test.model.get_status()
+    for app in ops_test.model.applications:
+        # note that format of the charm field is not exactly "mongodb" but instead takes the form
+        # of `local:focal/mongodb-6`
+        if "mongodb" in status["applications"][app]["charm"]:
+            return app
+
+    return None
