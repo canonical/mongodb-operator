@@ -55,13 +55,26 @@ pip install -r requirements.txt
 ## Testing
 
 ```shell
-tox -e fmt           # update your code according to linting rules
-tox -e lint          # code style
-tox -e unit          # unit tests
-tox -e integration   # integration tests
-tox                  # runs 'lint' and 'unit' environments
+tox -e fmt                      # update your code according to linting rules
+tox -e lint                     # code style
+tox -e unit                     # unit tests
+tox -e charm-integration        # charm integration tests
+tox -e ha-integration           # high-availability replication integration tests
+tox -e relation-integration     # relation integration tests (legacy and new relations)
+tox                             # runs 'lint' and 'unit' environments
 ```
 
+Testing high availability on a production cluster can be done with:
+```shell
+tox -e ha-integration -- --model=<model_name>
+```
+
+Note if you'd like to test storage re-use in ha-testing, your storage must not be of the type `rootfs`. `rootfs` storage is tied to the machine lifecycle and does not stick around after unit removal. `rootfs` storage is used by default with `tox -e ha-integration`. To test ha-testing for storage re-use: 
+```shell
+juju create-storage-pool mongodb-ebs ebs volume-type=standard # create a storage pool
+juju deploy ./*charm --storage mongodb=mongodb-ebs,7G,1 # deploy 1 or more units of application with said storage pool
+tox -e ha-integration -- --model=default # run tests in the model where you deployed the app 
+```
 
 ## Build Charm
 
