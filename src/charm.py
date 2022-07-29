@@ -483,7 +483,11 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
     @property
     def app_data(self) -> Dict:
         """Peer relation data object."""
-        return self.model.get_relation(PEER).data[self.app]
+        relation = self.model.get_relation(PEER)
+        if not relation:
+            return {}
+
+        return relation.data[self.app]
 
     @property
     def _peers(self) -> Optional[Relation]:
@@ -511,13 +515,18 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         It is needed to install mongodb-clients inside charm container to make
         this function work correctly.
         """
+        if "user_created" in self.app_data or not self.unit.is_leader():
+            return
+
         out = subprocess.run(
             get_create_user_cmd(self.mongodb_config),
             input=self.mongodb_config.password.encode(),
         )
         if out.returncode == 0:
             raise AdminUserCreationError
+
         logger.debug("User created")
+        self.app_data["user_created"] = "True"
 
 
 class AdminUserCreationError(Exception):
