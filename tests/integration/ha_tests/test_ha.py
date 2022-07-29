@@ -21,7 +21,6 @@ from tests.integration.ha_tests.helpers import (
     reused_storage,
     storage_id,
     storage_type,
-    unit_ids,
     unit_uri,
 )
 
@@ -83,7 +82,7 @@ async def test_add_units(ops_test: OpsTest) -> None:
     app = await app_name(ops_test)
 
     # add units and wait for idle
-    expected_units = len(await unit_ids(ops_test)) + 2
+    expected_units = len(ops_test.model.applications[app].units) + 2
     await ops_test.model.applications[app].add_unit(count=2)
     await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
     assert len(ops_test.model.applications[app].units) == expected_units
@@ -139,7 +138,7 @@ async def test_scale_down_capablities(ops_test: OpsTest) -> None:
         units_to_remove.append(unit_to_remove.name)
 
     # destroy units simulatenously
-    expected_units = len(await unit_ids(ops_test)) - len(units_to_remove)
+    expected_units = len(ops_test.model.applications[app].units) - len(units_to_remove)
     await ops_test.model.destroy_units(*units_to_remove)
 
     # wait for app to be active after removal of units
@@ -242,7 +241,7 @@ async def test_replication_member_scaling(ops_test: OpsTest) -> None:
     original_ip_addresses = [
         unit.public_address for unit in ops_test.model.applications[app].units
     ]
-    expected_units = len(await unit_ids(ops_test)) + 1
+    expected_units = len(ops_test.model.applications[app].units) + 1
     await ops_test.model.applications[app].add_unit(count=1)
     await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
     assert len(ops_test.model.applications[app].units) == expected_units

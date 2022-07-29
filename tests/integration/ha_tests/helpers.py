@@ -16,7 +16,6 @@ from tenacity import retry, retry_if_result, stop_after_attempt, wait_exponentia
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 PORT = 27017
 APP_NAME = METADATA["name"]
-UNIT_IDS = [0, 1, 2]
 
 
 def replica_set_client(replica_ips: List[str], password: str, app=APP_NAME) -> MongoClient:
@@ -158,17 +157,6 @@ async def find_unit(ops_test: OpsTest, leader: bool) -> ops.model.Unit:
             ret_unit = unit
 
     return ret_unit
-
-
-async def unit_ids(ops_test: OpsTest) -> List[int]:
-    """Provides a function for generating unit_ids in case a cluster is provided."""
-    provided_cluster = await app_name(ops_test)
-    if not provided_cluster:
-        return UNIT_IDS
-    unit_ids = [
-        unit.name.split("/")[1] for unit in ops_test.model.applications[provided_cluster].units
-    ]
-    return unit_ids
 
 
 async def app_name(ops_test: OpsTest) -> str:

@@ -49,9 +49,9 @@ The implementation of `remove-unit` allows the operator to remove more than one 
 
 Supported [relations](https://juju.is/docs/olm/relations):
 
-#### New `mongodb-client` interface:
+#### New `mongodb_client` interface:
 
-Relations to new applications are supported via the `mongodb-client` interface. To create a relation: 
+Relations to new applications are supported via the `mongodb_client` interface. To create a relation: 
 
 ```shell
 juju relate mongodb application
