@@ -58,6 +58,7 @@ pip install -r requirements.txt
 tox -e fmt                      # update your code according to linting rules
 tox -e lint                     # code style
 tox -e unit                     # unit tests
+tox -e integration              # run all integration tests
 tox -e charm-integration        # charm integration tests
 tox -e ha-integration           # high-availability replication integration tests
 tox -e relation-integration     # relation integration tests (legacy and new relations)
