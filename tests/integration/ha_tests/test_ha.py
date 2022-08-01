@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2021 Canonical Ltd.
+# Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 import logging
@@ -20,6 +20,8 @@ from tests.integration.ha_tests.helpers import (
     retrieve_entries,
     unit_ids,
     unit_uri,
+    start_continous_writes,
+    update_continuous_writes,
 )
 
 logger = logging.getLogger(__name__)
@@ -33,11 +35,13 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     # it is possible for users to provide their own cluster for HA testing. Hence check if there
     # is a pre-existing cluster.
     if await app_name(ops_test):
+        await start_continous_writes(ops_test, 0)
         return
 
     my_charm = await ops_test.build_charm(".")
     await ops_test.model.deploy(my_charm, num_units=3)
     await ops_test.model.wait_for_idle()
+    await start_continous_writes(ops_test, 0)
 
 
 @pytest.mark.abort_on_fail
@@ -52,6 +56,7 @@ async def test_add_units(ops_test: OpsTest) -> None:
     # add units and wait for idle
     expected_units = len(await unit_ids(ops_test)) + 2
     await ops_test.model.applications[app].add_unit(count=2)
+    await update_continuous_writes(ops_test)
     await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
     assert len(ops_test.model.applications[app].units) == expected_units
 
@@ -108,6 +113,7 @@ async def test_scale_down_capablities(ops_test: OpsTest) -> None:
     # destroy units simulatenously
     expected_units = len(await unit_ids(ops_test)) - len(units_to_remove)
     await ops_test.model.destroy_units(*units_to_remove)
+    await update_continuous_writes(ops_test)
 
     # wait for app to be active after removal of units
     await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
@@ -211,6 +217,7 @@ async def test_replication_member_scaling(ops_test: OpsTest) -> None:
     ]
     expected_units = len(await unit_ids(ops_test)) + 1
     await ops_test.model.applications[app].add_unit(count=1)
+    await update_continuous_writes(ops_test)
     await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
     assert len(ops_test.model.applications[app].units) == expected_units
 
@@ -234,6 +241,3 @@ async def test_replication_member_scaling(ops_test: OpsTest) -> None:
     client.close()
 
     # TODO in a future PR implement: newly removed members are gone without data.
-    # TODO in a future PR implement: a test that option "preserves data on delete" works
-    # Note for above tests it will be necessary to test on a different substrate (ie AWS) see:
-    # https://chat.canonical.com/canonical/pl/eirmfogfx3rmufmom9thjx6pwr

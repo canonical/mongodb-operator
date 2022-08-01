@@ -1,6 +1,7 @@
-# Copyright 2021 Canonical Ltd.
+# Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import subprocess
 from pathlib import Path
 from typing import List
 
@@ -185,3 +186,62 @@ async def app_name(ops_test: OpsTest) -> str:
             return app
 
     return None
+
+
+async def update_continuous_writes(ops_test: OpsTest) -> bool:
+    """Update the connection string for the continuous write process.
+
+    In the case that the connection_string changes (ie removing/adding replicas) the contionous
+    write process will need to be updated. (ie. stopped, and restarted with the correct replicas)
+    """
+    last_written_value = stop_continous_writes(ops_test)
+    start_continous_writes(ops_test, last_written_value + 1)
+
+
+async def start_continous_writes(ops_test: OpsTest, starting_number: int) -> None:
+    """Starts continuous writes to MongoDB with available replicas.
+
+    In the future this should be put in a dummy charm.
+    """
+    app = await app_name(ops_test)
+    password = await get_password(ops_test, app)
+    hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
+    hosts = ",".join(hosts)
+    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app}"
+
+    # run continuous writes in the background.
+    subprocess.Popen(
+        [
+            "python3",
+            "tests/integration/ha_tests/continuous_writes.py",
+            connection_string,
+            str(starting_number),
+        ]
+    )
+
+
+async def stop_continous_writes(ops_test: OpsTest) -> int:
+    """Stops continuous writes to MongoDB and returns the last written value.
+
+    In the future this should be put in a dummy charm.
+    """
+    # stop the process
+    proc = subprocess.Popen(["pkill", "-9", "-f", "continuous_writes.py"])
+
+    # wait for process to be killed
+    proc.communicate()
+
+    app = await app_name(ops_test)
+    password = await get_password(ops_test, app)
+    hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
+    hosts = ",".join(hosts)
+    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app}"
+
+    client = MongoClient(connection_string)
+    db = client["new-db"]
+    test_collection = db["test_collection"]
+
+    # last written value should be the highest number in the database.
+    last_written_value = test_collection.find_one(sort=[("number", -1)])
+    client.close()
+    return last_written_value
