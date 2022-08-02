@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2021 Canonical Ltd.
+# Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 
@@ -63,8 +63,9 @@ async def test_storage_re_use(ops_test):
     unit_storage_id = storage_id(ops_test, unit.name)
     expected_units = len(ops_test.model.applications[app].units) - 1
     await ops_test.model.destroy_unit(unit.name)
-    await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
-    assert len(ops_test.model.applications[app].units) == expected_units
+    await ops_test.model.wait_for_idle(
+        apps=[app], status="active", timeout=1000, wait_for_exact_units=expected_units
+    )
     new_unit = await add_unit_with_storage(ops_test, app, unit_storage_id)
 
     assert await reused_storage(
@@ -84,8 +85,9 @@ async def test_add_units(ops_test: OpsTest) -> None:
     # add units and wait for idle
     expected_units = len(ops_test.model.applications[app].units) + 2
     await ops_test.model.applications[app].add_unit(count=2)
-    await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
-    assert len(ops_test.model.applications[app].units) == expected_units
+    await ops_test.model.wait_for_idle(
+        apps=[app], status="active", timeout=1000, wait_for_exact_units=expected_units
+    )
 
     # grab unit ips
     ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
@@ -142,10 +144,9 @@ async def test_scale_down_capablities(ops_test: OpsTest) -> None:
     await ops_test.model.destroy_units(*units_to_remove)
 
     # wait for app to be active after removal of units
-    await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
-
-    # verify that is three units are running after deletion of two units
-    assert len(ops_test.model.applications[app].units) == expected_units
+    await ops_test.model.wait_for_idle(
+        apps=[app], status="active", timeout=1000, wait_for_exact_units=expected_units
+    )
 
     # grab unit ips
     ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
@@ -243,8 +244,9 @@ async def test_replication_member_scaling(ops_test: OpsTest) -> None:
     ]
     expected_units = len(ops_test.model.applications[app].units) + 1
     await ops_test.model.applications[app].add_unit(count=1)
-    await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
-    assert len(ops_test.model.applications[app].units) == expected_units
+    await ops_test.model.wait_for_idle(
+        apps=[app], status="active", timeout=1000, wait_for_exact_units=expected_units
+    )
 
     new_ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
     new_member_ip = list(set(new_ip_addresses) - set(original_ip_addresses))[0]
