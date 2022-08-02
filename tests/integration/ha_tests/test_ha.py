@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-# Copyright 2021 Canonical Ltd.
+# Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-import logging
 
 import pytest
 from pymongo import MongoClient
@@ -11,6 +10,7 @@ from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from tests.integration.ha_tests.helpers import (
     APP_NAME,
+    add_unit_with_storage,
     app_name,
     fetch_replica_set_members,
     find_unit,
@@ -18,11 +18,11 @@ from tests.integration.ha_tests.helpers import (
     replica_set_client,
     replica_set_primary,
     retrieve_entries,
-    unit_ids,
+    reused_storage,
+    storage_id,
+    storage_type,
     unit_uri,
 )
-
-logger = logging.getLogger(__name__)
 
 ANOTHER_DATABASE_APP_NAME = "another-database-a"
 
@@ -40,6 +40,39 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await ops_test.model.wait_for_idle()
 
 
+async def test_storage_re_use(ops_test):
+    """Verifies that database units with attached storage correctly repurpose storage.
+
+    It is not enough to verify that Juju attaches the storage. Hence test checks that the mongod
+    properly uses the storage that was provided. (ie. doesn't just re-sync everything from
+    primary, but instead computes a diff between current storage and primary storage.)
+    """
+    app = await app_name(ops_test)
+    if storage_type(ops_test, app) == "rootfs":
+        pytest.skip(
+            "re-use of storage can only be used on deployments with persistent storage not on rootfs deployments"
+        )
+
+    # removing the only replica can be disastrous
+    if len(ops_test.model.applications[app].units) < 2:
+        await ops_test.model.applications[app].add_unit(count=1)
+        await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
+
+    # remove a unit and attach it's storage to a new unit
+    unit = ops_test.model.applications[app].units[0]
+    unit_storage_id = storage_id(ops_test, unit.name)
+    expected_units = len(ops_test.model.applications[app].units) - 1
+    await ops_test.model.destroy_unit(unit.name)
+    await ops_test.model.wait_for_idle(
+        apps=[app], status="active", timeout=1000, wait_for_exact_units=expected_units
+    )
+    new_unit = await add_unit_with_storage(ops_test, app, unit_storage_id)
+
+    assert await reused_storage(
+        ops_test, new_unit.public_address
+    ), "attached storage not properly re-used by MongoDB."
+
+
 @pytest.mark.abort_on_fail
 async def test_add_units(ops_test: OpsTest) -> None:
     """Tests juju add-unit functionality.
@@ -50,10 +83,11 @@ async def test_add_units(ops_test: OpsTest) -> None:
     app = await app_name(ops_test)
 
     # add units and wait for idle
-    expected_units = len(await unit_ids(ops_test)) + 2
+    expected_units = len(ops_test.model.applications[app].units) + 2
     await ops_test.model.applications[app].add_unit(count=2)
-    await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
-    assert len(ops_test.model.applications[app].units) == expected_units
+    await ops_test.model.wait_for_idle(
+        apps=[app], status="active", timeout=1000, wait_for_exact_units=expected_units
+    )
 
     # grab unit ips
     ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
@@ -106,14 +140,13 @@ async def test_scale_down_capablities(ops_test: OpsTest) -> None:
         units_to_remove.append(unit_to_remove.name)
 
     # destroy units simulatenously
-    expected_units = len(await unit_ids(ops_test)) - len(units_to_remove)
+    expected_units = len(ops_test.model.applications[app].units) - len(units_to_remove)
     await ops_test.model.destroy_units(*units_to_remove)
 
     # wait for app to be active after removal of units
-    await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
-
-    # verify that is three units are running after deletion of two units
-    assert len(ops_test.model.applications[app].units) == expected_units
+    await ops_test.model.wait_for_idle(
+        apps=[app], status="active", timeout=1000, wait_for_exact_units=expected_units
+    )
 
     # grab unit ips
     ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
@@ -209,10 +242,11 @@ async def test_replication_member_scaling(ops_test: OpsTest) -> None:
     original_ip_addresses = [
         unit.public_address for unit in ops_test.model.applications[app].units
     ]
-    expected_units = len(await unit_ids(ops_test)) + 1
+    expected_units = len(ops_test.model.applications[app].units) + 1
     await ops_test.model.applications[app].add_unit(count=1)
-    await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
-    assert len(ops_test.model.applications[app].units) == expected_units
+    await ops_test.model.wait_for_idle(
+        apps=[app], status="active", timeout=1000, wait_for_exact_units=expected_units
+    )
 
     new_ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
     new_member_ip = list(set(new_ip_addresses) - set(original_ip_addresses))[0]
