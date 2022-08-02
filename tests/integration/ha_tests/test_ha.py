@@ -10,18 +10,22 @@ from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from tests.integration.ha_tests.helpers import (
     APP_NAME,
+    add_unit_with_storage,
     app_name,
     clear_db_writes,
     count_writes,
     fetch_replica_set_members,
     find_unit,
     get_password,
+    insert_focal_to_cluster,
     replica_set_client,
     replica_set_primary,
     retrieve_entries,
+    reused_storage,
     start_continous_writes,
     stop_continous_writes,
-    unit_ids,
+    storage_id,
+    storage_type,
     unit_uri,
 )
 
@@ -49,6 +53,44 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await ops_test.model.wait_for_idle()
 
 
+async def test_storage_re_use(ops_test, continuous_writes):
+    """Verifies that database units with attached storage correctly repurpose storage.
+
+    It is not enough to verify that Juju attaches the storage. Hence test checks that the mongod
+    properly uses the storage that was provided. (ie. doesn't just re-sync everything from
+    primary, but instead computes a diff between current storage and primary storage.)
+    """
+    app = await app_name(ops_test)
+    if storage_type(ops_test, app) == "rootfs":
+        pytest.skip(
+            "re-use of storage can only be used on deployments with persistent storage not on rootfs deployments"
+        )
+
+    # removing the only replica can be disastrous
+    if len(ops_test.model.applications[app].units) < 2:
+        await ops_test.model.applications[app].add_unit(count=1)
+        await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
+
+    # remove a unit and attach it's storage to a new unit
+    unit = ops_test.model.applications[app].units[0]
+    unit_storage_id = storage_id(ops_test, unit.name)
+    expected_units = len(ops_test.model.applications[app].units) - 1
+    await ops_test.model.destroy_unit(unit.name)
+    await ops_test.model.wait_for_idle(
+        apps=[app], status="active", timeout=1000, wait_for_exact_units=expected_units
+    )
+    new_unit = await add_unit_with_storage(ops_test, app, unit_storage_id)
+
+    assert await reused_storage(
+        ops_test, new_unit.public_address
+    ), "attached storage not properly re-used by MongoDB."
+
+    # verify that the no writes were skipped
+    total_expected_writes = await stop_continous_writes(ops_test)
+    actual_expected_writes = await count_writes(ops_test)
+    assert total_expected_writes["number"] == actual_expected_writes
+
+
 @pytest.mark.abort_on_fail
 async def test_add_units(ops_test: OpsTest, continuous_writes) -> None:
     """Tests juju add-unit functionality.
@@ -58,10 +100,11 @@ async def test_add_units(ops_test: OpsTest, continuous_writes) -> None:
     """
     # add units and wait for idle
     app = await app_name(ops_test)
-    expected_units = len(await unit_ids(ops_test)) + 2
+    expected_units = len(ops_test.model.applications[app].units) + 2
     await ops_test.model.applications[app].add_unit(count=2)
-    await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
-    assert len(ops_test.model.applications[app].units) == expected_units
+    await ops_test.model.wait_for_idle(
+        apps=[app], status="active", timeout=1000, wait_for_exact_units=expected_units
+    )
 
     # grab unit ips
     ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
@@ -74,7 +117,6 @@ async def test_add_units(ops_test: OpsTest, continuous_writes) -> None:
 
     # verify that the no writes were skipped
     total_expected_writes = await stop_continous_writes(ops_test)
-
     actual_expected_writes = await count_writes(ops_test)
     assert total_expected_writes["number"] == actual_expected_writes
 
@@ -120,14 +162,13 @@ async def test_scale_down_capablities(ops_test: OpsTest, continuous_writes) -> N
         units_to_remove.append(unit_to_remove.name)
 
     # destroy units simulatenously
-    expected_units = len(await unit_ids(ops_test)) - len(units_to_remove)
+    expected_units = len(ops_test.model.applications[app].units) - len(units_to_remove)
     await ops_test.model.destroy_units(*units_to_remove)
 
     # wait for app to be active after removal of units
-    await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
-
-    # verify that is three units are running after deletion of two units
-    assert len(ops_test.model.applications[app].units) == expected_units
+    await ops_test.model.wait_for_idle(
+        apps=[app], status="active", timeout=1000, wait_for_exact_units=expected_units
+    )
 
     # grab unit ips
     ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
@@ -149,35 +190,43 @@ async def test_scale_down_capablities(ops_test: OpsTest, continuous_writes) -> N
 
     assert set(member_ips) == set(ip_addresses), "mongod config contains deleted units"
 
+    # verify that the no writes were skipped
+    total_expected_writes = await stop_continous_writes(ops_test)
+    actual_expected_writes = await count_writes(ops_test)
+    assert total_expected_writes["number"] == actual_expected_writes
+
 
 async def test_replication_across_members(ops_test: OpsTest, continuous_writes) -> None:
     """Check consistency, ie write to primary, read data from secondaries."""
     # first find primary, write to primary, then read from each unit
+    await insert_focal_to_cluster(ops_test)
     app = await app_name(ops_test)
     ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
     primary = await replica_set_primary(ip_addresses, ops_test)
     password = await get_password(ops_test, app)
-    client = MongoClient(unit_uri(primary, password, app), directConnection=True)
-    db = client["new-db"]
-    test_collection = db["test_collection"]
-    test_collection.insert({"release_name": "Focal Fossa", "version": 20.04, "LTS": True})
-
-    client.close()
 
     secondaries = set(ip_addresses) - set([primary])
     for secondary in secondaries:
         client = MongoClient(unit_uri(secondary, password, app), directConnection=True)
 
         db = client["new-db"]
-        test_collection = db["test_collection"]
+        test_collection = db["test_ubuntu_collection"]
         query = test_collection.find({}, {"release_name": 1})
         assert query[0]["release_name"] == "Focal Fossa"
 
         client.close()
 
+    # verify that the no writes were skipped
+    total_expected_writes = await stop_continous_writes(ops_test)
+    actual_expected_writes = await count_writes(ops_test)
+    assert total_expected_writes["number"] == actual_expected_writes
+
 
 async def test_unique_cluster_dbs(ops_test: OpsTest, continuous_writes) -> None:
     """Verify unique clusters do not share DBs."""
+    # first find primary, write to primary,
+    await insert_focal_to_cluster(ops_test)
+
     # deploy new cluster
     my_charm = await ops_test.build_charm(".")
     await ops_test.model.deploy(my_charm, num_units=1, application_name=ANOTHER_DATABASE_APP_NAME)
@@ -191,14 +240,15 @@ async def test_unique_cluster_dbs(ops_test: OpsTest, continuous_writes) -> None:
     password = await get_password(ops_test, app=ANOTHER_DATABASE_APP_NAME)
     client = replica_set_client(ip_addresses, password, app=ANOTHER_DATABASE_APP_NAME)
     db = client["new-db"]
-    test_collection = db["test_collection"]
+    test_collection = db["test_ubuntu_collection"]
     test_collection.insert({"release_name": "Jammy Jelly", "version": 22.04, "LTS": False})
+    client.close()
 
     cluster_1_entries = await retrieve_entries(
         ops_test,
         app=ANOTHER_DATABASE_APP_NAME,
         db_name="new-db",
-        collection_name="test_collection",
+        collection_name="test_ubuntu_collection",
         query_field="release_name",
     )
 
@@ -206,12 +256,17 @@ async def test_unique_cluster_dbs(ops_test: OpsTest, continuous_writes) -> None:
         ops_test,
         app=APP_NAME,
         db_name="new-db",
-        collection_name="test_collection",
+        collection_name="test_ubuntu_collection",
         query_field="release_name",
     )
 
     common_entries = cluster_2_entries.intersection(cluster_1_entries)
     assert len(common_entries) == 0, "Writes from one cluster are replicated to another cluster."
+
+    # verify that the no writes were skipped
+    total_expected_writes = await stop_continous_writes(ops_test)
+    actual_expected_writes = await count_writes(ops_test)
+    assert total_expected_writes["number"] == actual_expected_writes
 
 
 async def test_replication_member_scaling(ops_test: OpsTest, continuous_writes) -> None:
@@ -219,14 +274,18 @@ async def test_replication_member_scaling(ops_test: OpsTest, continuous_writes) 
 
     Verify newly members have replicated data and newly removed members are gone without data.
     """
+    # first find primary, write to primary,
+    await insert_focal_to_cluster(ops_test)
+
     app = await app_name(ops_test)
     original_ip_addresses = [
         unit.public_address for unit in ops_test.model.applications[app].units
     ]
-    expected_units = len(await unit_ids(ops_test)) + 1
+    expected_units = len(ops_test.model.applications[app].units) + 1
     await ops_test.model.applications[app].add_unit(count=1)
-    await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
-    assert len(ops_test.model.applications[app].units) == expected_units
+    await ops_test.model.wait_for_idle(
+        apps=[app], status="active", timeout=1000, wait_for_exact_units=expected_units
+    )
 
     new_ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
     new_member_ip = list(set(new_ip_addresses) - set(original_ip_addresses))[0]
@@ -238,7 +297,7 @@ async def test_replication_member_scaling(ops_test: OpsTest, continuous_writes) 
         for attempt in Retrying(stop=stop_after_delay(2 * 60), wait=wait_fixed(3)):
             with attempt:
                 db = client["new-db"]
-                test_collection = db["test_collection"]
+                test_collection = db["test_ubuntu_collection"]
                 query = test_collection.find({}, {"release_name": 1})
                 assert query[0]["release_name"] == "Focal Fossa"
 
@@ -246,5 +305,10 @@ async def test_replication_member_scaling(ops_test: OpsTest, continuous_writes) 
         assert False, "Newly added unit doesn't replicate data."
 
     client.close()
+
+    # verify that the no writes were skipped
+    total_expected_writes = await stop_continous_writes(ops_test)
+    actual_expected_writes = await count_writes(ops_test)
+    assert total_expected_writes["number"] == actual_expected_writes
 
     # TODO in a future PR implement: newly removed members are gone without data.
