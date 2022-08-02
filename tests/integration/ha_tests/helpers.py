@@ -5,11 +5,6 @@ import subprocess
 from pathlib import Path
 from typing import List
 
-import logging
-
-logger = logging.getLogger(__name__)
-
-
 import ops
 import yaml
 from pymongo import MongoClient
@@ -246,8 +241,6 @@ async def stop_continous_writes(ops_test: OpsTest) -> int:
     app = await app_name(ops_test)
     password = await get_password(ops_test, app)
     hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
-    logger.error(ops_test.model.applications[app].units)
-    logger.error(hosts)
     hosts = ",".join(hosts)
     connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app}"
 
@@ -262,7 +255,7 @@ async def stop_continous_writes(ops_test: OpsTest) -> int:
 
 
 async def count_writes(ops_test: OpsTest) -> int:
-    """New versions of pymongo no longer support the count operation, instead find should be used."""
+    """New versions of pymongo no longer support the count operation, instead find is used."""
     app = await app_name(ops_test)
     password = await get_password(ops_test, app)
     hosts = [unit.public_address for unit in ops_test.model.applications[app].units]

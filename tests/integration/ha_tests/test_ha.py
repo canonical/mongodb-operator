@@ -2,12 +2,6 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-from itertools import count
-import logging
-from xml.etree.ElementPath import ops
-
-logger = logging.getLogger(__name__)
-
 
 import pytest
 from pymongo import MongoClient
@@ -18,6 +12,7 @@ from tests.integration.ha_tests.helpers import (
     APP_NAME,
     app_name,
     clear_db_writes,
+    count_writes,
     fetch_replica_set_members,
     find_unit,
     get_password,
@@ -25,13 +20,10 @@ from tests.integration.ha_tests.helpers import (
     replica_set_primary,
     retrieve_entries,
     start_continous_writes,
+    stop_continous_writes,
     unit_ids,
     unit_uri,
-    stop_continous_writes,
-    count_writes,
 )
-
-logger = logging.getLogger(__name__)
 
 ANOTHER_DATABASE_APP_NAME = "another-database-a"
 
@@ -83,7 +75,6 @@ async def test_add_units(ops_test: OpsTest, continuous_writes) -> None:
     # verify that the no writes were skipped
     total_expected_writes = await stop_continous_writes(ops_test)
 
-    logger.error(" total expected writes %s", total_expected_writes)
     actual_expected_writes = await count_writes(ops_test)
     assert total_expected_writes["number"] == actual_expected_writes
 

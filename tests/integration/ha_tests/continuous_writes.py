@@ -5,7 +5,7 @@
 import sys
 
 from pymongo import MongoClient
-from pymongo.errors import PyMongoError, AutoReconnect
+from pymongo.errors import AutoReconnect, PyMongoError
 
 
 def continous_writes(connection_string: str, starting_number: int):
