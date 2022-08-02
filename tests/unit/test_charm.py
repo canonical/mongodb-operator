@@ -547,3 +547,20 @@ class TestCharm(unittest.TestCase):
             )
             self.harness.charm.process_unremoved_units(mock.Mock())
             connection.return_value.__enter__.return_value.remove_replset_member.assert_called()
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongoDBConfiguration")
+    @patch("charm.subprocess.run")
+    def test_start_init_user_after_second_call(self, run, config):
+        """Tests that the creation of the admin user is only performed once.
+
+        Verifies that if the user is already set up, that no attempts to set it up again are
+        made.
+        """
+        self.harness.set_leader(True)
+
+        self.harness.charm._init_admin_user()
+        self.assertEqual("user_created" in self.harness.charm.app_data, True)
+
+        self.harness.charm._init_admin_user()
+        run.assert_called_once()
