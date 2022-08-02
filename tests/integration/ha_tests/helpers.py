@@ -5,6 +5,11 @@ import subprocess
 from pathlib import Path
 from typing import List
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 import ops
 import yaml
 from pymongo import MongoClient
@@ -188,14 +193,21 @@ async def app_name(ops_test: OpsTest) -> str:
     return None
 
 
-async def update_continuous_writes(ops_test: OpsTest) -> bool:
-    """Update the connection string for the continuous write process.
+async def clear_db_writes(ops_test: OpsTest) -> bool:
+    """Stop the DB process and remove any writes to the test collection."""
+    await stop_continous_writes(ops_test)
 
-    In the case that the connection_string changes (ie removing/adding replicas) the contionous
-    write process will need to be updated. (ie. stopped, and restarted with the correct replicas)
-    """
-    last_written_value = stop_continous_writes(ops_test)
-    start_continous_writes(ops_test, last_written_value + 1)
+    # remove collection from database
+    app = await app_name(ops_test)
+    password = await get_password(ops_test, app)
+    hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
+    hosts = ",".join(hosts)
+    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app}"
+
+    client = MongoClient(connection_string)
+    db = client["new-db"]
+    test_collection = db["test_collection"]
+    test_collection.drop()
 
 
 async def start_continous_writes(ops_test: OpsTest, starting_number: int) -> None:
@@ -234,6 +246,8 @@ async def stop_continous_writes(ops_test: OpsTest) -> int:
     app = await app_name(ops_test)
     password = await get_password(ops_test, app)
     hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
+    logger.error(ops_test.model.applications[app].units)
+    logger.error(hosts)
     hosts = ",".join(hosts)
     connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app}"
 
@@ -245,3 +259,17 @@ async def stop_continous_writes(ops_test: OpsTest) -> int:
     last_written_value = test_collection.find_one(sort=[("number", -1)])
     client.close()
     return last_written_value
+
+
+async def count_writes(ops_test: OpsTest) -> int:
+    """New versions of pymongo no longer support the count operation, instead find should be used."""
+    app = await app_name(ops_test)
+    password = await get_password(ops_test, app)
+    hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
+    hosts = ",".join(hosts)
+    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app}"
+
+    client = MongoClient(connection_string)
+    db = client["new-db"]
+    test_collection = db["test_collection"]
+    return sum(1 for _ in test_collection.find())

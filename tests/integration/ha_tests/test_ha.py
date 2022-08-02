@@ -2,7 +2,12 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+from itertools import count
 import logging
+from xml.etree.ElementPath import ops
+
+logger = logging.getLogger(__name__)
+
 
 import pytest
 from pymongo import MongoClient
@@ -12,21 +17,31 @@ from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 from tests.integration.ha_tests.helpers import (
     APP_NAME,
     app_name,
+    clear_db_writes,
     fetch_replica_set_members,
     find_unit,
     get_password,
     replica_set_client,
     replica_set_primary,
     retrieve_entries,
+    start_continous_writes,
     unit_ids,
     unit_uri,
-    start_continous_writes,
-    update_continuous_writes,
+    stop_continous_writes,
+    count_writes,
 )
 
 logger = logging.getLogger(__name__)
 
 ANOTHER_DATABASE_APP_NAME = "another-database-a"
+
+
+@pytest.fixture()
+async def continuous_writes(ops_test: OpsTest):
+    """Starts continuous write operations to MongoDB for test and clears writes at end of test."""
+    await start_continous_writes(ops_test, 1)
+    yield
+    await clear_db_writes(ops_test)
 
 
 @pytest.mark.abort_on_fail
@@ -35,28 +50,24 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     # it is possible for users to provide their own cluster for HA testing. Hence check if there
     # is a pre-existing cluster.
     if await app_name(ops_test):
-        await start_continous_writes(ops_test, 0)
         return
 
     my_charm = await ops_test.build_charm(".")
     await ops_test.model.deploy(my_charm, num_units=3)
     await ops_test.model.wait_for_idle()
-    await start_continous_writes(ops_test, 0)
 
 
 @pytest.mark.abort_on_fail
-async def test_add_units(ops_test: OpsTest) -> None:
+async def test_add_units(ops_test: OpsTest, continuous_writes) -> None:
     """Tests juju add-unit functionality.
 
     Verifies that when a new unit is added to the MongoDB application that it is added to the
     MongoDB replica set configuration.
     """
-    app = await app_name(ops_test)
-
     # add units and wait for idle
+    app = await app_name(ops_test)
     expected_units = len(await unit_ids(ops_test)) + 2
     await ops_test.model.applications[app].add_unit(count=2)
-    await update_continuous_writes(ops_test)
     await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
     assert len(ops_test.model.applications[app].units) == expected_units
 
@@ -69,9 +80,16 @@ async def test_add_units(ops_test: OpsTest) -> None:
     # verify that the replica set members have the correct units
     assert set(member_ips) == set(ip_addresses)
 
+    # verify that the no writes were skipped
+    total_expected_writes = await stop_continous_writes(ops_test)
+
+    logger.error(" total expected writes %s", total_expected_writes)
+    actual_expected_writes = await count_writes(ops_test)
+    assert total_expected_writes["number"] == actual_expected_writes
+
 
 @pytest.mark.abort_on_fail
-async def test_scale_down_capablities(ops_test: OpsTest) -> None:
+async def test_scale_down_capablities(ops_test: OpsTest, continuous_writes) -> None:
     """Tests clusters behavior when scaling down a minority and removing a primary replica.
 
     - NOTE: on a provided cluster this calculates the largest set of minority members and removes
@@ -113,7 +131,6 @@ async def test_scale_down_capablities(ops_test: OpsTest) -> None:
     # destroy units simulatenously
     expected_units = len(await unit_ids(ops_test)) - len(units_to_remove)
     await ops_test.model.destroy_units(*units_to_remove)
-    await update_continuous_writes(ops_test)
 
     # wait for app to be active after removal of units
     await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
@@ -142,7 +159,7 @@ async def test_scale_down_capablities(ops_test: OpsTest) -> None:
     assert set(member_ips) == set(ip_addresses), "mongod config contains deleted units"
 
 
-async def test_replication_across_members(ops_test: OpsTest) -> None:
+async def test_replication_across_members(ops_test: OpsTest, continuous_writes) -> None:
     """Check consistency, ie write to primary, read data from secondaries."""
     # first find primary, write to primary, then read from each unit
     app = await app_name(ops_test)
@@ -168,7 +185,7 @@ async def test_replication_across_members(ops_test: OpsTest) -> None:
         client.close()
 
 
-async def test_unique_cluster_dbs(ops_test: OpsTest) -> None:
+async def test_unique_cluster_dbs(ops_test: OpsTest, continuous_writes) -> None:
     """Verify unique clusters do not share DBs."""
     # deploy new cluster
     my_charm = await ops_test.build_charm(".")
@@ -206,7 +223,7 @@ async def test_unique_cluster_dbs(ops_test: OpsTest) -> None:
     assert len(common_entries) == 0, "Writes from one cluster are replicated to another cluster."
 
 
-async def test_replication_member_scaling(ops_test: OpsTest) -> None:
+async def test_replication_member_scaling(ops_test: OpsTest, continuous_writes) -> None:
     """Verify newly added and newly removed members properly replica data.
 
     Verify newly members have replicated data and newly removed members are gone without data.
@@ -217,7 +234,6 @@ async def test_replication_member_scaling(ops_test: OpsTest) -> None:
     ]
     expected_units = len(await unit_ids(ops_test)) + 1
     await ops_test.model.applications[app].add_unit(count=1)
-    await update_continuous_writes(ops_test)
     await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
     assert len(ops_test.model.applications[app].units) == expected_units
 
