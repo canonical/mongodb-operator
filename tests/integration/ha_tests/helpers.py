@@ -6,6 +6,7 @@ import subprocess
 from pathlib import Path
 from typing import List
 
+import time
 import ops
 import yaml
 from pymongo import MongoClient
@@ -16,6 +17,11 @@ from tenacity import retry, retry_if_result, stop_after_attempt, wait_exponentia
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 PORT = 27017
 APP_NAME = METADATA["name"]
+DB_PROCESS = "/usr/bin/mongod"
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def replica_set_client(replica_ips: List[str], password: str, app=APP_NAME) -> MongoClient:
@@ -30,6 +36,10 @@ def replica_set_client(replica_ips: List[str], password: str, app=APP_NAME) -> M
     hosts = ",".join(hosts)
 
     replica_set_uri = f"mongodb://operator:" f"{password}@" f"{hosts}/admin?replicaSet={app}"
+    logger.error(replica_set_uri)
+    logger.error(replica_set_uri)
+    logger.error(replica_set_uri)
+    logger.error(replica_set_uri)
     return MongoClient(replica_set_uri)
 
 
@@ -115,7 +125,9 @@ async def fetch_primary(replica_set_hosts: List[str], ops_test: OpsTest) -> str:
     stop=stop_after_attempt(5),
     wait=wait_exponential(multiplier=1, min=2, max=30),
 )
-async def replica_set_primary(replica_set_hosts: List[str], ops_test: OpsTest) -> str:
+async def replica_set_primary(
+    replica_set_hosts: List[str], ops_test: OpsTest, return_name=False
+) -> str:
     """Returns the primary of the replica set.
 
     Retrying 5 times to give the replica set time to elect a new primary, also checks against the
@@ -126,7 +138,13 @@ async def replica_set_primary(replica_set_hosts: List[str], ops_test: OpsTest) -
     if primary is not None and primary not in replica_set_hosts:
         return None
 
-    return str(primary)
+    if not return_name:
+        return str(primary)
+
+    app = await app_name(ops_test)
+    for unit in ops_test.model.applications[app].units:
+        if unit.public_address == str(primary):
+            return unit.name
 
 
 async def retrieve_entries(ops_test, app, db_name, collection_name, query_field):
@@ -378,3 +396,27 @@ async def insert_focal_to_cluster(ops_test: OpsTest) -> None:
     test_collection = db["test_ubuntu_collection"]
     test_collection.insert({"release_name": "Focal Fossa", "version": 20.04, "LTS": True})
     client.close()
+
+
+async def kill_unit_process(ops_test: OpsTest, unit_name: str, kill_codes: List[str]):
+    """Kills the DB process on the unit according to the provided kill codes."""
+    if len(kill_codes) == 0 or len(kill_codes) > 2:
+        raise ValueError("Only or two kill codes can be specified")
+
+    # killing the only replica can be disastrous
+    app = await app_name(ops_test)
+    if len(ops_test.model.applications[app].units) < 2:
+        await ops_test.model.applications[app].add_unit(count=1)
+        await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
+
+    # find the DB process on the unit and kill it
+    find_pid = f" run --unit {unit_name} ps aux | grep {DB_PROCESS}"
+    output = await ops_test.juju(*find_pid.split())
+    pid = output[1].split()[1]
+    kill_mongod = f"run --unit {unit_name} -- kill -s {kill_codes[0]} {pid}"
+    output = await ops_test.juju(*kill_mongod.split())
+
+    # perform second kill code if provided.
+    if len(kill_codes) == 2:
+        kill_mongod = f"run --unit {unit_name} -- kill -s {kill_codes[1]} {pid}"
+        output = await ops_test.juju(*kill_mongod.split())

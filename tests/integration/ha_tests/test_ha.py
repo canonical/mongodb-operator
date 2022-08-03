@@ -4,9 +4,14 @@
 
 
 import pytest
+import time
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 from tests.integration.ha_tests.helpers import (
     APP_NAME,
@@ -26,10 +31,13 @@ from tests.integration.ha_tests.helpers import (
     stop_continous_writes,
     storage_id,
     storage_type,
+    kill_unit_process,
     unit_uri,
 )
 
 ANOTHER_DATABASE_APP_NAME = "another-database-a"
+MONGOD_PROCESS = "/usr/bin/mongod"
+MEDIAN_REELECTION_TIME = 12
 
 
 @pytest.fixture()
@@ -312,3 +320,98 @@ async def test_replication_member_scaling(ops_test: OpsTest, continuous_writes) 
     assert total_expected_writes["number"] == actual_expected_writes
 
     # TODO in a future PR implement: newly removed members are gone without data.
+
+
+async def test_kill_db_process(ops_test, continuous_writes):
+    # locate primary unit
+    app = await app_name(ops_test)
+    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
+    primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
+
+    await kill_unit_process(ops_test, primary_name, kill_codes=["SIGKILL"])
+
+    # sleep for twice the median election time
+    time.sleep(MEDIAN_REELECTION_TIME * 2)
+
+    # verify that a new primary gets elected
+    new_primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
+    assert new_primary_name != primary_name
+
+    # verify that no writes to the db were missed
+    total_expected_writes = await stop_continous_writes(ops_test)
+    actual_expected_writes = await count_writes(ops_test)
+    assert total_expected_writes["number"] == actual_expected_writes
+
+    # remove the dead unit and add a new unit
+    await ops_test.model.destroy_unit(primary_name)
+    await ops_test.model.applications[app].add_unit(count=1)
+    await ops_test.model.wait_for_idle()
+
+
+async def test_freeze_db_process(ops_test, continuous_writes):
+    # locate primary unit
+    app = await app_name(ops_test)
+    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
+    primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
+
+    await kill_unit_process(ops_test, primary_name, kill_code=["SIGSTOP"])
+
+    # sleep for twice the median election time
+    time.sleep(MEDIAN_REELECTION_TIME * 2)
+
+    # verify that a new primary gets elected
+    new_primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
+    assert new_primary_name != primary_name
+
+    # verify that no writes were missed
+    total_expected_writes = await stop_continous_writes(ops_test)
+    actual_expected_writes = await count_writes(ops_test)
+    assert total_expected_writes["number"] == actual_expected_writes
+
+    # remove the dead unit and add a new unit
+    await ops_test.model.destroy_unit(primary_name)
+    await ops_test.model.applications[app].add_unit(count=1)
+    await ops_test.model.wait_for_idle()
+
+
+# kill process kill -KILL [pid]
+# freezing kill -STOP [pid]
+# restart  kill -TERM [pid] & kill -CONT [pid]
+# network cut?? ask juju
+
+
+# # removing the only replica can be disastrous
+# app = await app_name(ops_test)
+# if len(ops_test.model.applications[app].units) < 2:
+#     await ops_test.model.applications[app].add_unit(count=1)
+#     await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
+
+# # locate primary unit
+# app = await app_name(ops_test)
+# ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
+# primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
+
+# # find the process and kill it
+# find_pid = f" run --unit {primary_name} ps aux | grep {MONGOD_PROCESS}"
+# output = await ops_test.juju(*find_pid.split())
+# pid = output[1].split()[1]
+# kill_mongod = f"run --unit {primary_name} -- kill -s SIGKILL {pid}"
+# output = await ops_test.juju(*kill_mongod.split())
+
+# # the median time in which a reelection event happens is after around 12 seconds, sleep for
+# # double to be on the safe side
+# time.sleep(24)
+
+# # verify that a new primary gets elected
+# new_primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
+# assert new_primary_name != primary_name
+
+# # verify that no writes were missed
+# total_expected_writes = await stop_continous_writes(ops_test)
+# actual_expected_writes = await count_writes(ops_test)
+# assert total_expected_writes["number"] == actual_expected_writes
+
+# # remove the dead unit and add a new unit
+# await ops_test.model.destroy_unit(primary_name)
+# await ops_test.model.applications[app].add_unit(count=1)
+# await ops_test.model.wait_for_idle()
