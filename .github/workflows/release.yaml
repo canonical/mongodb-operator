@@ -61,7 +61,7 @@ jobs:
       - lib-check
       - lint
       - unit-test
-      - integration-test
+      - integration-test-lxd
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -76,4 +76,4 @@ jobs:
         with:
           credentials: "${{ secrets.CHARMHUB_TOKEN }}"
           github-token: "${{ secrets.GITHUB_TOKEN }}"
-          channel: "${{ steps.channel.outputs.name }}"
+          channel: "dpe/edge"
