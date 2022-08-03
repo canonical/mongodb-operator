@@ -12,7 +12,16 @@ import yaml
 from pymongo import MongoClient
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
 from pytest_operator.plugin import OpsTest
-from tenacity import retry, retry_if_result, stop_after_attempt, wait_exponential
+from tenacity import (
+    RetryError,
+    Retrying,
+    retry,
+    retry_if_result,
+    stop_after_attempt,
+    stop_after_delay,
+    wait_fixed,
+    wait_exponential,
+)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 PORT = 27017
@@ -22,6 +31,10 @@ DB_PROCESS = "/usr/bin/mongod"
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+class ProcessError(Exception):
+    pass
 
 
 def replica_set_client(replica_ips: List[str], password: str, app=APP_NAME) -> MongoClient:
@@ -133,17 +146,17 @@ async def replica_set_primary(
     Retrying 5 times to give the replica set time to elect a new primary, also checks against the
     valid_ips to verify that the primary is not outdated.
     """
-    primary = await fetch_primary(replica_set_hosts, ops_test)
+    primary_ip = await fetch_primary(replica_set_hosts, ops_test)
     # return None if primary is no longer in the replica set
-    if primary is not None and primary not in replica_set_hosts:
+    if primary_ip is not None and primary_ip not in replica_set_hosts:
         return None
 
     if not return_name:
-        return str(primary)
+        return str(primary_ip)
 
     app = await app_name(ops_test)
     for unit in ops_test.model.applications[app].units:
-        if unit.public_address == str(primary):
+        if unit.public_address == str(primary_ip):
             return unit.name
 
 
@@ -398,11 +411,8 @@ async def insert_focal_to_cluster(ops_test: OpsTest) -> None:
     client.close()
 
 
-async def kill_unit_process(ops_test: OpsTest, unit_name: str, kill_codes: List[str]):
-    """Kills the DB process on the unit according to the provided kill codes."""
-    if len(kill_codes) == 0 or len(kill_codes) > 2:
-        raise ValueError("Only or two kill codes can be specified")
-
+async def kill_unit_process(ops_test: OpsTest, unit_name: str, kill_code: str):
+    """Kills the DB process on the unit according to the provided kill code."""
     # killing the only replica can be disastrous
     app = await app_name(ops_test)
     if len(ops_test.model.applications[app].units) < 2:
@@ -413,10 +423,48 @@ async def kill_unit_process(ops_test: OpsTest, unit_name: str, kill_codes: List[
     find_pid = f" run --unit {unit_name} ps aux | grep {DB_PROCESS}"
     output = await ops_test.juju(*find_pid.split())
     pid = output[1].split()[1]
-    kill_mongod = f"run --unit {unit_name} -- kill -s {kill_codes[0]} {pid}"
-    output = await ops_test.juju(*kill_mongod.split())
+    kill_cmd = f"run --unit {unit_name} -- kill -s {kill_code} {pid}"
+    output = await ops_test.juju(*kill_cmd.split())
 
-    # perform second kill code if provided.
-    if len(kill_codes) == 2:
-        kill_mongod = f"run --unit {unit_name} -- kill -s {kill_codes[1]} {pid}"
-        output = await ops_test.juju(*kill_mongod.split())
+    if not output[0] == 0:
+        raise ProcessError(
+            "Expected kill command %s to succeed instead it failed: %s", kill_cmd, output
+        )
+
+
+async def db_process_running(ops_test, unit_ip) -> bool:
+    app = await app_name(ops_test)
+    password = await get_password(ops_test, app)
+    client = MongoClient(unit_uri(unit_ip, password, app), directConnection=True)
+    try:
+        for attempt in Retrying(stop=stop_after_delay(60 * 5), wait=wait_fixed(3)):
+            with attempt:
+                # The ping command is cheap and does not require auth.
+                client.admin.command("ping")
+                logger.error(client.admin.command("replSetGetStatus"))
+    except RetryError:
+        return False
+    finally:
+        client.close()
+
+    return True
+
+
+async def db_step_down(ops_test: OpsTest, unit_ip: str):
+    app = await app_name(ops_test)
+    password = await get_password(ops_test, app)
+    client = MongoClient(unit_uri(unit_ip, password, app), directConnection=True)
+    log = client.admin.command("getLog", "global")
+    client.close()
+
+    for item in log["log"]:
+        item = json.loads(item)
+
+        if "attr" not in item:
+            continue
+
+        logger.error(item["attr"])
+        if item["attr"] == "TODO":
+            return True
+
+    return False

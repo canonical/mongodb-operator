@@ -19,6 +19,8 @@ from tests.integration.ha_tests.helpers import (
     app_name,
     clear_db_writes,
     count_writes,
+    db_process_running,
+    db_step_down,
     fetch_replica_set_members,
     find_unit,
     get_password,
@@ -327,8 +329,9 @@ async def test_kill_db_process(ops_test, continuous_writes):
     app = await app_name(ops_test)
     ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
     primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
+    primary_ip = await replica_set_primary(ip_addresses, ops_test)
 
-    await kill_unit_process(ops_test, primary_name, kill_codes=["SIGKILL"])
+    await kill_unit_process(ops_test, primary_name, kill_code="SIGKILL")
 
     # sleep for twice the median election time
     time.sleep(MEDIAN_REELECTION_TIME * 2)
@@ -342,76 +345,56 @@ async def test_kill_db_process(ops_test, continuous_writes):
     actual_expected_writes = await count_writes(ops_test)
     assert total_expected_writes["number"] == actual_expected_writes
 
-    # remove the dead unit and add a new unit
-    await ops_test.model.destroy_unit(primary_name)
-    await ops_test.model.applications[app].add_unit(count=1)
-    await ops_test.model.wait_for_idle()
+    # verify that db service got restarted and is ready
+    assert await db_process_running(ops_test, primary_ip)
 
 
-async def test_freeze_db_process(ops_test, continuous_writes):
-    # locate primary unit
-    app = await app_name(ops_test)
-    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
-    primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
+# async def test_freeze_db_process(ops_test, continuous_writes):
+#     # locate primary unit
+#     app = await app_name(ops_test)
+#     ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
+#     primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
+#     primary_ip = await replica_set_primary(ip_addresses, ops_test)
 
-    await kill_unit_process(ops_test, primary_name, kill_code=["SIGSTOP"])
+#     await kill_unit_process(ops_test, primary_name, kill_code="SIGSTOP")
 
-    # sleep for twice the median election time
-    time.sleep(MEDIAN_REELECTION_TIME * 2)
+#     # sleep for twice the median election time
+#     time.sleep(MEDIAN_REELECTION_TIME * 2)
 
-    # verify that a new primary gets elected
-    new_primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
-    assert new_primary_name != primary_name
+#     # verify that a new primary gets elected
+#     new_primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
+#     assert new_primary_name != primary_name
 
-    # verify that no writes were missed
-    total_expected_writes = await stop_continous_writes(ops_test)
-    actual_expected_writes = await count_writes(ops_test)
-    assert total_expected_writes["number"] == actual_expected_writes
+#     # verify that no writes were missed
+#     total_expected_writes = await stop_continous_writes(ops_test)
+#     actual_expected_writes = await count_writes(ops_test)
+#     assert total_expected_writes["number"] == actual_expected_writes
 
-    # remove the dead unit and add a new unit
-    await ops_test.model.destroy_unit(primary_name)
-    await ops_test.model.applications[app].add_unit(count=1)
-    await ops_test.model.wait_for_idle()
-
-
-# kill process kill -KILL [pid]
-# freezing kill -STOP [pid]
-# restart  kill -TERM [pid] & kill -CONT [pid]
-# network cut?? ask juju
+#     # verify that db service got restarted and is ready
+#     assert await db_process_running(ops_test, primary_ip)
 
 
-# # removing the only replica can be disastrous
-# app = await app_name(ops_test)
-# if len(ops_test.model.applications[app].units) < 2:
-#     await ops_test.model.applications[app].add_unit(count=1)
-#     await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
+# async def test_restart_db_process(ops_test, continuous_writes):
+#     # locate primary unit
+#     app = await app_name(ops_test)
+#     ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
+#     primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
+#     primary_ip = await replica_set_primary(ip_addresses, ops_test)
 
-# # locate primary unit
-# app = await app_name(ops_test)
-# ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
-# primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
+#     # send SIGTERM, we expect `systemd` to restart the process
+#     await kill_unit_process(ops_test, primary_name, kill_code="SIGTERM")
 
-# # find the process and kill it
-# find_pid = f" run --unit {primary_name} ps aux | grep {MONGOD_PROCESS}"
-# output = await ops_test.juju(*find_pid.split())
-# pid = output[1].split()[1]
-# kill_mongod = f"run --unit {primary_name} -- kill -s SIGKILL {pid}"
-# output = await ops_test.juju(*kill_mongod.split())
+#     # verify that a new primary gets elected
+#     new_primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
+#     assert new_primary_name != primary_name
 
-# # the median time in which a reelection event happens is after around 12 seconds, sleep for
-# # double to be on the safe side
-# time.sleep(24)
+#     # # verify that a stepdown was performed on restart
+#     # assert await db_step_down(ops_test, primary_ip)
 
-# # verify that a new primary gets elected
-# new_primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
-# assert new_primary_name != primary_name
+#     # verify that no writes were missed
+#     total_expected_writes = await stop_continous_writes(ops_test)
+#     actual_expected_writes = await count_writes(ops_test)
+#     assert total_expected_writes["number"] == actual_expected_writes
 
-# # verify that no writes were missed
-# total_expected_writes = await stop_continous_writes(ops_test)
-# actual_expected_writes = await count_writes(ops_test)
-# assert total_expected_writes["number"] == actual_expected_writes
-
-# # remove the dead unit and add a new unit
-# await ops_test.model.destroy_unit(primary_name)
-# await ops_test.model.applications[app].add_unit(count=1)
-# await ops_test.model.wait_for_idle()
+#     # verify that db service got restarted and is ready
+#     assert await db_process_running(ops_test, primary_ip)
