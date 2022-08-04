@@ -177,6 +177,94 @@ async def app_name(ops_test: OpsTest) -> str:
     return None
 
 
+async def clear_db_writes(ops_test: OpsTest) -> bool:
+    """Stop the DB process and remove any writes to the test collection."""
+    await stop_continous_writes(ops_test)
+
+    # remove collection from database
+    app = await app_name(ops_test)
+    password = await get_password(ops_test, app)
+    hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
+    hosts = ",".join(hosts)
+    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app}"
+
+    client = MongoClient(connection_string)
+    db = client["new-db"]
+
+    # collection for continuous writes
+    test_collection = db["test_collection"]
+    test_collection.drop()
+
+    # collection for replication tests
+    test_collection = db["test_ubuntu_collection"]
+    test_collection.drop()
+
+    client.close()
+
+
+async def start_continous_writes(ops_test: OpsTest, starting_number: int) -> None:
+    """Starts continuous writes to MongoDB with available replicas.
+
+    In the future this should be put in a dummy charm.
+    """
+    app = await app_name(ops_test)
+    password = await get_password(ops_test, app)
+    hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
+    hosts = ",".join(hosts)
+    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app}"
+
+    # run continuous writes in the background.
+    subprocess.Popen(
+        [
+            "python3",
+            "tests/integration/ha_tests/continuous_writes.py",
+            connection_string,
+            str(starting_number),
+        ]
+    )
+
+
+async def stop_continous_writes(ops_test: OpsTest) -> int:
+    """Stops continuous writes to MongoDB and returns the last written value.
+
+    In the future this should be put in a dummy charm.
+    """
+    # stop the process
+    proc = subprocess.Popen(["pkill", "-9", "-f", "continuous_writes.py"])
+
+    # wait for process to be killed
+    proc.communicate()
+
+    app = await app_name(ops_test)
+    password = await get_password(ops_test, app)
+    hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
+    hosts = ",".join(hosts)
+    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app}"
+
+    client = MongoClient(connection_string)
+    db = client["new-db"]
+    test_collection = db["test_collection"]
+
+    # last written value should be the highest number in the database.
+    last_written_value = test_collection.find_one(sort=[("number", -1)])
+    client.close()
+    return last_written_value
+
+
+async def count_writes(ops_test: OpsTest) -> int:
+    """New versions of pymongo no longer support the count operation, instead find is used."""
+    app = await app_name(ops_test)
+    password = await get_password(ops_test, app)
+    hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
+    hosts = ",".join(hosts)
+    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app}"
+
+    client = MongoClient(connection_string)
+    db = client["new-db"]
+    test_collection = db["test_collection"]
+    return sum(1 for _ in test_collection.find())
+
+
 def storage_type(ops_test, app):
     """Retrieves type of storage associated with an application.
 
@@ -277,3 +365,16 @@ async def reused_storage(ops_test: OpsTest, unit_ip) -> bool:
             return True
 
     return False
+
+
+async def insert_focal_to_cluster(ops_test: OpsTest) -> None:
+    """Inserts the Focal Fossa data into the MongoDB cluster via primary replica."""
+    app = await app_name(ops_test)
+    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
+    primary = await replica_set_primary(ip_addresses, ops_test)
+    password = await get_password(ops_test, app)
+    client = MongoClient(unit_uri(primary, password, app), directConnection=True)
+    db = client["new-db"]
+    test_collection = db["test_ubuntu_collection"]
+    test_collection.insert({"release_name": "Focal Fossa", "version": 20.04, "LTS": True})
+    client.close()
