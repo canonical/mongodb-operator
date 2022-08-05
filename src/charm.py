@@ -277,6 +277,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # if unit is primary then update status
         if self._primary == self.unit.name:
             self.unit.status = ActiveStatus("Replica set primary")
+        else:
+            self.unit.status = ActiveStatus("")
 
     def _on_get_primary_action(self, event: ops.charm.ActionEvent):
         event.set_results({"replica-set-primary": self._primary})
