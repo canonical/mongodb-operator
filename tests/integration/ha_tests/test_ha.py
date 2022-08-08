@@ -3,12 +3,12 @@
 # See LICENSE file for licensing details.
 
 
-import pytest
 import time
+
+import pytest
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
-
 
 from tests.integration.ha_tests.helpers import (
     APP_NAME,
@@ -17,22 +17,22 @@ from tests.integration.ha_tests.helpers import (
     clear_db_writes,
     count_primaries,
     count_writes,
-    secondary_up_to_date,
-    mongod_ready,
     db_step_down,
     fetch_replica_set_members,
     find_unit,
     get_password,
     insert_focal_to_cluster,
+    kill_unit_process,
+    mongod_ready,
     replica_set_client,
     replica_set_primary,
     retrieve_entries,
     reused_storage,
+    secondary_up_to_date,
     start_continous_writes,
     stop_continous_writes,
     storage_id,
     storage_type,
-    kill_unit_process,
     unit_uri,
 )
 
@@ -406,7 +406,7 @@ async def test_freeze_db_process(ops_test, continuous_writes):
     new_primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
     assert new_primary_name != primary_name, "un-frozen primary should be secondary."
 
-    # verify that no writes were missed. Pausing and unpausing the primary can occassionally lead
+    # verify that no writes were missed. Pausing and unpausing the primary can occasionally lead
     # to a single duplicate write, hence the `<= actual_writes + 1`.
     total_expected_writes = await stop_continous_writes(ops_test)
     actual_writes = await count_writes(ops_test)

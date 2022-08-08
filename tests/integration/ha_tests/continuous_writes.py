@@ -5,7 +5,7 @@
 import sys
 
 from pymongo import MongoClient
-from pymongo.errors import AutoReconnect, PyMongoError, NotPrimaryError
+from pymongo.errors import AutoReconnect, NotPrimaryError, PyMongoError
 from pymongo.write_concern import WriteConcern
 
 
@@ -27,12 +27,12 @@ def continous_writes(connection_string: str, starting_number: int):
                     wtimeout=1000,
                 )
             ).insert_one({"number": write_value})
-        except (NotPrimaryError) as e:  # AutoReconnect
+        except (NotPrimaryError, AutoReconnect):
             # this means that the primary was not able to be found. An application should try to
             # reconnect and re-write the previous value. Hence, we `continue` here, without
             # incrementing `write_value` as to try to insert this value again.
             continue
-        except (PyMongoError, AutoReconnect) as e:
+        except (PyMongoError, AutoReconnect):
             # we should not raise this exception but instead increment the write value and move
             # on, indicating that there was a failure writing to the database.
             pass

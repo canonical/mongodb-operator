@@ -18,8 +18,8 @@ from tenacity import (
     retry_if_result,
     stop_after_attempt,
     stop_after_delay,
-    wait_fixed,
     wait_exponential,
+    wait_fixed,
 )
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
@@ -507,7 +507,7 @@ async def db_step_down(ops_test: OpsTest, unit_ip: str):
         if "msg" not in item:
             continue
 
-        # this message indicates that the previous primary preformed a repl step down operation.
+        # this message indicates that the previous primary performed a repl step down operation.
         if item["msg"] == "Starting an election due to step up request":
             return True
 

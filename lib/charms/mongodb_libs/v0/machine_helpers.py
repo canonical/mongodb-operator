@@ -27,7 +27,7 @@ MONGOD_SERVICE_DEFAULT_PATH = "/etc/systemd/system/mongod.service"
 
 # restart options specify that systemd should attempt to restart the service on failure.
 RESTART_OPTIONS = ["Restart=always\n", "RestartSec=5s\n"]
-# limits ensure that the process will not continously retry to restart if it continously fails to
+# limits ensure that the process will not continuously retry to restart if it continuously fails to
 # restart.
 RESTARTING_LIMITS = ["StartLimitIntervalSec=500\n", "StartLimitBurst=5\n"]
 
