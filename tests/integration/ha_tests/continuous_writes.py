@@ -6,22 +6,33 @@ import sys
 
 from pymongo import MongoClient
 from pymongo.errors import AutoReconnect, PyMongoError, NotPrimaryError
+from pymongo.write_concern import WriteConcern
 
 
 def continous_writes(connection_string: str, starting_number: int):
-    client = MongoClient(connection_string)
+    write_value = starting_number
+    client = MongoClient(
+        connection_string,
+        socketTimeoutMS=5000,
+    )
     db = client["new-db"]
     test_collection = db["test_collection"]
-    write_value = starting_number
+
     while True:
         try:
-            test_collection.insert_one({"number": write_value})
-        except (AutoReconnect, NotPrimaryError):
+            test_collection.with_options(
+                write_concern=WriteConcern(
+                    w="majority",
+                    j=True,
+                    wtimeout=1000,
+                )
+            ).insert_one({"number": write_value})
+        except (NotPrimaryError) as e:  # AutoReconnect
             # this means that the primary was not able to be found. An application should try to
             # reconnect and re-write the previous value. Hence, we `continue` here, without
             # incrementing `write_value` as to try to insert this value again.
             continue
-        except PyMongoError:
+        except (PyMongoError, AutoReconnect) as e:
             # we should not raise this exception but instead increment the write value and move
             # on, indicating that there was a failure writing to the database.
             pass

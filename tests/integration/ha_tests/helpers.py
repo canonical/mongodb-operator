@@ -6,7 +6,6 @@ import subprocess
 from pathlib import Path
 from typing import List
 
-import time
 import ops
 import yaml
 from pymongo import MongoClient
@@ -28,10 +27,6 @@ PORT = 27017
 APP_NAME = METADATA["name"]
 DB_PROCESS = "/usr/bin/mongod"
 
-import logging
-
-logger = logging.getLogger(__name__)
-
 
 class ProcessError(Exception):
     pass
@@ -49,10 +44,6 @@ def replica_set_client(replica_ips: List[str], password: str, app=APP_NAME) -> M
     hosts = ",".join(hosts)
 
     replica_set_uri = f"mongodb://operator:" f"{password}@" f"{hosts}/admin?replicaSet={app}"
-    logger.error(replica_set_uri)
-    logger.error(replica_set_uri)
-    logger.error(replica_set_uri)
-    logger.error(replica_set_uri)
     return MongoClient(replica_set_uri)
 
 
@@ -131,6 +122,32 @@ async def fetch_primary(replica_set_hosts: List[str], ops_test: OpsTest) -> str:
             primary = member["name"].split(":")[0]
 
     return primary
+
+
+async def count_primaries(ops_test: OpsTest) -> str:
+    """Returns IP address of current replica set primary."""
+    # connect to MongoDB client
+    app = await app_name(ops_test)
+    password = await get_password(ops_test, app)
+    replica_set_hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
+    client = replica_set_client(replica_set_hosts, password, app)
+
+    # grab the replica set status
+    try:
+        status = client.admin.command("replSetGetStatus")
+    except (ConnectionFailure, ConfigurationError, OperationFailure):
+        return None
+    finally:
+        client.close()
+
+    primaries = 0
+    # loop through all members in the replica set
+    for member in status["members"]:
+        # check replica's current state
+        if member["stateStr"] == "PRIMARY":
+            primaries += 1
+
+    return primaries
 
 
 @retry(
@@ -293,7 +310,34 @@ async def count_writes(ops_test: OpsTest) -> int:
     client = MongoClient(connection_string)
     db = client["new-db"]
     test_collection = db["test_collection"]
-    return sum(1 for _ in test_collection.find())
+    count = sum(1 for _ in test_collection.find())
+    client.close()
+    return count
+
+
+async def secondary_up_to_date(ops_test: OpsTest, unit_ip, expected_writes) -> bool:
+    """Checks if secondary is up to date with the cluster.
+
+    Retries over the period of one minute to give secondary adequate time to copy over data.
+    """
+    app = await app_name(ops_test)
+    password = await get_password(ops_test, app)
+    connection_string = f"mongodb://operator:{password}@{unit_ip}:{PORT}/admin?"
+    client = MongoClient(connection_string, directConnection=True)
+
+    try:
+        for attempt in Retrying(stop=stop_after_delay(60), wait=wait_fixed(3)):
+            with attempt:
+                db = client["new-db"]
+                test_collection = db["test_collection"]
+                secondary_writes = sum(1 for _ in test_collection.find())
+                assert secondary_writes == expected_writes
+    except RetryError:
+        return False
+    finally:
+        client.close()
+
+    return True
 
 
 def storage_type(ops_test, app):
@@ -432,7 +476,8 @@ async def kill_unit_process(ops_test: OpsTest, unit_name: str, kill_code: str):
         )
 
 
-async def db_process_running(ops_test, unit_ip) -> bool:
+async def mongod_ready(ops_test, unit_ip) -> bool:
+    """Verifies replica is running and available."""
     app = await app_name(ops_test)
     password = await get_password(ops_test, app)
     client = MongoClient(unit_uri(unit_ip, password, app), directConnection=True)
@@ -441,7 +486,6 @@ async def db_process_running(ops_test, unit_ip) -> bool:
             with attempt:
                 # The ping command is cheap and does not require auth.
                 client.admin.command("ping")
-                logger.error(client.admin.command("replSetGetStatus"))
     except RetryError:
         return False
     finally:
@@ -460,11 +504,11 @@ async def db_step_down(ops_test: OpsTest, unit_ip: str):
     for item in log["log"]:
         item = json.loads(item)
 
-        if "attr" not in item:
+        if "msg" not in item:
             continue
 
-        logger.error(item["attr"])
-        if item["attr"] == "TODO":
+        # this message indicates that the previous primary preformed a repl step down operation.
+        if item["msg"] == "Starting an election due to step up request":
             return True
 
     return False
