@@ -32,7 +32,7 @@ def continous_writes(connection_string: str, starting_number: int):
             # reconnect and re-write the previous value. Hence, we `continue` here, without
             # incrementing `write_value` as to try to insert this value again.
             continue
-        except (PyMongoError, AutoReconnect):
+        except PyMongoError:
             # we should not raise this exception but instead increment the write value and move
             # on, indicating that there was a failure writing to the database.
             pass
