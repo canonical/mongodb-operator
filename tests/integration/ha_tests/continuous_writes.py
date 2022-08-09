@@ -11,14 +11,14 @@ from pymongo.write_concern import WriteConcern
 
 def continous_writes(connection_string: str, starting_number: int):
     write_value = starting_number
-    client = MongoClient(
-        connection_string,
-        socketTimeoutMS=5000,
-    )
-    db = client["new-db"]
-    test_collection = db["test_collection"]
 
     while True:
+        client = MongoClient(
+            connection_string,
+            socketTimeoutMS=5000,
+        )
+        db = client["new-db"]
+        test_collection = db["test_collection"]
         try:
             test_collection.with_options(
                 write_concern=WriteConcern(
@@ -36,6 +36,8 @@ def continous_writes(connection_string: str, starting_number: int):
             # we should not raise this exception but instead increment the write value and move
             # on, indicating that there was a failure writing to the database.
             pass
+        finally:
+            client.close()
 
         write_value += 1
 
