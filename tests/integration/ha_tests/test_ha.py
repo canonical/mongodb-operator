@@ -97,8 +97,8 @@ async def test_storage_re_use(ops_test, continuous_writes):
 
     # verify that the no writes were skipped
     total_expected_writes = await stop_continous_writes(ops_test)
-    actual_expected_writes = await count_writes(ops_test)
-    assert total_expected_writes["number"] == actual_expected_writes
+    actual_writes = await count_writes(ops_test)
+    assert total_expected_writes["number"] == actual_writes
 
 
 @pytest.mark.abort_on_fail
@@ -127,8 +127,8 @@ async def test_add_units(ops_test: OpsTest, continuous_writes) -> None:
 
     # verify that the no writes were skipped
     total_expected_writes = await stop_continous_writes(ops_test)
-    actual_expected_writes = await count_writes(ops_test)
-    assert total_expected_writes["number"] == actual_expected_writes
+    actual_writes = await count_writes(ops_test)
+    assert total_expected_writes["number"] == actual_writes
 
 
 @pytest.mark.abort_on_fail
@@ -202,8 +202,8 @@ async def test_scale_down_capablities(ops_test: OpsTest, continuous_writes) -> N
 
     # verify that the no writes were skipped
     total_expected_writes = await stop_continous_writes(ops_test)
-    actual_expected_writes = await count_writes(ops_test)
-    assert total_expected_writes["number"] == actual_expected_writes
+    actual_writes = await count_writes(ops_test)
+    assert total_expected_writes["number"] == actual_writes
 
 
 async def test_replication_across_members(ops_test: OpsTest, continuous_writes) -> None:
@@ -228,8 +228,8 @@ async def test_replication_across_members(ops_test: OpsTest, continuous_writes) 
 
     # verify that the no writes were skipped
     total_expected_writes = await stop_continous_writes(ops_test)
-    actual_expected_writes = await count_writes(ops_test)
-    assert total_expected_writes["number"] == actual_expected_writes
+    actual_writes = await count_writes(ops_test)
+    assert total_expected_writes["number"] == actual_writes
 
 
 async def test_unique_cluster_dbs(ops_test: OpsTest, continuous_writes) -> None:
@@ -275,8 +275,8 @@ async def test_unique_cluster_dbs(ops_test: OpsTest, continuous_writes) -> None:
 
     # verify that the no writes were skipped
     total_expected_writes = await stop_continous_writes(ops_test)
-    actual_expected_writes = await count_writes(ops_test)
-    assert total_expected_writes["number"] == actual_expected_writes
+    actual_writes = await count_writes(ops_test)
+    assert total_expected_writes["number"] == actual_writes
 
 
 async def test_replication_member_scaling(ops_test: OpsTest, continuous_writes) -> None:
@@ -318,8 +318,8 @@ async def test_replication_member_scaling(ops_test: OpsTest, continuous_writes) 
 
     # verify that the no writes were skipped
     total_expected_writes = await stop_continous_writes(ops_test)
-    actual_expected_writes = await count_writes(ops_test)
-    assert total_expected_writes["number"] == actual_expected_writes
+    actual_writes = await count_writes(ops_test)
+    assert total_expected_writes["number"] == actual_writes
 
     # TODO in a future PR implement: newly removed members are gone without data.
 
@@ -352,10 +352,8 @@ async def test_kill_db_process(ops_test, continuous_writes):
 
     # verify that no writes to the db were missed
     total_expected_writes = await stop_continous_writes(ops_test)
-    actual_expected_writes = await count_writes(ops_test)
-    assert (
-        total_expected_writes["number"] == actual_expected_writes
-    ), "writes to the db were missed."
+    actual_writes = await count_writes(ops_test)
+    assert total_expected_writes["number"] == actual_writes, "writes to the db were missed."
 
     # verify that old primary is up to date.
     assert await secondary_up_to_date(
@@ -413,9 +411,10 @@ async def test_freeze_db_process(ops_test, continuous_writes):
     actual_writes = await count_writes(ops_test)
     assert total_expected_writes["number"] <= actual_writes + 1
 
-    # verify that old primary is up to date.
+    # verify that old primary is up to date, check actual writes instead of expected due to
+    # potential duplicated write
     assert await secondary_up_to_date(
-        ops_test, primary_ip, total_expected_writes["number"]
+        ops_test, primary_ip, actual_writes
     ), "secondary not up to date with the cluster after restarting."
 
 
@@ -453,8 +452,8 @@ async def test_restart_db_process(ops_test, continuous_writes):
 
     # verify that no writes were missed
     total_expected_writes = await stop_continous_writes(ops_test)
-    actual_expected_writes = await count_writes(ops_test)
-    assert total_expected_writes["number"] == actual_expected_writes
+    actual_writes = await count_writes(ops_test)
+    assert total_expected_writes["number"] == actual_writes
 
     # verify that old primary is up to date.
     assert await secondary_up_to_date(

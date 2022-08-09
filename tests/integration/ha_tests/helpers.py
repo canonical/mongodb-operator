@@ -126,8 +126,8 @@ async def fetch_primary(replica_set_hosts: List[str], ops_test: OpsTest) -> str:
     return primary
 
 
-async def count_primaries(ops_test: OpsTest) -> str:
-    """Returns IP address of current replica set primary."""
+async def count_primaries(ops_test: OpsTest) -> int:
+    """Returns the number of primaries in a replica set."""
     # connect to MongoDB client
     app = await app_name(ops_test)
     password = await get_password(ops_test, app)
@@ -312,7 +312,7 @@ async def count_writes(ops_test: OpsTest) -> int:
     client = MongoClient(connection_string)
     db = client["new-db"]
     test_collection = db["test_collection"]
-    count = sum(1 for _ in test_collection.find())
+    count = test_collection.count_documents({})
     client.close()
     return count
 
@@ -332,7 +332,7 @@ async def secondary_up_to_date(ops_test: OpsTest, unit_ip, expected_writes) -> b
             with attempt:
                 db = client["new-db"]
                 test_collection = db["test_collection"]
-                secondary_writes = sum(1 for _ in test_collection.find())
+                secondary_writes = test_collection.count_documents({})
                 assert secondary_writes == expected_writes
     except RetryError:
         return False
@@ -471,16 +471,12 @@ async def kill_unit_process(ops_test: OpsTest, unit_name: str, kill_code: str):
         await ops_test.model.applications[app].add_unit(count=1)
         await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
 
-    # find the DB process on the unit and kill it
-    find_pid = f" run --unit {unit_name} ps aux | grep {DB_PROCESS}"
-    output = await ops_test.juju(*find_pid.split())
-    pid = output[1].split()[1]
-    kill_cmd = f"run --unit {unit_name} -- kill -s {kill_code} {pid}"
-    output = await ops_test.juju(*kill_cmd.split())
+    kill_cmd = f"run --unit {unit_name} -- pkill --signal {kill_code} -f {DB_PROCESS}"
+    return_code, _, _ = await ops_test.juju(*kill_cmd.split())
 
-    if not output[0] == 0:
+    if return_code != 0:
         raise ProcessError(
-            "Expected kill command %s to succeed instead it failed: %s", kill_cmd, output
+            "Expected kill command %s to succeed instead it failed: %s", kill_cmd, return_code
         )
 
 
