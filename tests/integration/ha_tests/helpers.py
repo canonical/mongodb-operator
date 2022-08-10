@@ -527,13 +527,5 @@ async def db_step_down(ops_test: OpsTest, unit_ip: str, sigterm_time: int):
 def convert_time(time_as_str: str) -> int:
     """Converts a string time representation to an integer time representation."""
     # parse time representation, provided in this format: 'YYYY-MM-DDTHH:MM:SS.MMM+00:00'
-    y_m_d, h_m_s_m = time_as_str.split("T")
-    year, month, day = y_m_d.split("-")
-    hour, minute, second = h_m_s_m.split(".")[0].split(":")
-    microsecond = h_m_s_m.split(".")[1].split("+")[0]
-
-    d = datetime.datetime(
-        int(year), int(month), int(day), int(hour), int(minute), int(second), int(microsecond)
-    )
-
+    d = datetime.strptime(time_as_str, "%Y-%m-%dT%H:%M:%S.%f%z")
     return time.mktime(d.timetuple())
