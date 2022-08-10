@@ -3,6 +3,8 @@
 
 import json
 import subprocess
+import time
+from datetime import datetime
 from pathlib import Path
 from typing import List
 
@@ -11,11 +13,25 @@ import yaml
 from pymongo import MongoClient
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
 from pytest_operator.plugin import OpsTest
-from tenacity import retry, retry_if_result, stop_after_attempt, wait_exponential
+from tenacity import (
+    RetryError,
+    Retrying,
+    retry,
+    retry_if_result,
+    stop_after_attempt,
+    stop_after_delay,
+    wait_exponential,
+    wait_fixed,
+)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 PORT = 27017
 APP_NAME = METADATA["name"]
+DB_PROCESS = "/usr/bin/mongod"
+
+
+class ProcessError(Exception):
+    pass
 
 
 def replica_set_client(replica_ips: List[str], password: str, app=APP_NAME) -> MongoClient:
@@ -110,23 +126,57 @@ async def fetch_primary(replica_set_hosts: List[str], ops_test: OpsTest) -> str:
     return primary
 
 
+async def count_primaries(ops_test: OpsTest) -> int:
+    """Returns the number of primaries in a replica set."""
+    # connect to MongoDB client
+    app = await app_name(ops_test)
+    password = await get_password(ops_test, app)
+    replica_set_hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
+    client = replica_set_client(replica_set_hosts, password, app)
+
+    # grab the replica set status
+    try:
+        status = client.admin.command("replSetGetStatus")
+    except (ConnectionFailure, ConfigurationError, OperationFailure):
+        return None
+    finally:
+        client.close()
+
+    primaries = 0
+    # loop through all members in the replica set
+    for member in status["members"]:
+        # check replica's current state
+        if member["stateStr"] == "PRIMARY":
+            primaries += 1
+
+    return primaries
+
+
 @retry(
     retry=retry_if_result(lambda x: x is None),
     stop=stop_after_attempt(5),
     wait=wait_exponential(multiplier=1, min=2, max=30),
 )
-async def replica_set_primary(replica_set_hosts: List[str], ops_test: OpsTest) -> str:
+async def replica_set_primary(
+    replica_set_hosts: List[str], ops_test: OpsTest, return_name=False
+) -> str:
     """Returns the primary of the replica set.
 
     Retrying 5 times to give the replica set time to elect a new primary, also checks against the
     valid_ips to verify that the primary is not outdated.
     """
-    primary = await fetch_primary(replica_set_hosts, ops_test)
+    primary_ip = await fetch_primary(replica_set_hosts, ops_test)
     # return None if primary is no longer in the replica set
-    if primary is not None and primary not in replica_set_hosts:
+    if primary_ip is not None and primary_ip not in replica_set_hosts:
         return None
 
-    return str(primary)
+    if not return_name:
+        return str(primary_ip)
+
+    app = await app_name(ops_test)
+    for unit in ops_test.model.applications[app].units:
+        if unit.public_address == str(primary_ip):
+            return unit.name
 
 
 async def retrieve_entries(ops_test, app, db_name, collection_name, query_field):
@@ -262,7 +312,34 @@ async def count_writes(ops_test: OpsTest) -> int:
     client = MongoClient(connection_string)
     db = client["new-db"]
     test_collection = db["test_collection"]
-    return sum(1 for _ in test_collection.find())
+    count = test_collection.count_documents({})
+    client.close()
+    return count
+
+
+async def secondary_up_to_date(ops_test: OpsTest, unit_ip, expected_writes) -> bool:
+    """Checks if secondary is up to date with the cluster.
+
+    Retries over the period of one minute to give secondary adequate time to copy over data.
+    """
+    app = await app_name(ops_test)
+    password = await get_password(ops_test, app)
+    connection_string = f"mongodb://operator:{password}@{unit_ip}:{PORT}/admin?"
+    client = MongoClient(connection_string, directConnection=True)
+
+    try:
+        for attempt in Retrying(stop=stop_after_delay(60), wait=wait_fixed(3)):
+            with attempt:
+                db = client["new-db"]
+                test_collection = db["test_collection"]
+                secondary_writes = test_collection.count_documents({})
+                assert secondary_writes == expected_writes
+    except RetryError:
+        return False
+    finally:
+        client.close()
+
+    return True
 
 
 def storage_type(ops_test, app):
@@ -340,7 +417,7 @@ async def add_unit_with_storage(ops_test, app, storage):
             return unit
 
 
-async def reused_storage(ops_test: OpsTest, unit_ip) -> bool:
+async def reused_storage(ops_test: OpsTest, unit_ip, removal_time) -> bool:
     """Returns True if storage provided to mongod has been reused.
 
     MongoDB startup message indicates storage reuse:
@@ -361,7 +438,13 @@ async def reused_storage(ops_test: OpsTest, unit_ip) -> bool:
         if "attr" not in item:
             continue
 
-        if item["attr"] == {"newState": "STARTUP2", "oldState": "REMOVED"}:
+        # its important to check that this re-use was performed after the storage was removed as
+        # it could have been performed at an earlier time for another reason.
+        re_use_time = convert_time(item["t"]["$date"])
+        if (
+            item["attr"] == {"newState": "STARTUP2", "oldState": "REMOVED"}
+            and re_use_time > removal_time
+        ):
             return True
 
     return False
@@ -378,3 +461,71 @@ async def insert_focal_to_cluster(ops_test: OpsTest) -> None:
     test_collection = db["test_ubuntu_collection"]
     test_collection.insert({"release_name": "Focal Fossa", "version": 20.04, "LTS": True})
     client.close()
+
+
+async def kill_unit_process(ops_test: OpsTest, unit_name: str, kill_code: str):
+    """Kills the DB process on the unit according to the provided kill code."""
+    # killing the only replica can be disastrous
+    app = await app_name(ops_test)
+    if len(ops_test.model.applications[app].units) < 2:
+        await ops_test.model.applications[app].add_unit(count=1)
+        await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
+
+    kill_cmd = f"run --unit {unit_name} -- pkill --signal {kill_code} -f {DB_PROCESS}"
+    return_code, _, _ = await ops_test.juju(*kill_cmd.split())
+
+    if return_code != 0:
+        raise ProcessError(
+            "Expected kill command %s to succeed instead it failed: %s", kill_cmd, return_code
+        )
+
+
+async def mongod_ready(ops_test, unit_ip) -> bool:
+    """Verifies replica is running and available."""
+    app = await app_name(ops_test)
+    password = await get_password(ops_test, app)
+    client = MongoClient(unit_uri(unit_ip, password, app), directConnection=True)
+    try:
+        for attempt in Retrying(stop=stop_after_delay(60 * 5), wait=wait_fixed(3)):
+            with attempt:
+                # The ping command is cheap and does not require auth.
+                client.admin.command("ping")
+    except RetryError:
+        return False
+    finally:
+        client.close()
+
+    return True
+
+
+async def db_step_down(ops_test: OpsTest, unit_ip: str, sigterm_time: int):
+    app = await app_name(ops_test)
+    password = await get_password(ops_test, app)
+    client = MongoClient(unit_uri(unit_ip, password, app), directConnection=True)
+    log = client.admin.command("getLog", "global")
+    client.close()
+
+    for item in log["log"]:
+        item = json.loads(item)
+
+        if "msg" not in item:
+            continue
+
+        # this message indicates that the previous primary performed a repl step down operation.
+        # its important to check that this step down was performed after the sigterm opteration
+        # was performed, as it could have been performed at an earlier time for another reason.
+        step_down_time = convert_time(item["t"]["$date"])
+        if (
+            item["msg"] == "Starting an election due to step up request"
+            and step_down_time > sigterm_time
+        ):
+            return True
+
+    return False
+
+
+def convert_time(time_as_str: str) -> int:
+    """Converts a string time representation to an integer time representation."""
+    # parse time representation, provided in this format: 'YYYY-MM-DDTHH:MM:SS.MMM+00:00'
+    d = datetime.strptime(time_as_str, "%Y-%m-%dT%H:%M:%S.%f%z")
+    return time.mktime(d.timetuple())

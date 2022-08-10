@@ -3,6 +3,8 @@
 # See LICENSE file for licensing details.
 
 
+import time
+
 import pytest
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
@@ -13,15 +15,20 @@ from tests.integration.ha_tests.helpers import (
     add_unit_with_storage,
     app_name,
     clear_db_writes,
+    count_primaries,
     count_writes,
+    db_step_down,
     fetch_replica_set_members,
     find_unit,
     get_password,
     insert_focal_to_cluster,
+    kill_unit_process,
+    mongod_ready,
     replica_set_client,
     replica_set_primary,
     retrieve_entries,
     reused_storage,
+    secondary_up_to_date,
     start_continous_writes,
     stop_continous_writes,
     storage_id,
@@ -30,6 +37,8 @@ from tests.integration.ha_tests.helpers import (
 )
 
 ANOTHER_DATABASE_APP_NAME = "another-database-a"
+MONGOD_PROCESS = "/usr/bin/mongod"
+MEDIAN_REELECTION_TIME = 12
 
 
 @pytest.fixture()
@@ -75,6 +84,7 @@ async def test_storage_re_use(ops_test, continuous_writes):
     unit = ops_test.model.applications[app].units[0]
     unit_storage_id = storage_id(ops_test, unit.name)
     expected_units = len(ops_test.model.applications[app].units) - 1
+    removal_time = time.time()
     await ops_test.model.destroy_unit(unit.name)
     await ops_test.model.wait_for_idle(
         apps=[app], status="active", timeout=1000, wait_for_exact_units=expected_units
@@ -82,13 +92,13 @@ async def test_storage_re_use(ops_test, continuous_writes):
     new_unit = await add_unit_with_storage(ops_test, app, unit_storage_id)
 
     assert await reused_storage(
-        ops_test, new_unit.public_address
+        ops_test, new_unit.public_address, removal_time
     ), "attached storage not properly re-used by MongoDB."
 
     # verify that the no writes were skipped
     total_expected_writes = await stop_continous_writes(ops_test)
-    actual_expected_writes = await count_writes(ops_test)
-    assert total_expected_writes["number"] == actual_expected_writes
+    actual_writes = await count_writes(ops_test)
+    assert total_expected_writes["number"] == actual_writes
 
 
 @pytest.mark.abort_on_fail
@@ -117,8 +127,8 @@ async def test_add_units(ops_test: OpsTest, continuous_writes) -> None:
 
     # verify that the no writes were skipped
     total_expected_writes = await stop_continous_writes(ops_test)
-    actual_expected_writes = await count_writes(ops_test)
-    assert total_expected_writes["number"] == actual_expected_writes
+    actual_writes = await count_writes(ops_test)
+    assert total_expected_writes["number"] == actual_writes
 
 
 @pytest.mark.abort_on_fail
@@ -192,8 +202,8 @@ async def test_scale_down_capablities(ops_test: OpsTest, continuous_writes) -> N
 
     # verify that the no writes were skipped
     total_expected_writes = await stop_continous_writes(ops_test)
-    actual_expected_writes = await count_writes(ops_test)
-    assert total_expected_writes["number"] == actual_expected_writes
+    actual_writes = await count_writes(ops_test)
+    assert total_expected_writes["number"] == actual_writes
 
 
 async def test_replication_across_members(ops_test: OpsTest, continuous_writes) -> None:
@@ -218,8 +228,8 @@ async def test_replication_across_members(ops_test: OpsTest, continuous_writes) 
 
     # verify that the no writes were skipped
     total_expected_writes = await stop_continous_writes(ops_test)
-    actual_expected_writes = await count_writes(ops_test)
-    assert total_expected_writes["number"] == actual_expected_writes
+    actual_writes = await count_writes(ops_test)
+    assert total_expected_writes["number"] == actual_writes
 
 
 async def test_unique_cluster_dbs(ops_test: OpsTest, continuous_writes) -> None:
@@ -265,8 +275,8 @@ async def test_unique_cluster_dbs(ops_test: OpsTest, continuous_writes) -> None:
 
     # verify that the no writes were skipped
     total_expected_writes = await stop_continous_writes(ops_test)
-    actual_expected_writes = await count_writes(ops_test)
-    assert total_expected_writes["number"] == actual_expected_writes
+    actual_writes = await count_writes(ops_test)
+    assert total_expected_writes["number"] == actual_writes
 
 
 async def test_replication_member_scaling(ops_test: OpsTest, continuous_writes) -> None:
@@ -308,7 +318,144 @@ async def test_replication_member_scaling(ops_test: OpsTest, continuous_writes) 
 
     # verify that the no writes were skipped
     total_expected_writes = await stop_continous_writes(ops_test)
-    actual_expected_writes = await count_writes(ops_test)
-    assert total_expected_writes["number"] == actual_expected_writes
+    actual_writes = await count_writes(ops_test)
+    assert total_expected_writes["number"] == actual_writes
 
     # TODO in a future PR implement: newly removed members are gone without data.
+
+
+async def test_kill_db_process(ops_test, continuous_writes):
+    # locate primary unit
+    app = await app_name(ops_test)
+    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
+    primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
+    primary_ip = await replica_set_primary(ip_addresses, ops_test)
+
+    await kill_unit_process(ops_test, primary_name, kill_code="SIGKILL")
+
+    # verify new writes are continuing by counting the number of writes before and after a 5 second
+    # wait
+    writes = await count_writes(ops_test)
+    time.sleep(5)
+    more_writes = await count_writes(ops_test)
+    assert more_writes > writes, "writes not continuing to DB"
+
+    # sleep for twice the median election time
+    time.sleep(MEDIAN_REELECTION_TIME * 2)
+
+    # verify that db service got restarted and is ready
+    assert await mongod_ready(ops_test, primary_ip)
+
+    # verify that a new primary gets elected (ie old primary is secondary)
+    new_primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
+    assert new_primary_name != primary_name
+
+    # verify that no writes to the db were missed
+    total_expected_writes = await stop_continous_writes(ops_test)
+    actual_writes = await count_writes(ops_test)
+    assert total_expected_writes["number"] == actual_writes, "writes to the db were missed."
+
+    # verify that old primary is up to date.
+    assert await secondary_up_to_date(
+        ops_test, primary_ip, total_expected_writes["number"]
+    ), "secondary not up to date with the cluster after restarting."
+
+
+async def test_freeze_db_process(ops_test, continuous_writes):
+    # locate primary unit
+    app = await app_name(ops_test)
+    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
+    primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
+    primary_ip = await replica_set_primary(ip_addresses, ops_test)
+    await kill_unit_process(ops_test, primary_name, kill_code="SIGSTOP")
+
+    # sleep for twice the median election time
+    time.sleep(MEDIAN_REELECTION_TIME * 2)
+
+    # verify that a new primary gets elected
+    new_primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
+    assert new_primary_name != primary_name
+
+    # verify new writes are continuing by counting the number of writes before and after a 5 second
+    # wait
+    writes = await count_writes(ops_test)
+    time.sleep(5)
+    more_writes = await count_writes(ops_test)
+
+    # un-freeze the old primary
+    await kill_unit_process(ops_test, primary_name, kill_code="SIGCONT")
+
+    # check this after un-freezing the old primary so that if this check fails we still "turned
+    # back on" the mongod process
+    assert more_writes > writes, "writes not continuing to DB"
+
+    # verify that db service got restarted and is ready
+    assert await mongod_ready(ops_test, primary_ip)
+
+    # verify all units are running under the same replset
+    member_ips = await fetch_replica_set_members(ip_addresses, ops_test)
+    assert set(member_ips) == set(ip_addresses), "all members not running under the same replset"
+
+    # verify there is only one primary after un-freezing old primary
+    assert (
+        await count_primaries(ops_test) == 1
+    ), "there are more than one primary in the replica set."
+
+    # verify that the old primary does not "reclaim" primary status after un-freezing old primary
+    new_primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
+    assert new_primary_name != primary_name, "un-frozen primary should be secondary."
+
+    # verify that no writes were missed. Pausing and unpausing the primary can occasionally lead
+    # to a single duplicate write, hence the `<= actual_writes + 1`.
+    total_expected_writes = await stop_continous_writes(ops_test)
+    actual_writes = await count_writes(ops_test)
+    assert total_expected_writes["number"] <= actual_writes + 1
+
+    # verify that old primary is up to date, check actual writes instead of expected due to
+    # potential duplicated write
+    assert await secondary_up_to_date(
+        ops_test, primary_ip, actual_writes
+    ), "secondary not up to date with the cluster after restarting."
+
+
+async def test_restart_db_process(ops_test, continuous_writes):
+    # locate primary unit
+    app = await app_name(ops_test)
+    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
+    primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
+    primary_ip = await replica_set_primary(ip_addresses, ops_test)
+
+    # send SIGTERM, we expect `systemd` to restart the process
+    sig_term_time = time.time()
+    await kill_unit_process(ops_test, primary_name, kill_code="SIGTERM")
+
+    # verify new writes are continuing by counting the number of writes before and after a 5 second
+    # wait
+    writes = await count_writes(ops_test)
+    time.sleep(5)
+    more_writes = await count_writes(ops_test)
+    assert more_writes > writes, "writes not continuing to DB"
+
+    # verify that db service got restarted and is ready
+    assert await mongod_ready(ops_test, primary_ip)
+
+    # verify that a new primary gets elected (ie old primary is secondary)
+    new_primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
+    new_primary_ip = await replica_set_primary(ip_addresses, ops_test, return_name=False)
+    assert new_primary_name != primary_name
+
+    # verify that a stepdown was performed on restart. SIGTERM should send a graceful restart and
+    # send a replica step down signal.
+    assert await db_step_down(
+        ops_test, new_primary_ip, sig_term_time
+    ), "old primary departed without stepping down."
+
+    # verify that no writes were missed
+    total_expected_writes = await stop_continous_writes(ops_test)
+    actual_writes = await count_writes(ops_test)
+    assert total_expected_writes["number"] == actual_writes
+
+    # verify that old primary is up to date.
+    assert await secondary_up_to_date(
+        ops_test, primary_ip, total_expected_writes["number"]
+    ), "secondary not up to date with the cluster after restarting."
