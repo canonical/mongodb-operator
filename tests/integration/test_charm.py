@@ -116,7 +116,8 @@ async def test_get_primary_action(ops_test: OpsTest) -> None:
         # use get-primary action to find primary
         action = await unit.run_action("get-primary")
         action = await action.wait()
-        identified_primary = action.results["replica-set-primary"]
+        result = await ops_test.model.get_action_output(action.id)
+        identified_primary = result["replica-set-primary"]
 
         # assert get-primary returned the right primary
         assert identified_primary == expected_primary

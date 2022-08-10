@@ -83,19 +83,18 @@ def unit_uri(ip_address: str, password, app=APP_NAME) -> str:
     return f"mongodb://operator:" f"{password}@" f"{ip_address}:{PORT}/admin?replicaSet={app}"
 
 
-async def get_password(ops_test: OpsTest, app) -> str:
+async def get_password(ops_test: OpsTest, app: str) -> str:
     """Use the charm action to retrieve the password from provided unit.
 
     Returns:
         String with the password stored on the peer relation databag.
     """
     # can retrieve from any unit running unit so we pick the first
-    unit_name = ops_test.model.applications[app].units[0].name
-    unit_id = unit_name.split("/")[1]
-
-    action = await ops_test.model.units.get(f"{app}/{unit_id}").run_action("get-admin-password")
+    unit = ops_test.model.applications[app].units[0]
+    action = await unit.run_action("get-admin-password")
     action = await action.wait()
-    return action.results["admin-password"]
+    result = await ops_test.model.get_action_output(action.id)
+    return result["admin-password"]
 
 
 async def fetch_primary(replica_set_hosts: List[str], ops_test: OpsTest) -> str:

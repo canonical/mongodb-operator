@@ -72,21 +72,18 @@ async def _verify_rest_api_is_alive(ops_test: OpsTest, timeout=DEFAULT_REST_API_
         raise ApiTimeoutError()
 
 
-async def get_password(ops_test: OpsTest, app_name: str) -> str:
+async def get_password(ops_test: OpsTest, app: str) -> str:
     """Use the charm action to retrieve the password from provided unit.
 
     Returns:
         String with the password stored on the peer relation databag.
     """
     # can retrieve from any unit running unit so we pick the first
-    unit_name = ops_test.model.applications[app_name].units[0].name
-    unit_id = unit_name.split("/")[1]
-
-    action = await ops_test.model.units.get(f"{app_name}/{unit_id}").run_action(
-        "show-admin-password"
-    )
+    unit = ops_test.model.applications[app].units[0]
+    action = await unit.run_action("get-admin-password")
     action = await action.wait()
-    return action.results["admin-password"]
+    result = await ops_test.model.get_action_output(action.id)
+    return result["admin-password"]
 
 
 async def auth_enabled(connection: str, replset="mongodb") -> None:
