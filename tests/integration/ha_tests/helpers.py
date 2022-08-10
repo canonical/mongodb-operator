@@ -3,6 +3,8 @@
 
 import json
 import subprocess
+import time
+from datetime import datetime
 from pathlib import Path
 from typing import List
 
@@ -415,7 +417,7 @@ async def add_unit_with_storage(ops_test, app, storage):
             return unit
 
 
-async def reused_storage(ops_test: OpsTest, unit_ip) -> bool:
+async def reused_storage(ops_test: OpsTest, unit_ip, removal_time) -> bool:
     """Returns True if storage provided to mongod has been reused.
 
     MongoDB startup message indicates storage reuse:
@@ -436,7 +438,13 @@ async def reused_storage(ops_test: OpsTest, unit_ip) -> bool:
         if "attr" not in item:
             continue
 
-        if item["attr"] == {"newState": "STARTUP2", "oldState": "REMOVED"}:
+        # its important to check that this re-use was performed after the storage was removed as
+        # it could have been performed at an earlier time for another reason.
+        re_use_time = convert_time(item["t"]["$date"])
+        if (
+            item["attr"] == {"newState": "STARTUP2", "oldState": "REMOVED"}
+            and re_use_time > removal_time
+        ):
             return True
 
     return False
@@ -490,7 +498,7 @@ async def mongod_ready(ops_test, unit_ip) -> bool:
     return True
 
 
-async def db_step_down(ops_test: OpsTest, unit_ip: str):
+async def db_step_down(ops_test: OpsTest, unit_ip: str, sigterm_time: int):
     app = await app_name(ops_test)
     password = await get_password(ops_test, app)
     client = MongoClient(unit_uri(unit_ip, password, app), directConnection=True)
@@ -504,7 +512,20 @@ async def db_step_down(ops_test: OpsTest, unit_ip: str):
             continue
 
         # this message indicates that the previous primary performed a repl step down operation.
-        if item["msg"] == "Starting an election due to step up request":
+        # its important to check that this step down was performed after the sigterm opteration
+        # was performed, as it could have been performed at an earlier time for another reason.
+        step_down_time = convert_time(item["t"]["$date"])
+        if (
+            item["msg"] == "Starting an election due to step up request"
+            and step_down_time > sigterm_time
+        ):
             return True
 
     return False
+
+
+def convert_time(time_as_str: str) -> int:
+    """Converts a string time representation to an integer time representation."""
+    # parse time representation, provided in this format: 'YYYY-MM-DDTHH:MM:SS.MMM+00:00'
+    d = datetime.strptime(time_as_str, "%Y-%m-%dT%H:%M:%S.%f%z")
+    return time.mktime(d.timetuple())
