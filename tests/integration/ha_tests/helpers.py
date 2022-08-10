@@ -500,22 +500,29 @@ async def mongod_ready(ops_test, unit_ip) -> bool:
     return True
 
 
-async def db_step_down(ops_test: OpsTest, unit_ip: str):
+async def db_step_down(ops_test: OpsTest, old_primary: str):
     app = await app_name(ops_test)
     password = await get_password(ops_test, app)
-    client = MongoClient(unit_uri(unit_ip, password, app), directConnection=True)
-    log = client.admin.command("getLog", "global")
-    client.close()
 
-    for item in log["log"]:
-        item = json.loads(item)
+    # loop through all units that aren't the old primary
+    for unit in ops_test.model.applications[app].units:
+        client = MongoClient(unit_uri(unit.public_adddress, password, app), directConnection=True)
+        log = client.admin.command("getLog", "global")
+        client.close()
 
-        if "msg" not in item:
+        if unit.public_address == old_primary:
             continue
 
-        # this message indicates that the previous primary performed a repl step down operation.
-        if item["msg"] == "Starting an election due to step up request":
-            return True
+        for item in log["log"]:
+            item = json.loads(item)
+
+            if "msg" not in item:
+                continue
+
+            # this message indicates that the previous primary performed a repl step down
+            # operation.
+            if item["msg"] == "Starting an election due to step up request":
+                return True
 
     return False
 

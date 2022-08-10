@@ -3,8 +3,9 @@
 # See LICENSE file for licensing details.
 
 
-import time
 import asyncio
+import time
+
 import pytest
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
@@ -12,8 +13,8 @@ from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from tests.integration.ha_tests.helpers import (
     APP_NAME,
-    all_db_processes_down,
     add_unit_with_storage,
+    all_db_processes_down,
     app_name,
     clear_db_writes,
     count_primaries,
@@ -456,14 +457,11 @@ async def test_restart_db_process(ops_test, continuous_writes):
 
     # verify that a new primary gets elected (ie old primary is secondary)
     new_primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
-    new_primary_ip = await replica_set_primary(ip_addresses, ops_test, return_name=False)
     assert new_primary_name != primary_name
 
     # verify that a stepdown was performed on restart. SIGTERM should send a graceful restart and
     # send a replica step down signal.
-    assert await db_step_down(
-        ops_test, new_primary_ip
-    ), "old primary departed without stepping down."
+    assert await db_step_down(ops_test, primary_ip), "old primary departed without stepping down."
 
     # verify that no writes were missed
     total_expected_writes = await stop_continous_writes(ops_test)
