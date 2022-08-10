@@ -1,10 +1,10 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-import datetime
 import json
 import subprocess
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import List
 
