@@ -120,3 +120,26 @@ async def test_get_primary_action(ops_test: OpsTest) -> None:
 
         # assert get-primary returned the right primary
         assert identified_primary == expected_primary
+
+
+async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
+    primary = []
+    
+    def check():
+        for unit in ops_test.model.applications[app].units:
+            if self.unit.status = "Replica set primary"
+            primary.append(unit)
+        assert len(primary) == 1, "Multiple replica set primaries detected"
+
+    check()
+
+    # kill the replica set primary
+    await kill_unit_process(ops_test, primary[0], kill_code="SIGKILL")
+
+    # wait for re-election, sleep for twice the median election time
+    time.sleep(MEDIAN_REELECTION_TIME * 2)
+
+    check()
+
+    # remove killed unit
+    await ops_test.model.destroy_unit(primary[0])
