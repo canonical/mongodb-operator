@@ -99,6 +99,7 @@ async def test_storage_re_use(ops_test, continuous_writes):
     unit = ops_test.model.applications[app].units[0]
     unit_storage_id = storage_id(ops_test, unit.name)
     expected_units = len(ops_test.model.applications[app].units) - 1
+    removal_time = time.time()
     await ops_test.model.destroy_unit(unit.name)
     await ops_test.model.wait_for_idle(
         apps=[app], status="active", timeout=1000, wait_for_exact_units=expected_units
@@ -106,7 +107,7 @@ async def test_storage_re_use(ops_test, continuous_writes):
     new_unit = await add_unit_with_storage(ops_test, app, unit_storage_id)
 
     assert await reused_storage(
-        ops_test, new_unit.public_address
+        ops_test, new_unit.public_address, removal_time
     ), "attached storage not properly re-used by MongoDB."
 
     # verify that the no writes were skipped
@@ -443,6 +444,7 @@ async def test_restart_db_process(ops_test, continuous_writes):
     primary_ip = await replica_set_primary(ip_addresses, ops_test)
 
     # send SIGTERM, we expect `systemd` to restart the process
+    sig_term_time = time.time()
     await kill_unit_process(ops_test, primary_name, kill_code="SIGTERM")
 
     # verify new writes are continuing by counting the number of writes before and after a 5 second
@@ -461,7 +463,9 @@ async def test_restart_db_process(ops_test, continuous_writes):
 
     # verify that a stepdown was performed on restart. SIGTERM should send a graceful restart and
     # send a replica step down signal.
-    assert await db_step_down(ops_test, primary_ip), "old primary departed without stepping down."
+    assert await db_step_down(
+        ops_test, primary_ip, sig_term_time
+    ), "old primary departed without stepping down."
 
     # verify that no writes were missed
     total_expected_writes = await stop_continous_writes(ops_test)
