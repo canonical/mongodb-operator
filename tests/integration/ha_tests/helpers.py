@@ -534,7 +534,7 @@ async def db_step_down(ops_test: OpsTest, old_primary: str, sigterm_time: int):
             step_down_time = convert_time(item["t"]["$date"])
             if (
                 item["msg"] == "Starting an election due to step up request"
-                and step_down_time > sigterm_time
+                and step_down_time >= sigterm_time
             ):
                 return True
 

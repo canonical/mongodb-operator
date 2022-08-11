@@ -447,6 +447,12 @@ async def test_restart_db_process(ops_test, continuous_writes):
     sig_term_time = time.time()
     await kill_unit_process(ops_test, primary_name, kill_code="SIGTERM")
 
+    # verify that a stepdown was performed on restart. SIGTERM should send a graceful restart and
+    # send a replica step down signal.
+    assert await db_step_down(
+        ops_test, primary_ip, sig_term_time
+    ), "old primary departed without stepping down."
+
     # verify new writes are continuing by counting the number of writes before and after a 5 second
     # wait
     writes = await count_writes(ops_test)
@@ -460,12 +466,6 @@ async def test_restart_db_process(ops_test, continuous_writes):
     # verify that a new primary gets elected (ie old primary is secondary)
     new_primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
     assert new_primary_name != primary_name
-
-    # verify that a stepdown was performed on restart. SIGTERM should send a graceful restart and
-    # send a replica step down signal.
-    assert await db_step_down(
-        ops_test, primary_ip, sig_term_time
-    ), "old primary departed without stepping down."
 
     # verify that no writes were missed
     total_expected_writes = await stop_continous_writes(ops_test)
