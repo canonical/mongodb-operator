@@ -35,13 +35,9 @@ TMP_SERVICE_PATH = "tests/integration/ha_tests/tmp.service"
 class ProcessError(Exception):
     """Raised when a process fails."""
 
-    pass
-
 
 class ProcessRunningError(Exception):
     """Raised when a process is running when it is not expected to be."""
-
-    pass
 
 
 def replica_set_client(replica_ips: List[str], password: str, app=APP_NAME) -> MongoClient:
@@ -542,7 +538,7 @@ async def db_step_down(ops_test: OpsTest, old_primary: str, sigterm_time: int):
 
 
 async def all_db_processes_down(ops_test: OpsTest) -> bool:
-    """Verifies that all units of the cgarm do not have the DB process running."""
+    """Verifies that all units of the charm do not have the DB process running."""
     app = await app_name(ops_test)
 
     try:

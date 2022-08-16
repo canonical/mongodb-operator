@@ -20,13 +20,16 @@ def continous_writes(connection_string: str, starting_number: int):
         db = client["new-db"]
         test_collection = db["test_collection"]
         try:
+            # insert item into collection if it doesn't already exist
             test_collection.with_options(
                 write_concern=WriteConcern(
                     w="majority",
                     j=True,
                     wtimeout=1000,
                 )
-            ).insert_one({"number": write_value})
+            ).update_one({"number": write_value}, {"$set": {"number": write_value}}, upsert=True)
+
+            # update_one
         except (NotPrimaryError, AutoReconnect):
             # this means that the primary was not able to be found. An application should try to
             # reconnect and re-write the previous value. Hence, we `continue` here, without

@@ -419,17 +419,12 @@ async def test_freeze_db_process(ops_test, continuous_writes):
     new_primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
     assert new_primary_name != primary_name, "un-frozen primary should be secondary."
 
-    # verify that no writes were missed. Pausing and unpausing the primary can occasionally lead
-    # to a single duplicate write, hence the `or`.
+    # verify that no writes were missed.
     total_expected_writes = await stop_continous_writes(ops_test)
     actual_writes = await count_writes(ops_test)
-    assert (
-        actual_writes == total_expected_writes["number"]
-        or actual_writes == 1 + total_expected_writes["number"]
-    ), "db writes missing."
+    assert actual_writes == total_expected_writes["number"], "db writes missing."
 
-    # verify that old primary is up to date, check actual writes instead of expected due to
-    # potential duplicated write
+    # verify that old primary is up to date.
     assert await secondary_up_to_date(
         ops_test, primary_ip, actual_writes
     ), "secondary not up to date with the cluster after restarting."
@@ -443,10 +438,9 @@ async def test_restart_db_process(ops_test, continuous_writes):
     primary_ip = await replica_set_primary(ip_addresses, ops_test)
 
     # send SIGTERM, we expect `systemd` to restart the process
-    sig_term_time = time.time()
     await kill_unit_process(ops_test, primary_name, kill_code="SIGTERM")
 
-    # TODO (future PR): find a reliable way to verify db step down, current implemenation uses
+    # TODO (future PR): find a reliable way to verify db step down, current implementation uses
     # mongodb logs which rotate too quickly and leave us unable to verify the db step down
     # processes success.
     # # verify that a stepdown was performed on restart. SIGTERM should send a graceful restart and
@@ -523,12 +517,9 @@ async def test_full_cluster_crash(ops_test: OpsTest, continuous_writes, reset_re
     # verify that no writes to the db were missed
     total_expected_writes = await stop_continous_writes(ops_test)
     actual_writes = await count_writes(ops_test)
-    # verify that no writes were missed. Cluster crash can occasionally lead to a single
-    # duplicate write, hence the `or`.
-    assert (
-        actual_writes == total_expected_writes["number"]
-        or actual_writes == 1 + total_expected_writes["number"]
-    ), "db writes missing."
+
+    # verify that no writes were missed.
+    assert actual_writes == total_expected_writes["number"], "db writes missing."
 
 
 async def test_full_cluster_restart(ops_test: OpsTest, continuous_writes, reset_restart_delay):
