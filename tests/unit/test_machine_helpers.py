@@ -27,12 +27,14 @@ class TestCharm(unittest.TestCase):
                 "localhost,1.1.1.1",
                 "--replSet",
                 "my_repl_set",
+                "--logpath=/data/db/mongodb.log --logappend",
                 "--auth",
                 "--clusterAuthMode=keyFile",
                 f"--keyFile={machine_helpers.KEY_FILE}",
                 "\n",
             ]
         )
+
         self.assertEqual(
             machine_helpers.generate_service_args(True, "1.1.1.1", "my_repl_set"),
             service_args_auth,
@@ -47,6 +49,7 @@ class TestCharm(unittest.TestCase):
                 # part of replicaset
                 "--replSet",
                 "my_repl_set",
+                "--logpath=/data/db/mongodb.log --logappend",
                 "\n",
             ]
         )
