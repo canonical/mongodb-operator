@@ -28,6 +28,7 @@ METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 PORT = 27017
 APP_NAME = METADATA["name"]
 DB_PROCESS = "/usr/bin/mongod"
+MONGODB_LOG_PATH = "/data/db/mongodb.log"
 
 
 class ProcessError(Exception):
@@ -417,7 +418,7 @@ async def add_unit_with_storage(ops_test, app, storage):
             return unit
 
 
-async def reused_storage(ops_test: OpsTest, unit_ip, removal_time) -> bool:
+async def reused_storage(ops_test: OpsTest, unit_name, removal_time) -> bool:
     """Returns True if storage provided to mongod has been reused.
 
     MongoDB startup message indicates storage reuse:
@@ -426,25 +427,25 @@ async def reused_storage(ops_test: OpsTest, unit_ip, removal_time) -> bool:
         If member transitions to STARTUP2 from REMOVED then it is re-using the storage we
         provided.
     """
-    app = await app_name(ops_test)
-    password = await get_password(ops_test, app)
-    client = MongoClient(unit_uri(unit_ip, password, app), directConnection=True)
-    log = client.admin.command("getLog", "global")
-    client.close()
+    cat_cmd = f"run --unit {unit_name} -- cat {MONGODB_LOG_PATH}"
+    return_code, output, _ = await ops_test.juju(*cat_cmd.split())
 
-    for item in log["log"]:
-        item = json.loads(item)
+    if return_code != 0:
+        raise ProcessError(
+            "Expected cat command %s to succeed instead it failed: %s", cat_cmd, return_code
+        )
 
-        if "attr" not in item:
+    for line in output.split("\n"):
+        if not len(line):
             continue
 
-        # its important to check that this re-use was performed after the storage was removed as
-        # it could have been performed at an earlier time for another reason.
+        item = json.loads(line)
+
+        if "msg" not in item:
+            continue
+
         re_use_time = convert_time(item["t"]["$date"])
-        if (
-            item["attr"] == {"newState": "STARTUP2", "oldState": "REMOVED"}
-            and re_use_time > removal_time
-        ):
+        if '"newState": "STARTUP2", "oldState": "REMOVED"' in line and re_use_time > removal_time:
             return True
 
     return False
@@ -498,27 +499,26 @@ async def mongod_ready(ops_test, unit_ip) -> bool:
     return True
 
 
-async def db_step_down(ops_test: OpsTest, unit_ip: str, sigterm_time: int):
-    app = await app_name(ops_test)
-    password = await get_password(ops_test, app)
-    client = MongoClient(unit_uri(unit_ip, password, app), directConnection=True)
-    log = client.admin.command("getLog", "global")
-    client.close()
+async def db_step_down(ops_test: OpsTest, unit_name: str, sigterm_time: int):
+    cat_cmd = f"run --unit {unit_name} -- cat {MONGODB_LOG_PATH} "
+    return_code, output, _ = await ops_test.juju(*cat_cmd.split())
 
-    for item in log["log"]:
-        item = json.loads(item)
+    if return_code != 0:
+        raise ProcessError(
+            "Expected cat command %s to succeed instead it failed: %s", cat_cmd, return_code
+        )
+
+    for line in output.split("\n"):
+        if not len(line):
+            continue
+
+        item = json.loads(line)
 
         if "msg" not in item:
             continue
 
-        # this message indicates that the previous primary performed a repl step down operation.
-        # its important to check that this step down was performed after the sigterm opteration
-        # was performed, as it could have been performed at an earlier time for another reason.
         step_down_time = convert_time(item["t"]["$date"])
-        if (
-            item["msg"] == "Starting an election due to step up request"
-            and step_down_time > sigterm_time
-        ):
+        if "Starting an election due to step up request" in line and step_down_time > sigterm_time:
             return True
 
     return False

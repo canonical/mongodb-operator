@@ -92,7 +92,7 @@ async def test_storage_re_use(ops_test, continuous_writes):
     new_unit = await add_unit_with_storage(ops_test, app, unit_storage_id)
 
     assert await reused_storage(
-        ops_test, new_unit.public_address, removal_time
+        ops_test, new_unit.name, removal_time
     ), "attached storage not properly re-used by MongoDB."
 
     # verify that the no writes were skipped
@@ -441,13 +441,12 @@ async def test_restart_db_process(ops_test, continuous_writes):
 
     # verify that a new primary gets elected (ie old primary is secondary)
     new_primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
-    new_primary_ip = await replica_set_primary(ip_addresses, ops_test, return_name=False)
     assert new_primary_name != primary_name
 
     # verify that a stepdown was performed on restart. SIGTERM should send a graceful restart and
     # send a replica step down signal.
     assert await db_step_down(
-        ops_test, new_primary_ip, sig_term_time
+        ops_test, new_primary_name, sig_term_time
     ), "old primary departed without stepping down."
 
     # verify that no writes were missed
