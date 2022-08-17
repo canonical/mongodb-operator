@@ -28,10 +28,16 @@ METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 PORT = 27017
 APP_NAME = METADATA["name"]
 DB_PROCESS = "/usr/bin/mongod"
+MONGOD_SERVICE_DEFAULT_PATH = "/etc/systemd/system/mongod.service"
+TMP_SERVICE_PATH = "tests/integration/ha_tests/tmp.service"
 
 
 class ProcessError(Exception):
-    pass
+    """Raised when a process fails."""
+
+
+class ProcessRunningError(Exception):
+    """Raised when a process is running when it is not expected to be."""
 
 
 def replica_set_client(replica_ips: List[str], password: str, app=APP_NAME) -> MongoClient:
@@ -498,30 +504,116 @@ async def mongod_ready(ops_test, unit_ip) -> bool:
     return True
 
 
-async def db_step_down(ops_test: OpsTest, unit_ip: str, sigterm_time: int):
+async def db_step_down(ops_test: OpsTest, old_primary: str, sigterm_time: int):
     app = await app_name(ops_test)
     password = await get_password(ops_test, app)
-    client = MongoClient(unit_uri(unit_ip, password, app), directConnection=True)
-    log = client.admin.command("getLog", "global")
-    client.close()
 
-    for item in log["log"]:
-        item = json.loads(item)
+    # loop through all units that aren't the old primary
+    for unit in ops_test.model.applications[app].units:
+        client = MongoClient(unit_uri(unit.public_address, password, app), directConnection=True)
+        log = client.admin.command("getLog", "global")
+        client.close()
 
-        if "msg" not in item:
+        if unit.public_address == old_primary:
             continue
 
-        # this message indicates that the previous primary performed a repl step down operation.
-        # its important to check that this step down was performed after the sigterm opteration
-        # was performed, as it could have been performed at an earlier time for another reason.
-        step_down_time = convert_time(item["t"]["$date"])
-        if (
-            item["msg"] == "Starting an election due to step up request"
-            and step_down_time > sigterm_time
-        ):
-            return True
+        for item in log["log"]:
+            item = json.loads(item)
+
+            if "msg" not in item:
+                continue
+
+            # this message indicates that the previous primary performed a repl step down
+            # operation. its important to check that this step down was performed after the
+            # sigterm opteration was performed, as it could have been performed at an earlier
+            # time for another reason.
+            step_down_time = convert_time(item["t"]["$date"])
+            if (
+                item["msg"] == "Starting an election due to step up request"
+                and step_down_time >= sigterm_time
+            ):
+                return True
 
     return False
+
+
+async def all_db_processes_down(ops_test: OpsTest) -> bool:
+    """Verifies that all units of the charm do not have the DB process running."""
+    app = await app_name(ops_test)
+
+    try:
+        for attempt in Retrying(stop=stop_after_delay(60), wait=wait_fixed(3)):
+            with attempt:
+                for unit in ops_test.model.applications[app].units:
+                    search_db_process = f"run --unit {unit.name} ps aux | grep {DB_PROCESS}"
+                    _, processes, _ = await ops_test.juju(*search_db_process.split())
+
+                    # `ps aux | grep {DB_PROCESS}` is a process on it's own and will be shown in
+                    # the output of ps aux, hence it it is important that we check if there is
+                    # more than one process containing the name `DB_PROCESS`
+                    # splitting processes by "\n" results in an empty line, hence we need to
+                    # remove one to account for the extra entry
+                    if len(processes.split("\n")) - 1 > 1:
+                        raise ProcessRunningError
+    except RetryError:
+        return False
+
+    return True
+
+
+async def update_restart_delay(ops_test: OpsTest, unit, delay: int):
+    """Updates the restart delay in the DB service file.
+
+    When the DB service fails it will now wait for `dalay` number of seconds.
+    """
+    # load the service file from the unit and update it with the new delay
+    await unit.scp_from(source=MONGOD_SERVICE_DEFAULT_PATH, destination=TMP_SERVICE_PATH)
+    with open(TMP_SERVICE_PATH, "r") as mongodb_service_file:
+        mongodb_service = mongodb_service_file.readlines()
+
+    for index, line in enumerate(mongodb_service):
+        if "RestartSec" in line:
+            mongodb_service[index] = f"RestartSec={delay}s\n"
+
+    with open(TMP_SERVICE_PATH, "w") as service_file:
+        service_file.writelines(mongodb_service)
+
+    # upload the changed file back to the unit, we cannot scp this file directly to
+    # MONGOD_SERVICE_DEFAULT_PATH since this directory has strict permissions, instead we scp it
+    # elsewhere and then move it to MONGOD_SERVICE_DEFAULT_PATH.
+    await unit.scp_to(source=TMP_SERVICE_PATH, destination="mongod.service")
+    mv_cmd = f"run --unit {unit.name} mv /home/ubuntu/mongod.service {MONGOD_SERVICE_DEFAULT_PATH}"
+    return_code, _, _ = await ops_test.juju(*mv_cmd.split())
+    if return_code != 0:
+        raise ProcessError("Command: %s failed on unit: %s.", mv_cmd, unit.name)
+
+    # remove tmp file from machine
+    subprocess.call(["rm", TMP_SERVICE_PATH])
+
+    # reload the daemon for systemd otherwise changes are not saved
+    reload_cmd = f"run --unit {unit.name} systemctl daemon-reload"
+    return_code, _, _ = await ops_test.juju(*reload_cmd.split())
+    if return_code != 0:
+        raise ProcessError("Command: %s failed on unit: %s.", reload_cmd, unit.name)
+
+
+async def verify_replica_set_configuration(ops_test: OpsTest) -> None:
+    """Verifies presence of primary, replica set members, and number of primaries."""
+    app = await app_name(ops_test)
+    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
+
+    # verify presence of primary
+    new_primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
+    assert new_primary_name, "primary not elected after cluster crash."
+
+    # verify all units are running under the same replset
+    member_ips = await fetch_replica_set_members(ip_addresses, ops_test)
+    assert set(member_ips) == set(ip_addresses), "all members not running under the same replset"
+
+    # verify there is only one primary
+    assert (
+        await count_primaries(ops_test) == 1
+    ), "there are more than one primary in the replica set."
 
 
 def convert_time(time_as_str: str) -> int:
