@@ -9,7 +9,9 @@ import yaml
 from pymongo import MongoClient
 from pymongo.errors import OperationFailure
 from pytest_operator.plugin import OpsTest
+from tenacity import RetryError
 
+from tests.integration.ha_tests.helpers import replica_set_primary
 from tests.integration.relation_tests.new_relations.helpers import (
     get_application_relation_data,
 )
@@ -74,6 +76,107 @@ async def test_database_relation_with_charm_libraries(ops_test: OpsTest):
     # test crud operations
     db = client[database]
     test_collection = db["test_collection"]
+    ubuntu = {"release_name": "Focal Fossa", "version": 20.04, "LTS": True}
+    test_collection.insert(ubuntu)
+
+    query = test_collection.find({}, {"release_name": 1})
+    assert query[0]["release_name"] == "Focal Fossa"
+
+    ubuntu_version = {"version": 20.04}
+    ubuntu_name_updated = {"$set": {"release_name": "Fancy Fossa"}}
+    test_collection.update_one(ubuntu_version, ubuntu_name_updated)
+
+    query = test_collection.find({}, {"release_name": 1})
+    assert query[0]["release_name"] == "Fancy Fossa"
+
+    test_collection.delete_one({"release_name": "Fancy Fossa"})
+    query = test_collection.find({}, {"release_name": 1})
+    assert query.count() == 0
+
+    client.close()
+
+
+@pytest.mark.abort_on_fail
+async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
+    """Verifies that the app metadata changes with db relation joined and departed events."""
+    endpoints_str = await get_application_relation_data(
+        ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME, "endpoints"
+    )
+    for unit in ops_test.model.applications[DATABASE_APP_NAME].units:
+        assert (
+            unit.public_address in endpoints_str
+        ), f"unit {unit.name} not present in connection URI"
+
+    assert len(endpoints_str.split(",")) == len(
+        ops_test.model.applications[DATABASE_APP_NAME].units
+    ), "number of endpoints in replicaset URI do not match number of units"
+
+    await ops_test.model.applications[DATABASE_APP_NAME].add_units(count=2)
+    await ops_test.model.wait_for_idle(
+        apps=[DATABASE_APP_NAME], status="active", timeout=1000, wait_for_exact_units=4
+    )
+
+    endpoints_str = await get_application_relation_data(
+        ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME, "endpoints"
+    )
+    for unit in ops_test.model.applications[DATABASE_APP_NAME].units:
+        assert (
+            unit.public_address in endpoints_str
+        ), f"unit {unit.name} not present in connection URI after adding units"
+
+    assert len(endpoints_str.split(",")) == len(
+        ops_test.model.applications[DATABASE_APP_NAME].units
+    ), "number of endpoints in replicaset URI do not match number of units after adding units"
+
+    await ops_test.model.applications[DATABASE_APP_NAME].destroy_units(
+        f"{DATABASE_APP_NAME}/0", f"{DATABASE_APP_NAME}/1"
+    )
+    await ops_test.model.wait_for_idle(
+        apps=[DATABASE_APP_NAME], status="active", timeout=1000, wait_for_exact_units=2
+    )
+
+    endpoints_str = await get_application_relation_data(
+        ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME, "endpoints"
+    )
+    for unit in ops_test.model.applications[DATABASE_APP_NAME].units:
+        assert (
+            unit.public_address in endpoints_str
+        ), f"unit {unit.name} not present in connection URI after destroying units"
+
+    assert len(endpoints_str.split(",")) == len(
+        ops_test.model.applications[DATABASE_APP_NAME].units
+    ), "number of endpoints in replicaset URI do not match number of units after destroying units"
+
+    # check that the replica set with the remaining units has a primary
+    ip_addresses = endpoints_str.split(",")
+    try:
+        primary = await replica_set_primary(ip_addresses, ops_test)
+    except RetryError:
+        primary = None
+
+    # verify that the primary is not None
+    assert primary is not None, "replica set has no primary"
+
+    # test crud operations
+    connection_string = await get_application_relation_data(
+        ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME, "uris"
+    )
+    database = await get_application_relation_data(
+        ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME, "database"
+    )
+    client = MongoClient(
+        connection_string,
+        directConnection=False,
+        connect=False,
+        serverSelectionTimeoutMS=1000,
+        connectTimeoutMS=2000,
+    )
+
+    db = client[database]
+    # clear collection  writes from previous test
+    test_collection = db["test_app_collection"]
+    test_collection.drop()
+    test_collection = db["test_app_collection"]
     ubuntu = {"release_name": "Focal Fossa", "version": 20.04, "LTS": True}
     test_collection.insert(ubuntu)
 
