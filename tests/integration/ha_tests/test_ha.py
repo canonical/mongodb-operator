@@ -3,6 +3,7 @@
 # See LICENSE file for licensing details.
 
 
+import asyncio
 import time
 
 import pytest
@@ -13,11 +14,11 @@ from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 from tests.integration.ha_tests.helpers import (
     APP_NAME,
     add_unit_with_storage,
+    all_db_processes_down,
     app_name,
     clear_db_writes,
     count_primaries,
     count_writes,
-    db_step_down,
     fetch_replica_set_members,
     find_unit,
     get_password,
@@ -34,11 +35,15 @@ from tests.integration.ha_tests.helpers import (
     storage_id,
     storage_type,
     unit_uri,
+    update_restart_delay,
+    verify_replica_set_configuration,
 )
 
 ANOTHER_DATABASE_APP_NAME = "another-database-a"
 MONGOD_PROCESS = "/usr/bin/mongod"
 MEDIAN_REELECTION_TIME = 12
+RESTART_DELAY = 60 * 3
+ORIGINAL_RESTART_DELAY = 5
 
 
 @pytest.fixture()
@@ -47,6 +52,15 @@ async def continuous_writes(ops_test: OpsTest):
     await start_continous_writes(ops_test, 1)
     yield
     await clear_db_writes(ops_test)
+
+
+@pytest.fixture()
+async def reset_restart_delay(ops_test: OpsTest):
+    """Resets service file delay on all units."""
+    yield
+    app = await app_name(ops_test)
+    for unit in ops_test.model.applications[app].units:
+        await update_restart_delay(ops_test, unit, ORIGINAL_RESTART_DELAY)
 
 
 @pytest.mark.abort_on_fail
@@ -405,14 +419,12 @@ async def test_freeze_db_process(ops_test, continuous_writes):
     new_primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
     assert new_primary_name != primary_name, "un-frozen primary should be secondary."
 
-    # verify that no writes were missed. Pausing and unpausing the primary can occasionally lead
-    # to a single duplicate write, hence the `<= actual_writes + 1`.
+    # verify that no writes were missed.
     total_expected_writes = await stop_continous_writes(ops_test)
     actual_writes = await count_writes(ops_test)
-    assert total_expected_writes["number"] <= actual_writes + 1
+    assert actual_writes == total_expected_writes["number"], "db writes missing."
 
-    # verify that old primary is up to date, check actual writes instead of expected due to
-    # potential duplicated write
+    # verify that old primary is up to date.
     assert await secondary_up_to_date(
         ops_test, primary_ip, actual_writes
     ), "secondary not up to date with the cluster after restarting."
@@ -426,8 +438,16 @@ async def test_restart_db_process(ops_test, continuous_writes):
     primary_ip = await replica_set_primary(ip_addresses, ops_test)
 
     # send SIGTERM, we expect `systemd` to restart the process
-    sig_term_time = time.time()
     await kill_unit_process(ops_test, primary_name, kill_code="SIGTERM")
+
+    # TODO (future PR): find a reliable way to verify db step down, current implementation uses
+    # mongodb logs which rotate too quickly and leave us unable to verify the db step down
+    # processes success.
+    # # verify that a stepdown was performed on restart. SIGTERM should send a graceful restart and
+    # # send a replica step down signal.
+    # assert await db_step_down(
+    #     ops_test, primary_ip, sig_term_time
+    # ), "old primary departed without stepping down."
 
     # verify new writes are continuing by counting the number of writes before and after a 5 second
     # wait
@@ -441,14 +461,7 @@ async def test_restart_db_process(ops_test, continuous_writes):
 
     # verify that a new primary gets elected (ie old primary is secondary)
     new_primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
-    new_primary_ip = await replica_set_primary(ip_addresses, ops_test, return_name=False)
     assert new_primary_name != primary_name
-
-    # verify that a stepdown was performed on restart. SIGTERM should send a graceful restart and
-    # send a replica step down signal.
-    assert await db_step_down(
-        ops_test, new_primary_ip, sig_term_time
-    ), "old primary departed without stepping down."
 
     # verify that no writes were missed
     total_expected_writes = await stop_continous_writes(ops_test)
@@ -459,3 +472,97 @@ async def test_restart_db_process(ops_test, continuous_writes):
     assert await secondary_up_to_date(
         ops_test, primary_ip, total_expected_writes["number"]
     ), "secondary not up to date with the cluster after restarting."
+
+
+async def test_full_cluster_crash(ops_test: OpsTest, continuous_writes, reset_restart_delay):
+    app = await app_name(ops_test)
+
+    # update all units to have a new RESTART_DELAY,  Modifying the Restart delay to 3 minutes
+    # should ensure enough time for all replicas to be down at the same time.
+    for unit in ops_test.model.applications[app].units:
+        await update_restart_delay(ops_test, unit, RESTART_DELAY)
+
+    # kill all units "simulatenously"
+    await asyncio.gather(
+        *[
+            kill_unit_process(ops_test, unit.name, kill_code="SIGKILL")
+            for unit in ops_test.model.applications[app].units
+        ]
+    )
+
+    # This test serves to verify behavior when all replicas are down at the same time that when
+    # they come back online they operate as expected. This check verfies that we meet the criterea
+    # of all replicas being down at the same time.
+    assert await all_db_processes_down(ops_test), "Not all units down at the same time."
+
+    # sleep for twice the median election time and the restart delay
+    time.sleep(MEDIAN_REELECTION_TIME * 2 + RESTART_DELAY)
+
+    # verify all units are up and running
+    for unit in ops_test.model.applications[app].units:
+        assert await mongod_ready(
+            ops_test, unit.public_address
+        ), f"unit {unit.name} not restarted after cluster crash."
+
+    # verify new writes are continuing by counting the number of writes before and after a 5 second
+    # wait
+    writes = await count_writes(ops_test)
+    time.sleep(5)
+    more_writes = await count_writes(ops_test)
+    assert more_writes > writes, "writes not continuing to DB"
+
+    # verify presence of primary, replica set member configuration, and number of primaries
+    await verify_replica_set_configuration(ops_test)
+
+    # verify that no writes to the db were missed
+    total_expected_writes = await stop_continous_writes(ops_test)
+    actual_writes = await count_writes(ops_test)
+
+    # verify that no writes were missed.
+    assert actual_writes == total_expected_writes["number"], "db writes missing."
+
+
+async def test_full_cluster_restart(ops_test: OpsTest, continuous_writes, reset_restart_delay):
+    app = await app_name(ops_test)
+
+    # update all units to have a new RESTART_DELAY,  Modifying the Restart delay to 3 minutes
+    # should ensure enough time for all replicas to be down at the same time.
+    for unit in ops_test.model.applications[app].units:
+        await update_restart_delay(ops_test, unit, RESTART_DELAY)
+
+    # kill all units "simulatenously"
+    await asyncio.gather(
+        *[
+            kill_unit_process(ops_test, unit.name, kill_code="SIGTERM")
+            for unit in ops_test.model.applications[app].units
+        ]
+    )
+
+    # This test serves to verify behavior when all replicas are down at the same time that when
+    # they come back online they operate as expected. This check verfies that we meet the criterea
+    # of all replicas being down at the same time.
+    assert await all_db_processes_down(ops_test), "Not all units down at the same time."
+
+    # sleep for twice the median election time and the restart delay
+    time.sleep(MEDIAN_REELECTION_TIME * 2 + RESTART_DELAY)
+
+    # verify all units are up and running
+    for unit in ops_test.model.applications[app].units:
+        assert await mongod_ready(
+            ops_test, unit.public_address
+        ), f"unit {unit.name} not restarted after cluster crash."
+
+    # verify new writes are continuing by counting the number of writes before and after a 5 second
+    # wait
+    writes = await count_writes(ops_test)
+    time.sleep(5)
+    more_writes = await count_writes(ops_test)
+    assert more_writes > writes, "writes not continuing to DB"
+
+    # verify presence of primary, replica set member configuration, and number of primaries
+    await verify_replica_set_configuration(ops_test)
+
+    # verify that no writes to the db were missed
+    total_expected_writes = await stop_continous_writes(ops_test)
+    actual_writes = await count_writes(ops_test)
+    assert total_expected_writes["number"] == actual_writes, "writes to the db were missed."
