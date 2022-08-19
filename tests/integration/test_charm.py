@@ -4,6 +4,7 @@
 
 import logging
 import os
+import time
 
 import pytest
 from helpers import (
@@ -19,10 +20,13 @@ from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError
+from tests.integration.ha_tests.helpers import app_name, kill_unit_process
 
 logger = logging.getLogger(__name__)
 
 ANOTHER_DATABASE_APP_NAME = "another-database-a"
+
+MEDIAN_REELECTION_TIME = 12
 
 
 @pytest.mark.skipif(
@@ -123,23 +127,54 @@ async def test_get_primary_action(ops_test: OpsTest) -> None:
 
 
 async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
-    primary = []
+    """Tests that there is exactly one replica set primary unit reported by juju"""
     
-    def check():
+    async def get_unit_messages():
+        """Collects unit status messages"""
+        app = await app_name(ops_test)
+        unit_messages = {}
+
+        async with ops_test.fast_forward():
+            time.sleep(20)
+        
         for unit in ops_test.model.applications[app].units:
-            if self.unit.status = "Replica set primary"
-            primary.append(unit)
-        assert len(primary) == 1, "Multiple replica set primaries detected"
+            unit_messages[unit.entity_id] = unit.workload_status_message
 
-    check()
+        return(unit_messages)
 
-    # kill the replica set primary
-    await kill_unit_process(ops_test, primary[0], kill_code="SIGKILL")
+    def single_primary(unit_messages):
+        """Confirms there is only one replica set primary unit"""
+        count = 0
+        for value in unit_messages:
+            if unit_messages[value] == "Replica set primary":
+                count += 1
+
+        if count > 1:
+            assert count == 1, "Multiple replica set primary units detected"
+        elif count < 1:
+            assert count == 1, "No replica set primary units detected"
+
+    # collect unit status messages
+    unit_messages = await get_unit_messages()
+
+    # confirm there is only one replica set primary unit
+    single_primary(unit_messages)
+
+    # kill the replica set primary unit
+    for unit, message in unit_messages.items():
+        if message == "Replica set primary":
+            target_unit = unit
+        
+    await kill_unit_process(ops_test, target_unit, kill_code="SIGKILL")
 
     # wait for re-election, sleep for twice the median election time
     time.sleep(MEDIAN_REELECTION_TIME * 2)
 
-    check()
+    # collect unit status messages
+    unit_messages = await get_unit_messages()
+    
+    # confirm there is only one replica set primary unit
+    single_primary(unit_messages)
 
-    # remove killed unit
-    await ops_test.model.destroy_unit(primary[0])
+    # cleanup, remove killed unit
+    await ops_test.model.destroy_unit(target_unit)
