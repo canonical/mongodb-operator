@@ -127,10 +127,10 @@ async def test_get_primary_action(ops_test: OpsTest) -> None:
 
 
 async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
-    """Tests that there is exactly one replica set primary unit reported by juju"""
+    """Tests that there is exactly one replica set primary unit reported by juju."""
     
     async def get_unit_messages():
-        """Collects unit status messages"""
+        """Collects unit status messages."""
         app = await app_name(ops_test)
         unit_messages = {}
 
