@@ -160,7 +160,7 @@ async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
     # confirm there is only one replica set primary unit
     juju_reports_one_primary(unit_messages)
 
-    # kill the replica set primary unit
+    # kill the mongod process on the replica set primary unit to force a re-election.
     for unit, message in unit_messages.items():
         if message == "Replica set primary":
             target_unit = unit
