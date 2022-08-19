@@ -158,7 +158,7 @@ async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
     unit_messages = await get_unit_messages()
 
     # confirm there is only one replica set primary unit
-    single_primary(unit_messages)
+    juju_reports_one_primary(unit_messages)
 
     # kill the replica set primary unit
     for unit, message in unit_messages.items():
@@ -174,7 +174,7 @@ async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
     unit_messages = await get_unit_messages()
     
     # confirm there is only one replica set primary unit
-    single_primary(unit_messages)
+    juju_reports_one_primary(unit_messages)
 
     # cleanup, remove killed unit
     await ops_test.model.destroy_unit(target_unit)
