@@ -143,7 +143,7 @@ async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
         return(unit_messages)
 
     def juju_reports_one_primary(unit_messages):
-        """Confirms there is only one replica set primary unit"""
+        """Confirms there is only one replica set primary unit."""
         count = 0
         for value in unit_messages:
             if unit_messages[value] == "Replica set primary":
