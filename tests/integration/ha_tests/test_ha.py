@@ -70,15 +70,32 @@ async def reset_restart_delay(ops_test: OpsTest):
 async def change_logging(ops_test: OpsTest):
     """Enables appending logging for a test and resets the logging at the end of the test."""
     app = await app_name(ops_test)
+    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
+    primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
+
     for unit in ops_test.model.applications[app].units:
+        # tests which use this fixture restart the primary. Therefore the primary should not be
+        # restarted as to leave the restart testing to the test itself.
+        if unit.name == primary_name:
+            continue
+
+        # must restart unit to ensure that changes to logging are made
         await update_service_logging(ops_test, unit, logging=True)
+        await kill_unit_process(ops_test, unit.name, kill_code="SIGTERM")
+        # sleep for long enough to allow unit to restart
+        time.sleep(10)
 
     yield
 
     app = await app_name(ops_test)
     for unit in ops_test.model.applications[app].units:
+        # must restart unit to ensure that changes to logging are made
         await update_service_logging(ops_test, unit, logging=False)
+        await kill_unit_process(ops_test, unit.name, kill_code="SIGTERM")
+        # sleep for long enough to allow unit to restart
+        time.sleep(10)
 
+        # remove the log file as to not clog up space on the replicas.
         rm_cmd = f"run --unit {unit.name} rm {MONGODB_LOG_FILE}"
         await ops_test.juju(*rm_cmd.split())
 
