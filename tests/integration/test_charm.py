@@ -149,7 +149,7 @@ async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
             if unit_messages[value] == "Replica set primary":
                 count += 1
 
-        assert count == 1, f"juju is expected to report one primary not {count} primaries"
+        assert count == 1, f"Juju is expected to report one primary not {count} primaries"
 
     # collect unit status messages
     unit_messages = await get_unit_messages()
