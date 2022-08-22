@@ -31,6 +31,7 @@ DB_PROCESS = "/usr/bin/mongod"
 MONGODB_LOG_PATH = "/data/db/mongodb.log"
 MONGOD_SERVICE_DEFAULT_PATH = "/etc/systemd/system/mongod.service"
 TMP_SERVICE_PATH = "tests/integration/ha_tests/tmp.service"
+LOGGING_OPTIONS = "--logpath=/data/db/mongodb.log --logappend"
 
 
 class ProcessError(Exception):
@@ -438,7 +439,7 @@ async def reused_storage(ops_test: OpsTest, unit_name, removal_time) -> bool:
 
     if return_code != 0:
         raise ProcessError(
-            "Expected cat command %s to succeed instead it failed: %s", cat_cmd, return_code
+            f"Expected cat command {cat_cmd} to succeed instead it failed: {return_code}"
         )
 
     for line in output.split("\n"):
@@ -483,7 +484,7 @@ async def kill_unit_process(ops_test: OpsTest, unit_name: str, kill_code: str):
 
     if return_code != 0:
         raise ProcessError(
-            "Expected kill command %s to succeed instead it failed: %s", kill_cmd, return_code
+            f"Expected kill command {kill_cmd} to succeed instead it failed: {return_code}"
         )
 
 
@@ -513,13 +514,7 @@ async def db_step_down(ops_test: OpsTest, old_primary_unit: str, sigterm_time: i
             continue
 
         cat_cmd = f"run --unit {unit.name} -- cat {MONGODB_LOG_PATH} "
-        return_code, output, _ = await ops_test.juju(*cat_cmd.split())
-
-        if return_code != 0:
-            raise ProcessError(
-                "Expected cat command %s to succeed instead it failed: %s", cat_cmd, return_code
-            )
-
+        _, output, _ = await ops_test.juju(*cat_cmd.split())
         for line in output.split("\n"):
             if not len(line):
                 continue
@@ -584,7 +579,7 @@ async def update_restart_delay(ops_test: OpsTest, unit, delay: int):
     mv_cmd = f"run --unit {unit.name} mv /home/ubuntu/mongod.service {MONGOD_SERVICE_DEFAULT_PATH}"
     return_code, _, _ = await ops_test.juju(*mv_cmd.split())
     if return_code != 0:
-        raise ProcessError("Command: %s failed on unit: %s.", mv_cmd, unit.name)
+        raise ProcessError(f"Command: {mv_cmd} failed on unit: {unit.name}.")
 
     # remove tmp file from machine
     subprocess.call(["rm", TMP_SERVICE_PATH])
@@ -593,7 +588,48 @@ async def update_restart_delay(ops_test: OpsTest, unit, delay: int):
     reload_cmd = f"run --unit {unit.name} systemctl daemon-reload"
     return_code, _, _ = await ops_test.juju(*reload_cmd.split())
     if return_code != 0:
-        raise ProcessError("Command: %s failed on unit: %s.", reload_cmd, unit.name)
+        raise ProcessError(f"Command: {reload_cmd} failed on unit: {unit.name}.")
+
+
+async def update_service_logging(ops_test: OpsTest, unit, logging: bool):
+    """Turns on/off logging in for the mongo daemon."""
+    # load the service file from the unit and update it with the new delay
+    await unit.scp_from(source=MONGOD_SERVICE_DEFAULT_PATH, destination=TMP_SERVICE_PATH)
+    with open(TMP_SERVICE_PATH, "r") as mongodb_service_file:
+        mongodb_service = mongodb_service_file.readlines()
+
+    for index, line in enumerate(mongodb_service):
+        if "ExecStart" not in line:
+            continue
+        line = line.replace("\n", "")
+
+        if logging:
+            if LOGGING_OPTIONS not in line:
+                mongodb_service[index] = line + LOGGING_OPTIONS + "\n"
+        else:
+            if LOGGING_OPTIONS in line:
+                mongodb_service[index] = line.replace(LOGGING_OPTIONS, "") + "\n"
+
+    with open(TMP_SERVICE_PATH, "w") as service_file:
+        service_file.writelines(mongodb_service)
+
+    # upload the changed file back to the unit, we cannot scp this file directly to
+    # MONGOD_SERVICE_DEFAULT_PATH since this directory has strict permissions, instead we scp it
+    # elsewhere and then move it to MONGOD_SERVICE_DEFAULT_PATH.
+    await unit.scp_to(source=TMP_SERVICE_PATH, destination="mongod.service")
+    mv_cmd = f"run --unit {unit.name} mv /home/ubuntu/mongod.service {MONGOD_SERVICE_DEFAULT_PATH}"
+    return_code, _, _ = await ops_test.juju(*mv_cmd.split())
+    if return_code != 0:
+        raise ProcessError(f"Command: {mv_cmd} failed on unit: {unit.name}.")
+
+    # remove tmp file from machine
+    subprocess.call(["rm", TMP_SERVICE_PATH])
+
+    # reload the daemon for systemd otherwise changes are not saved
+    reload_cmd = f"run --unit {unit.name} systemctl daemon-reload"
+    return_code, _, _ = await ops_test.juju(*reload_cmd.split())
+    if return_code != 0:
+        raise ProcessError(f"Command: {reload_cmd} failed on unit: {unit.name}.")
 
 
 async def verify_replica_set_configuration(ops_test: OpsTest) -> None:

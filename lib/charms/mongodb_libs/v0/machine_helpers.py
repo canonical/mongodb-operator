@@ -148,9 +148,6 @@ def generate_service_args(auth: bool, machine_ip: str, replset: str) -> str:
         # part of replicaset
         "--replSet",
         f"{replset}",
-        # logging should be sent to /data/db as to ensure persistence on machine removal.
-        # logappend ensures we have all logs instead of rotating through logs
-        "--logpath=/data/db/mongodb.log --logappend",
     ]
 
     if auth:

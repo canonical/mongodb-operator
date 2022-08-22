@@ -27,7 +27,6 @@ class TestCharm(unittest.TestCase):
                 "localhost,1.1.1.1",
                 "--replSet",
                 "my_repl_set",
-                "--logpath=/data/db/mongodb.log --logappend",
                 "--auth",
                 "--clusterAuthMode=keyFile",
                 f"--keyFile={machine_helpers.KEY_FILE}",
@@ -49,7 +48,6 @@ class TestCharm(unittest.TestCase):
                 # part of replicaset
                 "--replSet",
                 "my_repl_set",
-                "--logpath=/data/db/mongodb.log --logappend",
                 "\n",
             ]
         )
