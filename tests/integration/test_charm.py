@@ -134,11 +134,14 @@ async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
         app = await app_name(ops_test)
         unit_messages = {}
 
-        async with ops_test.fast_forward():
-            time.sleep(20)
+        await ops_test.model.set_config({"update-status-hook-interval": "5s"})
+        # sleep for 20 seconds to allow all units to complete their update status hook
+        time.sleep(20)
         
         for unit in ops_test.model.applications[app].units:
             unit_messages[unit.entity_id] = unit.workload_status_message
+        
+        await ops_test.model.set_config({"update-status-hook-interval": "5m"})
 
         return(unit_messages)
 
