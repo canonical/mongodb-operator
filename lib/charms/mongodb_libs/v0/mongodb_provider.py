@@ -144,7 +144,7 @@ class MongoDBProvider(Object):
                 mongo.drop_user(username)
 
             for username in relation_users - database_users:
-                config = self._get_config(username)
+                config = self._get_config(username, None)
                 if config.database is None:
                     # We need to wait for moment when provider library
                     # set the database name into the relation.
@@ -154,7 +154,7 @@ class MongoDBProvider(Object):
                 self._set_relation(config)
 
             for username in relation_users.intersection(database_users):
-                config = self._get_config(username)
+                config = self._get_config(username, None)
                 logger.info("Update relation user: %s on %s", config.username, config.database)
                 mongo.update_user(config)
                 logger.info("Updating relation data according to diff")
@@ -205,14 +205,17 @@ class MongoDBProvider(Object):
         # Return the diff with all possible changes.
         return Diff(added, changed, deleted)
 
-    def _get_config(self, username: str) -> MongoDBConfiguration:
+    def _get_config(self, username: str, password: str) -> MongoDBConfiguration:
         """Construct config object for future user creation."""
         relation = self._get_relation_from_username(username)
+        if not password:
+            password = generate_password()
+
         return MongoDBConfiguration(
             replset=self.charm.app.name,
             database=self._get_database_from_relation(relation),
             username=username,
-            password=generate_password(),
+            password=password,
             hosts=self.charm.mongodb_config.hosts,
             roles=self._get_roles_from_relation(relation),
         )

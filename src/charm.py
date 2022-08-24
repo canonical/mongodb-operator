@@ -58,6 +58,8 @@ MONGO_DATA_DIR = "/data/db"
 # We expect the MongoDB container to use the default ports
 MONGODB_PORT = 27017
 
+REL_NAME = "database"
+
 
 class MongodbOperatorCharm(ops.charm.CharmBase):
     """Charm the service."""
@@ -69,7 +71,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(self.on.start, self._on_start)
-        self.framework.observe(self.on[PEER].relation_joined, self._on_mongodb_relation_handler)
+        self.framework.observe(self.on[PEER].relation_joined, self._on_mongodb_relation_joined)
         self.framework.observe(self.on[PEER].relation_changed, self._on_mongodb_relation_handler)
 
         self.framework.observe(self.on.update_status, self._on_update_status)
@@ -105,6 +107,13 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         self._update_hosts(event)
 
+        try:
+            self.update_app_relation_data()
+        except PyMongoError as e:
+            logger.error("Deferring on updating app relation data since: error: %r", e)
+            event.defer()
+            return
+
     def _update_hosts(self, event) -> None:
         """Update replica set hosts and remove any unremoved replicas from the config."""
         if "db_initialised" not in self.app_data:
@@ -132,15 +141,43 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         except PyMongoError as e:
             logger.error("Failed to remove %s from replica set, error=%r", self.unit.name, e)
 
+    def update_app_relation_data(self) -> None:
+        """Helper function to update application relation data."""
+        if "db_initialised" not in self.app_data:
+            return
+
+        database_users = set()
+
+        with MongoDBConnection(self.mongodb_config) as mongo:
+            database_users = mongo.get_users()
+
+        for relation in self.model.relations[REL_NAME]:
+            username = self.client_relations._get_username_from_relation_id(relation.id)
+            password = relation.data[self.app]["password"]
+            config = self.client_relations._get_config(username, password)
+            if username in database_users:
+                data = relation.data[self.app]
+                data["endpoints"] = ",".join(config.hosts)
+                data["uris"] = config.uri
+                relation.data[self.app].update(data)
+
     def _relation_departed(self, event: ops.charm.RelationDepartedEvent) -> None:
         """Remove peer from replica set if it wasn't able to remove itself.
 
         Args:
             event: The triggering relation departed event.
         """
-        # allow leader to update hosts if it isn't leaving
-        if self.unit.is_leader() and not event.departing_unit == self.unit:
-            self._update_hosts(event)
+        # allow leader to update relation data and hosts if it isn't leaving
+        if not self.unit.is_leader() or event.departing_unit == self.unit:
+            return
+        self._update_hosts(event)
+
+        try:
+            self.update_app_relation_data()
+        except PyMongoError as e:
+            logger.error("Deferring on updating app relation data since: error: %r", e)
+            event.defer()
+            return
 
     def process_unremoved_units(self, event) -> None:
         """Removes replica set members that are no longer running as a juju hosts."""
@@ -157,6 +194,23 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 logger.error("Deferring process_unremoved_units: error=%r", e)
                 event.defer()
 
+    def _on_mongodb_relation_joined(self, event: ops.charm.RelationJoinedEvent) -> None:
+        """Add peer to replica set.
+
+        Args:
+            event: The triggering relation joined event.
+        """
+        if not self.unit.is_leader():
+            return
+
+        self._on_mongodb_relation_handler(event)
+        try:
+            self.update_app_relation_data()
+        except PyMongoError as e:
+            logger.error("Deferring on updating app relation data since: error: %r", e)
+            event.defer()
+            return
+
     def _on_mongodb_relation_handler(self, event: ops.charm.RelationEvent) -> None:
         """Adds the unit as a replica to the MongoDB replica set.
 
@@ -166,6 +220,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # only leader should configure replica set and app-changed-events can trigger the relation
         # changed hook resulting in no JUJU_REMOTE_UNIT if this is the case we should return
         # further reconfiguration can be successful only if a replica set is initialised.
+
         if not (self.unit.is_leader() and event.unit) or "db_initialised" not in self.app_data:
             return
 
