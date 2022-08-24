@@ -185,7 +185,7 @@ async def test_scale_down_capablities(ops_test: OpsTest, continuous_writes) -> N
         deleted_unit_ips.append(unit_to_remove.public_address)
         units_to_remove.append(unit_to_remove.name)
 
-    # destroy units simulatenously
+    # destroy units simultaneously
     expected_units = len(ops_test.model.applications[app].units) - len(units_to_remove)
     await ops_test.model.destroy_units(*units_to_remove)
 
@@ -482,7 +482,7 @@ async def test_full_cluster_crash(ops_test: OpsTest, continuous_writes, reset_re
     for unit in ops_test.model.applications[app].units:
         await update_restart_delay(ops_test, unit, RESTART_DELAY)
 
-    # kill all units "simulatenously"
+    # kill all units "simultaneously"
     await asyncio.gather(
         *[
             kill_unit_process(ops_test, unit.name, kill_code="SIGKILL")
@@ -491,7 +491,7 @@ async def test_full_cluster_crash(ops_test: OpsTest, continuous_writes, reset_re
     )
 
     # This test serves to verify behavior when all replicas are down at the same time that when
-    # they come back online they operate as expected. This check verfies that we meet the criterea
+    # they come back online they operate as expected. This check verifies that we meet the criterea
     # of all replicas being down at the same time.
     assert await all_db_processes_down(ops_test), "Not all units down at the same time."
 
@@ -530,7 +530,7 @@ async def test_full_cluster_restart(ops_test: OpsTest, continuous_writes, reset_
     for unit in ops_test.model.applications[app].units:
         await update_restart_delay(ops_test, unit, RESTART_DELAY)
 
-    # kill all units "simulatenously"
+    # kill all units "simultaneously"
     await asyncio.gather(
         *[
             kill_unit_process(ops_test, unit.name, kill_code="SIGTERM")
@@ -539,7 +539,7 @@ async def test_full_cluster_restart(ops_test: OpsTest, continuous_writes, reset_
     )
 
     # This test serves to verify behavior when all replicas are down at the same time that when
-    # they come back online they operate as expected. This check verfies that we meet the criterea
+    # they come back online they operate as expected. This check verifies that we meet the criterea
     # of all replicas being down at the same time.
     assert await all_db_processes_down(ops_test), "Not all units down at the same time."
 
