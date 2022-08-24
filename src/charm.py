@@ -107,9 +107,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         self._update_hosts(event)
 
-        if "db_initialised" not in self.app_data:
-            return
-
         try:
             self.update_app_relation_data()
         except PyMongoError as e:
