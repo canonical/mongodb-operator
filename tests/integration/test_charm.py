@@ -20,6 +20,7 @@ from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError
+
 from tests.integration.ha_tests.helpers import app_name, kill_unit_process
 
 logger = logging.getLogger(__name__)
