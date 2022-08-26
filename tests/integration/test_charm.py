@@ -140,7 +140,7 @@ async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
         for unit in ops_test.model.applications[app].units:
             unit_messages[unit.entity_id] = unit.workload_status_message
 
-        return(unit_messages)
+        return unit_messages
 
     def juju_reports_one_primary(unit_messages):
         """Confirms there is only one replica set primary unit."""
