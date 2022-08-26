@@ -128,7 +128,7 @@ async def test_get_primary_action(ops_test: OpsTest) -> None:
 
 async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
     """Tests that there is exactly one replica set primary unit reported by juju."""
-    
+
     async def get_unit_messages():
         """Collects unit status messages."""
         app = await app_name(ops_test)
@@ -136,7 +136,7 @@ async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
 
         async with ops_test.fast_forward():
             time.sleep(20)
-        
+
         for unit in ops_test.model.applications[app].units:
             unit_messages[unit.entity_id] = unit.workload_status_message
 
@@ -161,7 +161,7 @@ async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
     for unit, message in unit_messages.items():
         if message == "Replica set primary":
             target_unit = unit
-        
+
     await kill_unit_process(ops_test, target_unit, kill_code="SIGKILL")
 
     # wait for re-election, sleep for twice the median election time
@@ -169,7 +169,7 @@ async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
 
     # collect unit status messages
     unit_messages = await get_unit_messages()
-    
+
     # confirm there is only one replica set primary unit
     juju_reports_one_primary(unit_messages)
 
