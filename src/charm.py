@@ -344,24 +344,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         """Returns the password for the user as an action response."""
         event.set_results({"admin-password": self.app_data.get("admin_password")})
 
-        new_password = generate_password()
-        if "password" in event.params:
-            new_password = event.params["password"]
-
-        with MongoDBConnection(self.mongodb_config) as mongo:
-            try:
-                mongo.set_user_password("admin", new_password)
-            except NotReadyError:
-                event.fail(
-                    "Failed changing the password: Not all members healthy or finished initial sync."
-                )
-                return
-            except PyMongoError as e:
-                event.fail(f"Failed changing the password: {e}")
-                return
-        self.app_data["admin_password"] = new_password
-        event.set_results({"admin-password": self.app_data.get("admin_password")})
-
     def _on_set_admin_password(self, event: ops.charm.ActionEvent) -> None:
         """Set the password for the admin user."""
         # only leader can write the new password into peer relation.
@@ -384,6 +366,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             except PyMongoError as e:
                 event.fail(f"Failed changing the password: {e}")
                 return
+
         self.app_data["admin_password"] = new_password
         event.set_results({"admin-password": self.app_data.get("admin_password")})
 
