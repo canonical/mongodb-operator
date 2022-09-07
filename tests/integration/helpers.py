@@ -23,7 +23,7 @@ def unit_uri(ip_address: str, password, app=APP_NAME) -> str:
         password: password of database.
         app: name of application which has the cluster.
     """
-    return f"mongodb://operator:" f"{password}@" f"{ip_address}:{PORT}/admin?replicaSet={app}"
+    return f"mongodb://admin:" f"{password}@" f"{ip_address}:{PORT}/admin?replicaSet={app}"
 
 
 async def get_password(ops_test: OpsTest, app=APP_NAME) -> str:

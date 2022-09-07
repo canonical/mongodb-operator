@@ -73,16 +73,18 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.framework.observe(self.on.start, self._on_start)
         self.framework.observe(self.on[PEER].relation_joined, self._on_mongodb_relation_joined)
         self.framework.observe(self.on[PEER].relation_changed, self._on_mongodb_relation_handler)
-
-        self.framework.observe(self.on.update_status, self._on_update_status)
-        self.framework.observe(self.on.get_primary_action, self._on_get_primary_action)
-        self.framework.observe(
-            self.on.mongodb_storage_detaching, self._on_mongodb_storage_detaching
-        )
         # if a new leader has been elected update hosts of MongoDB
         self.framework.observe(self.on.leader_elected, self._on_leader_elected)
         self.framework.observe(self.on[PEER].relation_departed, self._relation_departed)
+        self.framework.observe(
+            self.on.mongodb_storage_detaching, self._on_mongodb_storage_detaching
+        )
+
+        self.framework.observe(self.on.update_status, self._on_update_status)
+        self.framework.observe(self.on.get_primary_action, self._on_get_primary_action)
+
         self.framework.observe(self.on.get_admin_password_action, self._on_get_admin_password)
+        self.framework.observe(self.on.set_admin_password_action, self._on_set_admin_password)
 
         # handle provider side of relations
         self.client_relations = MongoDBProvider(self, substrate="vm")
@@ -342,6 +344,49 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         """Returns the password for the user as an action response."""
         event.set_results({"admin-password": self.app_data.get("admin_password")})
 
+        new_password = generate_password()
+        if "password" in event.params:
+            new_password = event.params["password"]
+
+        with MongoDBConnection(self.mongodb_config) as mongo:
+            try:
+                mongo.set_user_password("admin", new_password)
+            except NotReadyError:
+                event.fail(
+                    "Failed changing the password: Not all members healthy or finished initial sync."
+                )
+                return
+            except PyMongoError as e:
+                event.fail(f"Failed changing the password: {e}")
+                return
+        self.app_data["admin_password"] = new_password
+        event.set_results({"admin-password": self.app_data.get("admin_password")})
+
+    def _on_set_admin_password(self, event: ops.charm.ActionEvent) -> None:
+        """Set the password for the admin user."""
+        # only leader can write the new password into peer relation.
+        if not self.unit.is_leader():
+            event.fail("The action can be run only on leader unit.")
+            return
+
+        new_password = generate_password()
+        if "password" in event.params:
+            new_password = event.params["password"]
+
+        with MongoDBConnection(self.mongodb_config) as mongo:
+            try:
+                mongo.set_user_password("admin", new_password)
+            except NotReadyError:
+                event.fail(
+                    "Failed changing the password: Not all members healthy or finished initial sync."
+                )
+                return
+            except PyMongoError as e:
+                event.fail(f"Failed changing the password: {e}")
+                return
+        self.app_data["admin_password"] = new_password
+        event.set_results({"admin-password": self.app_data.get("admin_password")})
+
     def _open_port_tcp(self, port: int) -> None:
         """Open the given port.
 
@@ -531,7 +576,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         return MongoDBConfiguration(
             replset=self.app.name,
             database="admin",
-            username="operator",
+            username="admin",
             password=self.app_data.get("admin_password"),
             hosts=set(self._unit_ips),
             roles={"default"},
