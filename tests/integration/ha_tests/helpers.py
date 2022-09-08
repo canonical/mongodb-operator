@@ -551,9 +551,11 @@ async def all_db_processes_down(ops_test: OpsTest) -> bool:
                     # `ps aux | grep {DB_PROCESS}` is a process on it's own and will be shown in
                     # the output of ps aux, hence it it is important that we check if there is
                     # more than one process containing the name `DB_PROCESS`
-                    # splitting processes by "\n" results in an empty line, hence we need to
-                    # remove one to account for the extra entry
-                    if len(processes.split("\n")) - 1 > 1:
+                    # splitting processes by "\n" results in one or more empty lines, hence we
+                    # need to process these lines accordingly.
+                    processes = [proc for proc in processes.split("\n") if len(proc) > 0]
+
+                    if len(processes) > 1:
                         raise ProcessRunningError
     except RetryError:
         return False
