@@ -17,7 +17,7 @@ from helpers import (
     unit_uri,
 )
 from pymongo import MongoClient
-from pymongo.errors import ServerSelectionTimeoutError
+from pymongo.errors import PyMongoError, ServerSelectionTimeoutError
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError
 
@@ -125,6 +125,46 @@ async def test_get_primary_action(ops_test: OpsTest) -> None:
 
         # assert get-primary returned the right primary
         assert identified_primary == expected_primary
+
+
+async def test_set_password_action(ops_test: OpsTest) -> None:
+    """Tests that action set-admin-password outputs resets the password on app data and mongod."""
+    # verify that password is correctly rotated by comparing old password with rotated one.
+    old_password = await get_password(ops_test)
+    unit = await find_unit(ops_test, leader=True)
+    action = await unit.run_action("set-admin-password")
+    action = await action.wait()
+    new_password = action.results["admin-password"]
+    assert new_password != old_password
+    new_password_reported = await get_password(ops_test)
+    assert new_password == new_password_reported
+
+    # verify that the password is updated in mongod by inserting into the collection.
+    try:
+        client = MongoClient(unit_uri(unit.public_address, new_password), directConnection=True)
+        client["new-db"].collection_names()
+    except PyMongoError as e:
+        assert False, f"Failed to access collection with new password, error: {e}"
+    finally:
+        client.close()
+
+    # perform the same tests as above but with a user provided password.
+    old_password = await get_password(ops_test)
+    action = await unit.run_action("set-admin-password", **{"password": "safe_pass"})
+    action = await action.wait()
+    new_password = action.results["admin-password"]
+    assert new_password != old_password
+    new_password_reported = await get_password(ops_test)
+    assert "safe_pass" == new_password_reported
+
+    # verify that the password is updated in mongod by inserting into the collection.
+    try:
+        client = MongoClient(unit_uri(unit.public_address, "safe_pass"), directConnection=True)
+        client["new-db"].collection_names()
+    except PyMongoError as e:
+        assert False, f"Failed to access collection with new password, error: {e}"
+    finally:
+        client.close()
 
 
 async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:

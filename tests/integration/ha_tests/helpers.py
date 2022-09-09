@@ -51,7 +51,7 @@ def replica_set_client(replica_ips: List[str], password: str, app=APP_NAME) -> M
     hosts = ["{}:{}".format(replica_ip, PORT) for replica_ip in replica_ips]
     hosts = ",".join(hosts)
 
-    replica_set_uri = f"mongodb://operator:" f"{password}@" f"{hosts}/admin?replicaSet={app}"
+    replica_set_uri = f"mongodb://admin:" f"{password}@" f"{hosts}/admin?replicaSet={app}"
     return MongoClient(replica_set_uri)
 
 
@@ -88,7 +88,7 @@ def unit_uri(ip_address: str, password, app=APP_NAME) -> str:
         password: password of database.
         app: name of application which has the cluster.
     """
-    return f"mongodb://operator:" f"{password}@" f"{ip_address}:{PORT}/admin?replicaSet={app}"
+    return f"mongodb://admin:" f"{password}@" f"{ip_address}:{PORT}/admin?replicaSet={app}"
 
 
 async def get_password(ops_test: OpsTest, app) -> str:
@@ -242,7 +242,7 @@ async def clear_db_writes(ops_test: OpsTest) -> bool:
     password = await get_password(ops_test, app)
     hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
     hosts = ",".join(hosts)
-    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app}"
+    connection_string = f"mongodb://admin:{password}@{hosts}/admin?replicaSet={app}"
 
     client = MongoClient(connection_string)
     db = client["new-db"]
@@ -267,7 +267,7 @@ async def start_continous_writes(ops_test: OpsTest, starting_number: int) -> Non
     password = await get_password(ops_test, app)
     hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
     hosts = ",".join(hosts)
-    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app}"
+    connection_string = f"mongodb://admin:{password}@{hosts}/admin?replicaSet={app}"
 
     # run continuous writes in the background.
     subprocess.Popen(
@@ -295,7 +295,7 @@ async def stop_continous_writes(ops_test: OpsTest) -> int:
     password = await get_password(ops_test, app)
     hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
     hosts = ",".join(hosts)
-    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app}"
+    connection_string = f"mongodb://admin:{password}@{hosts}/admin?replicaSet={app}"
 
     client = MongoClient(connection_string)
     db = client["new-db"]
@@ -313,7 +313,7 @@ async def count_writes(ops_test: OpsTest) -> int:
     password = await get_password(ops_test, app)
     hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
     hosts = ",".join(hosts)
-    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app}"
+    connection_string = f"mongodb://admin:{password}@{hosts}/admin?replicaSet={app}"
 
     client = MongoClient(connection_string)
     db = client["new-db"]
@@ -330,7 +330,7 @@ async def secondary_up_to_date(ops_test: OpsTest, unit_ip, expected_writes) -> b
     """
     app = await app_name(ops_test)
     password = await get_password(ops_test, app)
-    connection_string = f"mongodb://operator:{password}@{unit_ip}:{PORT}/admin?"
+    connection_string = f"mongodb://admin:{password}@{unit_ip}:{PORT}/admin?"
     client = MongoClient(connection_string, directConnection=True)
 
     try:
@@ -551,9 +551,11 @@ async def all_db_processes_down(ops_test: OpsTest) -> bool:
                     # `ps aux | grep {DB_PROCESS}` is a process on it's own and will be shown in
                     # the output of ps aux, hence it it is important that we check if there is
                     # more than one process containing the name `DB_PROCESS`
-                    # splitting processes by "\n" results in an empty line, hence we need to
-                    # remove one to account for the extra entry
-                    if len(processes.split("\n")) - 1 > 1:
+                    # splitting processes by "\n" results in one or more empty lines, hence we
+                    # need to process these lines accordingly.
+                    processes = [proc for proc in processes.split("\n") if len(proc) > 0]
+
+                    if len(processes) > 1:
                         raise ProcessRunningError
     except RetryError:
         return False
