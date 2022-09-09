@@ -564,3 +564,52 @@ class TestCharm(unittest.TestCase):
 
         self.harness.charm._init_admin_user()
         run.assert_called_once()
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongoDBConnection")
+    def test_set_admin_password(self, connection):
+        """Tests that a new admin password is generated and is returned to the user."""
+        self.harness.set_leader(True)
+        original_password = self.harness.charm.app_data["admin_password"]
+        action_event = mock.Mock()
+        action_event.params = {}
+        self.harness.charm._on_set_admin_password(action_event)
+        new_password = self.harness.charm.app_data["admin_password"]
+
+        # verify app data is updated and results are reported to user
+        self.assertNotEqual(original_password, new_password)
+        action_event.set_results.assert_called_with({"admin-password": new_password})
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongoDBConnection")
+    def test_set_admin_password_provided(self, connection):
+        """Tests that a given password is set as the new mongodb password."""
+        self.harness.set_leader(True)
+        action_event = mock.Mock()
+        action_event.params = {"password": "canonical123"}
+        self.harness.charm._on_set_admin_password(action_event)
+        new_password = self.harness.charm.app_data["admin_password"]
+
+        # verify app data is updated and results are reported to user
+        self.assertEqual("canonical123", new_password)
+        action_event.set_results.assert_called_with({"admin-password": "canonical123"})
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongoDBConnection")
+    def test_set_admin_password_failure(self, connection):
+        """Tests failure to reset password does not update app data and failure is reported."""
+        self.harness.set_leader(True)
+        original_password = self.harness.charm.app_data["admin_password"]
+        action_event = mock.Mock()
+        action_event.params = {}
+
+        for exception in [PYMONGO_EXCEPTIONS, NotReadyError]:
+            connection.return_value.__enter__.return_value.set_user_password.side_effect = (
+                exception
+            )
+            self.harness.charm._on_set_admin_password(action_event)
+            current_password = self.harness.charm.app_data["admin_password"]
+
+            # verify passwords are not updated.
+            self.assertEqual(current_password, original_password)
+            action_event.fail.assert_called()
