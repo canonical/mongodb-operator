@@ -51,7 +51,7 @@ class TestCharm(unittest.TestCase):
         """Tests that a non leader unit does not initialise the replica set."""
         # Only leader can set RelationData
         self.harness.set_leader(True)
-        self.harness.charm.app_data["keyfile"] = "/etc/mongodb/keyFile"
+        self.harness.charm.app_peer_data["keyfile"] = "/etc/mongodb/keyFile"
 
         self.harness.set_leader(False)
         self.harness.charm.on.start.emit()
@@ -327,7 +327,7 @@ class TestCharm(unittest.TestCase):
         """
         # preset values
         self.harness.set_leader(True)
-        self.harness.charm.app_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
         connection.return_value.__enter__.return_value.is_ready = False
         connection.return_value.__enter__.return_value.get_replset_members.return_value = {
             "1.1.1.1"
@@ -355,7 +355,7 @@ class TestCharm(unittest.TestCase):
         """
         # presets
         self.harness.set_leader(True)
-        self.harness.charm.app_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
         rel = self.harness.charm.model.get_relation("database-peers")
 
         for exception in PYMONGO_EXCEPTIONS:
@@ -388,7 +388,7 @@ class TestCharm(unittest.TestCase):
         """
         # presets
         self.harness.set_leader(True)
-        self.harness.charm.app_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
         connection.return_value.__enter__.return_value.get_replset_members.return_value = {
             "1.1.1.1"
         }
@@ -432,7 +432,7 @@ class TestCharm(unittest.TestCase):
         # set peer data so that leader doesn't reconfigure set on set_leader
 
         self.harness.set_leader(True)
-        self.harness.charm.app_data["_new_leader_must_reconfigure"] = "False"
+        self.harness.charm.app_peer_data["_new_leader_must_reconfigure"] = "False"
         connection.return_value.__enter__.return_value.is_ready = True
 
         for exception in PYMONGO_EXCEPTIONS:
@@ -560,7 +560,7 @@ class TestCharm(unittest.TestCase):
         self.harness.set_leader(True)
 
         self.harness.charm._init_admin_user()
-        self.assertEqual("user_created" in self.harness.charm.app_data, True)
+        self.assertEqual("user_created" in self.harness.charm.app_peer_data, True)
 
         self.harness.charm._init_admin_user()
         run.assert_called_once()
@@ -570,11 +570,11 @@ class TestCharm(unittest.TestCase):
     def test_set_admin_password(self, connection):
         """Tests that a new admin password is generated and is returned to the user."""
         self.harness.set_leader(True)
-        original_password = self.harness.charm.app_data["admin_password"]
+        original_password = self.harness.charm.app_peer_data["admin_password"]
         action_event = mock.Mock()
         action_event.params = {}
         self.harness.charm._on_set_admin_password(action_event)
-        new_password = self.harness.charm.app_data["admin_password"]
+        new_password = self.harness.charm.app_peer_data["admin_password"]
 
         # verify app data is updated and results are reported to user
         self.assertNotEqual(original_password, new_password)
@@ -588,7 +588,7 @@ class TestCharm(unittest.TestCase):
         action_event = mock.Mock()
         action_event.params = {"password": "canonical123"}
         self.harness.charm._on_set_admin_password(action_event)
-        new_password = self.harness.charm.app_data["admin_password"]
+        new_password = self.harness.charm.app_peer_data["admin_password"]
 
         # verify app data is updated and results are reported to user
         self.assertEqual("canonical123", new_password)
@@ -599,7 +599,7 @@ class TestCharm(unittest.TestCase):
     def test_set_admin_password_failure(self, connection):
         """Tests failure to reset password does not update app data and failure is reported."""
         self.harness.set_leader(True)
-        original_password = self.harness.charm.app_data["admin_password"]
+        original_password = self.harness.charm.app_peer_data["admin_password"]
         action_event = mock.Mock()
         action_event.params = {}
 
@@ -608,7 +608,7 @@ class TestCharm(unittest.TestCase):
                 exception
             )
             self.harness.charm._on_set_admin_password(action_event)
-            current_password = self.harness.charm.app_data["admin_password"]
+            current_password = self.harness.charm.app_peer_data["admin_password"]
 
             # verify passwords are not updated.
             self.assertEqual(current_password, original_password)

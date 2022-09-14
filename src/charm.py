@@ -100,15 +100,15 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         The same keyFile and admin password on all members needed, hence it is generated once and
         share between members via the app data.
         """
-        if "admin_password" not in self.app_data:
-            self.app_data["admin_password"] = generate_password()
+        if not self.get_secret("app", "admin_password"):
+            self.set_secret("app", "admin_password", generate_password())
 
-        if "keyfile" not in self.app_data:
-            self.app_data["keyfile"] = generate_keyfile()
+        if not self.get_secret("app", "keyfile"):
+            self.set_secret("app", "keyfile", generate_keyfile())
 
     def _on_leader_elected(self, event) -> None:
         """Generates necessary keyfile and updates replica hosts."""
-        if "keyfile" not in self.app_data:
+        if not self.get_secret("app", "keyfile"):
             self._generate_passwords()
 
         self._update_hosts(event)
@@ -122,11 +122,11 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def _update_hosts(self, event) -> None:
         """Update replica set hosts and remove any unremoved replicas from the config."""
-        if "db_initialised" not in self.app_data:
+        if "db_initialised" not in self.app_peer_data:
             return
 
         self.process_unremoved_units(event)
-        self.app_data["replica_set_hosts"] = json.dumps(self._unit_ips)
+        self.app_peer_data["replica_set_hosts"] = json.dumps(self._unit_ips)
 
     def _on_mongodb_storage_detaching(self, event: ops.charm.StorageDetachingEvent) -> None:
         """Before storage detaches, allow removing unit to remove itself from the set.
@@ -149,7 +149,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def update_app_relation_data(self) -> None:
         """Helper function to update application relation data."""
-        if "db_initialised" not in self.app_data:
+        if "db_initialised" not in self.app_peer_data:
             return
 
         database_users = set()
@@ -227,7 +227,10 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # changed hook resulting in no JUJU_REMOTE_UNIT if this is the case we should return
         # further reconfiguration can be successful only if a replica set is initialised.
 
-        if not (self.unit.is_leader() and event.unit) or "db_initialised" not in self.app_data:
+        if (
+            not (self.unit.is_leader() and event.unit)
+            or "db_initialised" not in self.app_peer_data
+        ):
             return
 
         with MongoDBConnection(self.mongodb_config) as mongo:
@@ -347,7 +350,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def _on_get_admin_password(self, event: ops.charm.ActionEvent) -> None:
         """Returns the password for the user as an action response."""
-        event.set_results({"admin-password": self.app_data.get("admin_password")})
+        event.set_results({"admin-password": self.get_secret("app", "admin_password")})
 
     def _on_set_admin_password(self, event: ops.charm.ActionEvent) -> None:
         """Set the password for the admin user."""
@@ -372,8 +375,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 event.fail(f"Failed changing the password: {e}")
                 return
 
-        self.app_data["admin_password"] = new_password
-        event.set_results({"admin-password": self.app_data.get("admin_password")})
+        self.set_secret("app", "admin_password", new_password)
+        event.set_results({"admin-password": self.get_secret("app", "admin_password")})
 
     def _open_port_tcp(self, port: int) -> None:
         """Open the given port.
@@ -448,13 +451,13 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def _instatiate_keyfile(self, event: ops.charm.StartEvent) -> None:
         # wait for keyFile to be created by leader unit
-        if "keyfile" not in self.app_data:
+        if not self.get_secret("app", "keyfile"):
             logger.debug("waiting for leader unit to generate keyfile contents")
             event.defer()
             return
 
         # put keyfile on the machine with appropriate permissions
-        push_file_to_unit(file_name=KEY_FILE, file_contents=self.app_data.get("keyfile"))
+        push_file_to_unit(file_name=KEY_FILE, file_contents=self.get_secret("app", "keyfile"))
 
     def _push_tls_certificate_to_workload(self) -> None:
         """Uploads certificate to the workload container."""
@@ -473,7 +476,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             push_file_to_unit(file_name=TLS_INT_PEM_FILE, file_contents=internal_pem)
 
     def _initialise_replica_set(self, event: ops.charm.StartEvent) -> None:
-        if "db_initialised" in self.app_data:
+        if "db_initialised" in self.app_peer_data:
             # The replica set should be initialised only once. Check should be
             # external (e.g., check initialisation inside peer relation). We
             # shouldn't rely on MongoDB response because the data directory
@@ -505,7 +508,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 return
 
             # replica set initialised properly and ready to go
-            self.app_data["db_initialised"] = "True"
+            self.app_peer_data["db_initialised"] = "True"
             self.unit.status = ActiveStatus()
 
     def _unit_ip(self, unit: ops.model.Unit) -> str:
@@ -519,6 +522,30 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # raise exception if host not found
         else:
             raise ApplicationHostNotFoundError
+
+    def get_secret(self, scope: str, key: str) -> Optional[str]:
+        """Get secret from the secret storage."""
+        if scope == "unit":
+            return self.unit_peer_data.get(key, None)
+        elif scope == "app":
+            return self.app_peer_data.get(key, None)
+        else:
+            raise RuntimeError("Unknown secret scope.")
+
+    def set_secret(self, scope: str, key: str, value: Optional[str]) -> None:
+        """Set secret in the secret storage."""
+        if scope == "unit":
+            if not value:
+                del self.unit_peer_data[key]
+                return
+            self.unit_peer_data.update({key: value})
+        elif scope == "app":
+            if not value:
+                del self.app_peer_data[key]
+                return
+            self.app_peer_data.update({key: value})
+        else:
+            raise RuntimeError("Unknown secret scope.")
 
     @property
     def _primary(self) -> str:
@@ -566,7 +593,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         Returns:
             A list of hosts addresses (strings).
         """
-        return json.loads(self.app_data.get("replica_set_hosts", "[]"))
+        return json.loads(self.app_peer_data.get("replica_set_hosts", "[]"))
 
     @property
     def mongodb_config(self) -> MongoDBConfiguration:
@@ -578,7 +605,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             replset=self.app.name,
             database="admin",
             username="admin",
-            password=self.app_data.get("admin_password"),
+            password=self.get_secret("app", "admin_password"),
             hosts=set(self._unit_ips),
             roles={"default"},
             tls_external=external_ca is not None,
@@ -586,7 +613,16 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         )
 
     @property
-    def app_data(self) -> Dict:
+    def unit_peer_data(self) -> Dict:
+        """Peer relation data object."""
+        relation = self.model.get_relation(PEER)
+        if relation is None:
+            return {}
+
+        return relation.data[self.unit]
+
+    @property
+    def app_peer_data(self) -> Dict:
         """Peer relation data object."""
         relation = self.model.get_relation(PEER)
         if not relation:
@@ -620,7 +656,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         It is needed to install mongodb-clients inside charm container to make
         this function work correctly.
         """
-        if "user_created" in self.app_data or not self.unit.is_leader():
+        if "user_created" in self.app_peer_data or not self.unit.is_leader():
             return
 
         out = subprocess.run(
@@ -631,7 +667,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             raise AdminUserCreationError
 
         logger.debug("User created")
-        self.app_data["user_created"] = "True"
+        self.app_peer_data["user_created"] = "True"
 
 
 class AdminUserCreationError(Exception):
