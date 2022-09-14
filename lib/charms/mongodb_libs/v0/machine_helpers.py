@@ -196,15 +196,15 @@ def generate_service_args(auth: bool, machine_ip: str, config: MongoDBConfigurat
     return mongod_start_args
 
 
-def push_file_to_unit(file_name, file_contents) -> None:
+def push_file_to_unit(parent_dir, file_name, file_contents) -> None:
     """K8s charms can push files to their containers easily, this is the machine charm workaround."""
-    Path(file_name).mkdir(parents=True, exist_ok=True)
-    with open(KEY_FILE, "w") as key_file:
-        key_file.write(file_contents)
+    Path(parent_dir).mkdir(parents=True, exist_ok=True)
+    with open(file_name, "w") as write_file:
+        write_file.write(file_contents)
 
-    os.chmod(KEY_FILE, 0o400)
+    os.chmod(file_name, 0o400)
     mongodb_user = pwd.getpwnam(MONGO_USER)
-    os.chown(KEY_FILE, mongodb_user.pw_uid, mongodb_user.pw_gid)
+    os.chown(file_name, mongodb_user.pw_uid, mongodb_user.pw_gid)
 
 
 def restart_mongod_service(auth: bool, machine_ip: str, config: MongoDBConfiguration):

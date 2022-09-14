@@ -457,23 +457,35 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             return
 
         # put keyfile on the machine with appropriate permissions
-        push_file_to_unit(file_name=KEY_FILE, file_contents=self.get_secret("app", "keyfile"))
+        push_file_to_unit(
+            parent_dir="/etc/mongodb/",
+            file_name=KEY_FILE,
+            file_contents=self.get_secret("app", "keyfile"),
+        )
 
     def _push_tls_certificate_to_workload(self) -> None:
         """Uploads certificate to the workload container."""
         external_ca, external_pem = self.tls.get_tls_files("unit")
         if external_ca is not None:
-            push_file_to_unit(file_name=TLS_EXT_CA_FILE, file_contents=external_ca)
+            push_file_to_unit(
+                parent_dir="/etc/mongodb/", file_name=TLS_EXT_CA_FILE, file_contents=external_ca
+            )
 
         if external_pem is not None:
-            push_file_to_unit(file_name=TLS_EXT_PEM_FILE, file_contents=external_pem)
+            push_file_to_unit(
+                parent_dir="/etc/mongodb/", file_name=TLS_EXT_PEM_FILE, file_contents=external_pem
+            )
 
         internal_ca, internal_pem = self.tls.get_tls_files("app")
         if internal_ca is not None:
-            push_file_to_unit(file_name=TLS_INT_CA_FILE, file_contents=internal_ca)
+            push_file_to_unit(
+                parent_dir="/etc/mongodb/", file_name=TLS_INT_CA_FILE, file_contents=internal_ca
+            )
 
         if internal_pem is not None:
-            push_file_to_unit(file_name=TLS_INT_PEM_FILE, file_contents=internal_pem)
+            push_file_to_unit(
+                parent_dir="/etc/mongodb/", file_name=TLS_INT_PEM_FILE, file_contents=internal_pem
+            )
 
     def _initialise_replica_set(self, event: ops.charm.StartEvent) -> None:
         if "db_initialised" in self.app_peer_data:
