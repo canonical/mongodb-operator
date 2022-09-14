@@ -24,3 +24,8 @@ storage:
 peers:
   database-peers:
     interface: mongodb-peers
+
+requires:
+  certificates:
+    interface: tls-certificates
+    limit: 1
