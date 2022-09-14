@@ -21,9 +21,9 @@ from charms.mongodb_libs.v0.helpers import (
     get_create_user_cmd,
 )
 from charms.mongodb_libs.v0.machine_helpers import (
+    push_file_to_unit,
     start_mongod_service,
     update_mongod_service,
-    push_file_to_unit,
 )
 from charms.mongodb_libs.v0.mongodb import (
     MongoDBConfiguration,
@@ -32,8 +32,8 @@ from charms.mongodb_libs.v0.mongodb import (
     PyMongoError,
 )
 from charms.mongodb_libs.v0.mongodb_provider import MongoDBProvider
-from charms.mongodb_libs.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
 from charms.mongodb_libs.v0.mongodb_tls import MongoDBTLS
+from charms.mongodb_libs.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
 from charms.operator_libs_linux.v0 import apt
 from charms.operator_libs_linux.v1 import systemd
 from ops.main import main
@@ -550,12 +550,12 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             if not value:
                 del self.unit_peer_data[key]
                 return
-            self.unit_peer_data.update({key: value})
+            self.unit_peer_data.update({key: str(value)})
         elif scope == "app":
             if not value:
                 del self.app_peer_data[key]
                 return
-            self.app_peer_data.update({key: value})
+            self.app_peer_data.update({key: str(value)})
         else:
             raise RuntimeError("Unknown secret scope.")
 

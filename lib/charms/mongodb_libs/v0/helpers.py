@@ -63,6 +63,7 @@ def get_create_user_cmd(config: MongoDBConfiguration) -> List[str]:
 
 def get_mongod_cmd(config: MongoDBConfiguration) -> str:
     """Construct the MongoDB startup command line.
+
     Returns:
         A string representing the command used to start MongoDB.
     """

@@ -4,18 +4,17 @@
 import logging
 import os
 import pwd
-
 from pathlib import Path
-from charms.mongodb_libs.v0.mongodb import MongoDBConfiguration
+
 from charms.mongodb_libs.v0.helpers import (
     KEY_FILE,
-    TLS_EXT_PEM_FILE,
     TLS_EXT_CA_FILE,
-    TLS_INT_PEM_FILE,
+    TLS_EXT_PEM_FILE,
     TLS_INT_CA_FILE,
+    TLS_INT_PEM_FILE,
 )
+from charms.mongodb_libs.v0.mongodb import MongoDBConfiguration
 from charms.operator_libs_linux.v1 import systemd
-
 
 # The unique Charmhub library identifier, never change it
 LIBID = "6q947ainc54837t38yhuidshahfgw8f"
@@ -197,7 +196,7 @@ def generate_service_args(auth: bool, machine_ip: str, config: MongoDBConfigurat
 
 
 def push_file_to_unit(parent_dir, file_name, file_contents) -> None:
-    """K8s charms can push files to their containers easily, this is the machine charm workaround."""
+    """K8s charms can push files to their containers easily, this is the vm charm workaround."""
     Path(parent_dir).mkdir(parents=True, exist_ok=True)
     with open(file_name, "w") as write_file:
         write_file.write(file_contents)
@@ -208,6 +207,7 @@ def push_file_to_unit(parent_dir, file_name, file_contents) -> None:
 
 
 def restart_mongod_service(auth: bool, machine_ip: str, config: MongoDBConfiguration):
+    """Restarts the mongod service with its associated configuratiion."""
     stop_mongod_service()
     update_mongod_service(auth, machine_ip, config)
     start_mongod_service()

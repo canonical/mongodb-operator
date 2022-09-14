@@ -8,15 +8,12 @@ and expose needed information for client connection via fields in
 external relation.
 """
 
-import re
-import logging
 import base64
+import logging
+import re
 import socket
-from cryptography import x509
-from cryptography.x509.extensions import ExtensionType
-from ops.framework import Object
-from ops.charm import ActionEvent, RelationJoinedEvent, RelationBrokenEvent
-from ops.model import ActiveStatus, MaintenanceStatus
+from typing import List, Optional, Tuple
+
 from charms.mongodb_libs.v0.machine_helpers import restart_mongod_service
 from charms.tls_certificates_interface.v1.tls_certificates import (
     CertificateAvailableEvent,
@@ -25,7 +22,9 @@ from charms.tls_certificates_interface.v1.tls_certificates import (
     generate_csr,
     generate_private_key,
 )
-from typing import List, Optional, Tuple
+from ops.charm import ActionEvent, RelationBrokenEvent, RelationJoinedEvent
+from ops.framework import Object
+from ops.model import ActiveStatus, MaintenanceStatus, Unit
 
 # The unique Charmhub library identifier, never change it
 LIBID = "1057f353503741a98ed79309b5be7e33"
@@ -84,7 +83,7 @@ class MongoDBTLS(Object):
 
         csr = generate_csr(
             private_key=key,
-            subject=self.charm.get_hostname_by_unit(self.charm.unit.name),
+            subject=self.get_host(self.charm.unit),
             organization=self.charm.app.name,
             sans=self._get_sans(),
         )
@@ -163,7 +162,9 @@ class MongoDBTLS(Object):
 
         old_cert = self.charm.get_secret(scope, "cert")
         renewal = old_cert and old_cert != event.certificate
-        self.charm.set_secret(scope, "chain", event.chain)
+        self.charm.set_secret(
+            scope, "chain", "\n".join(event.chain) if event.chain is not None else None
+        )
         self.charm.set_secret(scope, "cert", event.certificate)
         self.charm.set_secret(scope, "ca", event.ca)
 
@@ -177,6 +178,7 @@ class MongoDBTLS(Object):
             return
 
         if self.substrate == "vm":
+            self.charm._push_tls_certificate_to_workload()
             logger.debug("enalbing TLS on mongod.service")
             self.charm.unit.status = MaintenanceStatus("disabling TLS")
             restart_mongod_service(
@@ -204,7 +206,7 @@ class MongoDBTLS(Object):
         old_csr = self.charm.get_secret(scope, "csr").encode("utf-8")
         new_csr = generate_csr(
             private_key=key,
-            subject=self.charm.get_hostname_by_unit(self.charm.unit.name),
+            subject=self.get_host(self.charm.unit),
             organization=self.charm.app.name,
             sans=self._get_sans(),
         )
@@ -245,3 +247,10 @@ class MongoDBTLS(Object):
             pem_file = key + "\n" + cert if key else cert
 
         return ca_file, pem_file
+
+    def get_host(self, unit: Unit):
+        """Retrieves the hostname of the unit based on the substrate."""
+        if self.substrate == "vm":
+            return self.charm._unit_ip(unit)
+        else:
+            return self.charm.get_hostname_by_unit(unit.name)
