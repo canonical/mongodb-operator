@@ -77,7 +77,7 @@ async def test_database_relation_with_charm_libraries(ops_test: OpsTest):
     db = client[database]
     test_collection = db["test_collection"]
     ubuntu = {"release_name": "Focal Fossa", "version": 20.04, "LTS": True}
-    test_collection.insert(ubuntu)
+    test_collection.insert_one(ubuntu)
 
     query = test_collection.find({}, {"release_name": 1})
     assert query[0]["release_name"] == "Focal Fossa"
@@ -178,7 +178,7 @@ async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
     test_collection.drop()
     test_collection = db["test_app_collection"]
     ubuntu = {"release_name": "Focal Fossa", "version": 20.04, "LTS": True}
-    test_collection.insert(ubuntu)
+    test_collection.insert_one(ubuntu)
 
     query = test_collection.find({}, {"release_name": 1})
     assert query[0]["release_name"] == "Focal Fossa"
