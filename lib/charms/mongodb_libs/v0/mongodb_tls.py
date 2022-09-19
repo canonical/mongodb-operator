@@ -7,7 +7,6 @@ This class creates user and database for each application relation
 and expose needed information for client connection via fields in
 external relation.
 """
-
 import base64
 import logging
 import re
@@ -64,6 +63,7 @@ class MongoDBTLS(Object):
 
     def _on_set_tls_private_key(self, event: ActionEvent) -> None:
         """Set the TLS private key, which will be used for requesting the certificate."""
+        logger.debug("Request to set TLS private key received.")
         try:
             self._request_certificate("unit", event.params.get("external-key", None))
             if not self.charm.unit.is_leader():
@@ -72,6 +72,7 @@ class MongoDBTLS(Object):
                 )
                 return
             self._request_certificate("app", event.params.get("internal-key", None))
+            logger.debug("Successfully set TLS private key.")
         except ValueError as e:
             event.fail(str(e))
 
@@ -114,22 +115,24 @@ class MongoDBTLS(Object):
 
     def _on_tls_relation_broken(self, event: RelationBrokenEvent) -> None:
         """Disable TLS when TLS relation broken."""
+        logger.debug("Disabling external TLS for unit: %s", self.charm.unit.name)
         self.charm.set_secret("unit", "ca", None)
         self.charm.set_secret("unit", "cert", None)
         self.charm.set_secret("unit", "chain", None)
         if self.charm.unit.is_leader():
+            logger.debug("Disabling internal TLS")
             self.charm.set_secret("app", "ca", None)
             self.charm.set_secret("app", "cert", None)
             self.charm.set_secret("app", "chain", None)
         if self.charm.get_secret("app", "cert"):
             logger.debug(
-                "Defer till the leader delete the internal TLS certificate to avoid second restart."
+                "Defer until the leader deletes the internal TLS certificate to avoid second restart."
             )
             event.defer()
             return
 
+        logger.debug("Restarting mongod with TLS disabled.")
         if self.substrate == "vm":
-            logger.debug("disabling TLS on mongod.service")
             self.charm.unit.status = MaintenanceStatus("disabling TLS")
             restart_mongod_service(
                 auth=True,
@@ -170,6 +173,7 @@ class MongoDBTLS(Object):
 
         if renewal:
             self.charm.unit.get_container("mongod").stop("mongod")
+            logger.debug("Successfully renewed certificates.")
         elif not self.charm.get_secret("app", "cert") or not self.charm.get_secret("unit", "cert"):
             logger.debug(
                 "Defer till both internal and external TLS certificates available to avoid second restart."
@@ -177,9 +181,9 @@ class MongoDBTLS(Object):
             event.defer()
             return
 
+        logger.debug("Restarting mongod with TLS enabled.")
         if self.substrate == "vm":
             self.charm._push_tls_certificate_to_workload()
-            logger.debug("enalbing TLS on mongod.service")
             self.charm.unit.status = MaintenanceStatus("disabling TLS")
             restart_mongod_service(
                 auth=True,
@@ -197,11 +201,14 @@ class MongoDBTLS(Object):
             scope = "unit"  # external cert
         elif event.certificate.rstrip() == self.charm.get_secret("app", "cert").rstrip():
             logger.debug("The internal TLS certificate expiring.")
+            if not self.charm.unit.is_leader():
+                return
             scope = "app"  # internal cert
         else:
             logger.error("An unknown certificate expiring.")
             return
 
+        logger.debug("Generating a new Certificate Signing Request.")
         key = self.charm.get_secret(scope, "key").encode("utf-8")
         old_csr = self.charm.get_secret(scope, "csr").encode("utf-8")
         new_csr = generate_csr(
@@ -210,6 +217,7 @@ class MongoDBTLS(Object):
             organization=self.charm.app.name,
             sans=self._get_sans(),
         )
+        logger.debug("Requesting a certificate renewal.")
         self.certs.request_certificate_renewal(
             old_certificate_signing_request=old_csr,
             new_certificate_signing_request=new_csr,
