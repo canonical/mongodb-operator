@@ -68,6 +68,23 @@ We have also added support for the database legacy relation from the [original v
 juju relate mongodb graylog
 ```
 
+#### `tls` interface:
+
+We have also supported TLS for the MongoDB k8s charm. To enable TLS:
+
+```shell
+# deploy the TLS charm 
+juju deploy tls-certificates-operator --channel=edge
+# add the necessary configurations for TLS
+juju config tls-certificates-operator generate-self-signed-certificates="true" ca-common-name="Test CA" 
+# enable TLS via relation
+juju relate tls-certificates-operator mongodb
+# disable TLS by removing relation
+juju remove-relation mongodb tls-certificates-operator
+```
+
+Note: The TLS settings here are for self-signed-certificates which are not recommended for production clusters, the `tls-certificates-operator` charm offers a variety of configurations, read more on the TLS charm [here](https://charmhub.io/tls-certificates-operator)
+
 ## Security
 Security issues in the Charmed MongoDB Operator can be reported through [LaunchPad](https://wiki.ubuntu.com/DebuggingSecurity#How%20to%20File). Please do not file GitHub issues about security issues.
 
