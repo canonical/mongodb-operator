@@ -190,8 +190,7 @@ async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
     assert query[0]["release_name"] == "Fancy Fossa"
 
     test_collection.delete_one({"release_name": "Fancy Fossa"})
-    query = test_collection.find({}, {"release_name": 1})
-    assert query.count() == 0
+    assert test_collection.count_documents({"release_name": 1}) == 0
 
     client.close()
 

@@ -44,6 +44,8 @@ class MongoDBConfiguration:
     — username: username.
     — password: password.
     — hosts: full list of hosts to connect to, needed for the URI.
+    - tls_external: indicator for use of internal TLS connection.
+    - tls_internal: indicator for use of external TLS connection.
     """
 
     replset: str
