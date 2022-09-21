@@ -13,6 +13,7 @@ import re
 import socket
 from typing import List, Optional, Tuple
 
+from charms.mongodb_libs.v0.machine_helpers import auth_enabled, restart_mongod_service
 from charms.tls_certificates_interface.v1.tls_certificates import (
     CertificateAvailableEvent,
     CertificateExpiringEvent,
@@ -22,6 +23,7 @@ from charms.tls_certificates_interface.v1.tls_certificates import (
 )
 from ops.charm import ActionEvent, RelationBrokenEvent, RelationJoinedEvent
 from ops.framework import Object
+from ops.model import ActiveStatus, MaintenanceStatus, Unit
 
 # The unique Charmhub library identifier, never change it
 LIBID = "1057f353503741a98ed79309b5be7e33"
@@ -40,10 +42,11 @@ TLS_RELATION = "certificates"
 class MongoDBTLS(Object):
     """In this class we manage client database relations."""
 
-    def __init__(self, charm, peer_relation):
+    def __init__(self, charm, peer_relation, substrate="k8s"):
         """Manager of MongoDB client relations."""
         super().__init__(charm, "client-relations")
         self.charm = charm
+        self.substrate = substrate
         self.peer_relation = peer_relation
         self.certs = TLSCertificatesRequiresV1(self.charm, TLS_RELATION)
         self.framework.observe(
@@ -81,7 +84,7 @@ class MongoDBTLS(Object):
 
         csr = generate_csr(
             private_key=key,
-            subject=self.charm.get_hostname_by_unit(self.charm.unit.name),
+            subject=self.get_host(self.charm.unit),
             organization=self.charm.app.name,
             sans=self._get_sans(),
         )
@@ -129,7 +132,16 @@ class MongoDBTLS(Object):
             return
 
         logger.debug("Restarting mongod with TLS disabled.")
-        self.charm.on_mongod_pebble_ready(event)
+        if self.substrate == "vm":
+            self.charm.unit.status = MaintenanceStatus("disabling TLS")
+            restart_mongod_service(
+                auth=auth_enabled(),
+                machine_ip=self.charm._unit_ip(self.charm.unit),
+                config=self.charm.mongodb_config,
+            )
+            self.charm.unit.status = ActiveStatus()
+        else:
+            self.charm.on_mongod_pebble_ready(event)
 
     def _on_certificate_available(self, event: CertificateAvailableEvent) -> None:
         """Enable TLS when TLS certificate available."""
@@ -153,7 +165,6 @@ class MongoDBTLS(Object):
 
         old_cert = self.charm.get_secret(scope, "cert")
         renewal = old_cert and old_cert != event.certificate
-
         self.charm.set_secret(
             scope, "chain", "\n".join(event.chain) if event.chain is not None else None
         )
@@ -171,7 +182,17 @@ class MongoDBTLS(Object):
             return
 
         logger.debug("Restarting mongod with TLS enabled.")
-        self.charm.on_mongod_pebble_ready(event)
+        if self.substrate == "vm":
+            self.charm._push_tls_certificate_to_workload()
+            self.charm.unit.status = MaintenanceStatus("enabling TLS")
+            restart_mongod_service(
+                auth=auth_enabled(),
+                machine_ip=self.charm._unit_ip(self.charm.unit),
+                config=self.charm.mongodb_config,
+            )
+            self.charm.unit.status = ActiveStatus()
+        else:
+            self.charm.on_mongod_pebble_ready(event)
 
     def _on_certificate_expiring(self, event: CertificateExpiringEvent) -> None:
         """Request the new certificate when old certificate is expiring."""
@@ -192,11 +213,10 @@ class MongoDBTLS(Object):
         old_csr = self.charm.get_secret(scope, "csr").encode("utf-8")
         new_csr = generate_csr(
             private_key=key,
-            subject=self.charm.get_hostname_by_unit(self.charm.unit.name),
+            subject=self.get_host(self.charm.unit),
             organization=self.charm.app.name,
             sans=self._get_sans(),
         )
-
         logger.debug("Requesting a certificate renewal.")
         self.certs.request_certificate_renewal(
             old_certificate_signing_request=old_csr,
@@ -235,3 +255,10 @@ class MongoDBTLS(Object):
             pem_file = key + "\n" + cert if key else cert
 
         return ca_file, pem_file
+
+    def get_host(self, unit: Unit):
+        """Retrieves the hostname of the unit based on the substrate."""
+        if self.substrate == "vm":
+            return self.charm._unit_ip(unit)
+        else:
+            return self.charm.get_hostname_by_unit(unit.name)

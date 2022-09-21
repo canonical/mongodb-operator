@@ -142,7 +142,7 @@ async def test_set_password_action(ops_test: OpsTest) -> None:
     # verify that the password is updated in mongod by inserting into the collection.
     try:
         client = MongoClient(unit_uri(unit.public_address, new_password), directConnection=True)
-        client["new-db"].collection_names()
+        client["new-db"].list_collection_names()
     except PyMongoError as e:
         assert False, f"Failed to access collection with new password, error: {e}"
     finally:
@@ -160,7 +160,7 @@ async def test_set_password_action(ops_test: OpsTest) -> None:
     # verify that the password is updated in mongod by inserting into the collection.
     try:
         client = MongoClient(unit_uri(unit.public_address, "safe_pass"), directConnection=True)
-        client["new-db"].collection_names()
+        client["new-db"].list_collection_names()
     except PyMongoError as e:
         assert False, f"Failed to access collection with new password, error: {e}"
     finally:

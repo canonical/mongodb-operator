@@ -9,14 +9,6 @@ from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailu
 
 from lib.charms.mongodb_libs.v0.mongodb import MongoDBConnection, NotReadyError
 
-MONGO_CONFIG = {
-    "replset": "mongo-k8s",
-    "database": "admin",
-    "username": "admin",
-    "password": "password",
-    "hosts": set(["1.1.1.1", "2.2.2.2"]),
-}
-
 PYMONGO_EXCEPTIONS = [
     (ConnectionFailure("error message"), ConnectionFailure),
     (ConfigurationError("error message"), ConfigurationError),
