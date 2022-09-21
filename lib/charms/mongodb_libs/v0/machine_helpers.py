@@ -170,7 +170,7 @@ def generate_service_args(auth: bool, machine_ip: str, config: MongoDBConfigurat
                 ]
             )
 
-        # internal TLS can be enabled only in external is enabled
+        # internal TLS can be enabled only if external is enabled
         if config.tls_internal and config.tls_external:
             mongod_start_args.extend(
                 [
@@ -207,7 +207,7 @@ def push_file_to_unit(parent_dir, file_name, file_contents) -> None:
 
 
 def restart_mongod_service(auth: bool, machine_ip: str, config: MongoDBConfiguration):
-    """Restarts the mongod service with its associated configuratiion."""
+    """Restarts the mongod service with its associated configuration."""
     stop_mongod_service()
     update_mongod_service(auth, machine_ip, config)
     start_mongod_service()

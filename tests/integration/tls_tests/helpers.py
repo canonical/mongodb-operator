@@ -5,6 +5,7 @@
 import ops
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_attempt, wait_exponential
+
 from tests.integration.ha_tests.helpers import app_name
 from tests.integration.helpers import get_password
 
