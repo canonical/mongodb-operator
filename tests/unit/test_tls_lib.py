@@ -25,7 +25,7 @@ class TestMongoTLS(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     def test_on_set_tls_private_key(self):
-        """
+        """Tests setting of TLS private key in external/internal certificate scenarios.
 
         Note: this implicitly tests: _request_certificate & _parse_tls_file
         """
@@ -94,7 +94,7 @@ class TestMongoTLS(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     def test_tls_relation_broken_non_leader(self, restart_mongod_service):
         """Test non-leader removes only external cert & chain."""
-        # set inital certificate values
+        # set initial certificate values
         self.harness.set_leader(True)
         rel_id = self.relate_to_tls_certificates_operator()
         app_rsa_key = self.harness.charm.app_peer_data["key"]
@@ -118,7 +118,7 @@ class TestMongoTLS(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     def test_tls_relation_broken_leader(self, restart_mongod_service):
         """Test leader removes both external and internal certificates."""
-        # set inital certificate values
+        # set initial certificate values
         self.harness.set_leader(True)
         rel_id = self.relate_to_tls_certificates_operator()
 
@@ -137,6 +137,7 @@ class TestMongoTLS(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     def test_external_certificate_expiring(self):
+        """Verifies that when an external certificate expires a csr is made."""
         # assume relation exists with a current certificate
         self.relate_to_tls_certificates_operator()
         self.harness.charm.unit_peer_data["cert"] = "unit-cert"
@@ -151,6 +152,7 @@ class TestMongoTLS(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     def test_internal_certificate_expiring(self):
+        """Verifies that when an internal certificate expires a csr is made."""
         # assume relation exists with a current certificate
         self.relate_to_tls_certificates_operator()
         self.harness.charm.app_peer_data["cert"] = "app-cert"
@@ -165,7 +167,7 @@ class TestMongoTLS(unittest.TestCase):
         new_csr = self.harness.charm.app_peer_data["csr"]
         self.assertEqual(old_csr, new_csr)
 
-        # verify a new csr was generated when leader recieves expiry
+        # verify a new csr was generated when leader receives expiry
         self.harness.set_leader(True)
         self.charm.tls.certs.on.certificate_expiring.emit(certificate="app-cert", expiry=None)
         new_csr = self.harness.charm.app_peer_data["csr"]
@@ -173,6 +175,7 @@ class TestMongoTLS(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     def test_unknown_certificate_expiring(self):
+        """Verifies that when an unknown certificate expires nothing happens."""
         # assume relation exists with a current certificate
         self.relate_to_tls_certificates_operator()
         self.harness.charm.app_peer_data["cert"] = "app-cert"
@@ -192,6 +195,7 @@ class TestMongoTLS(unittest.TestCase):
     @patch("charm.MongodbOperatorCharm._push_tls_certificate_to_workload")
     @patch("charms.mongodb_libs.v0.mongodb_tls.restart_mongod_service")
     def test_external_certificate_available(self, restart_mongod_service, _):
+        """Tests behavior when external certificate is made available."""
         # assume relation exists with a current certificate
         self.relate_to_tls_certificates_operator()
         self.harness.charm.unit_peer_data["csr"] = "unit-crs"
@@ -215,6 +219,7 @@ class TestMongoTLS(unittest.TestCase):
     @patch("charm.MongodbOperatorCharm._push_tls_certificate_to_workload")
     @patch("charms.mongodb_libs.v0.mongodb_tls.restart_mongod_service")
     def test_internal_certificate_available(self, restart_mongod_service, _):
+        """Tests behavior when internal certificate is made available."""
         # assume relation exists with a current certificate
         self.relate_to_tls_certificates_operator()
         self.harness.charm.app_peer_data["csr"] = "app-crs"
@@ -238,6 +243,7 @@ class TestMongoTLS(unittest.TestCase):
     @patch("charm.MongodbOperatorCharm._push_tls_certificate_to_workload")
     @patch("charms.mongodb_libs.v0.mongodb_tls.restart_mongod_service")
     def test_unknown_certificate_available(self, restart_mongod_service, _):
+        """Tests that when an unknown certificate is available, nothing is updated."""
         # assume relation exists with a current certificate
         self.relate_to_tls_certificates_operator()
         self.harness.charm.app_peer_data["chain"] = "app-chain-old"
@@ -261,7 +267,7 @@ class TestMongoTLS(unittest.TestCase):
 
     # Helper functions
     def relate_to_tls_certificates_operator(self) -> int:
-        # Relate the charm to the TLS certificates operator.
+        """Relates the charm to the TLS certificates operator."""
         rel_id = self.harness.add_relation(RELATION_NAME, "tls-certificates-operator")
         self.harness.add_relation_unit(rel_id, "tls-certificates-operator/0")
         return rel_id
@@ -269,6 +275,10 @@ class TestMongoTLS(unittest.TestCase):
     def verify_external_rsa_csr(
         self, specific_rsa=False, expected_rsa=None, specific_csr=False, expected_csr=None
     ):
+        """Verifies values of external rsa and csr.
+
+        Checks if rsa/csr were randomly generated or if they are a provided value.
+        """
         unit_rsa_key = self.harness.charm.unit_peer_data.get("key", None)
         unit_csr = self.harness.charm.unit_peer_data.get("csr", None)
         if specific_rsa:
@@ -284,6 +294,10 @@ class TestMongoTLS(unittest.TestCase):
     def verify_internal_rsa_csr(
         self, specific_rsa=False, expected_rsa=None, specific_csr=False, expected_csr=None
     ):
+        """Verifies values of internal rsa and csr.
+
+        Checks if rsa/csr were randomly generated or if they are a provided value.
+        """
         app_rsa_key = self.harness.charm.app_peer_data.get("key", None)
         app_csr = self.harness.charm.app_peer_data.get("csr", None)
         if specific_rsa:
@@ -295,10 +309,3 @@ class TestMongoTLS(unittest.TestCase):
             self.assertEqual(app_csr, expected_csr)
         else:
             self.assertEqual(app_csr.split("\n")[0], "-----BEGIN CERTIFICATE REQUEST-----")
-
-
-"""
-test:
-- three cases of _on_certificate_expiring
-- many cases of _on_certificate_available
-"""
