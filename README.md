@@ -79,6 +79,10 @@ juju deploy tls-certificates-operator --channel=edge
 juju config tls-certificates-operator generate-self-signed-certificates="true" ca-common-name="Test CA" 
 # enable TLS via relation
 juju relate tls-certificates-operator mongodb
+# update the external private key for certificate signing requests (CSR)
+juju run-action mongodb/<unit_number> set-tls-private-key  external-key="$(cat <path to file>)" --wait
+# update the internal private key for certificate signing requests (CSR)
+juju run-action mongodb/<unit_number> set-tls-private-key  internal-key="$(cat <path to file>)" --wait
 # disable TLS by removing relation
 juju remove-relation mongodb tls-certificates-operator
 ```

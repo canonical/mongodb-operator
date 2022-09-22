@@ -171,7 +171,7 @@ class MongoDBTLS(Object):
         self.charm.set_secret(scope, "cert", event.certificate)
         self.charm.set_secret(scope, "ca", event.ca)
 
-        if renewal:
+        if renewal and self.substrate == "k8s":
             self.charm.unit.get_container("mongod").stop("mongod")
             logger.debug("Successfully renewed certificates.")
         elif not self.charm.get_secret("app", "cert") or not self.charm.get_secret("unit", "cert"):
