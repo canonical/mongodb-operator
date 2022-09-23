@@ -252,6 +252,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                             event.defer()
                             return
                     mongo.add_replset_member(member)
+                    self.unit.status = ActiveStatus()
             except NotReadyError:
                 self.unit.status = WaitingStatus("waiting to reconfigure replica set")
                 logger.error("Deferring reconfigure: another member doing sync right now")
