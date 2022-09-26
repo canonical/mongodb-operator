@@ -1,6 +1,5 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
-
 import unittest
 from unittest import mock
 from unittest.mock import patch
@@ -18,19 +17,18 @@ class TestMongoTLS(unittest.TestCase):
     def setUp(self):
         self.harness = Harness(MongodbOperatorCharm)
         self.harness.begin()
-        self.harness.add_relation("database-peers", "mongodb-peers")
+        self.harness.add_relation("database-peers", "database-peers")
         self.harness.set_leader(True)
         self.charm = self.harness.charm
         self.addCleanup(self.harness.cleanup)
 
     @patch_network_get(private_address="1.1.1.1")
-    def test_on_set_tls_private_key(self):
-        """Tests setting of TLS private key in external/internal certificate scenarios.
+    def test_set_internal_tls_private_key(self):
+        """Tests setting of TLS private key via the leader, ie both internal and external.
 
         Note: this implicitly tests: _request_certificate & _parse_tls_file
         """
         # Tests for leader unit (ie internal certificates and external certificates)
-        self.harness.set_leader(True)
         action_event = mock.Mock()
         action_event.params = {}
 
@@ -39,36 +37,53 @@ class TestMongoTLS(unittest.TestCase):
         self.verify_internal_rsa_csr()
         self.verify_external_rsa_csr()
 
-        # provided rsa key test - leader
-        set_app_rsa_key = self.harness.charm.app_peer_data["key"]
+        with open("tests/unit/data/key.pem") as f:
+            key_contents = f.readlines()
+            key_contents = "".join(key_contents)
+
+        set_app_rsa_key = key_contents
+        # we expect the app rsa key to be parsed such that its trailing newline is removed.
+        parsed_app_rsa_key = set_app_rsa_key[:-1]
         action_event.params = {"internal-key": set_app_rsa_key}
         self.harness.charm.tls._on_set_tls_private_key(action_event)
-        self.verify_internal_rsa_csr(specific_rsa=True, expected_rsa=set_app_rsa_key)
+        self.verify_internal_rsa_csr(specific_rsa=True, expected_rsa=parsed_app_rsa_key)
         self.verify_external_rsa_csr()
 
+    @patch_network_get(private_address="1.1.1.1")
+    def test_set_external_tls_private_key(self):
+        """Tests setting of TLS private key in external certificate scenarios.
+
+        Note: this implicitly tests: _request_certificate & _parse_tls_file
+        """
         #  Tests for non-leader unit (ie external certificates)
         self.harness.set_leader(False)
         action_event = mock.Mock()
         action_event.params = {}
-        app_rsa_key = self.harness.charm.app_peer_data["key"]
-        app_csr = self.harness.charm.app_peer_data["csr"]
 
         # generated rsa key test - non-leader
         self.harness.charm.tls._on_set_tls_private_key(action_event)
         self.verify_external_rsa_csr()
         # non-leaders should not reset the app key and app csr
         self.verify_internal_rsa_csr(
-            specific_rsa=True, expected_rsa=app_rsa_key, specific_csr=True, expected_csr=app_csr
+            specific_rsa=True, expected_rsa=None, specific_csr=True, expected_csr=None
         )
 
         # provided rsa key test - non-leader
-        set_unit_rsa_key = self.harness.charm.unit_peer_data["key"]
+
+        with open("tests/unit/data/key.pem") as f:
+            key_contents = f.readlines()
+            key_contents = "".join(key_contents)
+
+        set_unit_rsa_key = key_contents
+        # we expect the app rsa key to be parsed such that its trailing newline is removed.
+        parsed_unit_rsa_key = set_unit_rsa_key[:-1]
+
         action_event.params = {"external-key": set_unit_rsa_key}
         self.harness.charm.tls._on_set_tls_private_key(action_event)
-        self.verify_external_rsa_csr(specific_rsa=True, expected_rsa=set_unit_rsa_key)
+        self.verify_external_rsa_csr(specific_rsa=True, expected_rsa=parsed_unit_rsa_key)
         # non-leaders should not reset the app key and app csr
         self.verify_internal_rsa_csr(
-            specific_rsa=True, expected_rsa=app_rsa_key, specific_csr=True, expected_csr=app_csr
+            specific_rsa=True, expected_rsa=None, specific_csr=True, expected_csr=None
         )
 
     @patch_network_get(private_address="1.1.1.1")
@@ -85,7 +100,6 @@ class TestMongoTLS(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     def test_tls_relation_joined_leader(self):
         """Test that leader units set both external and internal certificates."""
-        self.harness.set_leader(True)
         self.relate_to_tls_certificates_operator()
         self.verify_internal_rsa_csr()
         self.verify_external_rsa_csr()
@@ -95,18 +109,17 @@ class TestMongoTLS(unittest.TestCase):
     def test_tls_relation_broken_non_leader(self, restart_mongod_service):
         """Test non-leader removes only external cert & chain."""
         # set initial certificate values
-        self.harness.set_leader(True)
         rel_id = self.relate_to_tls_certificates_operator()
         app_rsa_key = self.harness.charm.app_peer_data["key"]
         app_csr = self.harness.charm.app_peer_data["csr"]
 
         self.harness.set_leader(False)
         self.harness.remove_relation(rel_id)
-        self.assertEqual(self.harness.charm.unit_peer_data.get("ca", None), None)
-        self.assertEqual(self.harness.charm.unit_peer_data.get("cert", None), None)
-        self.assertEqual(self.harness.charm.unit_peer_data.get("chain", None), None)
+        self.assertIsNone(self.harness.charm.unit_peer_data.get("ca", None))
+        self.assertIsNone(self.harness.charm.unit_peer_data.get("cert", None))
+        self.assertIsNone(self.harness.charm.unit_peer_data.get("chain", None))
 
-        # external certificate should be maintained
+        #  internal certificate should be maintained
         self.verify_internal_rsa_csr(
             specific_rsa=True, expected_rsa=app_rsa_key, specific_csr=True, expected_csr=app_csr
         )
@@ -119,18 +132,17 @@ class TestMongoTLS(unittest.TestCase):
     def test_tls_relation_broken_leader(self, restart_mongod_service):
         """Test leader removes both external and internal certificates."""
         # set initial certificate values
-        self.harness.set_leader(True)
         rel_id = self.relate_to_tls_certificates_operator()
 
         self.harness.remove_relation(rel_id)
 
         # internal certificates and external certificates should be removed
-        self.assertEqual(self.harness.charm.unit_peer_data.get("ca", None), None)
-        self.assertEqual(self.harness.charm.unit_peer_data.get("cert", None), None)
-        self.assertEqual(self.harness.charm.unit_peer_data.get("chain", None), None)
-        self.assertEqual(self.harness.charm.app_peer_data.get("ca", None), None)
-        self.assertEqual(self.harness.charm.app_peer_data.get("cert", None), None)
-        self.assertEqual(self.harness.charm.app_peer_data.get("chain", None), None)
+        self.assertIsNone(self.harness.charm.unit_peer_data.get("ca", None))
+        self.assertIsNone(self.harness.charm.unit_peer_data.get("cert", None))
+        self.assertIsNone(self.harness.charm.unit_peer_data.get("chain", None))
+        self.assertIsNone(self.harness.charm.app_peer_data.get("ca", None))
+        self.assertIsNone(self.harness.charm.app_peer_data.get("cert", None))
+        self.assertIsNone(self.harness.charm.app_peer_data.get("chain", None))
 
         # units should be restarted after updating TLS settings
         restart_mongod_service.assert_called()
@@ -182,7 +194,6 @@ class TestMongoTLS(unittest.TestCase):
         self.harness.charm.unit_peer_data["cert"] = "unit-cert"
 
         # simulate unknown certificate expiring on leader
-        self.harness.set_leader(True)
         old_app_csr = self.harness.charm.app_peer_data["csr"]
         old_unit_csr = self.harness.charm.unit_peer_data["csr"]
         self.charm.tls.certs.on.certificate_expiring.emit(certificate="unknown-cert", expiry=None)
