@@ -77,9 +77,47 @@ We have also supported TLS for the MongoDB k8s charm. To enable TLS:
 juju deploy tls-certificates-operator --channel=edge
 # add the necessary configurations for TLS
 juju config tls-certificates-operator generate-self-signed-certificates="true" ca-common-name="Test CA" 
-# enable TLS via relation
+# to enable TLS relate the two applications 
 juju relate tls-certificates-operator mongodb
-# disable TLS by removing relation
+```
+
+Updates to private keys for certificate signing requests (CSR) can be made via the `set-tls-private-key` action. With three replicas this schema should be followed:
+```shell
+# generate shared internal key
+openssl genrsa -out internal-key.pem 3072
+# generate external keys for each unit
+openssl genrsa -out external-key-0.pem 3072
+openssl genrsa -out external-key-1.pem 3072
+openssl genrsa -out external-key-2.pem 3072
+# apply both private keys on each unit, shared internal key will be allied only on juju leader
+juju run-action mongodb/0 set-tls-private-key "external-key=$(cat external-key-0.pem)"  "internal-key=$(cat internal-key.pem)"  --wait
+juju run-action mongodb/1 set-tls-private-key "external-key=$(cat external-key-1.pem)"  "internal-key=$(cat internal-key.pem)"  --wait
+juju run-action mongodb/2 set-tls-private-key "external-key=$(cat external-key-2.pem)"  "internal-key=$(cat internal-key.pem)"  --wait
+
+# updates can also be done with auto-generated keys with
+juju run-action mongodb/0 set-tls-private-key --wait
+juju run-action mongodb/1 set-tls-private-key --wait
+juju run-action mongodb/2 set-tls-private-key --wait
+```
+
+# To update both the internal and external private key, run set-tls-private-key on the juju leader
+# for auto-generated keys use:
+juju run-action mongodb/<unit_number> set-tls-private-key --wait
+# for specific key values use:
+juju run-action mongodb/<unit_number> set-tls-private-key  \
+    internal-key="$(cat <path to file>)" \
+    external-key="$(cat <path to file>)" --wait
+# to update only the external private key, run  set-tls-private-key on a non-leader unit.
+# for auto-generated keys use:
+juju run-action mongodb/<unit_number> set-tls-private-key
+# for a specific key value use:
+juju run-action mongodb/<unit_number> set-tls-private-key  \
+    external-key="$(cat <path to file>)" --wait
+
+```
+
+To disable TLS remove the relation
+```shell
 juju remove-relation mongodb tls-certificates-operator
 ```
 

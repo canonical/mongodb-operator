@@ -99,11 +99,15 @@ class MongoDBTLS(Object):
     def _parse_tls_file(raw_content: str) -> bytes:
         """Parse TLS files from both plain text or base64 format."""
         if re.match(r"(-+(BEGIN|END) [A-Z ]+-+)", raw_content):
-            return re.sub(
-                r"(-+(BEGIN|END) [A-Z ]+-+)",
-                "\n\\1\n",
-                raw_content,
-            ).encode("utf-8")
+            return (
+                re.sub(
+                    r"(-+(BEGIN|END) [A-Z ]+-+)",
+                    "\\1",
+                    raw_content,
+                )
+                .rstrip()
+                .encode("utf-8")
+            )
         return base64.b64decode(raw_content)
 
     def _on_tls_relation_joined(self, _: RelationJoinedEvent) -> None:
@@ -171,7 +175,7 @@ class MongoDBTLS(Object):
         self.charm.set_secret(scope, "cert", event.certificate)
         self.charm.set_secret(scope, "ca", event.ca)
 
-        if renewal:
+        if renewal and self.substrate == "k8s":
             self.charm.unit.get_container("mongod").stop("mongod")
             logger.debug("Successfully renewed certificates.")
         elif not self.charm.get_secret("app", "cert") or not self.charm.get_secret("unit", "cert"):
