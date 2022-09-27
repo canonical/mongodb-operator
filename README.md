@@ -73,7 +73,7 @@ juju relate mongodb graylog
 The admin user is used internally by the Charmed MongoDB Operator, the `set-admin-password` action can be used to rotate its password.
 ```shell
 # to set a specific password for the admin user
-juju run-action mongodb/<leader unit> set-admin-password password=<password> --wait
+juju run-action mongodb/leader set-admin-password password=<password> --wait
 
 # to randomly generate a password for the admin user
 juju run-action mongodb/<leader unit> set-admin-password --wait
