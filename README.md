@@ -76,7 +76,7 @@ The admin user is used internally by the Charmed MongoDB Operator, the `set-admi
 juju run-action mongodb/leader set-admin-password password=<password> --wait
 
 # to randomly generate a password for the admin user
-juju run-action mongodb/<leader unit> set-admin-password --wait
+juju run-action mongodb/leader set-admin-password --wait
 ```
 
 #### Related applications users
