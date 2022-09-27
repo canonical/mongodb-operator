@@ -102,7 +102,7 @@ class MongoDBTLS(Object):
             return (
                 re.sub(
                     r"(-+(BEGIN|END) [A-Z ]+-+)",
-                    "\\1",
+                    "\n\\1\n",
                     raw_content,
                 )
                 .rstrip()

@@ -14,7 +14,7 @@ from tests.integration.tls_tests.helpers import (
 
 TLS_CERTIFICATES_APP_NAME = "tls-certificates-operator"
 DATABASE_APP_NAME = "mongodb"
-PRIVATE_KEY_PATH = "tests/integration/tls_tests/data/key.txt"
+PRIVATE_KEY_PATH = "tests/integration/tls_tests/data"
 EXTERNAL_CERT_PATH = "/etc/mongodb/external-ca.crt"
 INTERNAL_CERT_PATH = "/etc/mongodb/internal-ca.crt"
 DB_SERVICE = "mongod.service"
@@ -67,10 +67,6 @@ async def test_rotate_tls_key(ops_test: OpsTest) -> None:
             ops_test, unit.name, DB_SERVICE
         )
 
-    with open(PRIVATE_KEY_PATH) as f:
-        key_contents = f.readlines()
-        key_contents = "".join(key_contents)
-
     # set external and internal key using auto-generated key for each unit
     for unit in ops_test.model.applications[DATABASE_APP_NAME].units:
         action = await unit.run_action(action_name="set-tls-private-key")
@@ -122,13 +118,27 @@ async def test_set_tls_key(ops_test: OpsTest) -> None:
             ops_test, unit.name, DB_SERVICE
         )
 
-    with open(PRIVATE_KEY_PATH) as f:
-        key_contents = f.readlines()
-        key_contents = "".join(key_contents)
+    with open(f"{PRIVATE_KEY_PATH}/internal-key.pem") as f:
+        internal_key_contents = f.readlines()
+        # join by a " " as this is how the file gets passed via the juju action
+        internal_key_contents = " ".join(internal_key_contents)
+        internal_key_contents = internal_key_contents.replace("\n", "")
 
     # set external and internal key for each unit
-    for unit in ops_test.model.applications[DATABASE_APP_NAME].units:
-        key_settings = [f"internal-key={key_contents}", f"external-key={key_contents}"]
+    for unid_id in range(len(ops_test.model.applications[DATABASE_APP_NAME].units)):
+        unit = ops_test.model.applications[DATABASE_APP_NAME].units[unid_id]
+
+        with open(f"{PRIVATE_KEY_PATH}/external-key-{unid_id}.pem") as f:
+            external_key_contents = f.readlines()
+            # join by a " " as this is how the file gets passed via the juju action
+            external_key_contents = " ".join(external_key_contents)
+            external_key_contents = external_key_contents.replace("\n", "")
+
+        key_settings = [
+            f'"internal-key={internal_key_contents}"',
+            f'"external-key={external_key_contents}"',
+        ]
+
         action = await unit.run_action(
             action_name="set-tls-private-key",
             params=" ".join(key_settings),

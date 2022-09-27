@@ -98,7 +98,6 @@ juju run-action mongodb/2 set-tls-private-key "external-key=$(cat external-key-2
 juju run-action mongodb/0 set-tls-private-key --wait
 juju run-action mongodb/1 set-tls-private-key --wait
 juju run-action mongodb/2 set-tls-private-key --wait
-```
 
 # To update both the internal and external private key, run set-tls-private-key on the juju leader
 # for auto-generated keys use:
