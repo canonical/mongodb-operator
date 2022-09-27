@@ -68,6 +68,24 @@ We have also added support for the database legacy relation from the [original v
 juju relate mongodb graylog
 ```
 
+### Password rotation
+#### Internal admin user
+The admin user is used internally by the Charmed MongoDB Operator, the `set-admin-password` action can be used to rotate its password.
+```shell
+# to set a specific password for the admin user
+juju run-action mongodb/leader set-admin-password password=<password> --wait
+
+# to randomly generate a password for the admin user
+juju run-action mongodb/leader set-admin-password --wait
+```
+
+#### Related applications users
+To rotate the passwords of users created for related applications, the relation should be removed and related again. That process will generate a new user and password for the application.
+```shell
+juju remove-relation application mongodb
+juju add-relation application mongodb
+```
+
 ## Security
 Security issues in the Charmed MongoDB Operator can be reported through [LaunchPad](https://wiki.ubuntu.com/DebuggingSecurity#How%20to%20File). Please do not file GitHub issues about security issues.
 
