@@ -23,7 +23,7 @@ from charms.tls_certificates_interface.v1.tls_certificates import (
 )
 from ops.charm import ActionEvent, RelationBrokenEvent, RelationJoinedEvent
 from ops.framework import Object
-from ops.model import ActiveStatus, MaintenanceStatus, Unit
+from ops.model import ActiveStatus, MaintenanceStatus, Unit, WaitingStatus
 
 # The unique Charmhub library identifier, never change it
 LIBID = "1057f353503741a98ed79309b5be7e33"
@@ -94,20 +94,37 @@ class MongoDBTLS(Object):
 
         if self.charm.model.get_relation(TLS_RELATION):
             self.certs.request_certificate_creation(certificate_signing_request=csr)
+            self.charm.unit.status = WaitingStatus("waiting for new TLS certificate")
 
     @staticmethod
     def _parse_tls_file(raw_content: str) -> bytes:
         """Parse TLS files from both plain text or base64 format."""
         if re.match(r"(-+(BEGIN|END) [A-Z ]+-+)", raw_content):
-            return (
-                re.sub(
-                    r"(-+(BEGIN|END) [A-Z ]+-+)",
-                    "\n\\1\n",
-                    raw_content,
-                )
-                .rstrip()
-                .encode("utf-8")
+            # retrieve header and footer from private key
+            header = re.search(
+                r"(-+(BEGIN) [A-Z ]+-+)",
+                raw_content,
+            ).group(1)
+            footer = re.search(
+                r"(-+(END) [A-Z ]+-+)",
+                raw_content,
+            ).group(1)
+
+            # get key contents and replace " " with "\n"
+            key_contents = re.sub(
+                r"(-+(BEGIN|END) [A-Z ]+-+)",
+                "",
+                raw_content,
             )
+            key_contents = re.sub(
+                r" ",
+                "\n",
+                key_contents,
+            )
+
+            private_key = f"{header}{key_contents}{footer}"
+            return private_key.rstrip().encode("utf-8")
+
         return base64.b64decode(raw_content)
 
     def _on_tls_relation_joined(self, _: RelationJoinedEvent) -> None:

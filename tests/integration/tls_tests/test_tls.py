@@ -73,8 +73,8 @@ async def test_rotate_tls_key(ops_test: OpsTest) -> None:
         action = await action.wait()
         assert action.status == "completed", "setting external and internal key failed."
 
-    # sleep for long enough to process new certificate request and update certs
-    sleep(30)
+    # wait for certificate to be available and processed.
+    await ops_test.model.wait_for_idle()
 
     # After updating both the external key and the internal key a new certificate request will be
     # made; then the certificates should be available and updated.
@@ -146,8 +146,8 @@ async def test_set_tls_key(ops_test: OpsTest) -> None:
         action = await action.wait()
         assert action.status == "completed", "setting external and internal key failed."
 
-    # sleep for long enough to process new certificate request and update certs
-    sleep(30)
+    # wait for certificate to be available and processed.
+    await ops_test.model.wait_for_idle()
 
     # After updating both the external key and the internal key a new certificate request will be
     # made; then the certificates should be available and updated.
