@@ -116,30 +116,26 @@ async def test_set_tls_key(ops_test: OpsTest) -> None:
             ops_test, unit.name, DB_SERVICE
         )
 
-    with open(f"{PRIVATE_KEY_PATH}/internal-key.pem") as f:
+    with open(f"{PRIVATE_KEY_PATH}/internal-key-encoded") as f:
         internal_key_contents = f.readlines()
-        # join by a " " as this is how the file gets passed via the juju action
-        internal_key_contents = " ".join(internal_key_contents)
-        internal_key_contents = internal_key_contents.replace("\n", "")
+        internal_key_contents = "".join(internal_key_contents)
 
     # set external and internal key for each unit
     for unid_id in range(len(ops_test.model.applications[DATABASE_APP_NAME].units)):
         unit = ops_test.model.applications[DATABASE_APP_NAME].units[unid_id]
 
-        with open(f"{PRIVATE_KEY_PATH}/external-key-{unid_id}.pem") as f:
+        with open(f"{PRIVATE_KEY_PATH}/external-key-{unid_id}-encoded") as f:
             external_key_contents = f.readlines()
-            # join by a " " as this is how the file gets passed via the juju action
-            external_key_contents = " ".join(external_key_contents)
-            external_key_contents = external_key_contents.replace("\n", "")
+            external_key_contents = "".join(external_key_contents)
 
-        key_settings = [
-            f'"internal-key={internal_key_contents}"',
-            f'"external-key={external_key_contents}"',
-        ]
+        key_settings = {
+            "internal-key": internal_key_contents,
+            "external-key": external_key_contents,
+        }
 
         action = await unit.run_action(
             action_name="set-tls-private-key",
-            params=" ".join(key_settings),
+            **key_settings,
         )
         action = await action.wait()
         assert action.status == "completed", "setting external and internal key failed."
