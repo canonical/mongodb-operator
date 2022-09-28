@@ -53,7 +53,6 @@ async def check_tls(ops_test: OpsTest, unit: ops.model.Unit, enabled: bool) -> b
                 return_code, _, _ = await ops_test.juju(*check_tls_cmd.split())
                 tls_enabled = return_code == 0
                 if enabled != tls_enabled:
-                    print(f"TLS is{' not' if not tls_enabled else ''} enabled on {unit.name}")
                     raise ValueError(
                         f"TLS is{' not' if not tls_enabled else ''} enabled on {unit.name}"
                     )
