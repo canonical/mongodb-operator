@@ -37,16 +37,21 @@ class TestMongoTLS(unittest.TestCase):
         self.verify_internal_rsa_csr()
         self.verify_external_rsa_csr()
 
+        # provided rsa key test - non-leader
         with open("tests/unit/data/key.pem") as f:
             key_contents = f.readlines()
-            key_contents = "".join(key_contents)
+            # the charm should parse this file and it should look like the original file with the
+            # extra newline removed
+            parsed_rsa_key = "".join(key_contents)
+            parsed_rsa_key = parsed_rsa_key[:-1]
 
-        set_app_rsa_key = key_contents
-        # we expect the app rsa key to be parsed such that its trailing newline is removed.
-        parsed_app_rsa_key = set_app_rsa_key[:-1]
-        action_event.params = {"internal-key": set_app_rsa_key}
+            # join by a " " as this is how the file gets passed via the juju action
+            set_key_contents = " ".join(key_contents)
+            set_key_contents = set_key_contents.replace("\n", "")
+
+        action_event.params = {"internal-key": set_key_contents}
         self.harness.charm.tls._on_set_tls_private_key(action_event)
-        self.verify_internal_rsa_csr(specific_rsa=True, expected_rsa=parsed_app_rsa_key)
+        self.verify_internal_rsa_csr(specific_rsa=True, expected_rsa=parsed_rsa_key)
         self.verify_external_rsa_csr()
 
     @patch_network_get(private_address="1.1.1.1")
@@ -69,18 +74,20 @@ class TestMongoTLS(unittest.TestCase):
         )
 
         # provided rsa key test - non-leader
-
         with open("tests/unit/data/key.pem") as f:
             key_contents = f.readlines()
-            key_contents = "".join(key_contents)
+            # the charm should parse this file and it should look like the original file with the
+            # extra newline removed
+            parsed_rsa_key = "".join(key_contents)
+            parsed_rsa_key = parsed_rsa_key[:-1]
 
-        set_unit_rsa_key = key_contents
-        # we expect the app rsa key to be parsed such that its trailing newline is removed.
-        parsed_unit_rsa_key = set_unit_rsa_key[:-1]
+            # join by a " " as this is how the file gets passed via the juju action
+            set_key_contents = " ".join(key_contents)
+            set_key_contents = set_key_contents.replace("\n", "")
 
-        action_event.params = {"external-key": set_unit_rsa_key}
+        action_event.params = {"external-key": set_key_contents}
         self.harness.charm.tls._on_set_tls_private_key(action_event)
-        self.verify_external_rsa_csr(specific_rsa=True, expected_rsa=parsed_unit_rsa_key)
+        self.verify_external_rsa_csr(specific_rsa=True, expected_rsa=parsed_rsa_key)
         # non-leaders should not reset the app key and app csr
         self.verify_internal_rsa_csr(
             specific_rsa=True, expected_rsa=None, specific_csr=True, expected_csr=None
