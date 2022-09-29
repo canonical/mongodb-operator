@@ -24,6 +24,8 @@ storage:
 peers:
   database-peers:
     interface: mongodb-peers
+  restart:
+    interface: rolling_op
 
 requires:
   certificates:

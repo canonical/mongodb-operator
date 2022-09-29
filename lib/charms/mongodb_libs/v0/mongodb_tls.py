@@ -155,12 +155,7 @@ class MongoDBTLS(Object):
         logger.debug("Restarting mongod with TLS disabled.")
         if self.substrate == "vm":
             self.charm.unit.status = MaintenanceStatus("disabling TLS")
-            restart_mongod_service(
-                auth=auth_enabled(),
-                machine_ip=self.charm._unit_ip(self.charm.unit),
-                config=self.charm.mongodb_config,
-            )
-            self.charm.unit.status = ActiveStatus()
+            self.charm.on[self.charm.restart.name].acquire_lock.emit()
         else:
             self.charm.on_mongod_pebble_ready(event)
 
@@ -206,12 +201,7 @@ class MongoDBTLS(Object):
         if self.substrate == "vm":
             self.charm._push_tls_certificate_to_workload()
             self.charm.unit.status = MaintenanceStatus("enabling TLS")
-            restart_mongod_service(
-                auth=auth_enabled(),
-                machine_ip=self.charm._unit_ip(self.charm.unit),
-                config=self.charm.mongodb_config,
-            )
-            self.charm.unit.status = ActiveStatus()
+            self.charm.on[self.charm.restart.name].acquire_lock.emit()
         else:
             self.charm.on_mongod_pebble_ready(event)
 

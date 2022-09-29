@@ -8,6 +8,8 @@ import subprocess
 from subprocess import check_call
 from typing import Dict, List, Optional
 from urllib.request import URLError, urlopen
+from charms.rolling_ops.v0.rollingops import RollingOpsManager
+from charms.mongodb_libs.v0.machine_helpers import auth_enabled, restart_mongod_service
 
 import ops.charm
 from charms.mongodb_libs.v0.helpers import (
@@ -89,10 +91,11 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.framework.observe(self.on.get_admin_password_action, self._on_get_admin_password)
         self.framework.observe(self.on.set_admin_password_action, self._on_set_admin_password)
 
-        # handle provider side of relations
+        # relations
         self.client_relations = MongoDBProvider(self, substrate="vm")
         self.legacy_client_relations = MongoDBLegacyProvider(self)
         self.tls = MongoDBTLS(self, PEER, substrate="vm")
+        self.restart = RollingOpsManager(self, relation="restart", callback=self._restart)
 
     def _generate_passwords(self) -> None:
         """Generate passwords and put them into peer relation.
@@ -559,6 +562,14 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self.app_peer_data.update({key: str(value)})
         else:
             raise RuntimeError("Unknown secret scope.")
+
+    def _restart(self, _):
+        restart_mongod_service(
+            auth=auth_enabled(),
+            machine_ip=self._unit_ip(self.unit),
+            config=self.mongodb_config,
+        )
+        self.unit.status = ActiveStatus()
 
     @property
     def _primary(self) -> str:
