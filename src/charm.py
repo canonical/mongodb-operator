@@ -9,6 +9,7 @@ import pwd
 import subprocess
 from pathlib import Path
 from subprocess import check_call
+from symbol import pass_stmt
 from typing import Dict, List, Optional
 from urllib.request import URLError, urlopen
 
@@ -20,7 +21,9 @@ from charms.mongodb_libs.v0.helpers import (
     get_create_user_cmd,
 )
 from charms.mongodb_libs.v0.machine_helpers import (
+    auth_enabled,
     start_mongod_service,
+    stop_mongod_service,
     update_mongod_service,
 )
 from charms.mongodb_libs.v0.mongodb import (
@@ -73,6 +76,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.framework.observe(self.on.start, self._on_start)
         self.framework.observe(self.on[PEER].relation_joined, self._on_mongodb_relation_joined)
         self.framework.observe(self.on[PEER].relation_changed, self._on_mongodb_relation_handler)
+
         # if a new leader has been elected update hosts of MongoDB
         self.framework.observe(self.on.leader_elected, self._on_leader_elected)
         self.framework.observe(self.on[PEER].relation_departed, self._relation_departed)
@@ -326,7 +330,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         self._initialise_replica_set(event)
 
-    def _on_update_status(self, _):
+    def _on_update_status(self, event):
         # cannot have both legacy and new relations since they have different auth requirements
         if self.client_relations._get_users_from_relations(
             None, rel="obsolete"
@@ -334,11 +338,63 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self.unit.status = BlockedStatus("cannot have both legacy and new relations")
             return
 
-        # if unit is primary then update status
-        if self._primary == self.unit.name:
-            self.unit.status = ActiveStatus("Replica set primary")
-        else:
-            self.unit.status = ActiveStatus()
+        # no need to report on replica set status until initialised
+        if not "db_initialised" in self.app_peer_data:
+            return
+
+        # first check the health of the unit before updating its replica set status
+        self._health_check()
+
+        # update the units status based on it's replica set status.
+        # TODO will this break if one of the units is unreachable -- NO
+        with MongoDBConnection(self.mongodb_config) as mongo:
+            replset_status = mongo.get_replset_status()
+
+            if self._unit_ip(self.unit) not in replset_status:
+                self.unit.status = WaitingStatus("Member being added..")
+                return
+
+            replica_status = replset_status[self._unit_ip(self.unit)]
+
+            if replica_status == "PRIMARY":
+                self.unit.status = ActiveStatus("Replica set primary")
+            elif replica_status == "SECONDARY":
+                self.unit.status = ActiveStatus("Replica set secondary")
+            elif replica_status in ["STARTUP", "STARTUP2", "ROLLBACK", "RECOVERING"]:
+                self.unit.status = WaitingStatus("Member is syncing..")
+            elif replica_status == "REMOVED":
+                self.unit.status = WaitingStatus("Member is removing..")
+            else:
+                self.unit.status = BlockedStatus(replica_status)
+
+            # # do necessary health check
+            # all_statuses = [replset_status[unit_ip] for unit_ip in self._unit_ips]
+            # if "(not reachable/healthy)" in all_statuses:
+            #     logger.error("One or more replicas are unhealthy: %s", replset_status)
+            #     logger.debug("Attempting to reconfigure replica set")
+
+    def _health_check(self) -> None:
+        if not systemd.service_running("mongod.service"):
+            logger.debug("Unit is not yet running mongod")
+
+        with MongoDBConnection(
+            self.mongodb_config, self._unit_ip(self.unit), direct=True
+        ) as direct_mongo:
+            if direct_mongo.is_ready:
+                # in the future we may run additional checks based on its replica set status, but
+                # for now this suffices
+                logger.debug("Unit is ready with mongod, it is healthy")
+                return
+
+            logger.debug("mongod service running, but daemon is not ready, restarting..")
+            self.unit.status = MaintenanceStatus("restarting mongod")
+            stop_mongod_service()
+            update_mongod_service(
+                auth=auth_enabled(),  # use pre-existing auth status.
+                machine_ip=self._unit_ip(self.unit),
+                replset=self.app.name,
+            )
+            start_mongod_service()
 
     def _on_get_primary_action(self, event: ops.charm.ActionEvent):
         event.set_results({"replica-set-primary": self._primary})
