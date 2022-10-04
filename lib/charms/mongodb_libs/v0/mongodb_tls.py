@@ -71,6 +71,7 @@ class MongoDBTLS(Object):
                     "Only juju leader unit can set private key for the internal certificate. Skipping."
                 )
                 return
+
             self._request_certificate("app", event.params.get("internal-key", None))
             logger.debug("Successfully set TLS private key.")
         except ValueError as e:
@@ -160,8 +161,6 @@ class MongoDBTLS(Object):
             == self.charm.get_secret("app", "csr").rstrip()
         ):
             logger.debug("The internal TLS certificate available.")
-            if not self.charm.unit.is_leader():
-                return
             scope = "app"  # internal crs
         else:
             logger.error("An unknown certificate available.")
@@ -169,11 +168,13 @@ class MongoDBTLS(Object):
 
         old_cert = self.charm.get_secret(scope, "cert")
         renewal = old_cert and old_cert != event.certificate
-        self.charm.set_secret(
-            scope, "chain", "\n".join(event.chain) if event.chain is not None else None
-        )
-        self.charm.set_secret(scope, "cert", event.certificate)
-        self.charm.set_secret(scope, "ca", event.ca)
+
+        if scope == "unit" or (scope == "app" and self.charm.unit.is_leader()):
+            self.charm.set_secret(
+                scope, "chain", "\n".join(event.chain) if event.chain is not None else None
+            )
+            self.charm.set_secret(scope, "cert", event.certificate)
+            self.charm.set_secret(scope, "ca", event.ca)
 
         if renewal and self.substrate == "k8s":
             self.charm.unit.get_container("mongod").stop("mongod")
