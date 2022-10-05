@@ -151,8 +151,7 @@ def generate_service_args(auth: bool, machine_ip: str, config: MongoDBConfigurat
     mongod_start_args = [
         "ExecStart=/usr/bin/mongod",
         # bind to localhost and external interfaces
-        "--bind_ip",
-        f"localhost,{machine_ip}",
+        "--bind_ip_all",
         # part of replicaset
         f"--replSet={config.replset}",
     ]

@@ -24,8 +24,7 @@ class TestCharm(unittest.TestCase):
         service_args_auth = " ".join(
             [
                 "ExecStart=/usr/bin/mongod",
-                "--bind_ip",
-                "localhost,1.1.1.1",
+                "--bind_ip_all",
                 "--replSet=my_repl_set",
                 "--auth",
                 "--clusterAuthMode=keyFile",
@@ -47,8 +46,7 @@ class TestCharm(unittest.TestCase):
             [
                 "ExecStart=/usr/bin/mongod",
                 # bind to localhost and external interfaces
-                "--bind_ip",
-                "localhost,1.1.1.1",
+                "--bind_ip_all",
                 # part of replicaset
                 "--replSet=my_repl_set",
                 "\n",
