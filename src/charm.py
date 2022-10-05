@@ -342,11 +342,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         if not "db_initialised" in self.app_peer_data:
             return
 
-        # first check the health of the unit before updating its replica set status
-        self._health_check()
-
         # update the units status based on it's replica set status.
-        # TODO will this break if one of the units is unreachable -- NO
         with MongoDBConnection(self.mongodb_config) as mongo:
             replset_status = mongo.get_replset_status()
 
@@ -367,34 +363,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             else:
                 self.unit.status = BlockedStatus(replica_status)
 
-            # # do necessary health check
-            # all_statuses = [replset_status[unit_ip] for unit_ip in self._unit_ips]
-            # if "(not reachable/healthy)" in all_statuses:
-            #     logger.error("One or more replicas are unhealthy: %s", replset_status)
-            #     logger.debug("Attempting to reconfigure replica set")
-
-    def _health_check(self) -> None:
-        if not systemd.service_running("mongod.service"):
-            logger.debug("Unit is not yet running mongod")
-
-        with MongoDBConnection(
-            self.mongodb_config, self._unit_ip(self.unit), direct=True
-        ) as direct_mongo:
-            if direct_mongo.is_ready:
-                # in the future we may run additional checks based on its replica set status, but
-                # for now this suffices
-                logger.debug("Unit is ready with mongod, it is healthy")
-                return
-
-            logger.debug("mongod service running, but daemon is not ready, restarting..")
-            self.unit.status = MaintenanceStatus("restarting mongod")
-            stop_mongod_service()
-            update_mongod_service(
-                auth=auth_enabled(),  # use pre-existing auth status.
-                machine_ip=self._unit_ip(self.unit),
-                replset=self.app.name,
-            )
-            start_mongod_service()
+        if self.unit.is_leader():
+            self._update_hosts(event)
+            self._on_mongodb_relation_handler(event)
 
     def _on_get_primary_action(self, event: ops.charm.ActionEvent):
         event.set_results({"replica-set-primary": self._primary})
