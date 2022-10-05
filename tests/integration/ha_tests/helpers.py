@@ -623,3 +623,70 @@ def convert_time(time_as_str: str) -> int:
     # parse time representation, provided in this format: 'YYYY-MM-DDTHH:MM:SS.MMM+00:00'
     d = datetime.strptime(time_as_str, "%Y-%m-%dT%H:%M:%S.%f%z")
     return time.mktime(d.timetuple())
+
+
+def cut_network_from_unit(machine_name: str) -> None:
+    """Cut network from a lxc container.
+
+    Args:
+        machine_name: lxc container hostname
+    """
+    # apply a mask (device type `none`)
+    cut_network_command = f"lxc config device add {machine_name} eth0 none"
+    subprocess.check_call(cut_network_command.split())
+
+
+def restore_network_for_unit(machine_name: str) -> None:
+    """Restore network from a lxc container.
+
+    Args:
+        machine_name: lxc container hostname
+    """
+    # remove mask from eth0
+    restore_network_command = f"lxc config device remove {machine_name} eth0"
+    subprocess.check_call(restore_network_command.split())
+
+
+async def get_controller_machine(ops_test: OpsTest) -> str:
+    """Return controller machine hostname.
+
+    Args:
+        ops_test: The ops test framework instance
+    Returns:
+        Controller hostname (str)
+    """
+    _, raw_controller, _ = await ops_test.juju("show-controller")
+
+    controller = yaml.safe_load(raw_controller.strip())
+
+    return [
+        machine.get("instance-id")
+        for machine in controller[ops_test.controller_name]["controller-machines"].values()
+    ][0]
+
+
+def is_machine_reachable_from(origin_machine: str, target_machine: str) -> bool:
+    """Test network reachability between hosts.
+
+    Args:
+        origin_machine: hostname of the machine to test connection from
+        target_machine: hostname of the machine to test connection to
+    """
+    try:
+        subprocess.check_call(f"lxc exec {origin_machine} -- ping -c 3 {target_machine}".split())
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
+
+async def unit_hostname(ops_test: OpsTest, unit_name: str) -> str:
+    """Get hostname for a unit.
+
+    Args:
+        ops_test: The ops test object passed into every test case
+        unit_name: The name of the unit to be tested
+    Returns:
+        The machine/container hostname
+    """
+    _, raw_hostname, _ = await ops_test.juju("ssh", unit_name, "hostname")
+    return raw_hostname.strip()
