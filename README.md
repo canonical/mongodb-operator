@@ -28,6 +28,12 @@ juju run-action mongodb/<unit_number> get-primary --wait
 
 Similarly, the primary replica is displayed as a status message in `juju status`, however one should note that this hook gets called on regular time intervals and the primary may be outdated if the status hook has not been called recently. 
 
+Further we highly suggest configuring the status hook to run frequently. In addition to reporting the primary, secondaries, and other statuses, the status hook performs self healing in the case of a network cut. To change the frequence of the update status hook do:
+```shell
+juju model-config update-status-hook-interval=<time(s/m/h)>
+```
+You can read more about status hooks [here](https://juju.is/docs/sdk/update-status-event).
+
 ### Replication
 #### Adding Replicas
 To add more replicas one can use the `juju add-unit` functionality i.e.

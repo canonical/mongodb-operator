@@ -19,14 +19,19 @@ from tests.integration.ha_tests.helpers import (
     clear_db_writes,
     count_primaries,
     count_writes,
+    cut_network_from_unit,
     fetch_replica_set_members,
     find_unit,
+    get_controller_machine,
     get_password,
     insert_focal_to_cluster,
+    instance_ip,
+    is_machine_reachable_from,
     kill_unit_process,
     mongod_ready,
     replica_set_client,
     replica_set_primary,
+    restore_network_for_unit,
     retrieve_entries,
     reused_storage,
     secondary_up_to_date,
@@ -34,9 +39,11 @@ from tests.integration.ha_tests.helpers import (
     stop_continous_writes,
     storage_id,
     storage_type,
+    unit_hostname,
     unit_uri,
     update_restart_delay,
     verify_replica_set_configuration,
+    wait_network_restore,
 )
 
 ANOTHER_DATABASE_APP_NAME = "another-database-a"
@@ -199,7 +206,7 @@ async def test_scale_down_capablities(ops_test: OpsTest, continuous_writes) -> N
 
     # check that the replica set with the remaining units has a primary
     try:
-        primary = await replica_set_primary(ip_addresses, ops_test)
+        primary = await replica_set_primary(ip_addresses, ops_test).public_address
     except RetryError:
         primary = None
 
@@ -226,7 +233,7 @@ async def test_replication_across_members(ops_test: OpsTest, continuous_writes) 
     await insert_focal_to_cluster(ops_test)
     app = await app_name(ops_test)
     ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
-    primary = await replica_set_primary(ip_addresses, ops_test)
+    primary = await replica_set_primary(ip_addresses, ops_test).public_address
     password = await get_password(ops_test, app)
 
     secondaries = set(ip_addresses) - set([primary])
@@ -342,10 +349,9 @@ async def test_kill_db_process(ops_test, continuous_writes):
     # locate primary unit
     app = await app_name(ops_test)
     ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
-    primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
-    primary_ip = await replica_set_primary(ip_addresses, ops_test)
+    primary = await replica_set_primary(ip_addresses, ops_test)
 
-    await kill_unit_process(ops_test, primary_name, kill_code="SIGKILL")
+    await kill_unit_process(ops_test, primary.name, kill_code="SIGKILL")
 
     # verify new writes are continuing by counting the number of writes before and after a 5 second
     # wait
@@ -358,11 +364,11 @@ async def test_kill_db_process(ops_test, continuous_writes):
     time.sleep(MEDIAN_REELECTION_TIME * 2)
 
     # verify that db service got restarted and is ready
-    assert await mongod_ready(ops_test, primary_ip)
+    assert await mongod_ready(ops_test, primary.public_addrss)
 
     # verify that a new primary gets elected (ie old primary is secondary)
-    new_primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
-    assert new_primary_name != primary_name
+    new_primary = await replica_set_primary(ip_addresses, ops_test)
+    assert new_primary.name != primary.name
 
     # verify that no writes to the db were missed
     total_expected_writes = await stop_continous_writes(ops_test)
@@ -371,7 +377,7 @@ async def test_kill_db_process(ops_test, continuous_writes):
 
     # verify that old primary is up to date.
     assert await secondary_up_to_date(
-        ops_test, primary_ip, total_expected_writes["number"]
+        ops_test, primary.public_address, total_expected_writes["number"]
     ), "secondary not up to date with the cluster after restarting."
 
 
@@ -379,16 +385,15 @@ async def test_freeze_db_process(ops_test, continuous_writes):
     # locate primary unit
     app = await app_name(ops_test)
     ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
-    primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
-    primary_ip = await replica_set_primary(ip_addresses, ops_test)
-    await kill_unit_process(ops_test, primary_name, kill_code="SIGSTOP")
+    primary = await replica_set_primary(ip_addresses, ops_test)
+    await kill_unit_process(ops_test, primary.name, kill_code="SIGSTOP")
 
     # sleep for twice the median election time
     time.sleep(MEDIAN_REELECTION_TIME * 2)
 
     # verify that a new primary gets elected
     new_primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
-    assert new_primary_name != primary_name
+    assert new_primary_name != primary.name
 
     # verify new writes are continuing by counting the number of writes before and after a 5 second
     # wait
@@ -397,14 +402,14 @@ async def test_freeze_db_process(ops_test, continuous_writes):
     more_writes = await count_writes(ops_test)
 
     # un-freeze the old primary
-    await kill_unit_process(ops_test, primary_name, kill_code="SIGCONT")
+    await kill_unit_process(ops_test, primary.name, kill_code="SIGCONT")
 
     # check this after un-freezing the old primary so that if this check fails we still "turned
     # back on" the mongod process
     assert more_writes > writes, "writes not continuing to DB"
 
     # verify that db service got restarted and is ready
-    assert await mongod_ready(ops_test, primary_ip)
+    assert await mongod_ready(ops_test, primary.public_address)
 
     # verify all units are running under the same replset
     member_ips = await fetch_replica_set_members(ip_addresses, ops_test)
@@ -416,8 +421,8 @@ async def test_freeze_db_process(ops_test, continuous_writes):
     ), "there are more than one primary in the replica set."
 
     # verify that the old primary does not "reclaim" primary status after un-freezing old primary
-    new_primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
-    assert new_primary_name != primary_name, "un-frozen primary should be secondary."
+    new_primary = await replica_set_primary(ip_addresses, ops_test)
+    assert new_primary.name != primary.name, "un-frozen primary should be secondary."
 
     # verify that no writes were missed.
     total_expected_writes = await stop_continous_writes(ops_test)
@@ -426,7 +431,7 @@ async def test_freeze_db_process(ops_test, continuous_writes):
 
     # verify that old primary is up to date.
     assert await secondary_up_to_date(
-        ops_test, primary_ip, actual_writes
+        ops_test, primary.public_address, actual_writes
     ), "secondary not up to date with the cluster after restarting."
 
 
@@ -434,11 +439,10 @@ async def test_restart_db_process(ops_test, continuous_writes):
     # locate primary unit
     app = await app_name(ops_test)
     ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
-    primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
-    primary_ip = await replica_set_primary(ip_addresses, ops_test)
+    primary = await replica_set_primary(ip_addresses, ops_test)
 
     # send SIGTERM, we expect `systemd` to restart the process
-    await kill_unit_process(ops_test, primary_name, kill_code="SIGTERM")
+    await kill_unit_process(ops_test, primary.name, kill_code="SIGTERM")
 
     # TODO (future PR): find a reliable way to verify db step down, current implementation uses
     # mongodb logs which rotate too quickly and leave us unable to verify the db step down
@@ -457,11 +461,11 @@ async def test_restart_db_process(ops_test, continuous_writes):
     assert more_writes > writes, "writes not continuing to DB"
 
     # verify that db service got restarted and is ready
-    assert await mongod_ready(ops_test, primary_ip)
+    assert await mongod_ready(ops_test, primary.public_address)
 
     # verify that a new primary gets elected (ie old primary is secondary)
-    new_primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
-    assert new_primary_name != primary_name
+    new_primary = await replica_set_primary(ip_addresses, ops_test)
+    assert new_primary.name != primary.name
 
     # verify that no writes were missed
     total_expected_writes = await stop_continous_writes(ops_test)
@@ -470,7 +474,7 @@ async def test_restart_db_process(ops_test, continuous_writes):
 
     # verify that old primary is up to date.
     assert await secondary_up_to_date(
-        ops_test, primary_ip, total_expected_writes["number"]
+        ops_test, primary.public_address, total_expected_writes["number"]
     ), "secondary not up to date with the cluster after restarting."
 
 
@@ -566,3 +570,79 @@ async def test_full_cluster_restart(ops_test: OpsTest, continuous_writes, reset_
     total_expected_writes = await stop_continous_writes(ops_test)
     actual_writes = await count_writes(ops_test)
     assert total_expected_writes["number"] == actual_writes, "writes to the db were missed."
+
+
+async def test_network_cut(ops_test, continuous_writes):
+    # locate primary unit
+    app = await app_name(ops_test)
+    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
+    primary = await replica_set_primary(ip_addresses, ops_test)
+    all_units = ops_test.model.applications[app].units
+    model_name = ops_test.model.info.name
+
+    primary_hostname = await unit_hostname(ops_test, primary.name)
+
+    # before cutting network verify that connection is possible
+    assert await mongod_ready(
+        ops_test,
+        primary.public_address,
+    ), f"Connection to host {primary.public_address} is not possible"
+
+    cut_network_from_unit(primary_hostname)
+
+    # verify machine is not reachable from peer units
+    for unit in set(all_units) - {primary}:
+        hostname = await unit_hostname(ops_test, unit.name)
+        assert not is_machine_reachable_from(
+            hostname, primary_hostname
+        ), "unit is reachable from peer"
+
+    # verify machine is not reachable from controller
+    controller = await get_controller_machine(ops_test)
+    assert not is_machine_reachable_from(
+        controller, primary_hostname
+    ), "unit is reachable from controller"
+
+    # sleep for twice the median election time
+    time.sleep(MEDIAN_REELECTION_TIME * 2)
+
+    # verify new writes are continuing by counting the number of writes before and after a 5 second
+    # wait
+    writes = await count_writes(ops_test, down_unit=primary.name)
+    time.sleep(5)
+    more_writes = await count_writes(ops_test, down_unit=primary.name)
+    assert more_writes > writes, "writes not continuing to DB"
+
+    # verify that a new primary got elected
+    new_primary = await replica_set_primary(ip_addresses, ops_test, down_unit=primary.name)
+    assert new_primary.name != primary.name
+
+    # verify that no writes to the db were missed
+    total_expected_writes = await stop_continous_writes(ops_test, down_unit=primary.name)
+    actual_writes = await count_writes(ops_test, down_unit=primary.name)
+    assert total_expected_writes["number"] == actual_writes, "writes to the db were missed."
+
+    # restore network connectivity to old primary
+    restore_network_for_unit(primary_hostname)
+
+    # wait until network is reestablished for the unit
+    wait_network_restore(model_name, primary_hostname, primary.public_address)
+
+    # verify we have connection to the old primary
+
+    new_ip = instance_ip(model_name, primary_hostname)
+    assert await mongod_ready(
+        ops_test,
+        new_ip,
+    ), f"Connection to host {new_ip} is not possible"
+
+    # juju incorrectly reports the IP addresses after the network is restored this is reported as
+    # a bug here: https://github.com/juju/python-libjuju/issues/738 until resolved leave
+    # commented out
+    # verify presence of primary, replica set member configuration, and number of primaries
+    # await verify_replica_set_configuration(ops_test)
+
+    # verify that old primary is up to date.
+    assert await secondary_up_to_date(
+        ops_test, new_ip, total_expected_writes["number"]
+    ), "secondary not up to date with the cluster after restarting."
