@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
+import time
+
 import pytest
 from pytest_operator.plugin import OpsTest
 
@@ -12,7 +14,7 @@ from tests.integration.tls_tests.helpers import (
 
 TLS_CERTIFICATES_APP_NAME = "tls-certificates-operator"
 DATABASE_APP_NAME = "mongodb"
-PRIVATE_KEY_PATH = "tests/integration/tls_tests/data"
+TLS_TEST_DATA = "tests/integration/tls_tests/data"
 EXTERNAL_CERT_PATH = "/etc/mongodb/external-ca.crt"
 INTERNAL_CERT_PATH = "/etc/mongodb/internal-ca.crt"
 DB_SERVICE = "mongod.service"
@@ -72,9 +74,9 @@ async def test_rotate_tls_key(ops_test: OpsTest) -> None:
         action = await action.wait()
         assert action.status == "completed", "setting external and internal key failed."
 
-    # wait for certificate to be available and processed.
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle()
+    # wait for certificate to be available and processed. Can get receive two certificate
+    # available events and restart twice so we do not wait for idle here
+    time.sleep(60)
 
     # After updating both the external key and the internal key a new certificate request will be
     # made; then the certificates should be available and updated.
@@ -95,6 +97,12 @@ async def test_rotate_tls_key(ops_test: OpsTest) -> None:
         assert (
             new_mongod_service_time > original_tls_times[unit.name]["mongod_service"]
         ), f"mongod service for {unit.name} was not restarted."
+
+    # Verify that TLS is functioning on all units.
+    for unit in ops_test.model.applications[DATABASE_APP_NAME].units:
+        assert await check_tls(
+            ops_test, unit, enabled=True
+        ), f"tls is not enabled for {unit.name}."
 
 
 async def test_set_tls_key(ops_test: OpsTest) -> None:
@@ -118,15 +126,15 @@ async def test_set_tls_key(ops_test: OpsTest) -> None:
             ops_test, unit.name, DB_SERVICE
         )
 
-    with open(f"{PRIVATE_KEY_PATH}/internal-key.pem") as f:
+    with open(f"{TLS_TEST_DATA}/internal-key.pem") as f:
         internal_key_contents = f.readlines()
         internal_key_contents = "".join(internal_key_contents)
 
     # set external and internal key for each unit
-    for unid_id in range(len(ops_test.model.applications[DATABASE_APP_NAME].units)):
-        unit = ops_test.model.applications[DATABASE_APP_NAME].units[unid_id]
+    for unit_id in range(len(ops_test.model.applications[DATABASE_APP_NAME].units)):
+        unit = ops_test.model.applications[DATABASE_APP_NAME].units[unit_id]
 
-        with open(f"{PRIVATE_KEY_PATH}/external-key-{unid_id}.pem") as f:
+        with open(f"{TLS_TEST_DATA}/external-key-{unit_id}.pem") as f:
             external_key_contents = f.readlines()
             external_key_contents = "".join(external_key_contents)
 
@@ -142,9 +150,9 @@ async def test_set_tls_key(ops_test: OpsTest) -> None:
         action = await action.wait()
         assert action.status == "completed", "setting external and internal key failed."
 
-    # wait for certificate to be available and processed.
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle()
+    # wait for certificate to be available and processed. Can get receive two certificate
+    # available events and restart twice so we do not wait for idle here
+    time.sleep(60)
 
     # After updating both the external key and the internal key a new certificate request will be
     # made; then the certificates should be available and updated.
