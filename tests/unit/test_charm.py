@@ -446,18 +446,67 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongoDBConnection")
     def test_update_status_primary(self, connection):
         """Tests that update status identifies the primary unit and updates status."""
-        connection.return_value.__enter__.return_value.primary.return_value = "1.1.1.1"
+        # assume leader has already initialised the replica set
+        self.harness.set_leader(True)
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
+
+        self.harness.set_leader(False)
+        connection.return_value.__enter__.return_value.get_replset_status.return_value = {
+            "1.1.1.1": "PRIMARY"
+        }
         self.harness.charm.on.update_status.emit()
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus("Replica set primary"))
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    @patch("ops.model.ActiveStatus")
-    def test_update_status_secondary(self, active_status, connection):
+    def test_update_status_secondary(self, connection):
         """Tests that update status identifies secondary units and doesn't update status."""
-        connection.return_value.__enter__.return_value.primary.return_value = "2.2.2.2"
+        # assume leader has already initialised the replica set
+        self.harness.set_leader(True)
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
+
+        self.harness.set_leader(False)
+        connection.return_value.__enter__.return_value.get_replset_status.return_value = {
+            "1.1.1.1": "SECONDARY"
+        }
         self.harness.charm.on.update_status.emit()
-        active_status.assert_not_called()
+        self.assertEqual(self.harness.charm.unit.status, ActiveStatus("Replica set secondary"))
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongoDBConnection")
+    def test_update_status_additional_messages(self, connection):
+        """Tests status updates are correct for non-primary and non-secondary cases."""
+        # assume leader has already initialised the replica set
+        self.harness.set_leader(True)
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
+
+        # Case 1: Unit has not been added to replica set yet
+        self.harness.set_leader(False)
+        connection.return_value.__enter__.return_value.get_replset_status.return_value = {}
+        self.harness.charm.on.update_status.emit()
+        self.assertEqual(self.harness.charm.unit.status, WaitingStatus("Member being added.."))
+
+        # Case 2: Unit is being removed from replica set
+        connection.return_value.__enter__.return_value.get_replset_status.return_value = {
+            "1.1.1.1": "REMOVED"
+        }
+        self.harness.charm.on.update_status.emit()
+        self.assertEqual(self.harness.charm.unit.status, WaitingStatus("Member is removing.."))
+
+        # Case 3: Member is syncing to replica set
+        for syncing_status in ["STARTUP", "STARTUP2", "ROLLBACK", "RECOVERING"]:
+            connection.return_value.__enter__.return_value.get_replset_status.return_value = {
+                "1.1.1.1": syncing_status
+            }
+            self.harness.charm.on.update_status.emit()
+            self.assertEqual(self.harness.charm.unit.status, WaitingStatus("Member is syncing.."))
+
+        # Case 4: Unknown status
+        connection.return_value.__enter__.return_value.get_replset_status.return_value = {
+            "1.1.1.1": "unknown"
+        }
+        self.harness.charm.on.update_status.emit()
+        self.assertEqual(self.harness.charm.unit.status, BlockedStatus("unknown"))
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
