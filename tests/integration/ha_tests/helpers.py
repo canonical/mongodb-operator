@@ -100,8 +100,7 @@ async def get_password(ops_test: OpsTest, app, down_unit=None) -> str:
     # some tests disable the network for units, so find a unit that is available
     for unit in ops_test.model.applications[app].units:
         if not unit.name == down_unit:
-            unit_name = ops_test.model.applications[app].units[0].name
-            unit_id = unit_name.split("/")[1]
+            unit_id = unit.name.split("/")[1]
             break
 
     action = await ops_test.model.units.get(f"{app}/{unit_id}").run_action("get-admin-password")
@@ -603,7 +602,13 @@ async def update_restart_delay(ops_test: OpsTest, unit, delay: int):
 async def verify_replica_set_configuration(ops_test: OpsTest) -> None:
     """Verifies presence of primary, replica set members, and number of primaries."""
     app = await app_name(ops_test)
-    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
+    # `get_unit_ip` is used instead of `.public_address` because of a bug in python-libjuju that
+    # incorrectly reports the IP addresses after the network is restored this is reported as a
+    # bug here: https://github.com/juju/python-libjuju/issues/738 . Once this bug is resolved use
+    # of `get_unit_ip` should be replaced with `.public_address`
+    ip_addresses = [
+        await get_unit_ip(ops_test, unit.name) for unit in ops_test.model.applications[app].units
+    ]
 
     # verify presence of primary
     new_primary = await replica_set_primary(ip_addresses, ops_test)
@@ -686,6 +691,7 @@ async def unit_hostname(ops_test: OpsTest, unit_name: str) -> str:
     Args:
         ops_test: The ops test object passed into every test case
         unit_name: The name of the unit to be tested
+
     Returns:
         The machine/container hostname
     """
@@ -719,3 +725,20 @@ def wait_network_restore(model_name: str, hostname: str, old_ip: str) -> None:
     """
     if instance_ip(model_name, hostname) == old_ip:
         raise Exception
+
+
+async def get_unit_ip(ops_test: OpsTest, unit_name: str) -> str:
+    """Wrapper for getting unit ip.
+
+    Juju incorrectly reports the IP addresses after the network is restored this is reported as a
+    bug here: https://github.com/juju/python-libjuju/issues/738 . Once this bug is resolved use of
+    `get_unit_ip` should be replaced with `.public_address`
+
+    Args:
+        ops_test: The ops test object passed into every test case
+        unit_name: The name of the unit to be tested
+
+    Returns:
+        The (str) ip of the unit
+    """
+    return instance_ip(ops_test.model.info.name, await unit_hostname(ops_test, unit_name))
