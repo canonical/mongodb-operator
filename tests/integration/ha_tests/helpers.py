@@ -701,9 +701,11 @@ async def unit_hostname(ops_test: OpsTest, unit_name: str) -> str:
 
 def instance_ip(model: str, instance: str) -> str:
     """Translate juju instance name to IP.
+
     Args:
         model: The name of the model
         instance: The name of the instance
+
     Returns:
         The (str) IP address of the instance
     """

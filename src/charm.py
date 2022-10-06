@@ -15,6 +15,7 @@ from urllib.request import URLError, urlopen
 import ops.charm
 from charms.mongodb_libs.v0.helpers import (
     KEY_FILE,
+    build_unit_status,
     generate_keyfile,
     generate_password,
     get_create_user_cmd,
@@ -348,41 +349,38 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # cuts can lead to new IP addresses and therefore will require a reconfigure. Especially
         # in the case that the leader a change in IP address it will not receive a relation event.
         if self.unit.is_leader():
-            # remove any IPs that are no longer juju hosts & update app data.
-            self._update_hosts(event)
-            # Add in any new IPs to the replica set. Relation handlers require a reference to
-            # a unit.
-            event.unit = self.unit
-            self._on_mongodb_relation_handler(event)
-
-            # app relations should be made aware of the new set of hosts
-            try:
-                self.update_app_relation_data()
-            except PyMongoError as e:
-                logger.error("Deferring on updating app relation data since: error: %r", e)
-                event.defer()
-                return
+            self._handle_reconfigure(event)
 
         # update the units status based on it's replica set status.
         with MongoDBConnection(self.mongodb_config) as mongo:
             replset_status = mongo.get_replset_status()
+            self.unit.status = build_unit_status(replset_status, self._unit_ip(self.unit))
 
-            if self._unit_ip(self.unit) not in replset_status:
-                self.unit.status = WaitingStatus("Member being added..")
-                return
+    def _handle_reconfigure(self, event):
+        """Reconfigures the replica set if necessary.
 
-            replica_status = replset_status[self._unit_ip(self.unit)]
+        Removes any mongod hosts that are no longer present in the replica set or adds hosts that
+        should exist in the replica set. This function is meant to be called periodically by the
+        leader in the update status hook to perform any necessary cluster healing.
+        """
+        if not self.unit.is_leader():
+            logger.debug("only the leader can perform reconfigurations to the replica set.")
+            return
 
-            if replica_status == "PRIMARY":
-                self.unit.status = ActiveStatus("Replica set primary")
-            elif replica_status == "SECONDARY":
-                self.unit.status = ActiveStatus("Replica set secondary")
-            elif replica_status in ["STARTUP", "STARTUP2", "ROLLBACK", "RECOVERING"]:
-                self.unit.status = WaitingStatus("Member is syncing..")
-            elif replica_status == "REMOVED":
-                self.unit.status = WaitingStatus("Member is removing..")
-            else:
-                self.unit.status = BlockedStatus(replica_status)
+        # remove any IPs that are no longer juju hosts & update app data.
+        self._update_hosts(event)
+        # Add in any new IPs to the replica set. Relation handlers require a reference to
+        # a unit.
+        event.unit = self.unit
+        self._on_mongodb_relation_handler(event)
+
+        # app relations should be made aware of the new set of hosts
+        try:
+            self.update_app_relation_data()
+        except PyMongoError as e:
+            logger.error("Deferring on updating app relation data since: error: %r", e)
+            event.defer()
+            return
 
     def _on_get_primary_action(self, event: ops.charm.ActionEvent):
         event.set_results({"replica-set-primary": self._primary})
