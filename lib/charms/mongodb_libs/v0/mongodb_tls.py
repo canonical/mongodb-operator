@@ -66,6 +66,7 @@ class MongoDBTLS(Object):
         logger.debug("Request to set TLS private key received.")
         try:
             self._request_certificate("unit", event.params.get("external-key", None))
+            self.charm.set_secret("unit", "cert", None)
             if not self.charm.unit.is_leader():
                 event.log(
                     "Only juju leader unit can set private key for the internal certificate. Skipping."
@@ -73,6 +74,7 @@ class MongoDBTLS(Object):
                 return
 
             self._request_certificate("app", event.params.get("internal-key", None))
+            self.charm.set_secret("app", "cert", None)
             logger.debug("Successfully set TLS private key.")
         except ValueError as e:
             event.fail(str(e))
@@ -178,8 +180,8 @@ class MongoDBTLS(Object):
 
         if renewal and self.substrate == "k8s":
             self.charm.unit.get_container("mongod").stop("mongod")
-            logger.debug("Successfully renewed certificates.")
-        elif not self.charm.get_secret("app", "cert") or not self.charm.get_secret("unit", "cert"):
+
+        if self._waiting_for_certs():
             logger.debug(
                 "Defer till both internal and external TLS certificates available to avoid second restart."
             )
@@ -198,6 +200,17 @@ class MongoDBTLS(Object):
             self.charm.unit.status = ActiveStatus()
         else:
             self.charm.on_mongod_pebble_ready(event)
+
+    def _waiting_for_certs(self):
+        """Returns a boolean indicating whether additional certs are needed."""
+        if not self.charm.get_secret("app", "cert"):
+            logger.debug("Waiting for application certificate.")
+            return True
+        if not self.charm.get_secret("unit", "cert"):
+            logger.debug("Waiting for application certificate.")
+            return True
+
+        return False
 
     def _on_certificate_expiring(self, event: CertificateExpiringEvent) -> None:
         """Request the new certificate when old certificate is expiring."""
@@ -223,11 +236,12 @@ class MongoDBTLS(Object):
             sans=self._get_sans(),
         )
         logger.debug("Requesting a certificate renewal.")
+        self.charm.set_secret(scope, "csr", new_csr.decode("utf-8"))
+
         self.certs.request_certificate_renewal(
             old_certificate_signing_request=old_csr,
             new_certificate_signing_request=new_csr,
         )
-        self.charm.set_secret(scope, "csr", new_csr.decode("utf-8"))
 
     def _get_sans(self) -> List[str]:
         """Create a list of DNS names for a MongoDB unit.
