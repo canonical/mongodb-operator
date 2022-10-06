@@ -14,12 +14,7 @@ from collections import namedtuple
 from typing import Optional, Set
 
 from charms.mongodb_libs.v0.helpers import generate_password
-from charms.mongodb_libs.v0.machine_helpers import (
-    auth_enabled,
-    start_mongod_service,
-    stop_mongod_service,
-    update_mongod_service,
-)
+from charms.mongodb_libs.v0.machine_helpers import auth_enabled, restart_mongod_service
 from charms.mongodb_libs.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 from charms.operator_libs_linux.v1 import systemd
 from ops.charm import RelationBrokenEvent, RelationChangedEvent
@@ -96,13 +91,11 @@ class MongoDBProvider(Object):
             try:
                 logger.debug("Enabling authentication.")
                 self.charm.unit.status = MaintenanceStatus("re-enabling authentication")
-                stop_mongod_service()
-                update_mongod_service(
+                restart_mongod_service(
                     auth=True,
                     machine_ip=self.charm._unit_ip(self.charm.unit),
-                    replset=self.charm.app.name,
+                    config=self.charm.mongodb_config,
                 )
-                start_mongod_service()
                 self.charm.unit.status = ActiveStatus()
             except systemd.SystemdError:
                 self.charm.unit.status = BlockedStatus("couldn't restart MongoDB")
@@ -218,6 +211,8 @@ class MongoDBProvider(Object):
             password=password,
             hosts=self.charm.mongodb_config.hosts,
             roles=self._get_roles_from_relation(relation),
+            tls_external=False,
+            tls_internal=False,
         )
 
     def _set_relation(self, config: MongoDBConfiguration):

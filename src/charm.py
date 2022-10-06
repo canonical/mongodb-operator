@@ -4,10 +4,7 @@
 # See LICENSE file for licensing details.
 import json
 import logging
-import os
-import pwd
 import subprocess
-from pathlib import Path
 from subprocess import check_call
 from typing import Dict, List, Optional
 from urllib.request import URLError, urlopen
@@ -15,11 +12,16 @@ from urllib.request import URLError, urlopen
 import ops.charm
 from charms.mongodb_libs.v0.helpers import (
     KEY_FILE,
+    TLS_EXT_CA_FILE,
+    TLS_EXT_PEM_FILE,
+    TLS_INT_CA_FILE,
+    TLS_INT_PEM_FILE,
     generate_keyfile,
     generate_password,
     get_create_user_cmd,
 )
 from charms.mongodb_libs.v0.machine_helpers import (
+    push_file_to_unit,
     start_mongod_service,
     update_mongod_service,
 )
@@ -30,6 +32,7 @@ from charms.mongodb_libs.v0.mongodb import (
     PyMongoError,
 )
 from charms.mongodb_libs.v0.mongodb_provider import MongoDBProvider
+from charms.mongodb_libs.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb_libs.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
 from charms.operator_libs_linux.v0 import apt
 from charms.operator_libs_linux.v1 import systemd
@@ -89,6 +92,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # handle provider side of relations
         self.client_relations = MongoDBProvider(self, substrate="vm")
         self.legacy_client_relations = MongoDBLegacyProvider(self)
+        self.tls = MongoDBTLS(self, PEER, substrate="vm")
 
     def _generate_passwords(self) -> None:
         """Generate passwords and put them into peer relation.
@@ -248,6 +252,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                             event.defer()
                             return
                     mongo.add_replset_member(member)
+                    self.unit.status = ActiveStatus()
             except NotReadyError:
                 self.unit.status = WaitingStatus("waiting to reconfigure replica set")
                 logger.error("Deferring reconfigure: another member doing sync right now")
@@ -275,7 +280,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         # Construct the mongod startup commandline args for systemd and reload the daemon.
         update_mongod_service(
-            auth=auth, machine_ip=self._unit_ip(self.unit), replset=self.app.name
+            auth=auth, machine_ip=self._unit_ip(self.unit), config=self.mongodb_config
         )
 
     def _on_config_changed(self, _) -> None:
@@ -291,8 +296,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         Args:
             event: The triggering start event.
         """
-        # MongoDB with authentication requires a keyfile
+        # mongod requires keyFile and TLS certificates on the file system
         self._instatiate_keyfile(event)
+        self._push_tls_certificate_to_workload()
 
         try:
             logger.debug("starting MongoDB.")
@@ -452,13 +458,35 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             return
 
         # put keyfile on the machine with appropriate permissions
-        Path("/etc/mongodb/").mkdir(parents=True, exist_ok=True)
-        with open(KEY_FILE, "w") as key_file:
-            key_file.write(self.get_secret("app", "keyfile"))
+        push_file_to_unit(
+            parent_dir="/etc/mongodb/",
+            file_name=KEY_FILE,
+            file_contents=self.get_secret("app", "keyfile"),
+        )
 
-        os.chmod(KEY_FILE, 0o400)
-        mongodb_user = pwd.getpwnam(MONGO_USER)
-        os.chown(KEY_FILE, mongodb_user.pw_uid, mongodb_user.pw_gid)
+    def _push_tls_certificate_to_workload(self) -> None:
+        """Uploads certificate to the workload container."""
+        external_ca, external_pem = self.tls.get_tls_files("unit")
+        if external_ca is not None:
+            push_file_to_unit(
+                parent_dir="/etc/mongodb/", file_name=TLS_EXT_CA_FILE, file_contents=external_ca
+            )
+
+        if external_pem is not None:
+            push_file_to_unit(
+                parent_dir="/etc/mongodb/", file_name=TLS_EXT_PEM_FILE, file_contents=external_pem
+            )
+
+        internal_ca, internal_pem = self.tls.get_tls_files("app")
+        if internal_ca is not None:
+            push_file_to_unit(
+                parent_dir="/etc/mongodb/", file_name=TLS_INT_CA_FILE, file_contents=internal_ca
+            )
+
+        if internal_pem is not None:
+            push_file_to_unit(
+                parent_dir="/etc/mongodb/", file_name=TLS_INT_PEM_FILE, file_contents=internal_pem
+            )
 
     def _initialise_replica_set(self, event: ops.charm.StartEvent) -> None:
         if "db_initialised" in self.app_peer_data:
@@ -523,12 +551,12 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             if not value:
                 del self.unit_peer_data[key]
                 return
-            self.unit_peer_data.update({key: value})
+            self.unit_peer_data.update({key: str(value)})
         elif scope == "app":
             if not value:
                 del self.app_peer_data[key]
                 return
-            self.app_peer_data.update({key: value})
+            self.app_peer_data.update({key: str(value)})
         else:
             raise RuntimeError("Unknown secret scope.")
 
@@ -560,7 +588,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         Returns:
             a list of IP address associated with MongoDB application.
         """
-        peer_addresses = [self._unit_ip(unit) for unit in self._peers.units]
+        peer_addresses = []
+        if self._peers:
+            peer_addresses = [self._unit_ip(unit) for unit in self._peers.units]
 
         logger.debug("peer addresses: %s", peer_addresses)
         self_address = self._unit_ip(self.unit)
@@ -583,6 +613,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
     @property
     def mongodb_config(self) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for this deployment of MongoDB."""
+        external_ca, _ = self.tls.get_tls_files("unit")
+        internal_ca, _ = self.tls.get_tls_files("app")
+
         return MongoDBConfiguration(
             replset=self.app.name,
             database="admin",
@@ -590,6 +623,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             password=self.get_secret("app", "admin_password"),
             hosts=set(self._unit_ips),
             roles={"default"},
+            tls_external=external_ca is not None,
+            tls_internal=internal_ca is not None,
         )
 
     @property

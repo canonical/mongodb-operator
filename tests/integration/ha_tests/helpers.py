@@ -465,7 +465,7 @@ async def insert_focal_to_cluster(ops_test: OpsTest) -> None:
     client = MongoClient(unit_uri(primary, password, app), directConnection=True)
     db = client["new-db"]
     test_collection = db["test_ubuntu_collection"]
-    test_collection.insert({"release_name": "Focal Fossa", "version": 20.04, "LTS": True})
+    test_collection.insert_one({"release_name": "Focal Fossa", "version": 20.04, "LTS": True})
     client.close()
 
 
