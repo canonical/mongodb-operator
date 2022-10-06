@@ -66,7 +66,7 @@ class MongoDBTLS(Object):
         logger.debug("Request to set TLS private key received.")
         try:
             self._request_certificate("unit", event.params.get("external-key", None))
-            self.charm.set_secret("unit", "cert", None)
+
             if not self.charm.unit.is_leader():
                 event.log(
                     "Only juju leader unit can set private key for the internal certificate. Skipping."
@@ -74,12 +74,12 @@ class MongoDBTLS(Object):
                 return
 
             self._request_certificate("app", event.params.get("internal-key", None))
-            self.charm.set_secret("app", "cert", None)
             logger.debug("Successfully set TLS private key.")
         except ValueError as e:
             event.fail(str(e))
 
     def _request_certificate(self, scope: str, param: Optional[str]):
+
         if param is None:
             key = generate_private_key()
         else:
@@ -94,6 +94,7 @@ class MongoDBTLS(Object):
 
         self.charm.set_secret(scope, "key", key.decode("utf-8"))
         self.charm.set_secret(scope, "csr", csr.decode("utf-8"))
+        self.charm.set_secret(scope, "cert", None)
 
         if self.charm.model.get_relation(TLS_RELATION):
             self.certs.request_certificate_creation(certificate_signing_request=csr)
@@ -178,15 +179,15 @@ class MongoDBTLS(Object):
             self.charm.set_secret(scope, "cert", event.certificate)
             self.charm.set_secret(scope, "ca", event.ca)
 
-        if renewal and self.substrate == "k8s":
-            self.charm.unit.get_container("mongod").stop("mongod")
-
         if self._waiting_for_certs():
             logger.debug(
                 "Defer till both internal and external TLS certificates available to avoid second restart."
             )
             event.defer()
             return
+
+        if renewal and self.substrate == "k8s":
+            self.charm.unit.get_container("mongod").stop("mongod")
 
         logger.debug("Restarting mongod with TLS enabled.")
         if self.substrate == "vm":
@@ -236,12 +237,13 @@ class MongoDBTLS(Object):
             sans=self._get_sans(),
         )
         logger.debug("Requesting a certificate renewal.")
-        self.charm.set_secret(scope, "csr", new_csr.decode("utf-8"))
 
         self.certs.request_certificate_renewal(
             old_certificate_signing_request=old_csr,
             new_certificate_signing_request=new_csr,
         )
+
+        self.charm.set_secret(scope, "csr", new_csr.decode("utf-8"))
 
     def _get_sans(self) -> List[str]:
         """Create a list of DNS names for a MongoDB unit.
