@@ -15,6 +15,7 @@ from urllib.request import URLError, urlopen
 import ops.charm
 from charms.mongodb_libs.v0.helpers import (
     KEY_FILE,
+    build_unit_status,
     generate_keyfile,
     generate_password,
     get_create_user_cmd,
@@ -353,23 +354,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # update the units status based on it's replica set status.
         with MongoDBConnection(self.mongodb_config) as mongo:
             replset_status = mongo.get_replset_status()
-
-            if self._unit_ip(self.unit) not in replset_status:
-                self.unit.status = WaitingStatus("Member being added..")
-                return
-
-            replica_status = replset_status[self._unit_ip(self.unit)]
-
-            if replica_status == "PRIMARY":
-                self.unit.status = ActiveStatus("Replica set primary")
-            elif replica_status == "SECONDARY":
-                self.unit.status = ActiveStatus("Replica set secondary")
-            elif replica_status in ["STARTUP", "STARTUP2", "ROLLBACK", "RECOVERING"]:
-                self.unit.status = WaitingStatus("Member is syncing..")
-            elif replica_status == "REMOVED":
-                self.unit.status = WaitingStatus("Member is removing..")
-            else:
-                self.unit.status = BlockedStatus(replica_status)
+            self.unit.status = build_unit_status(replset_status, self._unit_ip(self.unit))
 
     def _handle_reconfigure(self, event):
         """Reconfigures the replica set if necessary.
@@ -380,6 +365,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         """
         if not self.unit.is_leader():
             logger.debug("only the leader can perform reconfigurations to the replica set.")
+            return
+
         # remove any IPs that are no longer juju hosts & update app data.
         self._update_hosts(event)
         # Add in any new IPs to the replica set. Relation handlers require a reference to

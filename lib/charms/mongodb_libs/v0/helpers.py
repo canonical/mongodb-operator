@@ -5,9 +5,10 @@
 import logging
 import secrets
 import string
-from typing import List
+from typing import Dict, List
 
 from charms.mongodb_libs.v0.mongodb import MongoDBConfiguration
+from ops.model import ActiveStatus, BlockedStatus, StatusBase, WaitingStatus
 
 # The unique Charmhub library identifier, never change it
 LIBID = "1057f353503741a98ed79309b5be7e31"
@@ -100,3 +101,22 @@ def generate_keyfile() -> str:
     """
     choices = string.ascii_letters + string.digits
     return "".join([secrets.choice(choices) for _ in range(1024)])
+
+
+def build_unit_status(replset_status: Dict, unit_ip: str) -> StatusBase:
+    """Generates the status of a unit based on its status reported by mongod."""
+    if unit_ip not in replset_status:  #
+        return WaitingStatus("Member being added..")
+
+    replica_status = replset_status[unit_ip]
+
+    if replica_status == "PRIMARY":
+        return ActiveStatus("Replica set primary")
+    elif replica_status == "SECONDARY":
+        return ActiveStatus("Replica set secondary")
+    elif replica_status in ["STARTUP", "STARTUP2", "ROLLBACK", "RECOVERING"]:
+        return WaitingStatus("Member is syncing..")
+    elif replica_status == "REMOVED":
+        return WaitingStatus("Member is removing..")
+    else:
+        return BlockedStatus(replica_status)
