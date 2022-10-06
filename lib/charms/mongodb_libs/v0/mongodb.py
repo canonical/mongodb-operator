@@ -175,6 +175,23 @@ class MongoDBConnection:
                 logger.error("Cannot initialize replica set. error=%r", e)
                 raise e
 
+    def get_replset_status(self) -> Dict:
+        """Get a replica set status as a dict.
+
+        Returns:
+            A set of the replica set members along with their status.
+
+        Raises:
+            ConfigurationError, ConfigurationError, OperationFailure
+        """
+        rs_status = self.client.admin.command("replSetGetStatus")
+        rs_status_parsed = {}
+        for member in rs_status["members"]:
+            member_name = self._hostname_from_hostport(member["name"])
+            rs_status_parsed[member_name] = member["stateStr"]
+
+        return rs_status_parsed
+
     def get_replset_members(self) -> Set[str]:
         """Get a replica set members.
 

@@ -15,6 +15,7 @@ from urllib.request import URLError, urlopen
 import ops.charm
 from charms.mongodb_libs.v0.helpers import (
     KEY_FILE,
+    build_unit_status,
     generate_keyfile,
     generate_password,
     get_create_user_cmd,
@@ -73,6 +74,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.framework.observe(self.on.start, self._on_start)
         self.framework.observe(self.on[PEER].relation_joined, self._on_mongodb_relation_joined)
         self.framework.observe(self.on[PEER].relation_changed, self._on_mongodb_relation_handler)
+
         # if a new leader has been elected update hosts of MongoDB
         self.framework.observe(self.on.leader_elected, self._on_leader_elected)
         self.framework.observe(self.on[PEER].relation_departed, self._relation_departed)
@@ -109,6 +111,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         self._update_hosts(event)
 
+        # app relations should be made aware of the new set of hosts
         try:
             self.update_app_relation_data()
         except PyMongoError as e:
@@ -172,8 +175,10 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # allow leader to update relation data and hosts if it isn't leaving
         if not self.unit.is_leader() or event.departing_unit == self.unit:
             return
+
         self._update_hosts(event)
 
+        # app relations should be made aware of the new set of hosts
         try:
             self.update_app_relation_data()
         except PyMongoError as e:
@@ -206,6 +211,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             return
 
         self._on_mongodb_relation_handler(event)
+
+        # app relations should be made aware of the new set of hosts
         try:
             self.update_app_relation_data()
         except PyMongoError as e:
@@ -326,7 +333,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         self._initialise_replica_set(event)
 
-    def _on_update_status(self, _):
+    def _on_update_status(self, event):
         # cannot have both legacy and new relations since they have different auth requirements
         if self.client_relations._get_users_from_relations(
             None, rel="obsolete"
@@ -334,11 +341,46 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self.unit.status = BlockedStatus("cannot have both legacy and new relations")
             return
 
-        # if unit is primary then update status
-        if self._primary == self.unit.name:
-            self.unit.status = ActiveStatus("Replica set primary")
-        else:
-            self.unit.status = ActiveStatus()
+        # no need to report on replica set status until initialised
+        if "db_initialised" not in self.app_peer_data:
+            return
+
+        # leader should periodically handle configuring the replica set. Incidents such as network
+        # cuts can lead to new IP addresses and therefore will require a reconfigure. Especially
+        # in the case that the leader a change in IP address it will not receive a relation event.
+        if self.unit.is_leader():
+            self._handle_reconfigure(event)
+
+        # update the units status based on it's replica set status.
+        with MongoDBConnection(self.mongodb_config) as mongo:
+            replset_status = mongo.get_replset_status()
+            self.unit.status = build_unit_status(replset_status, self._unit_ip(self.unit))
+
+    def _handle_reconfigure(self, event):
+        """Reconfigures the replica set if necessary.
+
+        Removes any mongod hosts that are no longer present in the replica set or adds hosts that
+        should exist in the replica set. This function is meant to be called periodically by the
+        leader in the update status hook to perform any necessary cluster healing.
+        """
+        if not self.unit.is_leader():
+            logger.debug("only the leader can perform reconfigurations to the replica set.")
+            return
+
+        # remove any IPs that are no longer juju hosts & update app data.
+        self._update_hosts(event)
+        # Add in any new IPs to the replica set. Relation handlers require a reference to
+        # a unit.
+        event.unit = self.unit
+        self._on_mongodb_relation_handler(event)
+
+        # app relations should be made aware of the new set of hosts
+        try:
+            self.update_app_relation_data()
+        except PyMongoError as e:
+            logger.error("Deferring on updating app relation data since: error: %r", e)
+            event.defer()
+            return
 
     def _on_get_primary_action(self, event: ops.charm.ActionEvent):
         event.set_results({"replica-set-primary": self._primary})
