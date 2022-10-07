@@ -162,7 +162,7 @@ async def count_primaries(ops_test: OpsTest) -> int:
 
 @retry(
     retry=retry_if_result(lambda x: x is None),
-    stop=stop_after_attempt(5),
+    stop=stop_after_attempt(15),
     wait=wait_exponential(multiplier=1, min=2, max=30),
 )
 async def replica_set_primary(
@@ -459,7 +459,7 @@ async def insert_focal_to_cluster(ops_test: OpsTest) -> None:
     """Inserts the Focal Fossa data into the MongoDB cluster via primary replica."""
     app = await app_name(ops_test)
     ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
-    primary = await replica_set_primary(ip_addresses, ops_test).public_address
+    primary = (await replica_set_primary(ip_addresses, ops_test)).public_address
     password = await get_password(ops_test, app)
     client = MongoClient(unit_uri(primary, password, app), directConnection=True)
     db = client["new-db"]
@@ -716,7 +716,7 @@ def instance_ip(model: str, instance: str) -> str:
             return line.split()[2]
 
 
-@retry(stop=stop_after_attempt(8), wait=wait_fixed(15))
+@retry(stop=stop_after_attempt(15), wait=wait_fixed(15))
 def wait_network_restore(model_name: str, hostname: str, old_ip: str) -> None:
     """Wait until network is restored.
 

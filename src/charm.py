@@ -42,6 +42,7 @@ from ops.model import (
     Relation,
     WaitingStatus,
 )
+from pymongo.errors import ServerSelectionTimeoutError
 from tenacity import before_log, retry, stop_after_attempt, wait_fixed
 
 logger = logging.getLogger(__name__)
@@ -158,12 +159,10 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         for relation in self.model.relations[REL_NAME]:
             username = self.client_relations._get_username_from_relation_id(relation.id)
-            password = relation.data[self.app]["password"]
-            config = self.client_relations._get_config(username, password)
             if username in database_users:
                 data = relation.data[self.app]
-                data["endpoints"] = ",".join(config.hosts)
-                data["uris"] = config.uri
+                data["endpoints"] = ",".join(self.mongodb_config.hosts)
+                data["uris"] = self.mongodb_config.uri
                 relation.data[self.app].update(data)
 
     def _relation_departed(self, event: ops.charm.RelationDepartedEvent) -> None:
@@ -352,9 +351,14 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self._handle_reconfigure(event)
 
         # update the units status based on it's replica set status.
-        with MongoDBConnection(self.mongodb_config) as mongo:
-            replset_status = mongo.get_replset_status()
-            self.unit.status = build_unit_status(replset_status, self._unit_ip(self.unit))
+        try:
+            with MongoDBConnection(self.mongodb_config) as mongo:
+                replset_status = mongo.get_replset_status()
+                self.unit.status = build_unit_status(replset_status, self._unit_ip(self.unit))
+        except ServerSelectionTimeoutError as e:
+            # ServerSelectionTimeoutError is commonly due to ReplicaSetNoPrimary
+            logger.debug("Got error: %s, while checking replica set status", str(e))
+            self.unit.status = WaitingStatus("Waiting for primary re-election.")
 
     def _handle_reconfigure(self, event):
         """Reconfigures the replica set if necessary.

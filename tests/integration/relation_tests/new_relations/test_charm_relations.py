@@ -131,9 +131,11 @@ async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
     await ops_test.model.applications[DATABASE_APP_NAME].destroy_units(
         f"{DATABASE_APP_NAME}/0", f"{DATABASE_APP_NAME}/1"
     )
-    await ops_test.model.wait_for_idle(
-        apps=[DATABASE_APP_NAME], status="active", timeout=1000, wait_for_exact_units=2
-    )
+
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=[DATABASE_APP_NAME], status="active", timeout=1000, wait_for_exact_units=2
+        )
 
     endpoints_str = await get_application_relation_data(
         ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME, "endpoints"
@@ -148,7 +150,9 @@ async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
     ), "number of endpoints in replicaset URI do not match number of units after destroying units"
 
     # check that the replica set with the remaining units has a primary
-    ip_addresses = endpoints_str.split(",")
+    ip_addresses = [
+        unit.public_address for unit in ops_test.model.applications[DATABASE_APP_NAME].units
+    ]
     try:
         primary = await replica_set_primary(ip_addresses, ops_test)
     except RetryError:
