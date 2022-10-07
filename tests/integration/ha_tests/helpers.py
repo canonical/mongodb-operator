@@ -108,10 +108,13 @@ async def get_password(ops_test: OpsTest, app, down_unit=None) -> str:
     return action.results["admin-password"]
 
 
-async def fetch_primary(replica_set_hosts: List[str], ops_test: OpsTest, down_unit=None) -> str:
+async def fetch_primary(
+    replica_set_hosts: List[str], ops_test: OpsTest, down_unit=None, app=None
+) -> str:
     """Returns IP address of current replica set primary."""
     # connect to MongoDB client
-    app = await app_name(ops_test)
+    app = app if app else await app_name(ops_test)
+
     password = await get_password(ops_test, app, down_unit)
     client = replica_set_client(replica_set_hosts, password, app)
 
@@ -162,23 +165,26 @@ async def count_primaries(ops_test: OpsTest) -> int:
 
 @retry(
     retry=retry_if_result(lambda x: x is None),
-    stop=stop_after_attempt(15),
+    stop=stop_after_attempt(5),
     wait=wait_exponential(multiplier=1, min=2, max=30),
 )
 async def replica_set_primary(
-    replica_set_hosts: List[str], ops_test: OpsTest, down_unit=None
+    replica_set_hosts: List[str],
+    ops_test: OpsTest,
+    down_unit=None,
+    app=None,
 ) -> str:
     """Returns the primary of the replica set.
 
     Retrying 5 times to give the replica set time to elect a new primary, also checks against the
     valid_ips to verify that the primary is not outdated.
     """
-    primary_ip = await fetch_primary(replica_set_hosts, ops_test, down_unit)
+    app = app if app else await app_name(ops_test)
+    primary_ip = await fetch_primary(replica_set_hosts, ops_test, down_unit, app)
     # return None if primary is no longer in the replica set
     if primary_ip is not None and primary_ip not in replica_set_hosts:
         return None
 
-    app = await app_name(ops_test)
     for unit in ops_test.model.applications[app].units:
         if unit.public_address == str(primary_ip):
             return unit

@@ -131,11 +131,9 @@ async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
     await ops_test.model.applications[DATABASE_APP_NAME].destroy_units(
         f"{DATABASE_APP_NAME}/0", f"{DATABASE_APP_NAME}/1"
     )
-
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=[DATABASE_APP_NAME], status="active", timeout=1000, wait_for_exact_units=2
-        )
+    await ops_test.model.wait_for_idle(
+        apps=[DATABASE_APP_NAME], status="active", timeout=1000, wait_for_exact_units=2
+    )
 
     endpoints_str = await get_application_relation_data(
         ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME, "endpoints"
@@ -150,11 +148,9 @@ async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
     ), "number of endpoints in replicaset URI do not match number of units after destroying units"
 
     # check that the replica set with the remaining units has a primary
-    ip_addresses = [
-        unit.public_address for unit in ops_test.model.applications[DATABASE_APP_NAME].units
-    ]
+    ip_addresses = endpoints_str.split(",")
     try:
-        primary = await replica_set_primary(ip_addresses, ops_test)
+        primary = await replica_set_primary(ip_addresses, ops_test, app=DATABASE_APP_NAME)
     except RetryError:
         primary = None
 
@@ -360,6 +356,7 @@ async def test_removed_relation_no_longer_has_access(ops_test: OpsTest):
     await ops_test.model.applications[DATABASE_APP_NAME].remove_relation(
         f"{APPLICATION_APP_NAME}:{FIRST_DATABASE_RELATION_NAME}", f"{DATABASE_APP_NAME}:database"
     )
+    await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active")
 
     client = MongoClient(
         connection_string,

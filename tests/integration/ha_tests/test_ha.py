@@ -596,9 +596,7 @@ async def test_network_cut(ops_test, continuous_writes):
 
     # self healing is performed with update status hook
     async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=[app], status="active", timeout=1000, wait_for_exact_units=2
-        )
+        await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
 
     # verify we have connection to the old primary
     new_ip = helpers.instance_ip(model_name, primary_hostname)
