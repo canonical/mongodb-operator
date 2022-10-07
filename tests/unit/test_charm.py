@@ -41,17 +41,15 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongodbOperatorCharm._init_admin_user")
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
     @patch("charm.systemd.service_start")
-    @patch("charm.Path")
+    @patch("charm.push_file_to_unit")
     @patch("builtins.open")
-    @patch("charm.os")
-    @patch("charm.pwd")
     def test_on_start_not_leader_doesnt_initialise_replica_set(
-        self, pwd, os, open, path, service_start, _open_port_tcp, init_admin, connection
+        self, open, path, service_start, _open_port_tcp, init_admin, connection
     ):
         """Tests that a non leader unit does not initialise the replica set."""
         # Only leader can set RelationData
         self.harness.set_leader(True)
-        self.harness.charm.app_data["keyfile"] = "/etc/mongodb/keyFile"
+        self.harness.charm.app_peer_data["keyfile"] = "/etc/mongodb/keyFile"
 
         self.harness.set_leader(False)
         self.harness.charm.on.start.emit()
@@ -68,14 +66,10 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
     @patch("charm.systemd.service_start", side_effect=systemd.SystemdError)
     @patch("charm.systemd.service_running", return_value=False)
-    @patch("charm.Path")
+    @patch("charm.push_file_to_unit")
     @patch("builtins.open")
-    @patch("charm.os")
-    @patch("charm.pwd")
     def test_on_start_systemd_failure_leads_to_blocked_status(
         self,
-        pwd,
-        os,
         open,
         path,
         service_running,
@@ -100,18 +94,14 @@ class TestCharm(unittest.TestCase):
     @patch("charm.systemd.service_start")
     @patch("charm.systemd.service_running", return_value=True)
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
-    @patch("charm.Path")
+    @patch("charm.push_file_to_unit")
     @patch("builtins.open")
-    @patch("charm.os")
-    @patch("charm.pwd")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongodbOperatorCharm._init_admin_user")
     def test_on_start_mongo_service_ready_doesnt_reenable(
         self,
         init_admin,
         connection,
-        pwd,
-        os,
         open,
         path,
         _open_port_tcp,
@@ -129,18 +119,14 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
     @patch("charm.MongodbOperatorCharm._initialise_replica_set")
     @patch("charm.systemd.service_running", return_value=True)
-    @patch("charm.Path")
+    @patch("charm.push_file_to_unit")
     @patch("builtins.open")
-    @patch("charm.os")
-    @patch("charm.pwd")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongodbOperatorCharm._init_admin_user")
     def test_on_start_mongod_not_ready_defer(
         self,
         init_admin,
         connection,
-        pwd,
-        os,
         open,
         path,
         service_running,
@@ -159,12 +145,10 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
     @patch("charm.systemd.service_running", return_value=True)
-    @patch("charm.Path")
+    @patch("charm.push_file_to_unit")
     @patch("builtins.open")
-    @patch("charm.os")
-    @patch("charm.pwd")
     def test_start_unable_to_open_tcp_moves_to_blocked(
-        self, pwd, os, open, path, service_running, _open_port_tcp
+        self, open, path, service_running, _open_port_tcp
     ):
         """Test verifies that if TCP port cannot be opened we go to the blocked state."""
         self.harness.set_leader(True)
@@ -327,7 +311,7 @@ class TestCharm(unittest.TestCase):
         """
         # preset values
         self.harness.set_leader(True)
-        self.harness.charm.app_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
         connection.return_value.__enter__.return_value.is_ready = False
         connection.return_value.__enter__.return_value.get_replset_members.return_value = {
             "1.1.1.1"
@@ -355,7 +339,7 @@ class TestCharm(unittest.TestCase):
         """
         # presets
         self.harness.set_leader(True)
-        self.harness.charm.app_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
         rel = self.harness.charm.model.get_relation("database-peers")
 
         for exception in PYMONGO_EXCEPTIONS:
@@ -388,7 +372,7 @@ class TestCharm(unittest.TestCase):
         """
         # presets
         self.harness.set_leader(True)
-        self.harness.charm.app_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
         connection.return_value.__enter__.return_value.get_replset_members.return_value = {
             "1.1.1.1"
         }
@@ -411,18 +395,14 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
     @patch("charm.systemd.service_start")
-    @patch("charm.Path")
+    @patch("charm.push_file_to_unit")
     @patch("builtins.open")
-    @patch("charm.os")
-    @patch("charm.pwd")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongodbOperatorCharm._init_admin_user")
     def test_initialise_replica_failure_leads_to_waiting_state(
         self,
         init_admin,
         connection,
-        pwd,
-        os,
         open,
         path,
         service_start,
@@ -432,7 +412,7 @@ class TestCharm(unittest.TestCase):
         # set peer data so that leader doesn't reconfigure set on set_leader
 
         self.harness.set_leader(True)
-        self.harness.charm.app_data["_new_leader_must_reconfigure"] = "False"
+        self.harness.charm.app_peer_data["_new_leader_must_reconfigure"] = "False"
         connection.return_value.__enter__.return_value.is_ready = True
 
         for exception in PYMONGO_EXCEPTIONS:
@@ -560,7 +540,56 @@ class TestCharm(unittest.TestCase):
         self.harness.set_leader(True)
 
         self.harness.charm._init_admin_user()
-        self.assertEqual("user_created" in self.harness.charm.app_data, True)
+        self.assertEqual("user_created" in self.harness.charm.app_peer_data, True)
 
         self.harness.charm._init_admin_user()
         run.assert_called_once()
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongoDBConnection")
+    def test_set_admin_password(self, connection):
+        """Tests that a new admin password is generated and is returned to the user."""
+        self.harness.set_leader(True)
+        original_password = self.harness.charm.app_peer_data["admin_password"]
+        action_event = mock.Mock()
+        action_event.params = {}
+        self.harness.charm._on_set_admin_password(action_event)
+        new_password = self.harness.charm.app_peer_data["admin_password"]
+
+        # verify app data is updated and results are reported to user
+        self.assertNotEqual(original_password, new_password)
+        action_event.set_results.assert_called_with({"admin-password": new_password})
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongoDBConnection")
+    def test_set_admin_password_provided(self, connection):
+        """Tests that a given password is set as the new mongodb password."""
+        self.harness.set_leader(True)
+        action_event = mock.Mock()
+        action_event.params = {"password": "canonical123"}
+        self.harness.charm._on_set_admin_password(action_event)
+        new_password = self.harness.charm.app_peer_data["admin_password"]
+
+        # verify app data is updated and results are reported to user
+        self.assertEqual("canonical123", new_password)
+        action_event.set_results.assert_called_with({"admin-password": "canonical123"})
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongoDBConnection")
+    def test_set_admin_password_failure(self, connection):
+        """Tests failure to reset password does not update app data and failure is reported."""
+        self.harness.set_leader(True)
+        original_password = self.harness.charm.app_peer_data["admin_password"]
+        action_event = mock.Mock()
+        action_event.params = {}
+
+        for exception in [PYMONGO_EXCEPTIONS, NotReadyError]:
+            connection.return_value.__enter__.return_value.set_user_password.side_effect = (
+                exception
+            )
+            self.harness.charm._on_set_admin_password(action_event)
+            current_password = self.harness.charm.app_peer_data["admin_password"]
+
+            # verify passwords are not updated.
+            self.assertEqual(current_password, original_password)
+            action_event.fail.assert_called()

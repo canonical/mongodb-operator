@@ -44,6 +44,8 @@ class MongoDBConfiguration:
     — username: username.
     — password: password.
     — hosts: full list of hosts to connect to, needed for the URI.
+    - tls_external: indicator for use of internal TLS connection.
+    - tls_internal: indicator for use of external TLS connection.
     """
 
     replset: str
@@ -52,6 +54,8 @@ class MongoDBConfiguration:
     password: str
     hosts: Set[str]
     roles: Set[str]
+    tls_external: bool
+    tls_internal: bool
 
     @property
     def uri(self):
@@ -272,6 +276,14 @@ class MongoDBConnection:
             "updateUser",
             config.username,
             roles=self._get_roles(config),
+        )
+
+    def set_user_password(self, username, password: str):
+        """Update the password."""
+        self.client.admin.command(
+            "updateUser",
+            username,
+            pwd=password,
         )
 
     @staticmethod

@@ -302,7 +302,7 @@ async def test_unique_cluster_dbs(ops_test: OpsTest, continuous_writes) -> None:
     client = replica_set_client(ip_addresses, password, app=ANOTHER_DATABASE_APP_NAME)
     db = client["new-db"]
     test_collection = db["test_ubuntu_collection"]
-    test_collection.insert({"release_name": "Jammy Jelly", "version": 22.04, "LTS": False})
+    test_collection.insert_one({"release_name": "Jammy Jelly", "version": 22.04, "LTS": False})
     client.close()
 
     cluster_1_entries = await retrieve_entries(
