@@ -369,9 +369,9 @@ async def test_removed_relation_no_longer_has_access(ops_test: OpsTest):
     try:
         client.admin.command("replSetGetStatus")
     except OperationFailure as e:
-        # error code 13 for OperationFailure is an authentication error, meaning disabling of
-        # authentication was unsuccessful
-        if e.code == 13:
+        # error code 18 for OperationFailure is an authentication error, meaning disabling of
+        # authentication was successful
+        if e.code == 18:
             removed_access = True
         else:
             raise

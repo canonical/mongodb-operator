@@ -42,7 +42,7 @@ from ops.model import (
     Relation,
     WaitingStatus,
 )
-from pymongo.errors import ServerSelectionTimeoutError
+from pymongo.errors import AutoReconnect, ServerSelectionTimeoutError
 from tenacity import before_log, retry, stop_after_attempt, wait_fixed
 
 logger = logging.getLogger(__name__)
@@ -159,10 +159,12 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         for relation in self.model.relations[REL_NAME]:
             username = self.client_relations._get_username_from_relation_id(relation.id)
+            password = relation.data[self.app]["password"]
+            config = self.client_relations._get_config(username, password)
             if username in database_users:
                 data = relation.data[self.app]
-                data["endpoints"] = ",".join(self.mongodb_config.hosts)
-                data["uris"] = self.mongodb_config.uri
+                data["endpoints"] = ",".join(config.hosts)
+                data["uris"] = config.uri
                 relation.data[self.app].update(data)
 
     def _relation_departed(self, event: ops.charm.RelationDepartedEvent) -> None:
@@ -358,7 +360,12 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         except ServerSelectionTimeoutError as e:
             # ServerSelectionTimeoutError is commonly due to ReplicaSetNoPrimary
             logger.debug("Got error: %s, while checking replica set status", str(e))
-            self.unit.status = WaitingStatus("Waiting for primary re-election.")
+            self.unit.status = WaitingStatus("Waiting for primary re-election..")
+        except AutoReconnect as e:
+            # AutoReconnect is raised when a connection to the database is lost and an attempt to
+            # auto-reconnect will be made by pymongo.
+            logger.debug("Got error: %s, while checking replica set status", str(e))
+            self.unit.status = WaitingStatus("Waiting to reconnect to unit..")
 
     def _handle_reconfigure(self, event):
         """Reconfigures the replica set if necessary.
