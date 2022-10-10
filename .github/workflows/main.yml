@@ -16,6 +16,7 @@ jobs:
         run: python3 -m pip install tox
       - name: Run linters
         run: tox -e lint
+
   unit-test:
     name: Unit tests
     runs-on: ubuntu-latest
@@ -26,8 +27,12 @@ jobs:
         run: python -m pip install tox
       - name: Run tests
         run: tox -e unit
+
   charm-integration-test-lxd:
     name: Charm integration tests (lxd)
+    needs:
+      - lint
+      - unit-test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -38,8 +43,12 @@ jobs:
           provider: lxd
       - name: Run charm integration tests
         run: tox -e charm-integration
+
   ha-integration-test-lxd:
     name: HA integration tests (lxd)
+    needs:
+      - lint
+      - unit-test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -50,8 +59,12 @@ jobs:
           provider: lxd
       - name: Run ha integration tests
         run: tox -e ha-integration
+
   relation-integration-test-lxd:
     name: Relation integration tests (lxd)
+    needs:
+      - lint
+      - unit-test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -62,8 +75,12 @@ jobs:
           provider: lxd
       - name: Run relation integration tests
         run: tox -e relation-integration
+
   tls-integration-test-lxd:
     name: TLS integration tests (lxd)
+    needs:
+      - lint
+      - unit-test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
