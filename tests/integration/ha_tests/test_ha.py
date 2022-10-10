@@ -201,10 +201,10 @@ async def test_replication_across_members(ops_test: OpsTest, continuous_writes) 
     await helpers.insert_focal_to_cluster(ops_test)
     app = await helpers.app_name(ops_test)
     ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
-    primary = (await helpers.replica_set_primary(ip_addresses, ops_test)).public_address
+    primary = await helpers.replica_set_primary(ip_addresses, ops_test)
     password = await helpers.get_password(ops_test, app)
 
-    secondaries = set(ip_addresses) - set([primary])
+    secondaries = set(ip_addresses) - set([primary.public_address])
     for secondary in secondaries:
         client = MongoClient(helpers.unit_uri(secondary, password, app), directConnection=True)
 

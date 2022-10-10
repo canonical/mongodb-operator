@@ -32,7 +32,7 @@ Further we highly suggest configuring the status hook to run frequently. In addi
 ```shell
 juju model-config update-status-hook-interval=<time(s/m/h)>
 ```
-You can read more about status hooks [here](https://juju.is/docs/sdk/update-status-event).
+Note that this hook executes a read query to MongoDB. On a production level server this should be configured to occur at a frequency that doesn't overload the server with read requests. Similarly the hook should not be configured at too quick of a frequency as this can delay other hooks from running. You can read more about status hooks [here](https://juju.is/docs/sdk/update-status-event).
 
 ### Replication
 #### Adding Replicas

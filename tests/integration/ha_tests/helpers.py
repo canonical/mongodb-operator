@@ -6,7 +6,7 @@ import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import ops
 import yaml
@@ -113,7 +113,7 @@ async def fetch_primary(
 ) -> str:
     """Returns IP address of current replica set primary."""
     # connect to MongoDB client
-    app = app if app else await app_name(ops_test)
+    app = app or await app_name(ops_test)
 
     password = await get_password(ops_test, app, down_unit)
     client = replica_set_client(replica_set_hosts, password, app)
@@ -173,13 +173,13 @@ async def replica_set_primary(
     ops_test: OpsTest,
     down_unit=None,
     app=None,
-) -> str:
+) -> Optional[ops.model.Unit]:
     """Returns the primary of the replica set.
 
     Retrying 5 times to give the replica set time to elect a new primary, also checks against the
     valid_ips to verify that the primary is not outdated.
     """
-    app = app if app else await app_name(ops_test)
+    app = app or await app_name(ops_test)
     primary_ip = await fetch_primary(replica_set_hosts, ops_test, down_unit, app)
     # return None if primary is no longer in the replica set
     if primary_ip is not None and primary_ip not in replica_set_hosts:
@@ -732,7 +732,7 @@ def wait_network_restore(model_name: str, hostname: str, old_ip: str) -> None:
         old_ip: old registered IP address
     """
     if instance_ip(model_name, hostname) == old_ip:
-        raise Exception
+        raise Exception("Network not restored, IP address has not changed yet.")
 
 
 async def get_unit_ip(ops_test: OpsTest, unit_name: str) -> str:
