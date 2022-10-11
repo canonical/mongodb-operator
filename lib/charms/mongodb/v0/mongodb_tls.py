@@ -13,7 +13,7 @@ import re
 import socket
 from typing import List, Optional, Tuple
 
-from charms.mongodb_libs.v0.machine_helpers import auth_enabled, restart_mongod_service
+from charms.mongodb.v0.machine_helpers import auth_enabled, restart_mongod_service
 from charms.tls_certificates_interface.v1.tls_certificates import (
     CertificateAvailableEvent,
     CertificateExpiringEvent,
@@ -26,14 +26,15 @@ from ops.framework import Object
 from ops.model import ActiveStatus, MaintenanceStatus, Unit
 
 # The unique Charmhub library identifier, never change it
-LIBID = "1057f353503741a98ed79309b5be7e33"
+LIBID = "e02a50f0795e4dd292f58e93b4f493dd"
 
 # Increment this major API version when introducing breaking changes
 LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
-# to 0 if you are raising the major API version.
-LIBPATCH = 0
+# to 0 if you are raising the major API version
+LIBPATCH = 1
+
 
 logger = logging.getLogger(__name__)
 TLS_RELATION = "certificates"

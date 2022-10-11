@@ -1,5 +1,5 @@
 """Code for interactions with MongoDB."""
-# Copyright 2021 Canonical Ltd.
+# Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 import logging
@@ -22,13 +22,13 @@ from tenacity import (
 )
 
 # The unique Charmhub library identifier, never change it
-LIBID = "1057f353503741a98ed79309b5be7e30"
+LIBID = "49c69d9977574dd7942eb7b54f43355b"
 
 # Increment this major API version when introducing breaking changes
 LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
-# to 0 if you are raising the major API version.
+# to 0 if you are raising the major API version
 LIBPATCH = 1
 
 # path to store mongodb ketFile

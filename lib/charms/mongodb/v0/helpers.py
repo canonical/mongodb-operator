@@ -1,5 +1,5 @@
 """Simple functions, which can be used in both K8s and VM charms."""
-# Copyright 2021 Canonical Ltd.
+# Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 import logging
@@ -7,17 +7,18 @@ import secrets
 import string
 from typing import List
 
-from charms.mongodb_libs.v0.mongodb import MongoDBConfiguration
+from charms.mongodb.v0.mongodb import MongoDBConfiguration
 
 # The unique Charmhub library identifier, never change it
-LIBID = "1057f353503741a98ed79309b5be7e31"
+LIBID = "b9a7fe0c38d8486a9d1ce94c27d4758e"
 
 # Increment this major API version when introducing breaking changes
 LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
-# to 0 if you are raising the major API version.
+# to 0 if you are raising the major API version
 LIBPATCH = 1
+
 
 # path to store mongodb ketFile
 KEY_FILE = "/etc/mongodb/keyFile"

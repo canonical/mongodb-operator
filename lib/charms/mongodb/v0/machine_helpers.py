@@ -6,25 +6,26 @@ import os
 import pwd
 from pathlib import Path
 
-from charms.mongodb_libs.v0.helpers import (
+from charms.mongodb.v0.helpers import (
     KEY_FILE,
     TLS_EXT_CA_FILE,
     TLS_EXT_PEM_FILE,
     TLS_INT_CA_FILE,
     TLS_INT_PEM_FILE,
 )
-from charms.mongodb_libs.v0.mongodb import MongoDBConfiguration
+from charms.mongodb.v0.mongodb import MongoDBConfiguration
 from charms.operator_libs_linux.v1 import systemd
 
 # The unique Charmhub library identifier, never change it
-LIBID = "6q947ainc54837t38yhuidshahfgw8f"
+LIBID = "0ef38cc7c773446b8331a71a234f3c5f"
 
 # Increment this major API version when introducing breaking changes
 LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
-# to 0 if you are raising the major API version.
+# to 0 if you are raising the major API version
 LIBPATCH = 1
+
 
 logger = logging.getLogger(__name__)
 
