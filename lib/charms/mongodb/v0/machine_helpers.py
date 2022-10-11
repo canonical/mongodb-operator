@@ -16,7 +16,6 @@ from charms.mongodb.v0.helpers import (
 from charms.mongodb.v0.mongodb import MongoDBConfiguration
 from charms.operator_libs_linux.v1 import systemd
 
-
 # The unique Charmhub library identifier, never change it
 LIBID = "0ef38cc7c773446b8331a71a234f3c5f"
 

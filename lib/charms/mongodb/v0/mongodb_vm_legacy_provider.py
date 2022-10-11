@@ -14,7 +14,6 @@ from charms.operator_libs_linux.v1 import systemd
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
 
-
 # The unique Charmhub library identifier, never change it
 LIBID = "896a48bc89b84d30839335bb37170509"
 

@@ -9,7 +9,6 @@ from typing import List
 
 from charms.mongodb.v0.mongodb import MongoDBConfiguration
 
-
 # The unique Charmhub library identifier, never change it
 LIBID = "b9a7fe0c38d8486a9d1ce94c27d4758e"
 
