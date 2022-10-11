@@ -3,7 +3,7 @@ from unittest import mock
 
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
-from lib.charms.mongodb_libs.v0 import machine_helpers
+from lib.charms.mongodb.v0 import machine_helpers
 
 
 class TestCharm(unittest.TestCase):

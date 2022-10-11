@@ -13,9 +13,9 @@ import re
 from collections import namedtuple
 from typing import Optional, Set
 
-from charms.mongodb_libs.v0.helpers import generate_password
-from charms.mongodb_libs.v0.machine_helpers import auth_enabled, restart_mongod_service
-from charms.mongodb_libs.v0.mongodb import MongoDBConfiguration, MongoDBConnection
+from charms.mongodb.v0.helpers import generate_password
+from charms.mongodb.v0.machine_helpers import auth_enabled, restart_mongod_service
+from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 from charms.operator_libs_linux.v1 import systemd
 from ops.charm import RelationBrokenEvent, RelationChangedEvent
 from ops.framework import Object

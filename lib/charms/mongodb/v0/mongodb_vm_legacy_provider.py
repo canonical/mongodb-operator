@@ -9,7 +9,7 @@ the expected relation data for legacy relations.
 import logging
 from typing import Optional
 
-from charms.mongodb_libs.v0.machine_helpers import auth_enabled, restart_mongod_service
+from charms.mongodb.v0.machine_helpers import auth_enabled, restart_mongod_service
 from charms.operator_libs_linux.v1 import systemd
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus

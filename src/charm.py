@@ -10,7 +10,7 @@ from typing import Dict, List, Optional
 from urllib.request import URLError, urlopen
 
 import ops.charm
-from charms.mongodb_libs.v0.helpers import (
+from charms.mongodb.v0.helpers import (
     KEY_FILE,
     TLS_EXT_CA_FILE,
     TLS_EXT_PEM_FILE,
@@ -20,20 +20,20 @@ from charms.mongodb_libs.v0.helpers import (
     generate_password,
     get_create_user_cmd,
 )
-from charms.mongodb_libs.v0.machine_helpers import (
+from charms.mongodb.v0.machine_helpers import (
     push_file_to_unit,
     start_mongod_service,
     update_mongod_service,
 )
-from charms.mongodb_libs.v0.mongodb import (
+from charms.mongodb.v0.mongodb import (
     MongoDBConfiguration,
     MongoDBConnection,
     NotReadyError,
     PyMongoError,
 )
-from charms.mongodb_libs.v0.mongodb_provider import MongoDBProvider
-from charms.mongodb_libs.v0.mongodb_tls import MongoDBTLS
-from charms.mongodb_libs.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
+from charms.mongodb.v0.mongodb_provider import MongoDBProvider
+from charms.mongodb.v0.mongodb_tls import MongoDBTLS
+from charms.mongodb.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
 from charms.operator_libs_linux.v0 import apt
 from charms.operator_libs_linux.v1 import systemd
 from ops.main import main

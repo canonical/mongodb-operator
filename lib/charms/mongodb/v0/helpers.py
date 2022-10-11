@@ -7,7 +7,7 @@ import secrets
 import string
 from typing import List
 
-from charms.mongodb_libs.v0.mongodb import MongoDBConfiguration
+from charms.mongodb.v0.mongodb import MongoDBConfiguration
 
 
 # The unique Charmhub library identifier, never change it

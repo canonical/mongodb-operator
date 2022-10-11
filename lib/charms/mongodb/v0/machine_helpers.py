@@ -6,14 +6,14 @@ import os
 import pwd
 from pathlib import Path
 
-from charms.mongodb_libs.v0.helpers import (
+from charms.mongodb.v0.helpers import (
     KEY_FILE,
     TLS_EXT_CA_FILE,
     TLS_EXT_PEM_FILE,
     TLS_INT_CA_FILE,
     TLS_INT_PEM_FILE,
 )
-from charms.mongodb_libs.v0.mongodb import MongoDBConfiguration
+from charms.mongodb.v0.mongodb import MongoDBConfiguration
 from charms.operator_libs_linux.v1 import systemd
 
 
