@@ -21,15 +21,6 @@ from charms.mongodb.v0.helpers import (
     generate_password,
     get_create_user_cmd,
 )
-from charms.mongodb.v0.machine_helpers import (
-    MONGOD_SERVICE_DEFAULT_PATH,
-    MONGOD_SERVICE_UPSTREAM_PATH,
-    push_file_to_unit,
-    start_mongod_service,
-    start_with_auth,
-    stop_mongod_service,
-    update_mongod_service,
-)
 from charms.mongodb.v0.mongodb import (
     MongoDBConfiguration,
     MongoDBConnection,
@@ -50,6 +41,16 @@ from ops.model import (
     WaitingStatus,
 )
 from tenacity import before_log, retry, stop_after_attempt, wait_fixed
+
+from machine_helpers import (
+    MONGOD_SERVICE_DEFAULT_PATH,
+    MONGOD_SERVICE_UPSTREAM_PATH,
+    push_file_to_unit,
+    start_mongod_service,
+    start_with_auth,
+    stop_mongod_service,
+    update_mongod_service,
+)
 
 logger = logging.getLogger(__name__)
 

@@ -20,19 +20,19 @@ INTERNAL_CERT_PATH = "/etc/mongodb/internal-ca.crt"
 DB_SERVICE = "mongod.service"
 
 
-# @pytest.mark.abort_on_fail
-# async def test_build_and_deploy(ops_test: OpsTest) -> None:
-#     """Build and deploy one unit of MongoDB and one unit of TLS."""
-#     async with ops_test.fast_forward():
-#         my_charm = await ops_test.build_charm(".")
-#         await ops_test.model.deploy(my_charm, num_units=3)
-#         await ops_test.model.wait_for_idle(apps=[DATABASE_APP_NAME], status="active")
+@pytest.mark.abort_on_fail
+async def test_build_and_deploy(ops_test: OpsTest) -> None:
+    """Build and deploy one unit of MongoDB and one unit of TLS."""
+    async with ops_test.fast_forward():
+        my_charm = await ops_test.build_charm(".")
+        await ops_test.model.deploy(my_charm, num_units=3)
+        await ops_test.model.wait_for_idle(apps=[DATABASE_APP_NAME], status="active")
 
-#         config = {"generate-self-signed-certificates": "true", "ca-common-name": "Test CA"}
-#         await ops_test.model.deploy(TLS_CERTIFICATES_APP_NAME, channel="edge", config=config)
-#         await ops_test.model.wait_for_idle(
-#             apps=[TLS_CERTIFICATES_APP_NAME], status="active", timeout=1000
-#         )
+        config = {"generate-self-signed-certificates": "true", "ca-common-name": "Test CA"}
+        await ops_test.model.deploy(TLS_CERTIFICATES_APP_NAME, channel="edge", config=config)
+        await ops_test.model.wait_for_idle(
+            apps=[TLS_CERTIFICATES_APP_NAME], status="active", timeout=1000
+        )
 
 
 async def test_enable_tls(ops_test: OpsTest) -> None:
