@@ -692,12 +692,12 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def restart_mongod_service(self, auth=None):
         """Restarts the mongod service with its associated configuration."""
-        auth = auth or self.enabled()
+        auth = auth or self.auth_enabled()
         stop_mongod_service()
         update_mongod_service(
             auth,
             self._unit_ip(self.unit),
-            config=self.charm.mongodb_config,
+            config=self.mongodb_config,
         )
         start_mongod_service()
 
@@ -709,8 +709,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         ):
             return False
 
-        # The default file has previority over the upstream, but when the default file doesn't exist
-        # then the upstream configurations are used.
+        # The default file has previority over the upstream, but when the default file doesn't
+        # exist then the upstream configurations are used.
         if not os.path.exists(MONGOD_SERVICE_DEFAULT_PATH):
             return start_with_auth(MONGOD_SERVICE_UPSTREAM_PATH)
 

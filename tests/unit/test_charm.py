@@ -28,8 +28,6 @@ PYMONGO_EXCEPTIONS = [
     OperationFailure("error message"),
 ]
 
-from src import machine_helpers
-
 
 class TestCharm(unittest.TestCase):
     def setUp(self, *unused):
