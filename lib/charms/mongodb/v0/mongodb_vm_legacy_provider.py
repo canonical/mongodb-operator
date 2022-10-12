@@ -9,7 +9,7 @@ the expected relation data for legacy relations.
 import logging
 from typing import Optional
 
-from charms.mongodb.v0.machine_helpers import auth_enabled, restart_mongod_service
+from charms.mongodb.v0.machine_helpers import auth_enabled
 from charms.operator_libs_linux.v1 import systemd
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
@@ -73,11 +73,7 @@ class MongoDBLegacyProvider(Object):
             try:
                 logger.debug("Disabling authentication.")
                 self.charm.unit.status = MaintenanceStatus("disabling authentication")
-                restart_mongod_service(
-                    auth=False,
-                    machine_ip=self.charm._unit_ip(self.charm.unit),
-                    config=self.charm.mongodb_config,
-                )
+                self.charm.restart_mongod_service(auth=False)
                 self.charm.unit.status = ActiveStatus()
             except systemd.SystemdError:
                 self.charm.unit.status = BlockedStatus("couldn't restart MongoDB")

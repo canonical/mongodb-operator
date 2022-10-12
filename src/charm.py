@@ -23,7 +23,9 @@ from charms.mongodb.v0.helpers import (
 from charms.mongodb.v0.machine_helpers import (
     push_file_to_unit,
     start_mongod_service,
+    stop_mongod_service,
     update_mongod_service,
+    auth_enabled,
 )
 from charms.mongodb.v0.mongodb import (
     MongoDBConfiguration,
@@ -683,6 +685,17 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         logger.debug("User created")
         self.app_peer_data["user_created"] = "True"
+
+    def restart_mongod_service(self, auth=None):
+        """Restarts the mongod service with its associated configuration."""
+        auth = auth or auth_enabled()
+        stop_mongod_service()
+        update_mongod_service(
+            auth,
+            self._unit_ip(self.unit),
+            config=self.charm.mongodb_config,
+        )
+        start_mongod_service()
 
 
 class AdminUserCreationError(Exception):

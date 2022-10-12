@@ -206,5 +206,12 @@ def push_file_to_unit(parent_dir, file_name, file_contents) -> None:
     os.chown(file_name, mongodb_user.pw_uid, mongodb_user.pw_gid)
 
 
+def restart_mongod_service(auth: bool, machine_ip: str, config: MongoDBConfiguration):
+    """Restarts the mongod service with its associated configuration."""
+    stop_mongod_service()
+    update_mongod_service(auth, machine_ip, config)
+    start_mongod_service()
+
+
 class ApplicationHostNotFoundError(Exception):
     """Raised when a queried host is not in the application peers or the current host."""
