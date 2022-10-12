@@ -13,7 +13,6 @@ import re
 import socket
 from typing import List, Optional, Tuple
 
-from charms.mongodb.v0.machine_helpers import auth_enabled
 from charms.tls_certificates_interface.v1.tls_certificates import (
     CertificateAvailableEvent,
     CertificateExpiringEvent,

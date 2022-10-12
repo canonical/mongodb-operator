@@ -9,7 +9,6 @@ the expected relation data for legacy relations.
 import logging
 from typing import Optional
 
-from charms.mongodb.v0.machine_helpers import auth_enabled
 from charms.operator_libs_linux.v1 import systemd
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
@@ -69,7 +68,7 @@ class MongoDBLegacyProvider(Object):
         # user. Shutting down and restarting mongod would lead to downtime for the other legacy
         # relation user and hence shouldn't be done. Not to mention there is no need to disable
         # auth if it is already disabled.
-        if auth_enabled():
+        if self.charm.auth_enabled():
             try:
                 logger.debug("Disabling authentication.")
                 self.charm.unit.status = MaintenanceStatus("disabling authentication")

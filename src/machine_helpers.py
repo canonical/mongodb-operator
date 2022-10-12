@@ -44,22 +44,6 @@ MONGO_USER = "mongodb"
 MONGO_DATA_DIR = "/data/db"
 
 
-def auth_enabled() -> bool:
-    """Checks if mongod service is has auth enabled."""
-    # if there are no service files then auth is not enabled
-    if not os.path.exists(MONGOD_SERVICE_UPSTREAM_PATH) and not os.path.exists(
-        MONGOD_SERVICE_DEFAULT_PATH
-    ):
-        return False
-
-    # The default file has previority over the upstream, but when the default file doesn't exist
-    # then the upstream configurations are used.
-    if not os.path.exists(MONGOD_SERVICE_DEFAULT_PATH):
-        return start_with_auth(MONGOD_SERVICE_UPSTREAM_PATH)
-
-    return start_with_auth(MONGOD_SERVICE_DEFAULT_PATH)
-
-
 def start_with_auth(path):
     """Returns true is a mongod service file has the auth configuration."""
     with open(path, "r") as mongodb_service_file:
