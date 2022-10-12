@@ -31,6 +31,7 @@ DB_PROCESS = "/usr/bin/mongod"
 MONGODB_LOG_PATH = "/data/db/mongodb.log"
 MONGOD_SERVICE_DEFAULT_PATH = "/etc/systemd/system/mongod.service"
 TMP_SERVICE_PATH = "tests/integration/ha_tests/tmp.service"
+TMP_LOG_PATH = "tests/integration/ha_tests/tmp.log"
 LOGGING_OPTIONS = "--logpath=/data/db/mongodb.log --logappend"
 
 
@@ -108,10 +109,10 @@ async def get_password(ops_test: OpsTest, app) -> str:
     return action.results["admin-password"]
 
 
-async def fetch_primary(replica_set_hosts: List[str], ops_test: OpsTest) -> str:
+async def fetch_primary(replica_set_hosts: List[str], ops_test: OpsTest, app=None) -> str:
     """Returns IP address of current replica set primary."""
     # connect to MongoDB client
-    app = await app_name(ops_test)
+    app = app or await app_name(ops_test)
     password = await get_password(ops_test, app)
     client = replica_set_client(replica_set_hosts, password, app)
 
@@ -166,14 +167,15 @@ async def count_primaries(ops_test: OpsTest) -> int:
     wait=wait_exponential(multiplier=1, min=2, max=30),
 )
 async def replica_set_primary(
-    replica_set_hosts: List[str], ops_test: OpsTest, return_name=False
+    replica_set_hosts: List[str], ops_test: OpsTest, return_name=False, app=None
 ) -> str:
     """Returns the primary of the replica set.
 
     Retrying 5 times to give the replica set time to elect a new primary, also checks against the
     valid_ips to verify that the primary is not outdated.
     """
-    primary_ip = await fetch_primary(replica_set_hosts, ops_test)
+    app = app or await app_name(ops_test)
+    primary_ip = await fetch_primary(replica_set_hosts, ops_test, app)
     # return None if primary is no longer in the replica set
     if primary_ip is not None and primary_ip not in replica_set_hosts:
         return None
@@ -510,24 +512,35 @@ async def db_step_down(ops_test: OpsTest, old_primary_unit: str, sigterm_time: i
     # loop through all units that aren't the old primary
     app = await app_name(ops_test)
     for unit in ops_test.model.applications[app].units:
-        if unit.name == old_primary_unit:
-            continue
+        # these log files can get quite large. According to the Juju team the controller can hold
+        # a maximum of 16MB so it is a best practice to read large files via SCP instead of cat.
+        # However, we permissions need to be added to the log file before scping it.
+        chmod_cmd = f"run --unit {unit.name} -- sudo chmod 777 {MONGODB_LOG_PATH}"
+        return_code, _, _ = await ops_test.juju(*chmod_cmd.split())
+        if return_code != 0:
+            raise ProcessError(f"Command: {chmod_cmd} failed on unit: {unit.name}.")
 
-        cat_cmd = f"run --unit {unit.name} -- cat {MONGODB_LOG_PATH} "
-        _, output, _ = await ops_test.juju(*cat_cmd.split())
-        for line in output.split("\n"):
-            if not len(line):
-                continue
+        await unit.scp_from(source=MONGODB_LOG_PATH, destination=TMP_LOG_PATH)
 
-            item = json.loads(line)
+        # reading files like this reads only one line at a time, garbage collecting previous lines
+        # preventing large memory storage.
+        with open(TMP_LOG_PATH) as infile:
+            for line in infile:
+                if not len(line):
+                    continue
 
-            step_down_time = convert_time(item["t"]["$date"])
-            if (
-                "Starting an election due to step up request" in line
-                and step_down_time >= sigterm_time
-            ):
-                return True
+                item = json.loads(line)
 
+                step_down_time = convert_time(item["t"]["$date"])
+                if (
+                    "Starting an election due to step up request" in line
+                    and step_down_time >= sigterm_time
+                ):
+                    # remove file before returning true to save space.
+                    subprocess.call(["rm", TMP_LOG_PATH])
+                    return True
+
+    subprocess.call(["rm", TMP_LOG_PATH])
     return False
 
 

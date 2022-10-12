@@ -13,6 +13,7 @@ from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from tests.integration.ha_tests.helpers import (
     APP_NAME,
+    MONGODB_LOG_FILE,
     add_unit_with_storage,
     all_db_processes_down,
     app_name,
@@ -46,7 +47,6 @@ MONGOD_PROCESS = "/usr/bin/mongod"
 MEDIAN_REELECTION_TIME = 12
 RESTART_DELAY = 60 * 3
 ORIGINAL_RESTART_DELAY = 5
-MONGODB_LOG_FILE = "/data/db/mongodb.log"
 
 
 @pytest.fixture()
@@ -82,9 +82,9 @@ async def change_logging(ops_test: OpsTest):
         # must restart unit to ensure that changes to logging are made
         await update_service_logging(ops_test, unit, logging=True)
         await kill_unit_process(ops_test, unit.name, kill_code="SIGTERM")
-        # sleep for long enough to allow unit to restart
-        time.sleep(10)
 
+        # sleep long enough for the mongod to start
+        time.sleep(15)
     yield
 
     app = await app_name(ops_test)
@@ -93,7 +93,7 @@ async def change_logging(ops_test: OpsTest):
         await update_service_logging(ops_test, unit, logging=False)
         await kill_unit_process(ops_test, unit.name, kill_code="SIGTERM")
         # sleep for long enough to allow unit to restart
-        time.sleep(10)
+        time.sleep(15)
 
         # remove the log file as to not clog up space on the replicas.
         rm_cmd = f"run --unit {unit.name} rm {MONGODB_LOG_FILE}"
