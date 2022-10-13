@@ -443,7 +443,7 @@ class TestCharm(unittest.TestCase):
             self.assertTrue(isinstance(self.harness.charm.unit.status, WaitingStatus))
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongoDBConnection")
+    @patch("charms.mongodb_libs.v0.helpers.MongoDBConnection")
     def test_update_status_primary(self, connection):
         """Tests that update status identifies the primary unit and updates status."""
         # assume leader has already initialised the replica set
@@ -458,7 +458,7 @@ class TestCharm(unittest.TestCase):
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus("Replica set primary"))
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongoDBConnection")
+    @patch("charms.mongodb_libs.v0.helpers.MongoDBConnection")
     def test_update_status_secondary(self, connection):
         """Tests that update status identifies secondary units and doesn't update status."""
         # assume leader has already initialised the replica set
@@ -473,7 +473,7 @@ class TestCharm(unittest.TestCase):
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus("Replica set secondary"))
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongoDBConnection")
+    @patch("charms.mongodb_libs.v0.helpers.MongoDBConnection")
     def test_update_status_additional_messages(self, connection):
         """Tests status updates are correct for non-primary and non-secondary cases."""
         # assume leader has already initialised the replica set
