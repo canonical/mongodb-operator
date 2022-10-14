@@ -13,7 +13,7 @@ from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from tests.integration.ha_tests.helpers import (
     APP_NAME,
-    MONGODB_LOG_FILE,
+    MONGODB_LOG_PATH,
     add_unit_with_storage,
     all_db_processes_down,
     app_name,
@@ -96,7 +96,7 @@ async def change_logging(ops_test: OpsTest):
         time.sleep(15)
 
         # remove the log file as to not clog up space on the replicas.
-        rm_cmd = f"run --unit {unit.name} rm {MONGODB_LOG_FILE}"
+        rm_cmd = f"run --unit {unit.name} rm {MONGODB_LOG_PATH}"
         await ops_test.juju(*rm_cmd.split())
 
 
