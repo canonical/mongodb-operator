@@ -9,26 +9,20 @@ the expected relation data for legacy relations.
 import logging
 from typing import Optional
 
-from charms.mongodb_libs.v0.machine_helpers import (
-    auth_enabled,
-    start_mongod_service,
-    stop_mongod_service,
-    update_mongod_service,
-)
+from charms.mongodb.v0.machine_helpers import auth_enabled, restart_mongod_service
 from charms.operator_libs_linux.v1 import systemd
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
 
 # The unique Charmhub library identifier, never change it
-LIBID = "9t384yt02t8fj9iecin83r20359ruij"
+LIBID = "896a48bc89b84d30839335bb37170509"
 
 # Increment this major API version when introducing breaking changes
 LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
-# to 0 if you are raising the major API version.
+# to 0 if you are raising the major API version
 LIBPATCH = 1
-
 logger = logging.getLogger(__name__)
 REL_NAME = "database"
 
@@ -79,13 +73,11 @@ class MongoDBLegacyProvider(Object):
             try:
                 logger.debug("Disabling authentication.")
                 self.charm.unit.status = MaintenanceStatus("disabling authentication")
-                stop_mongod_service()
-                update_mongod_service(
+                restart_mongod_service(
                     auth=False,
                     machine_ip=self.charm._unit_ip(self.charm.unit),
-                    replset=self.charm.app.name,
+                    config=self.charm.mongodb_config,
                 )
-                start_mongod_service()
                 self.charm.unit.status = ActiveStatus()
             except systemd.SystemdError:
                 self.charm.unit.status = BlockedStatus("couldn't restart MongoDB")

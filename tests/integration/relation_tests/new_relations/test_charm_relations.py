@@ -2,6 +2,7 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 import asyncio
+import time
 from pathlib import Path
 
 import pytest
@@ -14,8 +15,10 @@ from tenacity import RetryError
 from tests.integration.ha_tests.helpers import replica_set_primary
 from tests.integration.relation_tests.new_relations.helpers import (
     get_application_relation_data,
+    verify_application_data,
 )
 
+MEDIAN_REELECTION_TIME = 12
 APPLICATION_APP_NAME = "application"
 DATABASE_METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 PORT = 27017
@@ -77,7 +80,7 @@ async def test_database_relation_with_charm_libraries(ops_test: OpsTest):
     db = client[database]
     test_collection = db["test_collection"]
     ubuntu = {"release_name": "Focal Fossa", "version": 20.04, "LTS": True}
-    test_collection.insert(ubuntu)
+    test_collection.insert_one(ubuntu)
 
     query = test_collection.find({}, {"release_name": 1})
     assert query[0]["release_name"] == "Focal Fossa"
@@ -90,8 +93,7 @@ async def test_database_relation_with_charm_libraries(ops_test: OpsTest):
     assert query[0]["release_name"] == "Fancy Fossa"
 
     test_collection.delete_one({"release_name": "Fancy Fossa"})
-    query = test_collection.find({}, {"release_name": 1})
-    assert query.count() == 0
+    assert test_collection.count_documents({"release_name": 1}) == 0
 
     client.close()
 
@@ -99,63 +101,68 @@ async def test_database_relation_with_charm_libraries(ops_test: OpsTest):
 @pytest.mark.abort_on_fail
 async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
     """Verifies that the app metadata changes with db relation joined and departed events."""
-    endpoints_str = await get_application_relation_data(
-        ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME, "endpoints"
-    )
-    for unit in ops_test.model.applications[DATABASE_APP_NAME].units:
-        assert (
-            unit.public_address in endpoints_str
-        ), f"unit {unit.name} not present in connection URI"
+    # verify application metadata is correct before adding/removing units.
+    try:
+        await verify_application_data(
+            ops_test, APPLICATION_APP_NAME, DATABASE_APP_NAME, FIRST_DATABASE_RELATION_NAME
+        )
+    except RetryError:
+        assert False, "Hosts are not correct in application data."
 
-    assert len(endpoints_str.split(",")) == len(
-        ops_test.model.applications[DATABASE_APP_NAME].units
-    ), "number of endpoints in replicaset URI do not match number of units"
-
+    # verify application metadata is correct after adding units.
     await ops_test.model.applications[DATABASE_APP_NAME].add_units(count=2)
-    await ops_test.model.wait_for_idle(
-        apps=[DATABASE_APP_NAME], status="active", timeout=1000, wait_for_exact_units=4
-    )
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=APP_NAMES,
+            status="active",
+            timeout=1000,
+        )
+    try:
+        await verify_application_data(
+            ops_test, APPLICATION_APP_NAME, DATABASE_APP_NAME, FIRST_DATABASE_RELATION_NAME
+        )
+    except RetryError:
+        assert False, "Hosts not updated in application data after adding units."
 
+    # verify application metadata is correct after removing the pre-existing units. This is
+    # this is important since we want to test that the application related will work with
+    # only the newly added units from above.
+    await ops_test.model.applications[DATABASE_APP_NAME].destroy_units(f"{DATABASE_APP_NAME}/0")
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=APP_NAMES,
+            status="active",
+            timeout=1000,
+        )
+
+    await ops_test.model.applications[DATABASE_APP_NAME].destroy_units(f"{DATABASE_APP_NAME}/1")
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=APP_NAMES,
+            status="active",
+            timeout=1000,
+        )
+
+    try:
+        await verify_application_data(
+            ops_test, APPLICATION_APP_NAME, DATABASE_APP_NAME, FIRST_DATABASE_RELATION_NAME
+        )
+    except RetryError:
+        assert False, "Hosts not updated in application data after removing units."
+
+    # verify primary is present in hosts provided to application
+    # sleep for twice the median election time
+    time.sleep(MEDIAN_REELECTION_TIME * 2)
     endpoints_str = await get_application_relation_data(
         ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME, "endpoints"
     )
-    for unit in ops_test.model.applications[DATABASE_APP_NAME].units:
-        assert (
-            unit.public_address in endpoints_str
-        ), f"unit {unit.name} not present in connection URI after adding units"
-
-    assert len(endpoints_str.split(",")) == len(
-        ops_test.model.applications[DATABASE_APP_NAME].units
-    ), "number of endpoints in replicaset URI do not match number of units after adding units"
-
-    await ops_test.model.applications[DATABASE_APP_NAME].destroy_units(
-        f"{DATABASE_APP_NAME}/0", f"{DATABASE_APP_NAME}/1"
-    )
-    await ops_test.model.wait_for_idle(
-        apps=[DATABASE_APP_NAME], status="active", timeout=1000, wait_for_exact_units=2
-    )
-
-    endpoints_str = await get_application_relation_data(
-        ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME, "endpoints"
-    )
-    for unit in ops_test.model.applications[DATABASE_APP_NAME].units:
-        assert (
-            unit.public_address in endpoints_str
-        ), f"unit {unit.name} not present in connection URI after destroying units"
-
-    assert len(endpoints_str.split(",")) == len(
-        ops_test.model.applications[DATABASE_APP_NAME].units
-    ), "number of endpoints in replicaset URI do not match number of units after destroying units"
-
-    # check that the replica set with the remaining units has a primary
     ip_addresses = endpoints_str.split(",")
     try:
         primary = await replica_set_primary(ip_addresses, ops_test, app=DATABASE_APP_NAME)
     except RetryError:
-        primary = None
+        assert False, "replica set has no primary"
 
-    # verify that the primary is not None
-    assert primary is not None, "replica set has no primary"
+    assert primary in endpoints_str.split(","), "Primary is not present in DB endpoints."
 
     # test crud operations
     connection_string = await get_application_relation_data(
@@ -178,7 +185,7 @@ async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
     test_collection.drop()
     test_collection = db["test_app_collection"]
     ubuntu = {"release_name": "Focal Fossa", "version": 20.04, "LTS": True}
-    test_collection.insert(ubuntu)
+    test_collection.insert_one(ubuntu)
 
     query = test_collection.find({}, {"release_name": 1})
     assert query[0]["release_name"] == "Focal Fossa"
@@ -191,8 +198,7 @@ async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
     assert query[0]["release_name"] == "Fancy Fossa"
 
     test_collection.delete_one({"release_name": "Fancy Fossa"})
-    query = test_collection.find({}, {"release_name": 1})
-    assert query.count() == 0
+    assert test_collection.count_documents({"release_name": 1}) == 0
 
     client.close()
 

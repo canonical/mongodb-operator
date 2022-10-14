@@ -1,5 +1,5 @@
 """Simple functions, which can be used in both K8s and VM charms."""
-# Copyright 2021 Canonical Ltd.
+# Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 import logging
@@ -7,22 +7,27 @@ import secrets
 import string
 from typing import List
 
-from charms.mongodb_libs.v0.mongodb import MongoDBConfiguration, MongoDBConnection
+from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 from ops.model import ActiveStatus, BlockedStatus, StatusBase, WaitingStatus
 from pymongo.errors import AutoReconnect, ServerSelectionTimeoutError
 
 # The unique Charmhub library identifier, never change it
-LIBID = "1057f353503741a98ed79309b5be7e31"
+LIBID = "b9a7fe0c38d8486a9d1ce94c27d4758e"
 
 # Increment this major API version when introducing breaking changes
 LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
-# to 0 if you are raising the major API version.
+# to 0 if you are raising the major API version
 LIBPATCH = 1
+
 
 # path to store mongodb ketFile
 KEY_FILE = "/etc/mongodb/keyFile"
+TLS_EXT_PEM_FILE = "/etc/mongodb/external-cert.pem"
+TLS_EXT_CA_FILE = "/etc/mongodb/external-ca.crt"
+TLS_INT_PEM_FILE = "/etc/mongodb/internal-cert.pem"
+TLS_INT_CA_FILE = "/etc/mongodb/internal-ca.crt"
 
 
 logger = logging.getLogger(__name__)
@@ -73,14 +78,35 @@ def get_mongod_cmd(config: MongoDBConfiguration) -> str:
         "--auth",
         # part of replicaset
         f"--replSet={config.replset}",
-        # keyFile used for authentication replica set peers
-        # TODO: replace with x509
-        "--clusterAuthMode=keyFile",
-        f"--keyFile={KEY_FILE}",
-        # TODO: add TLS certificates paths
-        # allow self signed certificates
-        # cmd.append("--tlsAllowInvalidCertificates")
     ]
+    if config.tls_external:
+        cmd.extend(
+            [
+                f"--tlsCAFile={TLS_EXT_CA_FILE}",
+                f"--tlsCertificateKeyFile={TLS_EXT_PEM_FILE}",
+                # allow non-TLS connections
+                "--tlsMode=preferTLS",
+            ]
+        )
+
+    # internal TLS can be enabled only in external is enabled
+    if config.tls_internal and config.tls_external:
+        cmd.extend(
+            [
+                "--clusterAuthMode=x509",
+                "--tlsAllowInvalidCertificates",
+                f"--tlsClusterCAFile={TLS_INT_CA_FILE}",
+                f"--tlsClusterFile={TLS_INT_PEM_FILE}",
+            ]
+        )
+    else:
+        # keyFile used for authentication replica set peers if no internal tls configured.
+        cmd.extend(
+            [
+                "--clusterAuthMode=keyFile",
+                f"--keyFile={KEY_FILE}",
+            ]
+        )
     return " ".join(cmd)
 
 

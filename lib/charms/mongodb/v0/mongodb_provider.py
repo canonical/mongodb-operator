@@ -13,14 +13,9 @@ import re
 from collections import namedtuple
 from typing import Optional, Set
 
-from charms.mongodb_libs.v0.helpers import generate_password
-from charms.mongodb_libs.v0.machine_helpers import (
-    auth_enabled,
-    start_mongod_service,
-    stop_mongod_service,
-    update_mongod_service,
-)
-from charms.mongodb_libs.v0.mongodb import MongoDBConfiguration, MongoDBConnection
+from charms.mongodb.v0.helpers import generate_password
+from charms.mongodb.v0.machine_helpers import auth_enabled, restart_mongod_service
+from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 from charms.operator_libs_linux.v1 import systemd
 from ops.charm import RelationBrokenEvent, RelationChangedEvent
 from ops.framework import Object
@@ -28,15 +23,14 @@ from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, Relation
 from pymongo.errors import PyMongoError
 
 # The unique Charmhub library identifier, never change it
-LIBID = "1057f353503741a98ed79309b5be7e32"
+LIBID = "4067879ef7dd4261bf6c164bc29d94b1"
 
 # Increment this major API version when introducing breaking changes
 LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
-# to 0 if you are raising the major API version.
+# to 0 if you are raising the major API version
 LIBPATCH = 1
-
 logger = logging.getLogger(__name__)
 REL_NAME = "database"
 
@@ -96,13 +90,11 @@ class MongoDBProvider(Object):
             try:
                 logger.debug("Enabling authentication.")
                 self.charm.unit.status = MaintenanceStatus("re-enabling authentication")
-                stop_mongod_service()
-                update_mongod_service(
+                restart_mongod_service(
                     auth=True,
                     machine_ip=self.charm._unit_ip(self.charm.unit),
-                    replset=self.charm.app.name,
+                    config=self.charm.mongodb_config,
                 )
-                start_mongod_service()
                 self.charm.unit.status = ActiveStatus()
             except systemd.SystemdError:
                 self.charm.unit.status = BlockedStatus("couldn't restart MongoDB")
@@ -218,6 +210,8 @@ class MongoDBProvider(Object):
             password=password,
             hosts=self.charm.mongodb_config.hosts,
             roles=self._get_roles_from_relation(relation),
+            tls_external=False,
+            tls_internal=False,
         )
 
     def _set_relation(self, config: MongoDBConfiguration):

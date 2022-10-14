@@ -17,6 +17,7 @@ MONGOD_PROCESS = "/usr/bin/mongod"
 MEDIAN_REELECTION_TIME = 12
 RESTART_DELAY = 60 * 3
 ORIGINAL_RESTART_DELAY = 5
+MONGODB_LOG_FILE = "/data/db/mongodb.log"
 
 
 @pytest.fixture()
@@ -34,6 +35,40 @@ async def reset_restart_delay(ops_test: OpsTest):
     app = await helpers.app_name(ops_test)
     for unit in ops_test.model.applications[app].units:
         await helpers.update_restart_delay(ops_test, unit, ORIGINAL_RESTART_DELAY)
+
+
+@pytest.fixture()
+async def change_logging(ops_test: OpsTest):
+    """Enables appending logging for a test and resets the logging at the end of the test."""
+    app = await helpers.app_name(ops_test)
+    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
+    primary_name = await helpers.replica_set_primary(ip_addresses, ops_test, return_name=True)
+
+    for unit in ops_test.model.applications[app].units:
+        # tests which use this fixture restart the primary. Therefore the primary should not be
+        # restarted as to leave the restart testing to the test itself.
+        if unit.name == primary_name:
+            continue
+
+        # must restart unit to ensure that changes to logging are made
+        await helpers.update_service_logging(ops_test, unit, logging=True)
+        await helpers.kill_unit_process(ops_test, unit.name, kill_code="SIGTERM")
+        # sleep for long enough to allow unit to restart
+        time.sleep(10)
+
+    yield
+
+    app = await helpers.app_name(ops_test)
+    for unit in ops_test.model.applications[app].units:
+        # must restart unit to ensure that changes to logging are made
+        await helpers.update_service_logging(ops_test, unit, logging=False)
+        await helpers.kill_unit_process(ops_test, unit.name, kill_code="SIGTERM")
+        # sleep for long enough to allow unit to restart
+        time.sleep(10)
+
+        # remove the log file as to not clog up space on the replicas.
+        rm_cmd = f"run --unit {unit.name} rm {MONGODB_LOG_FILE}"
+        await ops_test.juju(*rm_cmd.split())
 
 
 @pytest.mark.abort_on_fail
@@ -240,7 +275,7 @@ async def test_unique_cluster_dbs(ops_test: OpsTest, continuous_writes) -> None:
     client = helpers.replica_set_client(ip_addresses, password, app=ANOTHER_DATABASE_APP_NAME)
     db = client["new-db"]
     test_collection = db["test_ubuntu_collection"]
-    test_collection.insert({"release_name": "Jammy Jelly", "version": 22.04, "LTS": False})
+    test_collection.insert_one({"release_name": "Jammy Jelly", "version": 22.04, "LTS": False})
     client.close()
 
     cluster_1_entries = await helpers.retrieve_entries(
@@ -401,23 +436,15 @@ async def test_freeze_db_process(ops_test, continuous_writes):
     ), "secondary not up to date with the cluster after restarting."
 
 
-async def test_restart_db_process(ops_test, continuous_writes):
+async def test_restart_db_process(ops_test, continuous_writes, change_logging):
     # locate primary unit
     app = await helpers.app_name(ops_test)
     ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
-    primary = await helpers.replica_set_primary(ip_addresses, ops_test)
+    old_primary = await helpers.replica_set_primary(ip_addresses, ops_test)
 
     # send SIGTERM, we expect `systemd` to restart the process
-    await helpers.kill_unit_process(ops_test, primary.name, kill_code="SIGTERM")
-
-    # TODO (future PR): find a reliable way to verify db step down, current implementation uses
-    # mongodb logs which rotate too quickly and leave us unable to verify the db step down
-    # processes success.
-    # # verify that a stepdown was performed on restart. SIGTERM should send a graceful restart and
-    # # send a replica step down signal.
-    # assert await db_step_down(
-    #     ops_test, primary_ip, sig_term_time
-    # ), "old primary departed without stepping down."
+    sig_term_time = time.time()
+    await helpers.kill_unit_process(ops_test, old_primary.name, kill_code="SIGTERM")
 
     # verify new writes are continuing by counting the number of writes before and after a 5 second
     # wait
@@ -427,11 +454,22 @@ async def test_restart_db_process(ops_test, continuous_writes):
     assert more_writes > writes, "writes not continuing to DB"
 
     # verify that db service got restarted and is ready
-    assert await helpers.mongod_ready(ops_test, primary.public_address)
+    assert await helpers.mongod_ready(ops_test, old_primary.public_address)
 
     # verify that a new primary gets elected (ie old primary is secondary)
-    new_primary = await helpers.replica_set_primary(ip_addresses, ops_test)
-    assert new_primary.name != primary.name
+    new_primary = await helpers.replica_set_primary(ip_addresses, ops_test, return_name=True)
+    assert new_primary.name != old_primary.name
+
+    # verify that a stepdown was performed on restart. SIGTERM should send a graceful restart and
+    # send a replica step down signal. Performed with a retry to give time for the logs to update.
+    try:
+        for attempt in Retrying(stop=stop_after_delay(30), wait=wait_fixed(3)):
+            with attempt:
+                assert await helpers.db_step_down(
+                    ops_test, old_primary.name, sig_term_time
+                ), "old primary departed without stepping down."
+    except RetryError:
+        False, "old primary departed without stepping down."
 
     # verify that no writes were missed
     total_expected_writes = await helpers.stop_continous_writes(ops_test)
@@ -440,7 +478,7 @@ async def test_restart_db_process(ops_test, continuous_writes):
 
     # verify that old primary is up to date.
     assert await helpers.secondary_up_to_date(
-        ops_test, primary.public_address, total_expected_writes["number"]
+        ops_test, old_primary.public_address, total_expected_writes["number"]
     ), "secondary not up to date with the cluster after restarting."
 
 
