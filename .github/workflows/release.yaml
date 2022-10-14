@@ -56,6 +56,7 @@ jobs:
         uses: charmed-kubernetes/actions-operator@main
         with:
           provider: lxd
+          bootstrap-options: "--agent-version 2.9.29"
       - name: Run integration tests
         run: tox -e integration
 
@@ -73,7 +74,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Select charmhub channel
-        uses: canonical/charming-actions/channel@2.0.0-rc
+        uses: canonical/charming-actions/upload-charm@2.1.0-rc
         id: channel
       - name: Upload charm to charmhub
         uses: canonical/charming-actions/upload-charm@2.0.0-rc

@@ -41,6 +41,7 @@ jobs:
         uses: charmed-kubernetes/actions-operator@main
         with:
           provider: lxd
+          bootstrap-options: "--agent-version 2.9.29"
       - name: Run charm integration tests
         run: tox -e charm-integration
 
@@ -57,6 +58,7 @@ jobs:
         uses: charmed-kubernetes/actions-operator@main
         with:
           provider: lxd
+          bootstrap-options: "--agent-version 2.9.29"
       - name: Run ha integration tests
         run: tox -e ha-integration
 
@@ -73,6 +75,7 @@ jobs:
         uses: charmed-kubernetes/actions-operator@main
         with:
           provider: lxd
+          bootstrap-options: "--agent-version 2.9.29"
       - name: Run relation integration tests
         run: tox -e relation-integration
 
@@ -89,5 +92,6 @@ jobs:
         uses: charmed-kubernetes/actions-operator@main
         with:
           provider: lxd
+          bootstrap-options: "--agent-version 2.9.29"
       - name: Run relation integration tests
         run: tox -e tls-integration
