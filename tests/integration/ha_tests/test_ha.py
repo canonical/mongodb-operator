@@ -42,12 +42,12 @@ async def change_logging(ops_test: OpsTest):
     """Enables appending logging for a test and resets the logging at the end of the test."""
     app = await helpers.app_name(ops_test)
     ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
-    primary_name = await helpers.replica_set_primary(ip_addresses, ops_test, return_name=True)
+    primary = await helpers.replica_set_primary(ip_addresses, ops_test)
 
     for unit in ops_test.model.applications[app].units:
         # tests which use this fixture restart the primary. Therefore the primary should not be
         # restarted as to leave the restart testing to the test itself.
-        if unit.name == primary_name:
+        if unit.name == primary.name:
             continue
 
         # must restart unit to ensure that changes to logging are made
@@ -457,7 +457,7 @@ async def test_restart_db_process(ops_test, continuous_writes, change_logging):
     assert await helpers.mongod_ready(ops_test, old_primary.public_address)
 
     # verify that a new primary gets elected (ie old primary is secondary)
-    new_primary = await helpers.replica_set_primary(ip_addresses, ops_test, return_name=True)
+    new_primary = await helpers.replica_set_primary(ip_addresses, ops_test)
     assert new_primary.name != old_primary.name
 
     # verify that a stepdown was performed on restart. SIGTERM should send a graceful restart and

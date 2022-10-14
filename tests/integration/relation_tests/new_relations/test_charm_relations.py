@@ -162,7 +162,9 @@ async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
     except RetryError:
         assert False, "replica set has no primary"
 
-    assert primary in endpoints_str.split(","), "Primary is not present in DB endpoints."
+    assert primary.public_address in endpoints_str.split(
+        ","
+    ), "Primary is not present in DB endpoints."
 
     # test crud operations
     connection_string = await get_application_relation_data(
