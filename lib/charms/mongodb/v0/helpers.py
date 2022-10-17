@@ -7,7 +7,9 @@ import secrets
 import string
 from typing import List
 
-from charms.mongodb.v0.mongodb import MongoDBConfiguration
+from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
+from ops.model import ActiveStatus, BlockedStatus, StatusBase, WaitingStatus
+from pymongo.errors import AutoReconnect, ServerSelectionTimeoutError
 
 # The unique Charmhub library identifier, never change it
 LIBID = "b9a7fe0c38d8486a9d1ce94c27d4758e"
@@ -126,3 +128,35 @@ def generate_keyfile() -> str:
     """
     choices = string.ascii_letters + string.digits
     return "".join([secrets.choice(choices) for _ in range(1024)])
+
+
+def build_unit_status(mongodb_config: MongoDBConfiguration, unit_ip: str) -> StatusBase:
+    """Generates the status of a unit based on its status reported by mongod."""
+    try:
+        with MongoDBConnection(mongodb_config) as mongo:
+            replset_status = mongo.get_replset_status()
+
+            if unit_ip not in replset_status:
+                return WaitingStatus("Member being added..")
+
+            replica_status = replset_status[unit_ip]
+
+            if replica_status == "PRIMARY":
+                return ActiveStatus("Replica set primary")
+            elif replica_status == "SECONDARY":
+                return ActiveStatus("Replica set secondary")
+            elif replica_status in ["STARTUP", "STARTUP2", "ROLLBACK", "RECOVERING"]:
+                return WaitingStatus("Member is syncing..")
+            elif replica_status == "REMOVED":
+                return WaitingStatus("Member is removing..")
+            else:
+                return BlockedStatus(replica_status)
+    except ServerSelectionTimeoutError as e:
+        # ServerSelectionTimeoutError is commonly due to ReplicaSetNoPrimary
+        logger.debug("Got error: %s, while checking replica set status", str(e))
+        return WaitingStatus("Waiting for primary re-election..")
+    except AutoReconnect as e:
+        # AutoReconnect is raised when a connection to the database is lost and an attempt to
+        # auto-reconnect will be made by pymongo.
+        logger.debug("Got error: %s, while checking replica set status", str(e))
+        return WaitingStatus("Waiting to reconnect to unit..")
