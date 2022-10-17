@@ -6,6 +6,7 @@ import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
+from subprocess import PIPE, check_output
 from typing import List
 
 import ops
@@ -31,7 +32,6 @@ DB_PROCESS = "/usr/bin/mongod"
 MONGODB_LOG_PATH = "/data/db/mongodb.log"
 MONGOD_SERVICE_DEFAULT_PATH = "/etc/systemd/system/mongod.service"
 TMP_SERVICE_PATH = "tests/integration/ha_tests/tmp.service"
-TMP_LOG_PATH = "tests/integration/ha_tests/tmp.log"
 LOGGING_OPTIONS = "--logpath=/data/db/mongodb.log --logappend"
 
 
@@ -512,35 +512,34 @@ async def db_step_down(ops_test: OpsTest, old_primary_unit: str, sigterm_time: i
     # loop through all units that aren't the old primary
     app = await app_name(ops_test)
     for unit in ops_test.model.applications[app].units:
-        # these log files can get quite large. According to the Juju team the controller can hold
-        # a maximum of 16MB so it is a best practice to read large files via SCP instead of cat.
-        # However, we permissions need to be added to the log file before scping it.
-        chmod_cmd = f"run --unit {unit.name} -- sudo chmod 777 {MONGODB_LOG_PATH}"
-        return_code, _, _ = await ops_test.juju(*chmod_cmd.split())
-        if return_code != 0:
-            raise ProcessError(f"Command: {chmod_cmd} failed on unit: {unit.name}.")
+        # verify log file exists on this machine
+        search_file = f"run --unit {unit.name} ls {MONGODB_LOG_PATH}"
+        return_code, _, _ = await ops_test.juju(*search_file.split())
+        if return_code == 2:
+            continue
 
-        await unit.scp_from(source=MONGODB_LOG_PATH, destination=TMP_LOG_PATH)
+        # these log files can get quite large. According to the Juju team the 'run' command
+        # cannot be used for more than 16MB of data so it is best to use juju ssh or juju scp.
+        log_file = check_output(
+            f"JUJU_MODEL={ops_test.model_full_name} juju ssh {unit.name} 'sudo cat {MONGODB_LOG_PATH}'",
+            stderr=PIPE,
+            shell=True,
+            universal_newlines=True,
+        )
 
-        # reading files like this reads only one line at a time, garbage collecting previous lines
-        # preventing large memory storage.
-        with open(TMP_LOG_PATH) as infile:
-            for line in infile:
-                if not len(line):
-                    continue
+        for line in log_file.splitlines():
+            if not len(line):
+                continue
 
-                item = json.loads(line)
+            item = json.loads(line)
 
-                step_down_time = convert_time(item["t"]["$date"])
-                if (
-                    "Starting an election due to step up request" in line
-                    and step_down_time >= sigterm_time
-                ):
-                    # remove file before returning true to save space.
-                    subprocess.call(["rm", TMP_LOG_PATH])
-                    return True
+            step_down_time = convert_time(item["t"]["$date"])
+            if (
+                "Starting an election due to step up request" in line
+                and step_down_time >= sigterm_time
+            ):
+                return True
 
-    subprocess.call(["rm", TMP_LOG_PATH])
     return False
 
 
