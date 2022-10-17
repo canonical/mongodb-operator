@@ -17,7 +17,6 @@ MONGOD_PROCESS = "/usr/bin/mongod"
 MEDIAN_REELECTION_TIME = 12
 RESTART_DELAY = 60 * 3
 ORIGINAL_RESTART_DELAY = 5
-MONGODB_LOG_FILE = "/data/db/mongodb.log"
 
 
 @pytest.fixture()
@@ -53,9 +52,9 @@ async def change_logging(ops_test: OpsTest):
         # must restart unit to ensure that changes to logging are made
         await helpers.update_service_logging(ops_test, unit, logging=True)
         await helpers.kill_unit_process(ops_test, unit.name, kill_code="SIGTERM")
-        # sleep for long enough to allow unit to restart
-        time.sleep(10)
 
+        # sleep long enough for the mongod to start
+        time.sleep(15)
     yield
 
     app = await helpers.app_name(ops_test)
@@ -64,10 +63,10 @@ async def change_logging(ops_test: OpsTest):
         await helpers.update_service_logging(ops_test, unit, logging=False)
         await helpers.kill_unit_process(ops_test, unit.name, kill_code="SIGTERM")
         # sleep for long enough to allow unit to restart
-        time.sleep(10)
+        time.sleep(15)
 
         # remove the log file as to not clog up space on the replicas.
-        rm_cmd = f"run --unit {unit.name} rm {MONGODB_LOG_FILE}"
+        rm_cmd = f"run --unit {unit.name} rm {helpers.MONGODB_LOG_PATH}"
         await ops_test.juju(*rm_cmd.split())
 
 

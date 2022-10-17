@@ -111,12 +111,12 @@ async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
 
     # verify application metadata is correct after adding units.
     await ops_test.model.applications[DATABASE_APP_NAME].add_units(count=2)
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=APP_NAMES,
-            status="active",
-            timeout=1000,
-        )
+    await ops_test.model.wait_for_idle(
+        apps=APP_NAMES,
+        status="active",
+        timeout=1000,
+    )
+
     try:
         await verify_application_data(
             ops_test, APPLICATION_APP_NAME, DATABASE_APP_NAME, FIRST_DATABASE_RELATION_NAME
@@ -128,20 +128,18 @@ async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
     # this is important since we want to test that the application related will work with
     # only the newly added units from above.
     await ops_test.model.applications[DATABASE_APP_NAME].destroy_units(f"{DATABASE_APP_NAME}/0")
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=APP_NAMES,
-            status="active",
-            timeout=1000,
-        )
+    await ops_test.model.wait_for_idle(
+        apps=APP_NAMES,
+        status="active",
+        timeout=1000,
+    )
 
     await ops_test.model.applications[DATABASE_APP_NAME].destroy_units(f"{DATABASE_APP_NAME}/1")
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=APP_NAMES,
-            status="active",
-            timeout=1000,
-        )
+    await ops_test.model.wait_for_idle(
+        apps=APP_NAMES,
+        status="active",
+        timeout=1000,
+    )
 
     try:
         await verify_application_data(

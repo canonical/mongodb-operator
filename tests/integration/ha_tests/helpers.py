@@ -6,6 +6,7 @@ import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
+from subprocess import PIPE, check_output
 from typing import List, Optional
 
 import ops
@@ -515,12 +516,22 @@ async def db_step_down(ops_test: OpsTest, old_primary_unit: str, sigterm_time: i
     # loop through all units that aren't the old primary
     app = await app_name(ops_test)
     for unit in ops_test.model.applications[app].units:
-        if unit.name == old_primary_unit:
+        # verify log file exists on this machine
+        search_file = f"run --unit {unit.name} ls {MONGODB_LOG_PATH}"
+        return_code, _, _ = await ops_test.juju(*search_file.split())
+        if return_code == 2:
             continue
 
-        cat_cmd = f"run --unit {unit.name} -- cat {MONGODB_LOG_PATH} "
-        _, output, _ = await ops_test.juju(*cat_cmd.split())
-        for line in output.split("\n"):
+        # these log files can get quite large. According to the Juju team the 'run' command
+        # cannot be used for more than 16MB of data so it is best to use juju ssh or juju scp.
+        log_file = check_output(
+            f"JUJU_MODEL={ops_test.model_full_name} juju ssh {unit.name} 'sudo cat {MONGODB_LOG_PATH}'",
+            stderr=PIPE,
+            shell=True,
+            universal_newlines=True,
+        )
+
+        for line in log_file.splitlines():
             if not len(line):
                 continue
 
