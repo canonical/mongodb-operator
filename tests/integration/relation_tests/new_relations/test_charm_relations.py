@@ -2,6 +2,7 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 import asyncio
+import time
 from pathlib import Path
 
 import pytest
@@ -17,6 +18,7 @@ from tests.integration.relation_tests.new_relations.helpers import (
     verify_application_data,
 )
 
+MEDIAN_REELECTION_TIME = 12
 APPLICATION_APP_NAME = "application"
 DATABASE_METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 PORT = 27017
@@ -109,12 +111,12 @@ async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
 
     # verify application metadata is correct after adding units.
     await ops_test.model.applications[DATABASE_APP_NAME].add_units(count=2)
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=APP_NAMES,
-            status="active",
-            timeout=1000,
-        )
+    await ops_test.model.wait_for_idle(
+        apps=APP_NAMES,
+        status="active",
+        timeout=1000,
+    )
+
     try:
         await verify_application_data(
             ops_test, APPLICATION_APP_NAME, DATABASE_APP_NAME, FIRST_DATABASE_RELATION_NAME
@@ -122,16 +124,23 @@ async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
     except RetryError:
         assert False, "Hosts not updated in application data after adding units."
 
-    # verify application metadata is correct after removing units.
-    await ops_test.model.applications[DATABASE_APP_NAME].destroy_units(
-        f"{DATABASE_APP_NAME}/0", f"{DATABASE_APP_NAME}/1"
+    # verify application metadata is correct after removing the pre-existing units. This is
+    # this is important since we want to test that the application related will work with
+    # only the newly added units from above.
+    await ops_test.model.applications[DATABASE_APP_NAME].destroy_units(f"{DATABASE_APP_NAME}/0")
+    await ops_test.model.wait_for_idle(
+        apps=APP_NAMES,
+        status="active",
+        timeout=1000,
     )
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=APP_NAMES,
-            status="active",
-            timeout=1000,
-        )
+
+    await ops_test.model.applications[DATABASE_APP_NAME].destroy_units(f"{DATABASE_APP_NAME}/1")
+    await ops_test.model.wait_for_idle(
+        apps=APP_NAMES,
+        status="active",
+        timeout=1000,
+    )
+
     try:
         await verify_application_data(
             ops_test, APPLICATION_APP_NAME, DATABASE_APP_NAME, FIRST_DATABASE_RELATION_NAME
@@ -140,6 +149,8 @@ async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
         assert False, "Hosts not updated in application data after removing units."
 
     # verify primary is present in hosts provided to application
+    # sleep for twice the median election time
+    time.sleep(MEDIAN_REELECTION_TIME * 2)
     endpoints_str = await get_application_relation_data(
         ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME, "endpoints"
     )
@@ -149,7 +160,9 @@ async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
     except RetryError:
         assert False, "replica set has no primary"
 
-    assert primary in endpoints_str.split(","), "Primary is not present in DB endpoints."
+    assert primary.public_address in endpoints_str.split(
+        ","
+    ), "Primary is not present in DB endpoints."
 
     # test crud operations
     connection_string = await get_application_relation_data(
@@ -349,6 +362,7 @@ async def test_removed_relation_no_longer_has_access(ops_test: OpsTest):
     await ops_test.model.applications[DATABASE_APP_NAME].remove_relation(
         f"{APPLICATION_APP_NAME}:{FIRST_DATABASE_RELATION_NAME}", f"{DATABASE_APP_NAME}:database"
     )
+    await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active")
 
     client = MongoClient(
         connection_string,
@@ -361,9 +375,9 @@ async def test_removed_relation_no_longer_has_access(ops_test: OpsTest):
     try:
         client.admin.command("replSetGetStatus")
     except OperationFailure as e:
-        # error code 13 for OperationFailure is an authentication error, meaning disabling of
-        # authentication was unsuccessful
-        if e.code == 13:
+        # error code 18 for OperationFailure is an authentication error, meaning disabling of
+        # authentication was successful
+        if e.code == 18:
             removed_access = True
         else:
             raise

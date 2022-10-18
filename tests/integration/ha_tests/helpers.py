@@ -6,7 +6,8 @@ import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import List
+from subprocess import PIPE, check_output
+from typing import List, Optional
 
 import ops
 import yaml
@@ -93,26 +94,31 @@ def unit_uri(ip_address: str, password, app=APP_NAME) -> str:
     return f"mongodb://admin:" f"{password}@" f"{ip_address}:{PORT}/admin?replicaSet={app}"
 
 
-async def get_password(ops_test: OpsTest, app) -> str:
+async def get_password(ops_test: OpsTest, app, down_unit=None) -> str:
     """Use the charm action to retrieve the password from provided unit.
 
     Returns:
         String with the password stored on the peer relation databag.
     """
-    # can retrieve from any unit running unit so we pick the first
-    unit_name = ops_test.model.applications[app].units[0].name
-    unit_id = unit_name.split("/")[1]
+    # some tests disable the network for units, so find a unit that is available
+    for unit in ops_test.model.applications[app].units:
+        if not unit.name == down_unit:
+            unit_id = unit.name.split("/")[1]
+            break
 
     action = await ops_test.model.units.get(f"{app}/{unit_id}").run_action("get-admin-password")
     action = await action.wait()
     return action.results["admin-password"]
 
 
-async def fetch_primary(replica_set_hosts: List[str], ops_test: OpsTest, app=None) -> str:
+async def fetch_primary(
+    replica_set_hosts: List[str], ops_test: OpsTest, down_unit=None, app=None
+) -> str:
     """Returns IP address of current replica set primary."""
     # connect to MongoDB client
     app = app or await app_name(ops_test)
-    password = await get_password(ops_test, app)
+
+    password = await get_password(ops_test, app, down_unit)
     client = replica_set_client(replica_set_hosts, password, app)
 
     # grab the replica set status
@@ -166,26 +172,25 @@ async def count_primaries(ops_test: OpsTest) -> int:
     wait=wait_exponential(multiplier=1, min=2, max=30),
 )
 async def replica_set_primary(
-    replica_set_hosts: List[str], ops_test: OpsTest, return_name=False, app=None
-) -> str:
+    replica_set_hosts: List[str],
+    ops_test: OpsTest,
+    down_unit=None,
+    app=None,
+) -> Optional[ops.model.Unit]:
     """Returns the primary of the replica set.
 
     Retrying 5 times to give the replica set time to elect a new primary, also checks against the
     valid_ips to verify that the primary is not outdated.
     """
     app = app or await app_name(ops_test)
-    primary_ip = await fetch_primary(replica_set_hosts, ops_test, app)
+    primary_ip = await fetch_primary(replica_set_hosts, ops_test, down_unit, app)
     # return None if primary is no longer in the replica set
     if primary_ip is not None and primary_ip not in replica_set_hosts:
         return None
 
-    if not return_name:
-        return str(primary_ip)
-
-    app = await app_name(ops_test)
     for unit in ops_test.model.applications[app].units:
         if unit.public_address == str(primary_ip):
-            return unit.name
+            return unit
 
 
 async def retrieve_entries(ops_test, app, db_name, collection_name, query_field):
@@ -283,7 +288,7 @@ async def start_continous_writes(ops_test: OpsTest, starting_number: int) -> Non
     )
 
 
-async def stop_continous_writes(ops_test: OpsTest) -> int:
+async def stop_continous_writes(ops_test: OpsTest, down_unit=None) -> int:
     """Stops continuous writes to MongoDB and returns the last written value.
 
     In the future this should be put in a dummy charm.
@@ -295,7 +300,7 @@ async def stop_continous_writes(ops_test: OpsTest) -> int:
     proc.communicate()
 
     app = await app_name(ops_test)
-    password = await get_password(ops_test, app)
+    password = await get_password(ops_test, app, down_unit)
     hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
     hosts = ",".join(hosts)
     connection_string = f"mongodb://admin:{password}@{hosts}/admin?replicaSet={app}"
@@ -310,10 +315,10 @@ async def stop_continous_writes(ops_test: OpsTest) -> int:
     return last_written_value
 
 
-async def count_writes(ops_test: OpsTest) -> int:
+async def count_writes(ops_test: OpsTest, down_unit=None) -> int:
     """New versions of pymongo no longer support the count operation, instead find is used."""
     app = await app_name(ops_test)
-    password = await get_password(ops_test, app)
+    password = await get_password(ops_test, app, down_unit)
     hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
     hosts = ",".join(hosts)
     connection_string = f"mongodb://admin:{password}@{hosts}/admin?replicaSet={app}"
@@ -463,7 +468,7 @@ async def insert_focal_to_cluster(ops_test: OpsTest) -> None:
     """Inserts the Focal Fossa data into the MongoDB cluster via primary replica."""
     app = await app_name(ops_test)
     ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
-    primary = await replica_set_primary(ip_addresses, ops_test)
+    primary = (await replica_set_primary(ip_addresses, ops_test)).public_address
     password = await get_password(ops_test, app)
     client = MongoClient(unit_uri(primary, password, app), directConnection=True)
     db = client["new-db"]
@@ -511,12 +516,22 @@ async def db_step_down(ops_test: OpsTest, old_primary_unit: str, sigterm_time: i
     # loop through all units that aren't the old primary
     app = await app_name(ops_test)
     for unit in ops_test.model.applications[app].units:
-        if unit.name == old_primary_unit:
+        # verify log file exists on this machine
+        search_file = f"run --unit {unit.name} ls {MONGODB_LOG_PATH}"
+        return_code, _, _ = await ops_test.juju(*search_file.split())
+        if return_code == 2:
             continue
 
-        cat_cmd = f"run --unit {unit.name} -- cat {MONGODB_LOG_PATH} "
-        _, output, _ = await ops_test.juju(*cat_cmd.split())
-        for line in output.split("\n"):
+        # these log files can get quite large. According to the Juju team the 'run' command
+        # cannot be used for more than 16MB of data so it is best to use juju ssh or juju scp.
+        log_file = check_output(
+            f"JUJU_MODEL={ops_test.model_full_name} juju ssh {unit.name} 'sudo cat {MONGODB_LOG_PATH}'",
+            stderr=PIPE,
+            shell=True,
+            universal_newlines=True,
+        )
+
+        for line in log_file.splitlines():
             if not len(line):
                 continue
 
@@ -635,14 +650,21 @@ async def update_service_logging(ops_test: OpsTest, unit, logging: bool):
         raise ProcessError(f"Command: {reload_cmd} failed on unit: {unit.name}.")
 
 
+@retry(stop=stop_after_attempt(8), wait=wait_fixed(15))
 async def verify_replica_set_configuration(ops_test: OpsTest) -> None:
     """Verifies presence of primary, replica set members, and number of primaries."""
     app = await app_name(ops_test)
-    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
+    # `get_unit_ip` is used instead of `.public_address` because of a bug in python-libjuju that
+    # incorrectly reports the IP addresses after the network is restored this is reported as a
+    # bug here: https://github.com/juju/python-libjuju/issues/738 . Once this bug is resolved use
+    # of `get_unit_ip` should be replaced with `.public_address`
+    ip_addresses = [
+        await get_unit_ip(ops_test, unit.name) for unit in ops_test.model.applications[app].units
+    ]
 
     # verify presence of primary
-    new_primary_name = await replica_set_primary(ip_addresses, ops_test, return_name=True)
-    assert new_primary_name, "primary not elected after cluster crash."
+    new_primary = await replica_set_primary(ip_addresses, ops_test)
+    assert new_primary.name, "primary not elected."
 
     # verify all units are running under the same replset
     member_ips = await fetch_replica_set_members(ip_addresses, ops_test)
@@ -721,8 +743,56 @@ async def unit_hostname(ops_test: OpsTest, unit_name: str) -> str:
     Args:
         ops_test: The ops test object passed into every test case
         unit_name: The name of the unit to be tested
+
     Returns:
         The machine/container hostname
     """
     _, raw_hostname, _ = await ops_test.juju("ssh", unit_name, "hostname")
     return raw_hostname.strip()
+
+
+def instance_ip(model: str, instance: str) -> str:
+    """Translate juju instance name to IP.
+
+    Args:
+        model: The name of the model
+        instance: The name of the instance
+
+    Returns:
+        The (str) IP address of the instance
+    """
+    output = subprocess.check_output(f"juju machines --model {model}".split())
+
+    for line in output.decode("utf8").splitlines():
+        if instance in line:
+            return line.split()[2]
+
+
+@retry(stop=stop_after_attempt(15), wait=wait_fixed(15))
+def wait_network_restore(model_name: str, hostname: str, old_ip: str) -> None:
+    """Wait until network is restored.
+
+    Args:
+        model_name: The name of the model
+        hostname: The name of the instance
+        old_ip: old registered IP address
+    """
+    if instance_ip(model_name, hostname) == old_ip:
+        raise Exception("Network not restored, IP address has not changed yet.")
+
+
+async def get_unit_ip(ops_test: OpsTest, unit_name: str) -> str:
+    """Wrapper for getting unit ip.
+
+    Juju incorrectly reports the IP addresses after the network is restored this is reported as a
+    bug here: https://github.com/juju/python-libjuju/issues/738 . Once this bug is resolved use of
+    `get_unit_ip` should be replaced with `.public_address`
+
+    Args:
+        ops_test: The ops test object passed into every test case
+        unit_name: The name of the unit to be tested
+
+    Returns:
+        The (str) ip of the unit
+    """
+    return instance_ip(ops_test.model.info.name, await unit_hostname(ops_test, unit_name))

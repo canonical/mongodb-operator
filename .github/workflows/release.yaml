@@ -56,7 +56,6 @@ jobs:
         uses: charmed-kubernetes/actions-operator@main
         with:
           provider: lxd
-          bootstrap-options: "--agent-version 2.9.29"
       - name: Run integration tests
         run: tox -e integration
 
