@@ -42,10 +42,9 @@ jobs:
       - name: Run tests
         run: tox -e unit
 
-  integration-test-lxd:
-    name: Integration tests (lxd)
+  charm-integration-test-lxd:
+    name: Charm integration tests (lxd)
     needs:
-      - lib-check
       - lint
       - unit-test
     runs-on: ubuntu-latest
@@ -56,8 +55,72 @@ jobs:
         uses: charmed-kubernetes/actions-operator@main
         with:
           provider: lxd
-      - name: Run integration tests
-        run: tox -e integration
+      - name: Run charm integration tests
+        run: tox -e charm-integration
+
+  ha-integration-test-lxd:
+    name: HA integration tests (lxd)
+    needs:
+      - lint
+      - unit-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup operator environment
+        uses: charmed-kubernetes/actions-operator@main
+        with:
+          provider: lxd
+      - name: Run ha integration tests
+        run: tox -e ha-integration
+
+  relation-integration-test-lxd:
+    name: Relation integration tests (lxd)
+    needs:
+      - lint
+      - unit-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup operator environment
+        uses: charmed-kubernetes/actions-operator@main
+        with:
+          provider: lxd
+      - name: Run relation integration tests
+        run: tox -e relation-integration
+
+  legacy-relation-integration-test-lxd:
+    name: Legacay relation integration tests (lxd)
+    needs:
+      - lint
+      - unit-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup operator environment
+        uses: charmed-kubernetes/actions-operator@main
+        with:
+          provider: lxd
+      - name: Run legacy relation integration tests
+        run: tox -e legacy-integration
+
+  tls-integration-test-lxd:
+    name: TLS integration tests (lxd)
+    needs:
+      - lint
+      - unit-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup operator environment
+        uses: charmed-kubernetes/actions-operator@main
+        with:
+          provider: lxd
+      - name: Run tls integration tests
+        run: tox -e tls-integration
 
   release-to-charmhub:
     name: Release to CharmHub
