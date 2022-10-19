@@ -77,7 +77,7 @@ jobs:
         run: tox -e relation-integration
 
   legacy-relation-integration-test-lxd:
-    name: Legacay telation integration tests (lxd)
+    name: Legacay relation integration tests (lxd)
     needs:
       - lint
       - unit-test
@@ -91,11 +91,6 @@ jobs:
           provider: lxd
       - name: Run legacy relation integration tests
         run: tox -e legacy-integration
-      - name: Dump logs
-        shell: bash
-        if: failure()
-        run: |
-          juju debug-log --lines=10000 --exclude-module juju --no-tail
 
   tls-integration-test-lxd:
     name: TLS integration tests (lxd)

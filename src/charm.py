@@ -732,7 +732,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def restart_mongod_service(self, auth=None):
         """Restarts the mongod service with its associated configuration."""
-        auth = auth or self.auth_enabled()
+        if auth is None:
+            auth = self.auth_enabled()
+
         stop_mongod_service()
         update_mongod_service(
             auth,
