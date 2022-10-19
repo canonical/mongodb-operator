@@ -496,7 +496,7 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    @patch("charm.restart_mongod_service")
+    @patch("charm.MongodbOperatorCharm.restart_mongod_service")
     def test_update_status_not_ready(self, restart, connection):
         """Tests that if mongod is not running on this unit it restarts it."""
         connection.return_value.__enter__.return_value.is_ready = False
@@ -661,3 +661,15 @@ class TestCharm(unittest.TestCase):
             # verify passwords are not updated.
             self.assertEqual(current_password, original_password)
             action_event.fail.assert_called()
+
+    @patch("charm.MONGOD_SERVICE_UPSTREAM_PATH", "/tmp/missing_file")
+    def test_auth_enabled_file_does_not_exist(self):
+        self.assertEqual(self.harness.charm.auth_enabled(), False)
+
+    @patch("charm.MONGOD_SERVICE_UPSTREAM_PATH", "tests/unit/data/mongodb_auth.service")
+    def test_auth_dis_enabled(self):
+        self.assertEqual(self.harness.charm.auth_enabled(), True)
+
+    @patch("charm.MONGOD_SERVICE_UPSTREAM_PATH", "tests/unit/data/mongodb.service")
+    def test_auth_enabled(self):
+        self.assertEqual(self.harness.charm.auth_enabled(), False)

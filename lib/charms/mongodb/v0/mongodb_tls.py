@@ -13,7 +13,6 @@ import re
 import socket
 from typing import List, Optional, Tuple
 
-from charms.mongodb.v0.machine_helpers import auth_enabled, restart_mongod_service
 from charms.tls_certificates_interface.v1.tls_certificates import (
     CertificateAvailableEvent,
     CertificateExpiringEvent,
@@ -143,11 +142,7 @@ class MongoDBTLS(Object):
         logger.debug("Restarting mongod with TLS disabled.")
         if self.substrate == "vm":
             self.charm.unit.status = MaintenanceStatus("disabling TLS")
-            restart_mongod_service(
-                auth=auth_enabled(),
-                machine_ip=self.charm._unit_ip(self.charm.unit),
-                config=self.charm.mongodb_config,
-            )
+            self.charm.restart_mongod_service()
             self.charm.unit.status = ActiveStatus()
         else:
             self.charm.on_mongod_pebble_ready(event)
@@ -194,11 +189,7 @@ class MongoDBTLS(Object):
         if self.substrate == "vm":
             self.charm._push_tls_certificate_to_workload()
             self.charm.unit.status = MaintenanceStatus("enabling TLS")
-            restart_mongod_service(
-                auth=auth_enabled(),
-                machine_ip=self.charm._unit_ip(self.charm.unit),
-                config=self.charm.mongodb_config,
-            )
+            self.charm.restart_mongod_service()
             self.charm.unit.status = ActiveStatus()
         else:
             self.charm.on_mongod_pebble_ready(event)

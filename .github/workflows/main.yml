@@ -77,7 +77,7 @@ jobs:
         run: tox -e relation-integration
 
   legacy-relation-integration-test-lxd:
-    name: Legacay telation integration tests (lxd)
+    name: Legacay relation integration tests (lxd)
     needs:
       - lint
       - unit-test
