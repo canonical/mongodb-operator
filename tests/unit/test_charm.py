@@ -424,14 +424,16 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charms.mongodb.v0.helpers.MongoDBConnection")
-    def test_update_status_primary(self, connection):
+    @patch("charm.MongoDBConnection")
+    def test_update_status_primary(self, connection, status_connection):
         """Tests that update status identifies the primary unit and updates status."""
         # assume leader has already initialised the replica set
         self.harness.set_leader(True)
         self.harness.charm.app_peer_data["db_initialised"] = "True"
 
         self.harness.set_leader(False)
-        connection.return_value.__enter__.return_value.get_replset_status.return_value = {
+        connection.return_value.__enter__.return_value.is_ready = True
+        status_connection.return_value.__enter__.return_value.get_replset_status.return_value = {
             "1.1.1.1": "PRIMARY"
         }
         self.harness.charm.on.update_status.emit()
@@ -439,14 +441,16 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charms.mongodb.v0.helpers.MongoDBConnection")
-    def test_update_status_secondary(self, connection):
+    @patch("charm.MongoDBConnection")
+    def test_update_status_secondary(self, connection, status_connection):
         """Tests that update status identifies secondary units and doesn't update status."""
         # assume leader has already initialised the replica set
         self.harness.set_leader(True)
         self.harness.charm.app_peer_data["db_initialised"] = "True"
 
         self.harness.set_leader(False)
-        connection.return_value.__enter__.return_value.get_replset_status.return_value = {
+        connection.return_value.__enter__.return_value.is_ready = True
+        status_connection.return_value.__enter__.return_value.get_replset_status.return_value = {
             "1.1.1.1": "SECONDARY"
         }
         self.harness.charm.on.update_status.emit()
@@ -454,7 +458,8 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charms.mongodb.v0.helpers.MongoDBConnection")
-    def test_update_status_additional_messages(self, connection):
+    @patch("charm.MongoDBConnection")
+    def test_update_status_additional_messages(self, connection, status_connection):
         """Tests status updates are correct for non-primary and non-secondary cases."""
         # assume leader has already initialised the replica set
         self.harness.set_leader(True)
@@ -462,12 +467,13 @@ class TestCharm(unittest.TestCase):
 
         # Case 1: Unit has not been added to replica set yet
         self.harness.set_leader(False)
-        connection.return_value.__enter__.return_value.get_replset_status.return_value = {}
+        connection.return_value.__enter__.return_value.is_ready = True
+        status_connection.return_value.__enter__.return_value.get_replset_status.return_value = {}
         self.harness.charm.on.update_status.emit()
         self.assertEqual(self.harness.charm.unit.status, WaitingStatus("Member being added.."))
 
         # Case 2: Unit is being removed from replica set
-        connection.return_value.__enter__.return_value.get_replset_status.return_value = {
+        status_connection.return_value.__enter__.return_value.get_replset_status.return_value = {
             "1.1.1.1": "REMOVED"
         }
         self.harness.charm.on.update_status.emit()
@@ -475,18 +481,31 @@ class TestCharm(unittest.TestCase):
 
         # Case 3: Member is syncing to replica set
         for syncing_status in ["STARTUP", "STARTUP2", "ROLLBACK", "RECOVERING"]:
-            connection.return_value.__enter__.return_value.get_replset_status.return_value = {
+            status_connection.return_value.__enter__.return_value.get_replset_status.return_value = {
                 "1.1.1.1": syncing_status
             }
             self.harness.charm.on.update_status.emit()
             self.assertEqual(self.harness.charm.unit.status, WaitingStatus("Member is syncing.."))
 
         # Case 4: Unknown status
-        connection.return_value.__enter__.return_value.get_replset_status.return_value = {
+        status_connection.return_value.__enter__.return_value.get_replset_status.return_value = {
             "1.1.1.1": "unknown"
         }
         self.harness.charm.on.update_status.emit()
         self.assertEqual(self.harness.charm.unit.status, BlockedStatus("unknown"))
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongoDBConnection")
+    @patch("charm.restart_mongod_service")
+    def test_update_status_not_ready(self, restart, connection):
+        """Tests that if mongod is not running on this unit it restarts it."""
+        connection.return_value.__enter__.return_value.is_ready = False
+
+        self.harness.charm.on.update_status.emit()
+        self.assertEqual(
+            self.harness.charm.unit.status, WaitingStatus("Waiting for MongoDB to start")
+        )
+        restart.assert_called()
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")

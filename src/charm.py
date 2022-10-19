@@ -22,7 +22,9 @@ from charms.mongodb.v0.helpers import (
     get_create_user_cmd,
 )
 from charms.mongodb.v0.machine_helpers import (
+    auth_enabled,
     push_file_to_unit,
+    restart_mongod_service,
     start_mongod_service,
     update_mongod_service,
 )
@@ -347,7 +349,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self.unit.status = BlockedStatus("cannot have both legacy and new relations")
             return
 
-        # occassionally mongod.service will try to restart too quickly leading to systemd not
+        # Occasionally mongod.service will try to restart too quickly leading to systemd not
         # being able to start the process at all. If this is the case we need to restart the
         # process ourselves. We defer to give it time to get started before reporting its
         # status.
@@ -359,7 +361,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                     machine_ip=self._unit_ip(self.unit),
                     config=self.mongodb_config,
                 )
-                self.unit.status = WaitingStatus("waiting for MongoDB to start")
+                self.unit.status = WaitingStatus("Waiting for MongoDB to start")
                 event.defer()
                 return
 
