@@ -16,17 +16,6 @@ from charms.mongodb.v0.helpers import (
 from charms.mongodb.v0.mongodb import MongoDBConfiguration
 from charms.operator_libs_linux.v1 import systemd
 
-# The unique Charmhub library identifier, never change it
-LIBID = "0ef38cc7c773446b8331a71a234f3c5f"
-
-# Increment this major API version when introducing breaking changes
-LIBAPI = 0
-
-# Increment this PATCH version before using `charmcraft publish-lib` or reset
-# to 0 if you are raising the major API version
-LIBPATCH = 1
-
-
 logger = logging.getLogger(__name__)
 
 # systemd gives files in /etc/systemd/system/ precedence over those in /lib/systemd/system/ hence
@@ -42,22 +31,6 @@ RESTARTING_LIMITS = ["StartLimitIntervalSec=500\n", "StartLimitBurst=5\n"]
 
 MONGO_USER = "mongodb"
 MONGO_DATA_DIR = "/data/db"
-
-
-def auth_enabled() -> bool:
-    """Checks if mongod service is has auth enabled."""
-    # if there are no service files then auth is not enabled
-    if not os.path.exists(MONGOD_SERVICE_UPSTREAM_PATH) and not os.path.exists(
-        MONGOD_SERVICE_DEFAULT_PATH
-    ):
-        return False
-
-    # The default file has previority over the upstream, but when the default file doesn't exist
-    # then the upstream configurations are used.
-    if not os.path.exists(MONGOD_SERVICE_DEFAULT_PATH):
-        return start_with_auth(MONGOD_SERVICE_UPSTREAM_PATH)
-
-    return start_with_auth(MONGOD_SERVICE_DEFAULT_PATH)
 
 
 def start_with_auth(path):

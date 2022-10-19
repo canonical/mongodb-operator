@@ -104,7 +104,7 @@ class TestMongoTLS(unittest.TestCase):
         self.verify_internal_rsa_csr()
         self.verify_external_rsa_csr()
 
-    @patch("charms.mongodb.v0.mongodb_tls.restart_mongod_service")
+    @patch("charm.MongodbOperatorCharm.restart_mongod_service")
     @patch_network_get(private_address="1.1.1.1")
     def test_tls_relation_broken_non_leader(self, restart_mongod_service):
         """Test non-leader removes only external cert & chain."""
@@ -127,7 +127,7 @@ class TestMongoTLS(unittest.TestCase):
         # units should be restarted after updating TLS settings
         restart_mongod_service.assert_called()
 
-    @patch("charms.mongodb.v0.mongodb_tls.restart_mongod_service")
+    @patch("charm.MongodbOperatorCharm.restart_mongod_service")
     @patch_network_get(private_address="1.1.1.1")
     def test_tls_relation_broken_leader(self, restart_mongod_service):
         """Test leader removes both external and internal certificates."""
@@ -204,7 +204,7 @@ class TestMongoTLS(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongodbOperatorCharm._push_tls_certificate_to_workload")
-    @patch("charms.mongodb.v0.mongodb_tls.restart_mongod_service")
+    @patch("charm.MongodbOperatorCharm.restart_mongod_service")
     def test_external_certificate_available(self, restart_mongod_service, _):
         """Tests behavior when external certificate is made available."""
         # assume relation exists with a current certificate
@@ -228,7 +228,7 @@ class TestMongoTLS(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongodbOperatorCharm._push_tls_certificate_to_workload")
-    @patch("charms.mongodb.v0.mongodb_tls.restart_mongod_service")
+    @patch("charm.MongodbOperatorCharm.restart_mongod_service")
     def test_internal_certificate_available(self, restart_mongod_service, _):
         """Tests behavior when internal certificate is made available."""
         # assume relation exists with a current certificate
@@ -252,7 +252,7 @@ class TestMongoTLS(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongodbOperatorCharm._push_tls_certificate_to_workload")
-    @patch("charms.mongodb.v0.mongodb_tls.restart_mongod_service")
+    @patch("charm.MongodbOperatorCharm.restart_mongod_service")
     def test_unknown_certificate_available(self, restart_mongod_service, _):
         """Tests that when an unknown certificate is available, nothing is updated."""
         # assume relation exists with a current certificate

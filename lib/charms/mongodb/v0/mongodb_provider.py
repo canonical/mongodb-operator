@@ -14,7 +14,6 @@ from collections import namedtuple
 from typing import Optional, Set
 
 from charms.mongodb.v0.helpers import generate_password
-from charms.mongodb.v0.machine_helpers import auth_enabled, restart_mongod_service
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 from charms.operator_libs_linux.v1 import systemd
 from ops.charm import RelationBrokenEvent, RelationChangedEvent
@@ -86,15 +85,11 @@ class MongoDBProvider(Object):
         # If auth is disabled but there are no legacy relation users, this means that legacy
         # users have left and auth can be re-enabled.
         # Note: VM charms use systemd to restart processes
-        if self.substrate == "vm" and not auth_enabled():
+        if self.substrate == "vm" and not self.charm.auth_enabled():
             try:
                 logger.debug("Enabling authentication.")
                 self.charm.unit.status = MaintenanceStatus("re-enabling authentication")
-                restart_mongod_service(
-                    auth=True,
-                    machine_ip=self.charm._unit_ip(self.charm.unit),
-                    config=self.charm.mongodb_config,
-                )
+                self.charm.restart_mongod_service(auth=True)
                 self.charm.unit.status = ActiveStatus()
             except systemd.SystemdError:
                 self.charm.unit.status = BlockedStatus("couldn't restart MongoDB")

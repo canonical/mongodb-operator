@@ -4,6 +4,7 @@
 # See LICENSE file for licensing details.
 import json
 import logging
+import os
 import subprocess
 from subprocess import check_call
 from typing import Dict, List, Optional
@@ -20,11 +21,6 @@ from charms.mongodb.v0.helpers import (
     generate_keyfile,
     generate_password,
     get_create_user_cmd,
-)
-from charms.mongodb.v0.machine_helpers import (
-    push_file_to_unit,
-    start_mongod_service,
-    update_mongod_service,
 )
 from charms.mongodb.v0.mongodb import (
     MongoDBConfiguration,
@@ -46,6 +42,16 @@ from ops.model import (
     WaitingStatus,
 )
 from tenacity import before_log, retry, stop_after_attempt, wait_fixed
+
+from machine_helpers import (
+    MONGOD_SERVICE_DEFAULT_PATH,
+    MONGOD_SERVICE_UPSTREAM_PATH,
+    push_file_to_unit,
+    start_mongod_service,
+    start_with_auth,
+    stop_mongod_service,
+    update_mongod_service,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -723,6 +729,34 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         logger.debug("User created")
         self.app_peer_data["user_created"] = "True"
+
+    def restart_mongod_service(self, auth=None):
+        """Restarts the mongod service with its associated configuration."""
+        if auth is None:
+            auth = self.auth_enabled()
+
+        stop_mongod_service()
+        update_mongod_service(
+            auth,
+            self._unit_ip(self.unit),
+            config=self.mongodb_config,
+        )
+        start_mongod_service()
+
+    def auth_enabled(self) -> bool:
+        """Checks if mongod service is has auth enabled for the current unit."""
+        # if there are no service files then auth is not enabled
+        if not os.path.exists(MONGOD_SERVICE_UPSTREAM_PATH) and not os.path.exists(
+            MONGOD_SERVICE_DEFAULT_PATH
+        ):
+            return False
+
+        # The default file has previority over the upstream, but when the default file doesn't
+        # exist then the upstream configurations are used.
+        if not os.path.exists(MONGOD_SERVICE_DEFAULT_PATH):
+            return start_with_auth(MONGOD_SERVICE_UPSTREAM_PATH)
+
+        return start_with_auth(MONGOD_SERVICE_DEFAULT_PATH)
 
 
 class AdminUserCreationError(Exception):

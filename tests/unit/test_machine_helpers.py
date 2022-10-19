@@ -3,23 +3,10 @@ from unittest import mock
 
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
-from lib.charms.mongodb.v0 import machine_helpers
+from src import machine_helpers
 
 
 class TestCharm(unittest.TestCase):
-    def test_auth_enabled_file_does_not_exist(self):
-        machine_helpers.MONGOD_SERVICE_UPSTREAM_PATH = "/tmp/missing_file"
-
-        self.assertEqual(machine_helpers.auth_enabled(), False)
-
-    def test_auth_enabled(self):
-        machine_helpers.MONGOD_SERVICE_UPSTREAM_PATH = "tests/unit/data/mongodb_auth.service"
-        self.assertEqual(machine_helpers.auth_enabled(), True)
-
-        machine_helpers.MONGOD_SERVICE_UPSTREAM_PATH = "tests/unit/data/mongodb.service"
-
-        self.assertEqual(machine_helpers.auth_enabled(), False)
-
     def test_generate_service_args(self):
         service_args_auth = " ".join(
             [

@@ -642,3 +642,15 @@ class TestCharm(unittest.TestCase):
             # verify passwords are not updated.
             self.assertEqual(current_password, original_password)
             action_event.fail.assert_called()
+
+    @patch("charm.MONGOD_SERVICE_UPSTREAM_PATH", "/tmp/missing_file")
+    def test_auth_enabled_file_does_not_exist(self):
+        self.assertEqual(self.harness.charm.auth_enabled(), False)
+
+    @patch("charm.MONGOD_SERVICE_UPSTREAM_PATH", "tests/unit/data/mongodb_auth.service")
+    def test_auth_dis_enabled(self):
+        self.assertEqual(self.harness.charm.auth_enabled(), True)
+
+    @patch("charm.MONGOD_SERVICE_UPSTREAM_PATH", "tests/unit/data/mongodb.service")
+    def test_auth_enabled(self):
+        self.assertEqual(self.harness.charm.auth_enabled(), False)
