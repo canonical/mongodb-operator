@@ -263,7 +263,7 @@ async def test_unique_cluster_dbs(ops_test: OpsTest, continuous_writes) -> None:
     # deploy new cluster
     my_charm = await ops_test.build_charm(".")
     await ops_test.model.deploy(my_charm, num_units=1, application_name=ANOTHER_DATABASE_APP_NAME)
-    await ops_test.model.wait_for_idle()
+    await ops_test.model.wait_for_idle(apps=[ANOTHER_DATABASE_APP_NAME], status="active")
 
     # write data to new cluster
     ip_addresses = [

@@ -353,6 +353,18 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self.unit.status = BlockedStatus("cannot have both legacy and new relations")
             return
 
+        # Occasionally mongod.service will try to restart too quickly leading to systemd not
+        # being able to start the process at all. If this is the case we need to restart the
+        # process ourselves. We defer to give it time to get started before reporting its
+        # status.
+        with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
+            if not direct_mongo.is_ready:
+                logger.debug("mongodb service is not ready yet, restarting.")
+                self.restart_mongod_service()
+                self.unit.status = WaitingStatus("Waiting for MongoDB to start")
+                event.defer()
+                return
+
         # no need to report on replica set status until initialised
         if "db_initialised" not in self.app_peer_data:
             return
