@@ -12,7 +12,6 @@ jobs:
   release-to-charmhub:
     name: Release to CharmHub
     needs:
-      - lib-check
       - ci-tests
     runs-on: ubuntu-latest
     steps:
