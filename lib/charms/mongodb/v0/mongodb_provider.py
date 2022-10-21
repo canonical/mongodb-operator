@@ -15,7 +15,6 @@ from typing import Optional, Set
 
 from charms.mongodb.v0.helpers import generate_password
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
-from charms.operator_libs_linux.v1 import systemd
 from ops.charm import RelationBrokenEvent, RelationChangedEvent
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, Relation
@@ -29,7 +28,8 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 2
+LIBPATCH = 3
+
 logger = logging.getLogger(__name__)
 REL_NAME = "database"
 
@@ -84,16 +84,11 @@ class MongoDBProvider(Object):
 
         # If auth is disabled but there are no legacy relation users, this means that legacy
         # users have left and auth can be re-enabled.
-        # Note: VM charms use systemd to restart processes
         if self.substrate == "vm" and not self.charm.auth_enabled():
-            try:
-                logger.debug("Enabling authentication.")
-                self.charm.unit.status = MaintenanceStatus("re-enabling authentication")
-                self.charm.restart_mongod_service(auth=True)
-                self.charm.unit.status = ActiveStatus()
-            except systemd.SystemdError:
-                self.charm.unit.status = BlockedStatus("couldn't restart MongoDB")
-                return
+            logger.debug("Enabling authentication.")
+            self.charm.unit.status = MaintenanceStatus("re-enabling authentication")
+            self.charm.restart_mongod_service(auth=True)
+            self.charm.unit.status = ActiveStatus()
 
         departed_relation_id = None
         if type(event) is RelationBrokenEvent:
