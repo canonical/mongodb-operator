@@ -2,6 +2,9 @@ name: Tests
 on:
   pull_request:
   workflow_call:
+    secrets:
+      CHARMHUB_TOKEN:
+        required: true
 
 jobs:
   lint:
