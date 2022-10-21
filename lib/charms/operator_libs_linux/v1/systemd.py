@@ -102,18 +102,12 @@ def _systemctl(
         logger.debug("Checking if '{}' is active".format(service_name))
 
     proc = subprocess.Popen(cmd, **_popen_kwargs())
-
-    proc.wait()
-
     last_line = ""
     for line in iter(proc.stdout.readline, ""):
         last_line = line
         logger.debug(line)
 
-    logger.debug("proc.stdin %s", proc.stdin)
-    logger.debug("proc.stdin %s", proc.stdout)
-    logger.debug("proc.stderr %s", proc.stderr)
-    logger.debug("proc.returncode %s", proc.returncode)
+    proc.wait()
 
     if sub_cmd == "is-active":
         # If we are just checking whether a service is running, return True/False, rather
