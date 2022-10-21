@@ -746,14 +746,18 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         """Restarts the mongod service with its associated configuration."""
         if auth is None:
             auth = self.auth_enabled()
-
-        stop_mongod_service()
-        update_mongod_service(
-            auth,
-            self._unit_ip(self.unit),
-            config=self.mongodb_config,
-        )
-        start_mongod_service()
+        try:
+            stop_mongod_service()
+            update_mongod_service(
+                auth,
+                self._unit_ip(self.unit),
+                config=self.mongodb_config,
+            )
+            start_mongod_service()
+            return True
+        except systemd.SystemdError as e:
+            logger.error("Failed to restart systemd, error: %s", str(e))
+            raise
 
     def auth_enabled(self) -> bool:
         """Checks if mongod service is has auth enabled for the current unit."""
