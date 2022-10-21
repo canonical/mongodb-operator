@@ -240,7 +240,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 8
+LIBPATCH = 9
 
 REQUIRER_JSON_SCHEMA = {
     "$schema": "http://json-schema.org/draft-04/schema#",
@@ -828,6 +828,14 @@ class TLSCertificatesProvidesV1(Object):
         except exceptions.ValidationError:
             return False
 
+    def revoke_all_certificates(self) -> None:
+        """Revokes all certificates of this provider.
+
+        This method is meant to be used when the Root CA has changed.
+        """
+        for relation in self.model.relations[self.relationship_name]:
+            relation.data[self.model.app]["certificates"] = json.dumps([])
+
     def set_relation_certificate(
         self,
         certificate: str,
@@ -895,6 +903,7 @@ class TLSCertificatesProvidesV1(Object):
         Returns:
             None
         """
+        assert event.unit is not None
         requirer_relation_data = _load_relation_data(event.relation.data[event.unit])
         provider_relation_data = _load_relation_data(event.relation.data[self.charm.app])
         if not self._relation_data_is_valid(requirer_relation_data):
@@ -1146,7 +1155,7 @@ class TLSCertificatesRequiresV1(Object):
         if not self._relation_data_is_valid(provider_relation_data):
             logger.warning(
                 f"Provider relation data did not pass JSON Schema validation: "
-                f"{event.relation.data[event.app]}"
+                f"{event.relation.data[relation.app]}"
             )
             return
         requirer_csrs = [
