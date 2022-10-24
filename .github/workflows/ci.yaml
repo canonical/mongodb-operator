@@ -2,6 +2,9 @@ name: Tests
 on:
   pull_request:
   workflow_call:
+    secrets:
+      CHARMHUB_TOKEN:
+        required: true
 
 jobs:
   lint:
@@ -9,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Install dependencies
         run: python3 -m pip install tox
       - name: Run linters
@@ -20,21 +23,36 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Install dependencies
         run: python -m pip install tox
       - name: Run tests
         run: tox -e unit
+
+  lib-check:
+    name: Check libraries
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Check libs
+        uses: canonical/charming-actions/check-libraries@2.1.1
+        with:
+          credentials: "${{ secrets.CHARMHUB_TOKEN }}" # FIXME: current token will expire in 2023-07-04
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
 
   charm-integration-test-lxd:
     name: Charm integration tests (lxd)
     needs:
       - lint
       - unit-test
+      - lib-check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Setup operator environment
         uses: charmed-kubernetes/actions-operator@main
         with:
@@ -47,10 +65,11 @@ jobs:
     needs:
       - lint
       - unit-test
+      - lib-check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Setup operator environment
         uses: charmed-kubernetes/actions-operator@main
         with:
@@ -63,10 +82,11 @@ jobs:
     needs:
       - lint
       - unit-test
+      - lib-check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Setup operator environment
         uses: charmed-kubernetes/actions-operator@main
         with:
@@ -79,10 +99,11 @@ jobs:
     needs:
       - lint
       - unit-test
+      - lib-check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Setup operator environment
         uses: charmed-kubernetes/actions-operator@main
         with:
@@ -95,10 +116,11 @@ jobs:
     needs:
       - lint
       - unit-test
+      - lib-check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Setup operator environment
         uses: charmed-kubernetes/actions-operator@main
         with:
