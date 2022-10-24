@@ -127,17 +127,3 @@ jobs:
           provider: lxd
       - name: Run tls integration tests
         run: tox -e tls-integration
-
-  lib-check:
-    name: Check libraries
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-      - name: Check libs
-        uses: canonical/charming-actions/check-libraries@1.0.3
-        with:
-          credentials: "${{ secrets.CHARMHUB_TOKEN }}" # FIXME: current token will expire in 2023-07-04
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
