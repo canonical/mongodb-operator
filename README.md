@@ -1,7 +1,7 @@
 # Charmed MongoDB Operator
 
 
-## Description
+## Overview
 
 The Charmed MongoDB Operator delivers automated operations management from day 0 to day 2 on the [MongoDB Community Edition](https://github.com/mongodb/mongo) document database. It is an open source, end-to-end, production ready data platform on top of cloud native technologies.
 
