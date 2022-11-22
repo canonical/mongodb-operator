@@ -7,6 +7,12 @@ The Charmed MongoDB Operator delivers automated operations management from day 0
 
 MongoDB is a general purpose distributed document database. This operator charm deploys and operates MongoDB (vs 5.0) on physical or virtual machines as a single replica.
 
+## Requirements 
+- 2GB of RAM.
+- 2 CPU threads per host.
+- For production deployment: at least 60GB of available storage on each host. (Note if this is a test deployment: 5GB is sufficent for each host).
+- Access to the internet for downloading the charm.
+- Machine is running Ubuntu 20.04(focal) or later.
 
 ## Usage
 
