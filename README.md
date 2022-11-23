@@ -1,11 +1,13 @@
 # Charmed MongoDB Operator
 
 
-## Description
+## Overview
 
-The Charmed MongoDB Operator delivers automated operations management from day 0 to day 2 on the [MongoDB Community Edition](https://github.com/mongodb/mongo) document database.
+The Charmed MongoDB Operator delivers automated operations management from day 0 to day 2 on the [MongoDB Community Edition](https://github.com/mongodb/mongo) document database. It is an open source, end-to-end, production ready data platform on top of cloud native technologies.
 
-MongoDB is a general purpose distributed document database. This operator charm deploys and operates MongoDB (vs 5.0) on physical or virtual machines as a single replica.
+MongoDB is a popular NoSQL database application. It stores its data with JSON-like documents creating a flexible experience for users; with easy to use data aggregation for data analytics. It is a distributed database, so vertical and horizontal scaling come naturally.
+
+This operator charm deploys and operates MongoDB on physical or virtual machines. It offers features such as replication, TLS, password rotation, and easy to use integration with applications. The Charmed MongoDB Operator meets the need of deploying MongoDB in a structured and consistent manner while allowing the user flexibility in configuration. It simplifies deployment, scaling, configuration and management of MongoDB in production at scale in a reliable way.
 
 ## Requirements 
 - 2GB of RAM.
@@ -13,6 +15,16 @@ MongoDB is a general purpose distributed document database. This operator charm 
 - For production deployment: at least 60GB of available storage on each host.
 - Access to the internet for downloading the charm.
 - Machine is running Ubuntu 20.04(focal) or later.
+
+## Config options
+auto-delete - `boolean`; When a relation is removed, auto-delete ensures that any relevant databases
+associated with the relation are also removed. Set with `juju config mongodb auto-delete=<bool>`.
+
+admin-password - `string`; The password for the database admin. Set with `juju run-action mongodb/leader set-admin-password --wait`
+
+tls external key - `string`; TLS external key for encryption outside the cluster. Set with `juju run-action mongodb/0 set-tls-private-key "external-key=$(base64 -w0 external-key-0.pem)" --wait`
+
+tls internal key - `string`;  TLS external key for encryption inside the cluster. Set with `juju run-action mongodb/0 set-tls-private-key "internal-key=$(base64 -w0 internal-key.pem)"  --wait`
 
 ## Usage
 
