@@ -7,6 +7,15 @@ The Charmed MongoDB Operator delivers automated operations management from day 0
 
 MongoDB is a general purpose distributed document database. This operator charm deploys and operates MongoDB (vs 5.0) on physical or virtual machines as a single replica.
 
+## Config options
+auto-delete - `boolean`; When a relation is removed, auto-delete ensures that any relevant databases
+associated with the relation are also removed. Set with `juju config mongodb auto-delete=<bool>`.
+
+admin-password - `string`; The password for the database admin. Set with `juju run-action mongodb/leader set-admin-password --wait`
+
+tls external key - `string`; TLS external key for encryption outside the cluster. Set with `juju run-action mongodb/0 set-tls-private-key "external-key=$(base64 -w0 external-key-0.pem)" --wait`
+
+tls internal key - `string`;  TLS external key for encryption inside the cluster. Set with `juju run-action mongodb/0 set-tls-private-key "internal-key=$(base64 -w0 internal-key.pem)"  --wait`
 
 ## Usage
 
