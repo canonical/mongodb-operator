@@ -1,11 +1,13 @@
 # Charmed MongoDB Operator
 
 
-## Description
+## Overview
 
-The Charmed MongoDB Operator delivers automated operations management from day 0 to day 2 on the [MongoDB Community Edition](https://github.com/mongodb/mongo) document database.
+The Charmed MongoDB Operator delivers automated operations management from day 0 to day 2 on the [MongoDB Community Edition](https://github.com/mongodb/mongo) document database. It is an open source, end-to-end, production ready data platform on top of cloud native technologies.
 
-MongoDB is a general purpose distributed document database. This operator charm deploys and operates MongoDB (vs 5.0) on physical or virtual machines as a single replica.
+MongoDB is a popular NoSQL database application. It stores its data with JSON-like documents creating a flexible experience for users; with easy to use data aggregation for data analytics. It is a distributed database, so vertical and horizontal scaling come naturally.
+
+This operator charm deploys and operates MongoDB on physical or virtual machines. It offers features such as replication, TLS, password rotation, and easy to use integration with applications. The Charmed MongoDB Operator meets the need of deploying MongoDB in a structured and consistent manner while allowing the user flexibility in configuration. It simplifies deployment, scaling, configuration and management of MongoDB in production at scale in a reliable way.
 
 ## Config options
 auto-delete - `boolean`; When a relation is removed, auto-delete ensures that any relevant databases
