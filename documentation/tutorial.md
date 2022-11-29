@@ -40,7 +40,7 @@ You can list all LXD containers by entering the command `lxc list` in to the com
 sudo snap install juju --classic
 ```
 
-Juju already has a built-in knowledge of LXD and how it works, so there is no additional setup or configuration needed. A controller will be used to deploy and control Charmed MongoDB. \ All we need to do is run the command to bootstrap a Juju controller named ‘overlord’ to LXD. 
+Juju already has a built-in knowledge of LXD and how it works, so there is no additional setup or configuration needed. A controller will be used to deploy and control Charmed MongoDB. All we need to do is run the command to bootstrap a Juju controller named ‘overlord’ to LXD. 
 ```
 juju bootstrap localhost overlord
 ```
