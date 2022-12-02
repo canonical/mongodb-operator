@@ -1,6 +1,7 @@
 # Charmed MongoDB tutorial:
 Ready to try out Charmed MongoDB? This tutorial will guide you through the steps to get Charmed MongoDB up and running. 
 
+
 ## Minimum requirements:
 Before we start be sure you have the following requirements:
 - Ubuntu 20.04(focal) or later.
@@ -8,6 +9,7 @@ Before we start be sure you have the following requirements:
 - 2 CPU threads.
 - At least 20GB of available storage.
 - Access to the internet for downloading the required snaps and charms.
+
 
 ## Install and prepare LXD:
 The fastest, simplest way to get started with Charmed MongoDB is to set up a local LXD cloud. LXD is a system container and virtual machine manager; Charmed MongoDB will be run in one of these containers and managed by Juju. While this tutorial covers the basics of LXD, you can explore more LXD [here](https://linuxcontainers.org/lxd/getting-started-cli/). The first step on our journey is to install LXD. LXD is installed from a snap package:
@@ -33,6 +35,7 @@ You can list all LXD containers by entering the command `lxc list` in to the com
 | NAME | STATE | IPV4 | IPV6 | TYPE | SNAPSHOTS |
 +------+-------+------+------+------+-----------+
 ```
+
 
 ## Install and prepare Juju:
 [Juju](https://juju.is/) is an operation Lifecycle manager(OLM) for clouds, bare metal, LXD or Kubernetes. We will be using it to deploy and manage Charmed MongoDB. As with LXD, Juju is installed from a snap package:
@@ -99,6 +102,7 @@ Machine  State    Address       Inst id        Series  AZ  Message
 0        started  10.23.62.156  juju-d35d30-0  focal       Running
 ```
 
+
 ## Accessing MongoDB:
 *Disclaimer: this part of the tutorial accesses MongoDB via the `admin` user. It is not recommended that you directly interface with the admin user in a production environment. In a production environment [create a separate user](https://www.mongodb.com/docs/manual/tutorial/create-users/) and connect to MongoDB with that user instead.*
 
@@ -108,16 +112,19 @@ For this part of the Tutorial we will access MongoDB - via the MongoDB shell `mo
 ### Install the MongoDB shell:
 While MongoDB is installed within the LXD containers that the application is hosted on, it is not installed on your machine. This means that you will have to install the MongoDB shell yourself. Install `mongosh` by following the official [instructions on how to install the MongoDB shell](https://www.mongodb.com/docs/mongodb-shell/install/#std-label-mdb-shell-install).
 
+
 ### MongoDB URI:
 Connecting to the database requires a [URI](https://www.mongodb.com/docs/manual/reference/connection-string/). We use a URI of the format:
 ```
-mongodb://<username>:<password>@<hosts>/<database name>?replicaSet=<replica set name>
+mongodb://<username>:<password>@<host>/<database name>?replicaSet=<replica set name>
 ```
 
-Connecting via the URI requires that you know the values for `username`, `password`, `hosts`, `database name`, and the `replica set name`. We will show you how to retrieve the necessary fields. 
+Connecting via the URI requires that you know the values for `username`, `password`, `host`, `database name`, and the `replica set name`. We will now show you how to retrieve the necessary fields. 
+
 
 #### Retrieving the username:
 In this case, we are using the `admin` user to connect to MongoDB. Use `admin` as the username.
+
 
 #### Retrieving the password:
 The password can be retrieved by running the `get-admin-password` action on the Charmed MongoDB application:
@@ -139,6 +146,7 @@ unit-mongodb-0:
 ```
 Use the password under the result: `admin-password`.
 
+
 #### Retrieving the hosts:
 The hosts are the units hosting the MongoDB application. In this case we only have one host; you can find the host’s IP address with `juju status`. This will output information about the Charmed MongoDB application along with it’s IP address:
 ```
@@ -157,16 +165,19 @@ Machine  State    Address       Inst id        Series  AZ  Message
 ```
 Use the IP address listed underneath `Public address` for `mongodb/0` as your host.
 
+
 #### Retrieving the database name:
 In this case we are logging in via the `admin` user so we will be connecting to the `admin` database. Use `admin` as the database name.
+
 
 #### Retrieving the replica set name:
 The replica set name is the name of the application. In this tutorial we didn’t use a custom name for the application, so the application name is `mongodb`. You can read more about deploying a charm with a custom name [here](https://juju.is/docs/olm/deploy-a-charm-from-charmhub#heading--override-the-name-of-a-deployed-application). Use `mongodb` as the replica set name.
 
+
 ### Connect via MongoDB URI:
 Now that we have the necessary fields to connect to the URI, we can connect to MongoDB via the URI. Enter the following into the command line, replace the values for  `username`, `password`, `hosts`, `database name`, and the `replica set name` with what you’ve retrieved above:
 ```
-mongosh mongodb://<username>:<password>@<hosts>/<database name>?replicaSet=<replica set name>
+mongosh mongodb://<username>:<password>@<host>/<database name>?replicaSet=<replica set name>
 ```
 
 You should now see:
@@ -210,3 +221,266 @@ local   404.00 KiB
 ```
 
 Feel free to test out any other MongoDB commands, when you’re ready to leave the shell you can just type `exit`
+
+
+## Scaling Charmed MongoDB: 
+Replication is a popular feature of MongoDB; replicas copy data making a database highly reliable. 
+
+
+### Add replicas:
+You can add two replicas to your deployed MongoDB application with:
+```
+juju add-unit mongodb -n2
+```
+
+You can now watch the replica set add these replicas with: `watch -c juju status --color`. You’ll know that all three replicas are ready when `watch -c juju status --color` reports:
+```
+Every 2.0s: juju status --color                                                                                                                                                ip-172-31-11-104: Fri Dec  2 14:36:50 2022
+
+Model     Controller  Cloud/Region         Version  SLA          Timestamp
+tutorial  overlord    localhost/localhost  2.9.37   unsupported  14:42:04Z
+
+App      Version  Status  Scale  Charm    Channel   Rev  Exposed  Message
+mongodb           active      3  mongodb  dpe/edge   96  no       Replica set primary
+
+Unit        Workload  Agent  Machine  Public address  Ports      Message
+mongodb/0*  active    idle   0        10.23.62.156    27017/tcp  Replica set primary
+mongodb/1   active    idle   1        10.23.62.55     27017/tcp  Replica set secondary
+mongodb/2   active    idle   2        10.23.62.243    27017/tcp  Replica set secondary
+
+Machine  State    Address       Inst id        Series  AZ  Message
+0        started  10.23.62.156  juju-d35d30-0  focal       Running
+1        started  10.23.62.55   juju-d35d30-1  focal       Running
+2        started  10.23.62.243  juju-d35d30-2  focal       Running
+```
+
+You can trust that Charmed MongoDB added these replicas correctly. But if you wanted to verify the replicas got added correctly you could connect to MongoDB via `mongosh`. Since your replica set has 2 additional hosts you will need to update the hosts in your URI. Using the IP addresses from `juju status` add all of your hosts to the URI and separate them with commas. Your URI should look like this:
+```
+mongodb://<username>:<password>@<host1,<host2>,<host3>>/<database name>?replicaSet=<replica set name>
+```
+
+Then connect with `mongosh`; using your new hosts and reuse the `username`, `password,` `database name`, and `replica set name` that you previously used when you *first* connected to MongoDB:
+```
+mongosh mongodb://<username>:<password>@<host1,<host2>,<host3>>/<database name>?replicaSet=<replica set name>
+```
+
+Now type `rs.status()` and you should see your replica set configuration. It should look something like this:
+```
+{
+  set: 'mongodb',
+  date: ISODate("2022-12-02T14:39:52.732Z"),
+  myState: 1,
+  term: Long("1"),
+  syncSourceHost: '',
+  syncSourceId: -1,
+  heartbeatIntervalMillis: Long("2000"),
+  majorityVoteCount: 2,
+  writeMajorityCount: 2,
+  votingMembersCount: 3,
+  writableVotingMembersCount: 3,
+  optimes: {
+    lastCommittedOpTime: { ts: Timestamp({ t: 1669991990, i: 1 }), t: Long("1") },
+    lastCommittedWallTime: ISODate("2022-12-02T14:39:50.020Z"),
+    readConcernMajorityOpTime: { ts: Timestamp({ t: 1669991990, i: 1 }), t: Long("1") },
+    appliedOpTime: { ts: Timestamp({ t: 1669991990, i: 1 }), t: Long("1") },
+    durableOpTime: { ts: Timestamp({ t: 1669991990, i: 1 }), t: Long("1") },
+    lastAppliedWallTime: ISODate("2022-12-02T14:39:50.020Z"),
+    lastDurableWallTime: ISODate("2022-12-02T14:39:50.020Z")
+  },
+  lastStableRecoveryTimestamp: Timestamp({ t: 1669991950, i: 1 }),
+  electionCandidateMetrics: {
+    lastElectionReason: 'electionTimeout',
+    lastElectionDate: ISODate("2022-12-02T11:24:09.587Z"),
+    electionTerm: Long("1"),
+    lastCommittedOpTimeAtElection: { ts: Timestamp({ t: 1669980249, i: 1 }), t: Long("-1") },
+    lastSeenOpTimeAtElection: { ts: Timestamp({ t: 1669980249, i: 1 }), t: Long("-1") },
+    numVotesNeeded: 1,
+    priorityAtElection: 1,
+    electionTimeoutMillis: Long("10000"),
+    newTermStartDate: ISODate("2022-12-02T11:24:09.630Z"),
+    wMajorityWriteAvailabilityDate: ISODate("2022-12-02T11:24:09.651Z")
+  },
+  members: [
+    {
+      _id: 0,
+      name: '10.23.62.156:27017',
+      health: 1,
+      state: 1,
+      stateStr: 'PRIMARY',
+      uptime: 11747,
+      optime: { ts: Timestamp({ t: 1669991990, i: 1 }), t: Long("1") },
+      optimeDate: ISODate("2022-12-02T14:39:50.000Z"),
+      lastAppliedWallTime: ISODate("2022-12-02T14:39:50.020Z"),
+      lastDurableWallTime: ISODate("2022-12-02T14:39:50.020Z"),
+      syncSourceHost: '',
+      syncSourceId: -1,
+      infoMessage: '',
+      electionTime: Timestamp({ t: 1669980249, i: 2 }),
+      electionDate: ISODate("2022-12-02T11:24:09.000Z"),
+      configVersion: 5,
+      configTerm: 1,
+      self: true,
+      lastHeartbeatMessage: ''
+    },
+    {
+      _id: 1,
+      name: '10.23.62.55:27017',
+      health: 1,
+      state: 2,
+      stateStr: 'SECONDARY',
+      uptime: 305,
+      optime: { ts: Timestamp({ t: 1669991990, i: 1 }), t: Long("1") },
+      optimeDurable: { ts: Timestamp({ t: 1669991990, i: 1 }), t: Long("1") },
+      optimeDate: ISODate("2022-12-02T14:39:50.000Z"),
+      optimeDurableDate: ISODate("2022-12-02T14:39:50.000Z"),
+      lastAppliedWallTime: ISODate("2022-12-02T14:39:50.020Z"),
+      lastDurableWallTime: ISODate("2022-12-02T14:39:50.020Z"),
+      lastHeartbeat: ISODate("2022-12-02T14:39:51.868Z"),
+      lastHeartbeatRecv: ISODate("2022-12-02T14:39:51.882Z"),
+      pingMs: Long("0"),
+      lastHeartbeatMessage: '',
+      syncSourceHost: '10.23.62.156:27017',
+      syncSourceId: 0,
+      infoMessage: '',
+      configVersion: 5,
+      configTerm: 1
+    },
+    {
+      _id: 2,
+      name: '10.23.62.243:27017',
+      health: 1,
+      state: 2,
+      stateStr: 'SECONDARY',
+      uptime: 300,
+      optime: { ts: Timestamp({ t: 1669991990, i: 1 }), t: Long("1") },
+      optimeDurable: { ts: Timestamp({ t: 1669991990, i: 1 }), t: Long("1") },
+      optimeDate: ISODate("2022-12-02T14:39:50.000Z"),
+      optimeDurableDate: ISODate("2022-12-02T14:39:50.000Z"),
+      lastAppliedWallTime: ISODate("2022-12-02T14:39:50.020Z"),
+      lastDurableWallTime: ISODate("2022-12-02T14:39:50.020Z"),
+      lastHeartbeat: ISODate("2022-12-02T14:39:51.861Z"),
+      lastHeartbeatRecv: ISODate("2022-12-02T14:39:52.372Z"),
+      pingMs: Long("0"),
+      lastHeartbeatMessage: '',
+      syncSourceHost: '10.23.62.55:27017',
+      syncSourceId: 1,
+      infoMessage: '',
+      configVersion: 5,
+      configTerm: 1
+    }
+  ],
+  ok: 1,
+  '$clusterTime': {
+    clusterTime: Timestamp({ t: 1669991990, i: 1 }),
+    signature: {
+      hash: Binary(Buffer.from("dbe96e73cf659617bb88b6ad11152551c0dd9c8d", "hex"), 0),
+      keyId: Long("7172510554420936709")
+    }
+  },
+  operationTime: Timestamp({ t: 1669991990, i: 1 })
+}
+```
+
+Now exit the shell by typing:
+```
+exit
+```
+
+
+### Remove replicas:
+To remove a replica type:
+```
+juju remove-unit mongodb/2
+```
+
+You’ll know that the replica was successfully removed when `watch -c juju status --color` reports:
+```
+Every 2.0s: juju status --color                                                                                                                                                ip-172-31-11-104: Fri Dec  2 14:44:25 2022
+
+Model     Controller  Cloud/Region         Version  SLA          Timestamp
+tutorial  overlord    localhost/localhost  2.9.37   unsupported  14:44:25Z
+
+App      Version  Status  Scale  Charm    Channel   Rev  Exposed  Message
+mongodb           active      2  mongodb  dpe/edge   96  no       Replica set primary
+
+Unit        Workload  Agent  Machine  Public address  Ports      Message
+mongodb/0*  active    idle   0        10.23.62.156    27017/tcp  Replica set primary
+mongodb/1   active    idle   1        10.23.62.55     27017/tcp  Replica set secondary
+
+Machine  State    Address       Inst id        Series  AZ  Message
+0        started  10.23.62.156  juju-d35d30-0  focal       Running
+1        started  10.23.62.55   juju-d35d30-1  focal       Running
+
+```
+
+As previously mentioned you can trust that Charmed MongoDB removed this replica correctly.
+
+
+## Passwords:
+### Retrieving the admin password:
+As previously mentioned, the admin password can be retrieved by running the `get-admin-password` action on the Charmed MongoDB application:
+```
+juju run-action mongodb/leader get-admin-password --wait
+```
+Running the command should output:
+```
+unit-mongodb-0:
+  UnitId: mongodb/0
+  id: "2"
+  results:
+    admin-password: <password>
+  status: completed
+  timing:
+    completed: 2022-12-02 11:30:01 +0000 UTC
+    enqueued: 2022-12-02 11:29:57 +0000 UTC
+    started: 2022-12-02 11:30:01 +0000 UTC
+```
+The admin password is under the result: `admin-password`.
+
+
+### Rotating the admin password
+You can change the admin password to a new random password by entering:
+```
+juju run-action mongodb/leader set-admin-password --wait
+```
+Running the command should output:
+```
+unit-mongodb-0:
+  UnitId: mongodb/0
+  id: "4"
+  results:
+    admin-password: <new password>
+  status: completed
+  timing:
+    completed: 2022-12-02 14:53:30 +0000 UTC
+    enqueued: 2022-12-02 14:53:25 +0000 UTC
+    started: 2022-12-02 14:53:28 +0000 UTC
+```
+The admin password is under the result: `admin-password`. It should be different from your previous password.
+
+*Note when you change the admin password you will also need to update the admin password the in MongoDB URI; as the old password will no longer be valid*
+
+### Setting the admin password
+You can change the admin password to a specific password by entering:
+```
+juju run-action mongodb/leader set-admin-password password=<password> --wait
+```
+Running the command should output:
+```
+unit-mongodb-0:
+  UnitId: mongodb/0
+  id: "4"
+  results:
+    admin-password: <password>
+  status: completed
+  timing:
+    completed: 2022-12-02 14:53:30 +0000 UTC
+    enqueued: 2022-12-02 14:53:25 +0000 UTC
+    started: 2022-12-02 14:53:28 +0000 UTC
+```
+The admin password under the result: `admin-password` should match whatever you passed in when you entered the command.
+
+*Note when you change the admin password you will also need to update the admin password the in MongoDB URI; as the old password will no longer be valid*
+
+
+
