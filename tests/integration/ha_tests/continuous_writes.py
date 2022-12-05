@@ -2,22 +2,35 @@
 # See LICENSE file for licensing details.
 
 """This file is meant to run in the background continuously writing entries to MongoDB."""
+import signal
 import sys
 
 from pymongo import MongoClient
-from pymongo.errors import AutoReconnect, NotPrimaryError, PyMongoError
+from pymongo.errors import (
+    AutoReconnect,
+    NotPrimaryError,
+    PyMongoError,
+    WriteConcernError,
+)
 from pymongo.write_concern import WriteConcern
+
+run = True
+
+
+def sigterm_handler(_signo, _stack_frame):
+    global run
+    run = False
 
 
 def continous_writes(connection_string: str, starting_number: int):
     write_value = starting_number
+    client = MongoClient(
+        connection_string,
+        socketTimeoutMS=5000,
+    )
 
-    while True:
-        client = MongoClient(
-            connection_string,
-            socketTimeoutMS=5000,
-        )
-        db = client["new-db"]
+    while run:
+        db = client["continuous_writes_database"]
         test_collection = db["test_collection"]
         try:
             # insert item into collection if it doesn't already exist
@@ -30,19 +43,19 @@ def continous_writes(connection_string: str, starting_number: int):
             ).update_one({"number": write_value}, {"$set": {"number": write_value}}, upsert=True)
 
             # update_one
-        except (NotPrimaryError, AutoReconnect):
+        except (NotPrimaryError, AutoReconnect, WriteConcernError):
             # this means that the primary was not able to be found. An application should try to
             # reconnect and re-write the previous value. Hence, we `continue` here, without
             # incrementing `write_value` as to try to insert this value again.
             continue
-        except PyMongoError:
-            # we should not raise this exception but instead increment the write value and move
-            # on, indicating that there was a failure writing to the database.
-            pass
-        finally:
-            client.close()
+        except PyMongoError as e:
+            print(e)
 
         write_value += 1
+
+    client.close()
+    with open("/tmp/last_written_value", "w") as fd:
+        fd.write(str(write_value - 1))
 
 
 def main():
@@ -52,4 +65,5 @@ def main():
 
 
 if __name__ == "__main__":
+    signal.signal(signal.SIGTERM, sigterm_handler)
     main()

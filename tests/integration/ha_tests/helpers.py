@@ -294,7 +294,7 @@ async def stop_continous_writes(ops_test: OpsTest, down_unit=None) -> int:
     In the future this should be put in a dummy charm.
     """
     # stop the process
-    proc = subprocess.Popen(["pkill", "-9", "-f", "continuous_writes.py"])
+    proc = subprocess.Popen(["pkill", "-SIGTERM", "-f", "continuous_writes.py"])
 
     # wait for process to be killed
     proc.communicate()
