@@ -610,15 +610,15 @@ As this user no longer exists. This is expected as `juju remove-relation mongodb
 
 ## Transcript Layer Security (TLS)
 
-TLS is the encryption of data sent between two applications. TLS requires minimal work to be set up on Charmed MongoDB. There already exists a [TLS Certificates Charm](https://charmhub.io/tls-certificates-operator) which handles providing, requesting, and renewing TLS certificate.
+TLS is the encryption of data sent between two applications. TLS requires minimal work to be set up on Charmed MongoDB. There already exists a [TLS Certificates Charm](https://charmhub.io/tls-certificates-operator) which handles providing, requesting, and renewing TLS certificates.
 
 ### Configure TLS
-Before enabling TLS on Charmed MongoDB we must first deploy the `TLS-certificates-operator`:
+Before enabling TLS on Charmed MongoDB we must first deploy the `TLS-certificates-operator` charm:
 ```
 juju deploy tls-certificates-operator --channel=edge
 ```
 
-Wait until the `tls-certificates-operator` is ready to be configured. When it is ready to be configured `watch -c juju status --color` will show:
+Wait until the `tls-certificates-operator` is ready to be configured. When it is ready to be configured `watch -c juju status --color`. Will show:
 ```
 Model     Controller  Cloud/Region         Version  SLA          Timestamp
 tutorial  overlord    localhost/localhost  2.9.37   unsupported  09:24:12Z
@@ -642,13 +642,27 @@ Now we can configure the TLS certificates. Configure the  `tls-certificates-oper
 ```
 juju config tls-certificates-operator generate-self-signed-certificates="true" ca-common-name="Tutorial CA" 
 ```
-*Note: this tutorial uses [self signed certificates](https://en.wikipedia.org/wiki/Self-signed_certificate); self signed certificates should not be used in a production cluster.*
+*Note: this tutorial uses (self signed certificates)[https://en.wikipedia.org/wiki/Self-signed_certificate]; self signed certificates should not be used in a production cluster.*
 
 ### Enabling TLS:
 After configuring the certificates `watch -c juju status --color` will show the status of `tls-certificates-operator` as active. To enable TLS on Charmed MongoDB, relate the two applications:
 ```
 juju relate tls-certificates-operator mongodb
 ```
+
+### Connecting to MongoDB with TLS:
+Once TLS has been enabled we will need to change how we connect to MongoDB. Specifically we will need to specify the TLS CA file along with the TLS Certificate file. These are hosted on the Charmed MongoDB application. Copy them from Charmed MongoDB to your machine:
+```
+juju run --unit mongodb/0 -- cat /etc/mongodb/external-ca.crt > external-ca.crt
+juju run --unit mongodb/0 -- cat /etc/mongodb/external-cert.pem > external-cert.pem
+```
+
+As before, we will connect to MongoDB via a MongoDB URI; use the admin user MongoDB URI that you first used to [connect to MongoDB](#connect-via-mongodb-uri). Connect using the URI and the following TLS options:
+```
+mongosh mongodb://<username>:<password>@<host1>/<database name>?replicaSet=<replica set name> --tls --tlsCAFile external-ca.crt --tlsCertificateKeyFile external-cert.pem
+```
+
+Congratulations, you've now connected to MongoDB with TLS. Now exit the shell by typing `exit`.
 
 ### Disabling TLS
 To disable TLS unrelate the two applications:
