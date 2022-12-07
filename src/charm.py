@@ -94,8 +94,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.framework.observe(self.on.update_status, self._on_update_status)
         self.framework.observe(self.on.get_primary_action, self._on_get_primary_action)
 
-        self.framework.observe(self.on.get_admin_password_action, self._on_get_admin_password)
-        self.framework.observe(self.on.set_admin_password_action, self._on_set_admin_password)
+        self.framework.observe(self.on.get_password_action, self._on_get_password)
+        self.framework.observe(self.on.set_password_action, self._on_set_password)
 
         # handle provider side of relations
         self.client_relations = MongoDBProvider(self, substrate="vm")
@@ -108,8 +108,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         The same keyFile and admin password on all members needed, hence it is generated once and
         share between members via the app data.
         """
-        if not self.get_secret("app", "admin_password"):
-            self.set_secret("app", "admin_password", generate_password())
+        if not self.get_secret("app", "password"):
+            self.set_secret("app", "password", generate_password())
 
         if not self.get_secret("app", "keyfile"):
             self.set_secret("app", "keyfile", generate_keyfile())
@@ -407,11 +407,11 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
     def _on_get_primary_action(self, event: ops.charm.ActionEvent):
         event.set_results({"replica-set-primary": self._primary})
 
-    def _on_get_admin_password(self, event: ops.charm.ActionEvent) -> None:
+    def _on_get_password(self, event: ops.charm.ActionEvent) -> None:
         """Returns the password for the user as an action response."""
-        event.set_results({"admin-password": self.get_secret("app", "admin_password")})
+        event.set_results({"admin-password": self.get_secret("app", "password")})
 
-    def _on_set_admin_password(self, event: ops.charm.ActionEvent) -> None:
+    def _on_set_password(self, event: ops.charm.ActionEvent) -> None:
         """Set the password for the admin user."""
         # only leader can write the new password into peer relation.
         if not self.unit.is_leader():
@@ -434,8 +434,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 event.fail(f"Failed changing the password: {e}")
                 return
 
-        self.set_secret("app", "admin_password", new_password)
-        event.set_results({"admin-password": self.get_secret("app", "admin_password")})
+        self.set_secret("app", "password", new_password)
+        event.set_results({"admin-password": self.get_secret("app", "password")})
 
     def _open_port_tcp(self, port: int) -> None:
         """Open the given port.
@@ -678,7 +678,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             replset=self.app.name,
             database="admin",
             username="admin",
-            password=self.get_secret("app", "admin_password"),
+            password=self.get_secret("app", "password"),
             hosts=set(self._unit_ips),
             roles={"default"},
             tls_external=external_ca is not None,

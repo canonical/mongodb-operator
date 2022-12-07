@@ -36,7 +36,7 @@ async def get_password(ops_test: OpsTest, app=APP_NAME) -> str:
     unit_name = ops_test.model.applications[app].units[0].name
     unit_id = unit_name.split("/")[1]
 
-    action = await ops_test.model.units.get(f"{app}/{unit_id}").run_action("get-admin-password")
+    action = await ops_test.model.units.get(f"{app}/{unit_id}").run_action("get-password")
     action = await action.wait()
     return action.results["admin-password"]
 

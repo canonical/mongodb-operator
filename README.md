@@ -20,7 +20,7 @@ This operator charm deploys and operates MongoDB on physical or virtual machines
 auto-delete - `boolean`; When a relation is removed, auto-delete ensures that any relevant databases
 associated with the relation are also removed. Set with `juju config mongodb auto-delete=<bool>`.
 
-admin-password - `string`; The password for the database admin. Set with `juju run-action mongodb/leader set-admin-password --wait`
+admin-password - `string`; The password for the database admin. Set with `juju run-action mongodb/leader set-password --wait`
 
 tls external key - `string`; TLS external key for encryption outside the cluster. Set with `juju run-action mongodb/0 set-tls-private-key "external-key=$(base64 -w0 external-key-0.pem)" --wait`
 
@@ -133,13 +133,13 @@ Note: The TLS settings here are for self-signed-certificates which are not recom
 
 ### Password rotation
 #### Internal admin user
-The admin user is used internally by the Charmed MongoDB Operator, the `set-admin-password` action can be used to rotate its password.
+The admin user is used internally by the Charmed MongoDB Operator, the `set-password` action can be used to rotate its password.
 ```shell
 # to set a specific password for the admin user
-juju run-action mongodb/leader set-admin-password password=<password> --wait
+juju run-action mongodb/leader set-password password=<password> --wait
 
 # to randomly generate a password for the admin user
-juju run-action mongodb/leader set-admin-password --wait
+juju run-action mongodb/leader set-password --wait
 ```
 
 #### Related applications users

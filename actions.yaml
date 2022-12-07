@@ -4,11 +4,13 @@
 get-primary:
   description: Report primary replica
 
-get-admin-password:
-  description: Get the admin user password used by charm.
+get-password:
+  description: Change the admin user's password, which is used by charm.
+    It is for internal charm users and SHOULD NOT be used by applications.
 
-set-admin-password:
-  description: Change the admin user password used by charm.
+set-password:
+  description: Change the admin user's password, which is used by charm.
+    It is for internal charm users and SHOULD NOT be used by applications.
   params:
     password:
       type: string
