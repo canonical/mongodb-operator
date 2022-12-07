@@ -100,7 +100,8 @@ Machine  State    Address       Inst id        Series  AZ  Message
 ```
 
 ## Accessing MongoDB:
-*Disclaimer: this part of the tutorial accesses MongoDB via the `admin` user. It is not recommended that you directly interface with the admin user in a production environment. In a production environment [create a separate user](https://www.mongodb.com/docs/manual/tutorial/create-users/) and connect to MongoDB with that user instead.*
+*Disclaimer: this part of the tutorial accesses MongoDB via the `admin` user. It is not recommended that you directly interface with the admin user in a production environment. In a production environment [create a separate user](https://www.mongodb.com/docs/manual/tutorial/create-users/) and connect to MongoDB with that user instead. Later in the section covering Relations we will cover how to access MongoDB without the admin user.
+*
 
 For this part of the Tutorial we will access MongoDB - via the MongoDB shell `mongosh`. You can read more about the MongoDB shell [here](https://www.mongodb.com/docs/mongodb-shell/).
 
@@ -158,7 +159,7 @@ Machine  State    Address       Inst id        Series  AZ  Message
 Use the IP address listed underneath `Public address` for `mongodb/0` as your host.
 
 #### Retrieving the database name:
-In this case we are logging in via the `admin` user so we will be connecting to the `admin` database. Use `admin` as the database name.
+In this case we are logging in via the `admin` user so we will be connecting to the `admin` database. Use `admin` as the database name. Once we access the database via the MongoDB URI, we will create a `test-db` database to store data.
 
 #### Retrieving the replica set name:
 The replica set name is the name of the application. In this tutorial we didn’t use a custom name for the application, so the application name is `mongodb`. You can read more about deploying a charm with a custom name [here](https://juju.is/docs/olm/deploy-a-charm-from-charmhub#heading--override-the-name-of-a-deployed-application). Use `mongodb` as the replica set name.
@@ -209,4 +210,31 @@ config  120.00 KiB
 local   404.00 KiB
 ```
 
-Feel free to test out any other MongoDB commands, when you’re ready to leave the shell you can just type `exit`
+Now that we have access to MongoDB we can create a database named `test-db`. To create this database enter:
+```
+use test-db
+```
+Now lets create a user called `testUser` read/write access to the database `test-db` that we just created . Enter:
+```
+db.createUser({
+  user: "testUser",
+  pwd: "password",
+  roles: [
+    { role: "readWrite", db: "test-db" }
+  ]
+})
+```
+You can verify that you added the user correctly, by entering the command `show users` into the mongo shell, this will output:
+```
+[
+  {
+    _id: 'test-db.testUser',
+    userId: new UUID("6e841e28-b1bc-4719-bf42-ba4b164fc546"),
+    user: 'testUser',
+    db: 'test-db',
+    roles: [ { role: 'readWrite', db: 'test-db' } ],
+    mechanisms: [ 'SCRAM-SHA-1', 'SCRAM-SHA-256' ]
+  }
+]
+```
+Feel free to test out any other MongoDB commands, when you’re ready to leave the shell you can just type `exit`.
