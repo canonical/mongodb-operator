@@ -90,6 +90,7 @@ class MongoDBTLS(Object):
             subject=self.get_host(self.charm.unit),
             organization=self.charm.app.name,
             sans=self._get_sans(),
+            sans_ip=[str(self.charm.model.get_binding(self.peer_relation).network.bind_address)],
         )
 
         self.charm.set_secret(scope, "key", key.decode("utf-8"))
@@ -227,6 +228,7 @@ class MongoDBTLS(Object):
             subject=self.get_host(self.charm.unit),
             organization=self.charm.app.name,
             sans=self._get_sans(),
+            sans_ip=[str(self.charm.model.get_binding(self.peer_relation).network.bind_address)],
         )
         logger.debug("Requesting a certificate renewal.")
 
