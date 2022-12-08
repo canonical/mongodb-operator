@@ -122,12 +122,10 @@ mongodb://<username>:<password>@<host>/<database name>?replicaSet=<replica set n
 Connecting via the URI requires that you know the values for `username`, `password`, `host`, `database name`, and the `replica set name`. We will now show you how to retrieve the necessary fields. 
 
 
-#### Retrieving the username:
-In this case, we are using the `admin` user to connect to MongoDB. Use `admin` as the username.
+**Retrieving the username:** In this case, we are using the `admin` user to connect to MongoDB. Use `admin` as the username.
 
 
-#### Retrieving the password:
-The password can be retrieved by running the `get-admin-password` action on the Charmed MongoDB application:
+**Retrieving the password:** The password can be retrieved by running the `get-admin-password` action on the Charmed MongoDB application:
 ```
 juju run-action mongodb/leader get-admin-password --wait
 ```
@@ -147,8 +145,7 @@ unit-mongodb-0:
 Use the password under the result: `admin-password`.
 
 
-#### Retrieving the hosts:
-The hosts are the units hosting the MongoDB application. In this case we only have one host; you can find the host’s IP address with `juju status`. This will output information about the Charmed MongoDB application along with it’s IP address:
+**Retrieving the hosts:** The hosts are the units hosting the MongoDB application. In this case we only have one host; you can find the host’s IP address with `juju status`. This will output information about the Charmed MongoDB application along with it’s IP address:
 ```
 Model     Controller  Cloud/Region         Version  SLA          Timestamp
 tutorial  overlord    localhost/localhost  2.9.37   unsupported  11:31:16Z
@@ -166,12 +163,10 @@ Machine  State    Address       Inst id        Series  AZ  Message
 Use the IP address listed underneath `Public address` for `mongodb/0` as your host.
 
 
-#### Retrieving the database name:
-In this case we are logging in via the `admin` user so we will be connecting to the `admin` database. Use `admin` as the database name.
+**Retrieving the database name:** In this case we are logging in via the `admin` user so we will be connecting to the `admin` database. Use `admin` as the database name.
 
 
-#### Retrieving the replica set name:
-The replica set name is the name of the application. In this tutorial we didn’t use a custom name for the application, so the application name is `mongodb`. You can read more about deploying a charm with a custom name [here](https://juju.is/docs/olm/deploy-a-charm-from-charmhub#heading--override-the-name-of-a-deployed-application). Use `mongodb` as the replica set name.
+**Retrieving the replica set name:** The replica set name is the name of the application. In this tutorial we didn’t use a custom name for the application, so the application name is `mongodb`. You can read more about deploying a charm with a custom name [here](https://juju.is/docs/olm/deploy-a-charm-from-charmhub#heading--override-the-name-of-a-deployed-application). Use `mongodb` as the replica set name.
 
 
 ### Connect via MongoDB URI:
@@ -224,13 +219,13 @@ Feel free to test out any other MongoDB commands, when you’re ready to leave t
 
 
 ## Scaling Charmed MongoDB: 
-Replication is a popular feature of MongoDB; replicas copy data making a database highly reliable. 
+Replication is a popular feature of MongoDB; replicas copy data making a database highly available. 
 
 
 ### Add replicas:
 You can add two replicas to your deployed MongoDB application with:
 ```
-juju add-unit mongodb -n2
+juju add-unit mongodb -n 2
 ```
 
 You can now watch the replica set add these replicas with: `watch -c juju status --color`. You’ll know that all three replicas are ready when `watch -c juju status --color` reports:
@@ -413,7 +408,7 @@ Machine  State    Address       Inst id        Series  AZ  Message
 
 ```
 
-As previously mentioned you can trust that Charmed MongoDB removed this replica correctly.
+As previously mentioned you can trust that Charmed MongoDB removed this replica correctly. This can be checked by verifying that the new URI (where the removed host has been excluded) works properly.
 
 
 ## Passwords:
