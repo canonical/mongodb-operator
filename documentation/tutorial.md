@@ -141,7 +141,7 @@ unit-mongodb-0:
 ```
 Use the password under the result: `admin-password`.
 
-**Retrieving the hosts:** The hosts are the units hosting the MongoDB application. In this case we only have one host; you can find the host’s IP address with `juju status`. This will output information about the Charmed MongoDB application along with it’s IP address:
+**Retrieving the hosts:** The hosts are the units hosting the MongoDB application. The host’s IP address can be found with `juju status`:
 ```
 Model     Controller  Cloud/Region         Version  SLA          Timestamp
 tutorial  overlord    localhost/localhost  2.9.37   unsupported  11:31:16Z
@@ -158,9 +158,9 @@ Machine  State    Address       Inst id        Series  AZ  Message
 ```
 Use the IP address listed underneath `Public address` for `mongodb/0` as your host.
 
-**Retrieving the database name:** In this case we are logging in via the `admin` user so we will be connecting to the `admin` database. Use `admin` as the database name. Once we access the database via the MongoDB URI, we will create a `test-db` database to store data.
+**Retrieving the database name:** In this case we are connecting to the `admin` database. Use `admin` as the database name. Once we access the database via the MongoDB URI, we will create a `test-db` database to store data.
 
-**Retrieving the replica set name:** The replica set name is the name of the application. In this tutorial we didn’t use a custom name for the application, so the application name is `mongodb`. You can read more about deploying a charm with a custom name [here](https://juju.is/docs/olm/deploy-a-charm-from-charmhub#heading--override-the-name-of-a-deployed-application). Use `mongodb` as the replica set name.
+**Retrieving the replica set name:** The replica set name is the name of the application on Juju hosting MongoDB. The application name in this tutorial is `mongodb`. Use `mongodb` as the replica set name. 
 
 ### Connect via MongoDB URI:
 Now that we have the necessary fields to connect to the URI, we can connect to MongoDB via the URI. Enter the following into the command line, replace the values for  `username`, `password`, `hosts`, `database name`, and the `replica set name` with what you’ve retrieved above:
