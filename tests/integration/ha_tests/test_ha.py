@@ -584,6 +584,7 @@ async def test_network_cut(ops_test, continuous_writes):
     model_name = ops_test.model.info.name
 
     primary_hostname = await helpers.unit_hostname(ops_test, primary.name)
+    primary_unit_ip = await helpers.get_unit_ip(ops_test, primary.name)
 
     # before cutting network verify that connection is possible
     assert await helpers.mongod_ready(
@@ -629,7 +630,7 @@ async def test_network_cut(ops_test, continuous_writes):
     helpers.restore_network_for_unit(primary_hostname)
 
     # wait until network is reestablished for the unit
-    helpers.wait_network_restore(model_name, primary_hostname, primary.public_address)
+    helpers.wait_network_restore(model_name, primary_hostname, primary_unit_ip)
 
     # self healing is performed with update status hook
     async with ops_test.fast_forward():
