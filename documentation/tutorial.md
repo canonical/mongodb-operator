@@ -120,11 +120,9 @@ mongodb://<username>:<password>@<hosts>/<database name>?replicaSet=<replica set 
 
 Connecting via the URI requires that you know the values for `username`, `password`, `hosts`, `database name`, and the `replica set name`. We will show you how to retrieve the necessary fields. 
 
-#### Retrieving the username:
-In this case, we are using the `admin` user to connect to MongoDB. Use `admin` as the username.
+**Retrieving the username:** In this case, we are using the `admin` user to connect to MongoDB. Use `admin` as the username.
 
-#### Retrieving the password:
-The password can be retrieved by running the `get-admin-password` action on the Charmed MongoDB application:
+**Retrieving the password:** The password can be retrieved by running the `get-admin-password` action on the Charmed MongoDB application:
 ```
 juju run-action mongodb/leader get-admin-password --wait
 ```
@@ -143,12 +141,8 @@ unit-mongodb-0:
 ```
 Use the password under the result: `admin-password`.
 
-<<<<<<< HEAD
+**Retrieving the hosts:** The hosts are the units hosting the MongoDB application. The host’s IP address can be found with `juju status`:
 
-=======
->>>>>>> tutorial
-#### Retrieving the hosts:
-The hosts are the units hosting the MongoDB application. In this case we only have one host; you can find the host’s IP address with `juju status`. This will output information about the Charmed MongoDB application along with it’s IP address:
 ```
 Model     Controller  Cloud/Region         Version  SLA          Timestamp
 tutorial  overlord    localhost/localhost  2.9.37   unsupported  11:31:16Z
@@ -165,16 +159,14 @@ Machine  State    Address       Inst id        Series  AZ  Message
 ```
 Use the IP address listed underneath `Public address` for `mongodb/0` as your host.
 
-#### Retrieving the database name:
-In this case we are logging in via the `admin` user so we will be connecting to the `admin` database. Use `admin` as the database name. Once we access the database via the MongoDB URI, we will create a `test-db` database to store data.
+**Retrieving the database name:** In this case we are connecting to the `admin` database. Use `admin` as the database name. Once we access the database via the MongoDB URI, we will create a `test-db` database to store data.
 
-#### Retrieving the replica set name:
-The replica set name is the name of the application. In this tutorial we didn’t use a custom name for the application, so the application name is `mongodb`. You can read more about deploying a charm with a custom name [here](https://juju.is/docs/olm/deploy-a-charm-from-charmhub#heading--override-the-name-of-a-deployed-application). Use `mongodb` as the replica set name.
+**Retrieving the replica set name:** The replica set name is the name of the application on Juju hosting MongoDB. The application name in this tutorial is `mongodb`. Use `mongodb` as the replica set name. 
 
 ### Connect via MongoDB URI:
 Now that we have the necessary fields to connect to the URI, we can connect to MongoDB via the URI. Enter the following into the command line, replace the values for  `username`, `password`, `hosts`, `database name`, and the `replica set name` with what you’ve retrieved above:
 ```
-mongosh mongodb://<username>:<password>@<hosts>/<database name>?replicaSet=<replica set name>
+mongosh mongodb://<username>:<password>@<host>/<database name>?replicaSet=<replica set name>
 ```
 
 You should now see:
@@ -247,13 +239,13 @@ Feel free to test out any other MongoDB commands, when you’re ready to leave t
 
 
 ## Scaling Charmed MongoDB: 
-Replication is a popular feature of MongoDB; replicas copy data making a database highly reliable. 
+Replication is a popular feature of MongoDB; replicas copy data making a database highly available. 
 
 
 ### Add replicas:
 You can add two replicas to your deployed MongoDB application with:
 ```
-juju add-unit mongodb -n2
+juju add-unit mongodb -n 2
 ```
 
 You can now watch the replica set add these replicas with: `watch -c juju status --color`. You’ll know that all three replicas are ready when `watch -c juju status --color` reports:
@@ -436,7 +428,7 @@ Machine  State    Address       Inst id        Series  AZ  Message
 
 ```
 
-As previously mentioned you can trust that Charmed MongoDB removed this replica correctly.
+As previously mentioned you can trust that Charmed MongoDB removed this replica correctly. This can be checked by verifying that the new URI (where the removed host has been excluded) works properly.
 
 
 ## Passwords:
@@ -519,7 +511,7 @@ cd data-integrator/
 sudo snap install charmcraft --classic
 charmcraft pack
 ```
-After packing the charm, you can see that a charm executable named `database-integrator_ubuntu-22.04-amd64.charm` has been created. When we deploy the charm we can also specify the name of the database that we want created in MongoDB with the `database` config option. To deploy this charm with juju and create a database in MongoDB named `test-database` enter:
+After packing the charm, you can see that a charm executable named `database-integrator_ubuntu-22.04-amd64.charm` has been created in the `data-integrator` directory. When we deploy the charm we can also specify the name of the database that we want created in MongoDB with the `database` config option. To deploy this charm with juju and create a database in MongoDB named `test-database` enter:
 ```
 juju deploy ./database-integrator_ubuntu-22.04-amd64.charm --config database=test-database
 ```
@@ -582,10 +574,28 @@ mongosh "<uri from juju run-action  database-integrator/0 get-credentials --wait
 ```
 *Note: be sure you wrap the URI in `"`*
 
-You will now be in the mongo shell as a non-admin user. Since you do not have admin access, privileged commands like `show users` should output:
+You will now be in the mongo shell as the user created for this relation. When you relate two applications Charmed MongoDB automatically sets up a user and database for you. Enter `show dbs` into the MongoDB shell, this will output:
 ```
-MongoServerError: not authorized on mongodb to execute command { usersInfo: 1, lsid: { id: UUID("86d865cc-1f51-4b1e-8906-ea8a5159f906") }, $clusterTime: { clusterTime: Timestamp(1670340314, 1), signature: { hash: BinData(0, 25E321CD816AB02C5E92E2074A067CD33C4F0794), keyId: 7173987185652137989 } }, $db: "mongodb" }
+test-database  8.00 KiB
 ```
+This is the name of the database we specified when we first deployed the `database-integrator` charm. To create a collection in the "test-database" and then show the collection enter:
+```
+db.createCollection("test-collection")
+show collections
+```
+Now insert a document into this database:
+```
+db.test_collection.insertOne(
+	{
+		First_Name: "Jammy",
+		Last_Name: "Jellyfish",
+  })
+```
+You can verify this document was inserted by running:
+```
+db.test_collection.find()
+```
+
 Now exit the shell by typing `exit`
 
 ### Removing the user
@@ -607,6 +617,15 @@ MongoServerError: Authentication failed.
 ```
 As this user no longer exists. This is expected as `juju remove-relation mongodb database-integrator` also removes the user. 
 
+If you wanted to recreate this user all you would need to do is relate the the two applications again:
+```
+juju relate database-integrator mongodb
+```
+Re-relating generates a new password for this user, and therefore a new URI you can see the new URI with `juju run-action  database-integrator/0 get-credentials --wait`. You can connect to the database with this new URI:
+```
+mongosh "<uri from juju run-action  database-integrator/0 get-credentials --wait>"
+```
+From there if you enter `db.test_collection.find()` you will see all of your original documents are still present in the database. 
 
 ## Transcript Layer Security (TLS)
 [TLS](https://en.wikipedia.org/wiki/Transport_Layer_Security) is used to encrypt data exchanged between two applications; it secures data transmitted over the network. Typically enabling up TLS within a highly available database and between a highly available database and client/server applications, requires domain specific knowledge and a high level of expertise. Fortunately, the domain specific knowledge has been encoded into Charmed MongoDB. This means enabling TLS on Charmed MongoDB is readily available and requires minimal effort on your end.
