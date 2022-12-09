@@ -510,7 +510,7 @@ The admin password under the result: `admin-password` should match whatever you 
 [Relations](https://juju.is/docs/sdk/integration) are the easiest way to create a user for MongoDB in Charmed MongoDB; relations automatically create a username, password, and database for the desired user/application. As mentioned earlier in the [Accessing MongoDB](#accessing-mongodb) it is a better practice to connect to MongoDB via a specific user rather than the admin user.
 
 ### Data Integrator Charm
-Before relating to a charmed application, we must deploy our charmed application. In this tutorial we will relate to the [Data Integrator Charm](https://github.com/canonical/data-integrator). This is a bare-bones charm that doesn't directly interact with a database, but instead provides the necessary information to connect to a database. In order to deploy the Data Integrator Charm we must clone its source code from GitHub and create the charm executable ourselves: 
+Before relating to a charmed application, we must deploy our charmed application. In this tutorial we will relate to the [Data Integrator Charm](https://github.com/canonical/data-integrator). This is a bare-bones charm that allows for central management of database users, providing support for different kind of data platforms (e.g. MongoDB, MySQL, PostgreSQL, Kafka, etc) with a consistent, opinionated and robust user experience. In order to deploy the Data Integrator Charm we must clone its source code from GitHub and create the charm executable ourselves: 
 
 <!--- note in the future replace this with juju deploy instead of from git --->
 ```
@@ -519,32 +519,9 @@ cd data-integrator/
 sudo snap install charmcraft --classic
 charmcraft pack
 ```
-After packing the charm, you can see the charm executable by typing `ls`, the executable should be named: `database-integrator_ubuntu-22.04-amd64.charm`. To deploy the charm enter:
+After packing the charm, you can see that a charm executable named `database-integrator_ubuntu-22.04-amd64.charm` has been created. When we deploy the charm we can also specify the name of the database that we want created in MongoDB with the `database` config option. To deploy this charm with juju and create a database in MongoDB named `test-database` enter:
 ```
-juju deploy ./database-integrator_ubuntu-22.04-amd64.charm
-```
-Wait for `watch -c juju status --color` to show that `database-integrator` is waiting for a database name:
-```
-Model     Controller  Cloud/Region         Version  SLA          Timestamp
-tutorial  overlord    localhost/localhost  2.9.37   unsupported  10:25:44Z
-
-App                  Version  Status   Scale  Charm                Channel   Rev  Exposed  Message
-database-integrator           blocked      1  database-integrator              0  no       The database name is not specified.
-mongodb                       active       2  mongodb              dpe/edge   96  no       Replica set secondary
-
-Unit                    Workload  Agent      Machine  Public address  Ports      Message
-database-integrator/0*  blocked   executing  5        10.23.62.216               (config-changed) The database name is not specified.
-mongodb/0*              active    idle       0        10.23.62.156    27017/tcp  Replica set secondary
-mongodb/1               active    idle       1        10.23.62.55     27017/tcp  Replica set primary
-
-Machine  State    Address       Inst id        Series  AZ  Message
-0        started  10.23.62.156  juju-d35d30-0  focal       Running
-1        started  10.23.62.55   juju-d35d30-1  focal       Running
-5        started  10.23.62.216  juju-d35d30-5  jammy       Running
-```
-Configure the database with:
-```
-juju config database-integrator database=mongodb
+juju deploy ./database-integrator_ubuntu-22.04-amd64.charm --config database=test-database
 ```
 
 ### Relating to MongoDB
@@ -583,11 +560,11 @@ This should output something like:
   id: "24"
   results:
     mongodb:
-      database: mongodb
+      database: test-database
       endpoints: 10.23.62.55,10.23.62.156
       password: VMnRws6BlojzDi5e1m2GVWOgJaoSs44d
       replset: mongodb
-      uris: mongodb://relation-4:VMnRws6BlojzDi5e1m2GVWOgJaoSs44d@10.23.62.55,10.23.62.156/mongodb?replicaSet=mongodb&authSource=admin
+      uris: mongodb://relation-4:VMnRws6BlojzDi5e1m2GVWOgJaoSs44d@10.23.62.55,10.23.62.156/test-database?replicaSet=mongodb&authSource=admin
       username: relation-4
     ok: "True"
   status: completed
@@ -632,8 +609,10 @@ As this user no longer exists. This is expected as `juju remove-relation mongodb
 
 
 ## Transcript Layer Security (TLS)
+[TLS](https://en.wikipedia.org/wiki/Transport_Layer_Security) is used to encrypt data exchanged between two applications; it secures data transmitted over the network. Typically enabling up TLS within a highly available database and between a highly available database and client/server applications, requires domain specific knowledge and a high level of expertise. Fortunately, the domain specific knowledge has been encoded into Charmed MongoDB. This means enabling TLS on Charmed MongoDB is readily available and requires minimal effort on your end.
 
-TLS is the encryption of data sent between two applications. TLS requires minimal work to be set up on Charmed MongoDB. There already exists a [TLS Certificates Charm](https://charmhub.io/tls-certificates-operator) which handles providing, requesting, and renewing TLS certificates.
+Again, relations come in handy here as TLS is enabled via relations; i.e. by relating Charmed MongoDB to the [TLS Certificates Charm](https://charmhub.io/tls-certificates-operator). The TLS Certificates Charm centralises TLS certificate management in a consistent manner and handles providing, requesting, and renewing TLS certificates.
+
 
 ### Configure TLS
 Before enabling TLS on Charmed MongoDB we must first deploy the `TLS-certificates-operator` charm:
