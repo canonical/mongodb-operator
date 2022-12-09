@@ -32,7 +32,7 @@ from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
 from charms.operator_libs_linux.v0 import apt
-from charms.operator_libs_linux.v1 import systemd
+from charms.operator_libs_linux.v1 import systemd, snap
 from ops.main import main
 from ops.model import (
     ActiveStatus,
@@ -67,7 +67,7 @@ MONGO_DATA_DIR = "/data/db"
 
 # We expect the MongoDB container to use the default ports
 MONGODB_PORT = 27017
-
+SNAP_PACKAGES = [("percona-backup-mongodb", "edge")]
 REL_NAME = "database"
 
 
@@ -278,19 +278,18 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
     def _on_install(self, event) -> None:
         """Handle the install event (fired on startup).
 
-        Handles the startup install event -- installs updates the apt cache,
-        installs MongoDB.
+        Handles the startup install event -- installs updates the apt cache, installs MongoDB.
         """
         self.unit.status = MaintenanceStatus("installing MongoDB")
         try:
             self._add_repository(REPO_URL, GPG_URL, REPO_ENTRY)
             self._install_apt_packages(["mongodb-org"])
-        except (apt.InvalidSourceError, ValueError, apt.GPGKeyError, URLError):
+            self._install_snap_packages(packages=SNAP_PACKAGES)
+        except (apt.InvalidSourceError, ValueError, apt.GPGKeyError, URLError, snap.SnapError):
             self.unit.status = BlockedStatus("couldn't install MongoDB")
 
         # if a new unit is joining a cluster with a legacy relation it should start without auth
         auth = not self.client_relations._get_users_from_relations(None, rel="obsolete")
-
         # Construct the mongod startup commandline args for systemd and reload the daemon.
         update_mongod_service(
             auth=auth, machine_ip=self._unit_ip(self.unit), config=self.mongodb_config
@@ -483,6 +482,26 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 raise e
 
         return repositories
+
+    def _install_snap_packages(self, packages: List[str]) -> None:
+        """Installs package(s) to container.
+
+        Args:
+            packages: list of packages to install.
+        """
+        for (snap_name, snap_channel) in packages:
+            try:
+                snap_cache = snap.SnapCache()
+                snap_package = snap_cache[snap_name]
+
+                if not snap_package.present:
+                    snap_package.ensure(snap.SnapState.Latest, channel=snap_channel)
+
+            except snap.SnapError as e:
+                logger.error(
+                    "An exception occurred when installing %s. Reason: %s", snap_name, str(e)
+                )
+                raise
 
     def _install_apt_packages(self, packages: List[str]) -> None:
         """Installs package(s) to container.
