@@ -6,7 +6,7 @@ from unittest import mock
 from unittest.mock import call, patch
 
 import requests
-from charms.operator_libs_linux.v1 import systemd, snap
+from charms.operator_libs_linux.v1 import snap, systemd
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 from ops.testing import Harness
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure

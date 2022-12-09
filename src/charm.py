@@ -32,7 +32,7 @@ from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
 from charms.operator_libs_linux.v0 import apt
-from charms.operator_libs_linux.v1 import systemd, snap
+from charms.operator_libs_linux.v1 import snap, systemd
 from ops.main import main
 from ops.model import (
     ActiveStatus,
