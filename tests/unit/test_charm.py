@@ -6,7 +6,7 @@ from unittest import mock
 from unittest.mock import call, patch
 
 import requests
-from charms.operator_libs_linux.v1 import systemd
+from charms.operator_libs_linux.v1 import snap, systemd
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 from ops.testing import Harness
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
@@ -177,6 +177,19 @@ class TestCharm(unittest.TestCase):
             with self.assertLogs("charm", "ERROR") as logs:
                 self.harness.charm._open_port_tcp(27017)
                 self.assertIn("failed opening port 27017", "".join(logs.output))
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.update_mongod_service")
+    @patch("charm.MongodbOperatorCharm._add_repository")
+    @patch("charm.MongodbOperatorCharm._install_apt_packages")
+    @patch("charm.snap.SnapCache")
+    def test_install_snap_packages_failure(
+        self, snap_cache, _install_apt_packages, _add_repository, update_mongod_service
+    ):
+        """Test verifies the correct functions get called when installing apt packages."""
+        snap_cache.side_effect = snap.SnapError
+        self.harness.charm.on.install.emit()
+        self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
 
     @patch("charm.apt.add_package")
     @patch("charm.apt.update")
