@@ -768,7 +768,7 @@ def instance_ip(model: str, instance: str) -> str:
             return line.split()[2]
 
 
-@retry(stop=stop_after_attempt(30), wait=wait_fixed(15))
+@retry(stop=stop_after_attempt(60), wait=wait_fixed(15))
 def wait_network_restore(model_name: str, hostname: str, old_ip: str) -> None:
     """Wait until network is restored.
 
