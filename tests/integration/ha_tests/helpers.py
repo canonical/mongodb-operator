@@ -694,17 +694,6 @@ def cut_network_from_unit(machine_name: str) -> None:
     subprocess.check_call(cut_network_command.split())
 
 
-def restore_network_for_unit(machine_name: str) -> None:
-    """Restore network from a lxc container.
-
-    Args:
-        machine_name: lxc container hostname
-    """
-    # remove mask from eth0
-    restore_network_command = f"lxc config device remove {machine_name} eth0"
-    subprocess.check_call(restore_network_command.split())
-
-
 async def get_controller_machine(ops_test: OpsTest) -> str:
     """Return controller machine hostname.
 
@@ -777,6 +766,16 @@ def wait_network_restore(model_name: str, hostname: str, old_ip: str) -> None:
         hostname: The name of the instance
         old_ip: old registered IP address
     """
+    # try to restore network by removing mask from eth0
+    try:
+        restore_network_command = f"lxc config device remove {hostname} eth0"
+        subprocess.check_output(restore_network_command.split())
+    except subprocess.CalledProcessError:
+        # if the device was already removed then we  will get a `CalledProcessError` error. This
+        # is OK
+        pass
+
+    # check network is successfully restored
     if instance_ip(model_name, hostname) == old_ip:
         raise Exception("Network not restored, IP address has not changed yet.")
 

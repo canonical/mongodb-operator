@@ -344,6 +344,15 @@ async def test_replication_member_scaling(ops_test: OpsTest, continuous_writes) 
     actual_writes = await helpers.count_writes(ops_test)
     assert total_expected_writes["number"] == actual_writes
 
+    # clean up added unit
+    last_unit = ops_test.model.applications[app].units[-1]
+    await ops_test.model.destroy_units(*[last_unit.name])
+
+    # wait for app to be active after removal of unit
+    await ops_test.model.wait_for_idle(
+        apps=[app], status="active", timeout=1000, wait_for_exact_units=expected_units
+    )
+
 
 async def test_kill_db_process(ops_test, continuous_writes):
     # locate primary unit
@@ -625,9 +634,6 @@ async def test_network_cut(ops_test, continuous_writes):
     total_expected_writes = await helpers.stop_continous_writes(ops_test, down_unit=primary.name)
     actual_writes = await helpers.count_writes(ops_test, down_unit=primary.name)
     assert total_expected_writes["number"] == actual_writes, "writes to the db were missed."
-
-    # restore network connectivity to old primary
-    helpers.restore_network_for_unit(primary_hostname)
 
     # wait until network is reestablished for the unit
     helpers.wait_network_restore(model_name, primary_hostname, primary_unit_ip)
