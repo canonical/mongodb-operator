@@ -198,7 +198,13 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         for relation in self.model.relations[REL_NAME]:
             username = self.client_relations._get_username_from_relation_id(relation.id)
+            # it is possible that the relation exists but the user has not be set up. (i.e. bundle
+            # deployment race condition). If that is the case don't update the data.
+            if "password" not in relation.data[self.app]:
+                continue
+
             password = relation.data[self.app]["password"]
+
             config = self.client_relations._get_config(username, password)
             if username in database_users:
                 data = relation.data[self.app]
