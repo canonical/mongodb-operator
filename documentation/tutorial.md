@@ -122,9 +122,9 @@ Connecting via the URI requires that you know the values for `username`, `passwo
 
 **Retrieving the username:** In this case, we are using the `admin` user to connect to MongoDB. Use `admin` as the username.
 
-**Retrieving the password:** The password can be retrieved by running the `get-admin-password` action on the Charmed MongoDB application:
+**Retrieving the password:** The password can be retrieved by running the `get-password` action on the Charmed MongoDB application:
 ```
-juju run-action mongodb/leader get-admin-password --wait
+juju run-action mongodb/leader get-password --wait
 ```
 Running the command should output:
 ```
@@ -433,9 +433,9 @@ As previously mentioned you can trust that Charmed MongoDB removed this replica 
 
 ## Passwords:
 ### Retrieving the admin password:
-As previously mentioned, the admin password can be retrieved by running the `get-admin-password` action on the Charmed MongoDB application:
+As previously mentioned, the admin password can be retrieved by running the `get-password` action on the Charmed MongoDB application:
 ```
-juju run-action mongodb/leader get-admin-password --wait
+juju run-action mongodb/leader get-password --wait
 ```
 Running the command should output:
 ```
@@ -456,7 +456,7 @@ The admin password is under the result: `admin-password`.
 ### Rotating the admin password
 You can change the admin password to a new random password by entering:
 ```
-juju run-action mongodb/leader set-admin-password --wait
+juju run-action mongodb/leader set-password --wait
 ```
 Running the command should output:
 ```
@@ -478,7 +478,7 @@ The admin password is under the result: `admin-password`. It should be different
 ### Setting the admin password
 You can change the admin password to a specific password by entering:
 ```
-juju run-action mongodb/leader set-admin-password password=<password> --wait
+juju run-action mongodb/leader set-password password=<password> --wait
 ```
 Running the command should output:
 ```
