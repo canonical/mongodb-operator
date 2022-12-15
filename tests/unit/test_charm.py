@@ -6,7 +6,7 @@ from unittest import mock
 from unittest.mock import call, patch
 
 import requests
-from charms.operator_libs_linux.v1 import systemd
+from charms.operator_libs_linux.v1 import snap, systemd
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 from ops.testing import Harness
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
@@ -177,6 +177,19 @@ class TestCharm(unittest.TestCase):
             with self.assertLogs("charm", "ERROR") as logs:
                 self.harness.charm._open_port_tcp(27017)
                 self.assertIn("failed opening port 27017", "".join(logs.output))
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.update_mongod_service")
+    @patch("charm.MongodbOperatorCharm._add_repository")
+    @patch("charm.MongodbOperatorCharm._install_apt_packages")
+    @patch("charm.snap.SnapCache")
+    def test_install_snap_packages_failure(
+        self, snap_cache, _install_apt_packages, _add_repository, update_mongod_service
+    ):
+        """Test verifies the correct functions get called when installing apt packages."""
+        snap_cache.side_effect = snap.SnapError
+        self.harness.charm.on.install.emit()
+        self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
 
     @patch("charm.apt.add_package")
     @patch("charm.apt.update")
@@ -615,14 +628,14 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    def test_set_admin_password(self, connection):
+    def test_set_password(self, connection):
         """Tests that a new admin password is generated and is returned to the user."""
         self.harness.set_leader(True)
-        original_password = self.harness.charm.app_peer_data["admin_password"]
+        original_password = self.harness.charm.app_peer_data["password"]
         action_event = mock.Mock()
         action_event.params = {}
-        self.harness.charm._on_set_admin_password(action_event)
-        new_password = self.harness.charm.app_peer_data["admin_password"]
+        self.harness.charm._on_set_password(action_event)
+        new_password = self.harness.charm.app_peer_data["password"]
 
         # verify app data is updated and results are reported to user
         self.assertNotEqual(original_password, new_password)
@@ -630,13 +643,13 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    def test_set_admin_password_provided(self, connection):
+    def test_set_password_provided(self, connection):
         """Tests that a given password is set as the new mongodb password."""
         self.harness.set_leader(True)
         action_event = mock.Mock()
         action_event.params = {"password": "canonical123"}
-        self.harness.charm._on_set_admin_password(action_event)
-        new_password = self.harness.charm.app_peer_data["admin_password"]
+        self.harness.charm._on_set_password(action_event)
+        new_password = self.harness.charm.app_peer_data["password"]
 
         # verify app data is updated and results are reported to user
         self.assertEqual("canonical123", new_password)
@@ -644,10 +657,10 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    def test_set_admin_password_failure(self, connection):
+    def test_set_password_failure(self, connection):
         """Tests failure to reset password does not update app data and failure is reported."""
         self.harness.set_leader(True)
-        original_password = self.harness.charm.app_peer_data["admin_password"]
+        original_password = self.harness.charm.app_peer_data["password"]
         action_event = mock.Mock()
         action_event.params = {}
 
@@ -655,8 +668,8 @@ class TestCharm(unittest.TestCase):
             connection.return_value.__enter__.return_value.set_user_password.side_effect = (
                 exception
             )
-            self.harness.charm._on_set_admin_password(action_event)
-            current_password = self.harness.charm.app_peer_data["admin_password"]
+            self.harness.charm._on_set_password(action_event)
+            current_password = self.harness.charm.app_peer_data["password"]
 
             # verify passwords are not updated.
             self.assertEqual(current_password, original_password)

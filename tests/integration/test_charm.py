@@ -128,11 +128,11 @@ async def test_get_primary_action(ops_test: OpsTest) -> None:
 
 
 async def test_set_password_action(ops_test: OpsTest) -> None:
-    """Tests that action set-admin-password outputs resets the password on app data and mongod."""
+    """Tests that action set-password outputs resets the password on app data and mongod."""
     # verify that password is correctly rotated by comparing old password with rotated one.
     old_password = await get_password(ops_test)
     unit = await find_unit(ops_test, leader=True)
-    action = await unit.run_action("set-admin-password")
+    action = await unit.run_action("set-password")
     action = await action.wait()
     new_password = action.results["admin-password"]
     assert new_password != old_password
@@ -150,7 +150,7 @@ async def test_set_password_action(ops_test: OpsTest) -> None:
 
     # perform the same tests as above but with a user provided password.
     old_password = await get_password(ops_test)
-    action = await unit.run_action("set-admin-password", **{"password": "safe_pass"})
+    action = await unit.run_action("set-password", **{"password": "safe_pass"})
     action = await action.wait()
     new_password = action.results["admin-password"]
     assert new_password != old_password

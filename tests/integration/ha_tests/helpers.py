@@ -106,7 +106,7 @@ async def get_password(ops_test: OpsTest, app, down_unit=None) -> str:
             unit_id = unit.name.split("/")[1]
             break
 
-    action = await ops_test.model.units.get(f"{app}/{unit_id}").run_action("get-admin-password")
+    action = await ops_test.model.units.get(f"{app}/{unit_id}").run_action("get-password")
     action = await action.wait()
     return action.results["admin-password"]
 
@@ -768,7 +768,7 @@ def instance_ip(model: str, instance: str) -> str:
             return line.split()[2]
 
 
-@retry(stop=stop_after_attempt(15), wait=wait_fixed(15))
+@retry(stop=stop_after_attempt(60), wait=wait_fixed(15))
 def wait_network_restore(model_name: str, hostname: str, old_ip: str) -> None:
     """Wait until network is restored.
 
