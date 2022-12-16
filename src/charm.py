@@ -28,6 +28,7 @@ from charms.mongodb.v0.mongodb import (
     NotReadyError,
     PyMongoError,
 )
+from charms.mongodb.v0.mongodb_backups import MongoDBBackups
 from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
@@ -79,7 +80,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self._port = MONGODB_PORT
 
         self.framework.observe(self.on.install, self._on_install)
-        self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(self.on.start, self._on_start)
         self.framework.observe(self.on[PEER].relation_joined, self._on_mongodb_relation_joined)
         self.framework.observe(self.on[PEER].relation_changed, self._on_mongodb_relation_handler)
@@ -101,6 +101,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.client_relations = MongoDBProvider(self, substrate="vm")
         self.legacy_client_relations = MongoDBLegacyProvider(self)
         self.tls = MongoDBTLS(self, PEER, substrate="vm")
+        self.backups = MongoDBBackups(self)
 
     def _generate_passwords(self) -> None:
         """Generate passwords and put them into peer relation.
@@ -294,13 +295,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         update_mongod_service(
             auth=auth, machine_ip=self._unit_ip(self.unit), config=self.mongodb_config
         )
-
-    def _on_config_changed(self, _) -> None:
-        """Event handler for configuration changed events."""
-        # TODO
-        # - update existing mongo configurations based on user preferences
-        # - add additional configurations as according to spec doc
-        pass
 
     def _on_start(self, event: ops.charm.StartEvent) -> None:
         """Enables MongoDB service and initialises replica set.

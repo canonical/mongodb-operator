@@ -306,6 +306,16 @@ class MongoDBConnection:
             pwd=password,
         )
 
+    def create_role(self, role_name: str, privileges: dict, roles: dict = None):
+        """Creates a new role.
+
+        Args:
+            role_name: name of the role to be added.
+            privileges: privledges to be associated with the role.
+            roles: List of roles from which this role inherits privileges.
+        """
+        self.client.admin.command("createRole", role_name, privileges=[privileges], roles=[roles])
+
     @staticmethod
     def _get_roles(config: MongoDBConfiguration) -> List[dict]:
         """Generate roles List."""
@@ -314,6 +324,13 @@ class MongoDBConnection:
                 {"role": "userAdminAnyDatabase", "db": "admin"},
                 {"role": "readWriteAnyDatabase", "db": "admin"},
                 {"role": "userAdmin", "db": "admin"},
+            ],
+            "pbm": [
+                {"db": "admin", "role": "readWrite", "collection": ""},
+                {"db": "admin", "role": "backup"},
+                {"db": "admin", "role": "clusterMonitor"},
+                {"db": "admin", "role": "restore"},
+                {"db": "admin", "role": "pbmAnyAction"},
             ],
             "default": [
                 {"role": "readWrite", "db": config.database},
