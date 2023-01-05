@@ -1,39 +1,33 @@
 # Charmed MongoDB tutorial
-The Charmed MongoDB Operator delivers automated operations management from day 0 to day 2 on the [MongoDB Community Edition](https://github.com/mongodb/mongo) document database. It is an open source, end-to-end, production-ready data platform on top of juju. As a first step this tutorial show you how to get Charmed MongoDB up and running, but the tutorial does not stop there. Through this tutorial you will learn a variety of operations, everything from adding replicas to advanced operations such as enabling TLS. Specifically this tutorial will cover:
-- Setting up your environment using LXD and Juju.
-- Deploying MongoDB using a single command.
-- Accessing the admin database directly.
-- Adding high availability with replication.
-- Changing the admin password.
-- Automatically creating users with relations. 
-- Enabling secure transactions with TLS.
+The Charmed MongoDB Operator delivers automated operations management from [day 0 to day 2](https://codilime.com/blog/day-0-day-1-day-2-the-software-lifecycle-in-the-cloud-age/) on the [MongoDB Community Edition](https://github.com/mongodb/mongo) document database. It is an open source, end-to-end, production-ready data platform [on top of Juju](https://juju.is/). As a first step this tutorial shows you how to get Charmed MongoDB up and running, but the tutorial does not stop there. Through this tutorial you will learn a variety of operations, everything from adding replicas to advanced operations such as enabling Transcript Layer Security (TLS). In this tutorial we will walk through how to:
+- Set up your environment using LXD and Juju.
+- Deploy MongoDB using a single command.
+- Access the admin database directly.
+- Add high availability with replication.
+- Change the admin password.
+- Automatically create MongoDB users via Juju relations. 
+- Enable secure transactions with TLS.
 
 
 ## Minimum requirements
-Before we start be sure you have the following requirements:
-- Ubuntu 20.04(focal) or later.
+Before we start, make sure your machine meets the following requirements:
+- Ubuntu 20.04 (Focal) or later.
 - 8GB of RAM.
 - 2 CPU threads.
 - At least 20GB of available storage.
 - Access to the internet for downloading the required snaps and charms.
 
 
-## Install and prepare LXD
-The fastest, simplest way to get started with Charmed MongoDB is to set up a local LXD cloud. LXD is a system container and virtual machine manager; Charmed MongoDB will be run in one of these containers and managed by Juju. While this tutorial covers the basics of LXD, you can explore more LXD [here](https://linuxcontainers.org/lxd/getting-started-cli/). The first step on our journey is to install LXD. LXD is installed from a snap package:
-```shell
-sudo snap install lxd --classic
+## Pprepare LXD
+The fastest, simplest way to get started with Charmed MongoDB is to set up a local LXD cloud. LXD is a system container and virtual machine manager; Charmed MongoDB will be run in one of these containers and managed by Juju. While this tutorial covers the basics of LXD, you can [explore more LXD here](https://linuxcontainers.org/lxd/getting-started-cli/). LXD comes pre-installed on Ubuntu 20.04. Verify that LXD is installed by entering the command `which lxd` into the command line, this will output:
+```
+/snap/bin/lxd
 ```
 
-Next we need to run `lxd init` to perform post-installation tasks. For this tutorial the default parameters are preferred and the network bridge should be set to have no ipv6 addresses:
+Although LXD is already installed, we need to run `lxd init` to perform post-installation tasks. For this tutorial the default parameters are preferred and the network bridge should be set to have no IPv6 addresses, since Juju does not support IPv6 addresses with LXD:
 ```shell
 lxd init --auto
 lxc network set lxdbr0 ipv6.address none 
-```
-
-In the next step we will install Juju. Juju speaks directly to the local LXD daemon, which also requires [lxd group membership](https://linuxcontainers.org/lxd/getting-started-cli/#access-control). Add `$USER` to the group lxd:
-```shell
-newgrp lxd
-sudo adduser $USER lxd
 ```
 
 You can list all LXD containers by entering the command `lxc list` in to the command line. Although at this point in the tutorial none should exist and you'll only see this as output:
@@ -45,12 +39,12 @@ You can list all LXD containers by entering the command `lxc list` in to the com
 
 
 ## Install and prepare Juju
-[Juju](https://juju.is/) is an operation Lifecycle manager(OLM) for clouds, bare metal, LXD or Kubernetes. We will be using it to deploy and manage Charmed MongoDB. As with LXD, Juju is installed from a snap package:
+[Juju](https://juju.is/) is an Operator Lifecycle Manager(OLM) for clouds, bare metal, LXD or Kubernetes. We will be using it to deploy and manage Charmed MongoDB. As with LXD, Juju is installed from a snap package:
 ```shell
 sudo snap install juju --classic
 ```
 
-Juju already has a built-in knowledge of LXD and how it works, so there is no additional setup or configuration needed. A controller will be used to deploy and control Charmed MongoDB. All we need to do is run the command to bootstrap a Juju controller named ‘overlord’ to LXD. This bootstrapping processes can take several minutes depending on how provisioned your machine is:
+Juju already has a built-in knowledge of LXD and how it works, so there is no additional setup or configuration needed. A controller will be used to deploy and control Charmed MongoDB. All we need to do is run the following command to bootstrap a Juju controller named ‘overlord’ to LXD. This bootstrapping processes can take several minutes depending on how provisioned (RAM, CPU,etc) your machine is:
 ```shell
 juju bootstrap localhost overlord
 ```
@@ -80,19 +74,17 @@ Model "admin/tutorial" is empty.
 
 
 ## Deploy Charmed MongoDB
-To deploy Charmed MongoDB, fetch the charm from [Charmhub](https://charmhub.io/mongodb?channel=dpe/edge) and deploy it to your model:
+To deploy Charmed MongoDB, all you need to do is run the following command, which will fetch the charm from [Charmhub](https://charmhub.io/mongodb?channel=dpe/edge) and deploy it to your model:
 ```shell
 juju deploy mongodb --channel dpe/edge
 ```
 
-Juju will now fetch Charmed MongoDB and begin deploying it to the LXD cloud. This process can take several minutes depending on how provisioned your machine is. You can track the progress by running:
+Juju will now fetch Charmed MongoDB and begin deploying it to the LXD cloud. This process can take several minutes depending on how provisioned (RAM, CPU,etc) your machine is. You can track the progress by running:
 ```shell
 watch -c juju status --color
 ```
 
-This will show charmed MongoDB along with its current status and other helpful information.
-
-Wait until the application is ready, when it is ready `watch -c juju status --color` will show
+This command is useful for checking the state of Charmed MongoDB and gathering information about the machines hosting Charmed MongoDB. The command shows the status of Charmed MongoDB along with other helpful information (IP addresses, ports, state, etc). The command updates the status of Charmed MongoDB every couple of second and as the application starts you can watch the status and messages of Charmed MongoDB change. Wait until the application is ready, when it is ready `watch -c juju status --color` will show
 ```
 Every 2.0s: juju status --color                                                                                         ip-172-31-11-104: Fri Dec  2 11:24:30 2022
 
@@ -108,25 +100,29 @@ mongodb/0*  active    idle   0        10.23.62.156    27017/tcp
 Machine  State    Address       Inst id        Series  AZ  Message
 0        started  10.23.62.156  juju-d35d30-0  focal       Running
 ```
+To exit the screen with `watch -c juju status --color`, enter `ctrl+c`.
 
 ## Access MongoDB
 *Disclaimer: this part of the tutorial accesses MongoDB via the `admin` user. **Do not** directly interface with the admin user in a production environment. In a production environment [always create a separate user](https://www.mongodb.com/docs/manual/tutorial/create-users/) and connect to MongoDB with that user instead. Later in the section covering Relations we will cover how to access MongoDB without the admin user.*
 
-For this part of the Tutorial we will access MongoDB - via the MongoDB shell `mongosh`. You can read more about the MongoDB shell [here](https://www.mongodb.com/docs/mongodb-shell/).
+The first action most users take after installing MongoDB is accessing MongoDB. The easiest way to do this is via the MongoDB shell, with `mongosh`. You can read more about the MongoDB shell [here](https://www.mongodb.com/docs/mongodb-shell/). For this part of the Tutorial we will access MongoDB via  `mongosh`
 
 
 ### Install the MongoDB shell
 While MongoDB is installed within the LXD containers that the application is hosted on, it is not installed on your machine. This means that you will have to install the MongoDB shell yourself. Install `mongosh` by following the official [instructions on how to install the MongoDB shell](https://www.mongodb.com/docs/mongodb-shell/install/#std-label-mdb-shell-install).
 
 ### MongoDB URI
-Connecting to the database requires a [URI](https://www.mongodb.com/docs/manual/reference/connection-string/). We use a URI of the format:
+Connecting to the database requires a Uniform Resource Identifier (URI), MongoDB expects a [MongoDB specific URI](https://www.mongodb.com/docs/manual/reference/connection-string/). The URI for MongoDB contains information which is used to authenticate us to the database. We use a URI of the format:
 ```shell
 mongodb://<username>:<password>@<hosts>/<database name>?replicaSet=<replica set name>
 ```
 
-Connecting via the URI requires that you know the values for `username`, `password`, `hosts`, `database name`, and the `replica set name`. We will show you how to retrieve the necessary fields. 
+Connecting via the URI requires that you know the values for `username`, `password`, `hosts`, `database name`, and the `replica set name`. We will show you how to retrieve the necessary fields and set them to environment variables. 
 
-**Retrieving the username:** In this case, we are using the `admin` user to connect to MongoDB. Use `admin` as the username.
+**Retrieving the username:** In this case, we are using the `admin` user to connect to MongoDB. Use `admin` as the username:
+```
+export DB_USERNAME="admin"
+```
 
 **Retrieving the password:** The password can be retrieved by running the `get-password` action on the Charmed MongoDB application:
 ```shell
@@ -145,10 +141,12 @@ unit-mongodb-0:
     enqueued: 2022-12-02 11:29:57 +0000 UTC
     started: 2022-12-02 11:30:01 +0000 UTC
 ```
-Use the password under the result: `admin-password`.
+Use the password under the result: `admin-password`:
+```
+export DB_PASSWORD=$(juju run-action mongodb/leader get-password --wait | grep admin-password|  awk '{print $2}')
+```
 
 **Retrieving the hosts:** The hosts are the units hosting the MongoDB application. The host’s IP address can be found with `juju status`:
-
 ```
 Model     Controller  Cloud/Region         Version  SLA          Timestamp
 tutorial  overlord    localhost/localhost  2.9.37   unsupported  11:31:16Z
@@ -163,16 +161,25 @@ Machine  State    Address       Inst id        Series  AZ  Message
 0        started  10.23.62.156  juju-d35d30-0  focal       Running
 
 ```
-Use the IP address listed underneath `Public address` for `mongodb/0` as your host.
+Set the variable `HOST_IP` to the IP address for `mongodb/0`:
+```
+export HOST_IP=$(juju run --unit mongodb/0 -- hostname -I | xargs)
+```
 
 **Retrieving the database name:** In this case we are connecting to the `admin` database. Use `admin` as the database name. Once we access the database via the MongoDB URI, we will create a `test-db` database to store data.
+```
+export DB_NAME="admin"
+```
 
 **Retrieving the replica set name:** The replica set name is the name of the application on Juju hosting MongoDB. The application name in this tutorial is `mongodb`. Use `mongodb` as the replica set name. 
+```
+export REPL_SET_NAME="mongodb"
+```
 
 ### Connect via MongoDB URI
-Now that we have the necessary fields to connect to the URI, we can connect to MongoDB via the URI. Enter the following into the command line, replace the values for  `username`, `password`, `hosts`, `database name`, and the `replica set name` with what you’ve retrieved above:
+Now that we have the necessary fields to connect to the URI, we can connect to MongoDB via the URI. Enter the following into the command line:
 ```shell
-mongosh mongodb://<username>:<password>@<host>/<database name>?replicaSet=<replica set name>
+mongosh mongodb://$DB_USERNAME:$DB_PASSWORD@$HOST_IP/$DB_NAME?replicaSet=$REPL_SET_NAME
 ```
 
 You should now see:
@@ -218,7 +225,7 @@ Now that we have access to MongoDB we can create a database named `test-db`. To 
 ```shell
 use test-db
 ```
-Now lets create a user called `testUser` read/write access to the database `test-db` that we just created . Enter:
+Now lets create a user called `testUser` with read/write access to the database `test-db` that we just created. Enter:
 ```shell
 db.createUser({
   user: "testUser",
@@ -228,7 +235,7 @@ db.createUser({
   ]
 })
 ```
-You can verify that you added the user correctly, by entering the command `show users` into the mongo shell, this will output:
+You can verify that you added the user correctly by entering the command `show users` into the mongo shell. This will output:
 ```json
 [
   {
@@ -241,7 +248,7 @@ You can verify that you added the user correctly, by entering the command `show 
   }
 ]
 ```
-Feel free to test out any other MongoDB commands, when you’re ready to leave the MongoDB shell you can just type `exit`. Once you've entered `exit`, you should be back in the shell you started in where you can interact with Juju and LXD.
+Feel free to test out any other MongoDB commands. When you’re ready to leave the MongoDB shell you can just type `exit`. Once you've typed `exit` you will be back in the original shell, where you can interact with Juju and LXD.
 
 
 ## Scale Charmed MongoDB
@@ -277,14 +284,16 @@ Machine  State    Address       Inst id        Series  AZ  Message
 2        started  10.23.62.243  juju-d35d30-2  focal       Running
 ```
 
-You can trust that Charmed MongoDB added these replicas correctly. But if you wanted to verify the replicas got added correctly you could connect to MongoDB via `mongosh`. Since your replica set has 2 additional hosts you will need to update the hosts in your URI. Using the IP addresses from `juju status` add all of your hosts to the URI and separate them with commas. Your URI should look like this:
-```shell
-mongodb://<username>:<password>@<host1,<host2>,<host3>>/<database name>?replicaSet=<replica set name>
+You can trust that Charmed MongoDB added these replicas correctly. But if you wanted to verify the replicas got added correctly you could connect to MongoDB via `mongosh`. Since your replica set has 2 additional hosts you will need to update the hosts in your URI. You can retrieve these host IPs with:
+```
+export HOST_IP_1=$(juju run --unit mongodb/1 -- hostname -I | xargs)
+export HOST_IP_2=$(juju run --unit mongodb/2 -- hostname -I | xargs)
+
 ```
 
-Then connect with `mongosh`; using your new hosts and reuse the `username`, `password,` `database name`, and `replica set name` that you previously used when you *first* connected to MongoDB:
+Then connect with `mongosh` using your new hosts and reuse the `username`, `password`, `database name`, and `replica set name` that you previously used when you *first* connected to MongoDB:
 ```shell
-mongosh mongodb://<username>:<password>@<host1,<host2>,<host3>>/<database name>?replicaSet=<replica set name>
+mongosh mongodb://$DB_USERNAME:$DB_PASSWORD@$HOST_IP,$HOST_IP_1,$HOST_IP_2/$DB_NAME?replicaSet=$REPL_SET_NAME
 ```
 
 Now type `rs.status()` and you should see your replica set configuration. It should look something like this:
@@ -484,7 +493,10 @@ unit-mongodb-0:
 ```
 The admin password is under the result: `admin-password`. It should be different from your previous password.
 
-*Note when you change the admin password you will also need to update the admin password the in MongoDB URI; as the old password will no longer be valid*
+*Note when you change the admin password you will also need to update the admin password the in MongoDB URI; as the old password will no longer be valid.* Update the DB password used in the URI:
+```shell
+export DB_PASSWORD=$(juju run-action mongodb/leader get-password --wait | grep admin-password|  awk '{print $2}')
+```
 
 ### Set the admin password
 You can change the admin password to a specific password by entering:
@@ -506,7 +518,10 @@ unit-mongodb-0:
 ```
 The admin password under the result: `admin-password` should match whatever you passed in when you entered the command.
 
-*Note when you change the admin password you will also need to update the admin password the in MongoDB URI; as the old password will no longer be valid*
+*Note when you change the admin password you will also need to update the admin password the in MongoDB URI; as the old password will no longer be valid.* Update the DB password used in the URI:
+```shell
+export DB_PASSWORD=$(juju run-action mongodb/leader get-password --wait | grep admin-password|  awk '{print $2}')
+```
 
 ## Relations
 <!---Juju 3.0 uses integrations; I haven’t been able to find the docs for 2.9 --->
@@ -691,7 +706,7 @@ juju run --unit mongodb/0 -- cat /etc/mongodb/external-cert.pem > external-cert.
 
 As before, we will connect to MongoDB via a MongoDB URI; use the admin user MongoDB URI that you first used to [connect to MongoDB](#connect-via-mongodb-uri). Connect using the URI and the following TLS options:
 ```shell
-mongosh mongodb://<username>:<password>@<host1>/<database name>?replicaSet=<replica set name> --tls --tlsCAFile external-ca.crt --tlsCertificateKeyFile external-cert.pem
+mongosh mongodb://$DB_USERNAME:$DB_PASSWORD@$HOST_IP/$DB_NAME?replicaSet=$REPL_SET_NAME --tls --tlsCAFile external-ca.crt --tlsCertificateKeyFile external-cert.pem
 ```
 
 Congratulations, you've now connected to MongoDB with TLS. Now exit the MongoDB shell by typing `exit`. Once you've entered `exit`, you should be back in the shell you started in where you can interact with Juju and LXD.
