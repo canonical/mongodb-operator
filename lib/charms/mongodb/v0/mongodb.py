@@ -306,7 +306,7 @@ class MongoDBConnection:
             pwd=password,
         )
 
-    def create_role(self, role_name: str, privileges: dict, roles: dict = None):
+    def create_role(self, role_name: str, privileges: dict, roles: dict = []):
         """Creates a new role.
 
         Args:
@@ -314,7 +314,14 @@ class MongoDBConnection:
             privileges: privledges to be associated with the role.
             roles: List of roles from which this role inherits privileges.
         """
-        self.client.admin.command("createRole", role_name, privileges=[privileges], roles=[roles])
+        try:
+            self.client.admin.command(
+                "createRole", role_name, privileges=[privileges], roles=roles
+            )
+        except OperationFailure as e:
+            if not e.code == 51002:  # Role already exists
+                logger.error("Cannot add role. error=%r", e)
+                raise e
 
     @staticmethod
     def _get_roles(config: MongoDBConfiguration) -> List[dict]:

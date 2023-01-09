@@ -13,16 +13,18 @@ from charms.mongodb.v0.helpers import generate_password
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 from charms.operator_libs_linux.v1 import snap
 from ops.framework import Object
+from ops.model import ActiveStatus, BlockedStatus
+from pymongo.errors import PyMongoError
 
 # The unique Charmhub library identifier, never change it
-LIBID = "asdfl29130831jkh20apj09q1dkos0"
+LIBID = "18c461132b824ace91af0d7abe85f40e"
 
 # Increment this major API version when introducing breaking changes
 LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 0
+LIBPATCH = 1
 
 logger = logging.getLogger(__name__)
 
@@ -65,20 +67,28 @@ class MongoDBBackups(Object):
             event.defer()
             return
 
-        if not "pbm_user_created" not in self.charm.app_peer_data:
+        try:
             self.create_pbm_user()
+        except PyMongoError as e:
+            self.charm.unit.status = BlockedStatus("config change failed")
+            logger.error("Deferring config_changed since: error=%r", e)
+            event.defer()
+            return
 
         # TODO handle PBM configurations set by the user
+        self.charm.unit.status = ActiveStatus()
 
     def create_pbm_user(self):
         """Creates the PBM user on the MongoDB database."""
+        if "pbm_user_created" in self.charm.app_peer_data:
+            return
+
         with MongoDBConnection(self.charm.mongodb_config) as mongo:
             # first we must create the necessary roles for PBM
             logger.debug("creating the PBM user roles...")
             mongo.create_role(role_name="pbmAnyAction", privileges=PBM_PRIVILEGES)
             logger.debug("creating the PBM user...")
-            mongo.create_user(self._pbm_config())
-
+            mongo.create_user(self._pbm_config)
             self.charm.app_peer_data["pbm_user_created"] = "True"
 
     @property
@@ -93,7 +103,7 @@ class MongoDBBackups(Object):
             username="pbmuser",
             password=self.charm.get_secret("app", "pbm_password"),
             hosts=self.charm.mongodb_config.hosts,
-            roles="pbm",
+            roles=["pbm"],
             tls_external=self.charm.tls.get_tls_files("unit") is not None,
             tls_internal=self.charm.tls.get_tls_files("unit") is not None,
         )
