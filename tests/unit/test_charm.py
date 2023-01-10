@@ -639,7 +639,7 @@ class TestCharm(unittest.TestCase):
 
         # verify app data is updated and results are reported to user
         self.assertNotEqual(original_password, new_password)
-        action_event.set_results.assert_called_with({"admin-password": new_password})
+        action_event.set_results.assert_called_with({"operator-password": new_password})
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
@@ -653,7 +653,7 @@ class TestCharm(unittest.TestCase):
 
         # verify app data is updated and results are reported to user
         self.assertEqual("canonical123", new_password)
-        action_event.set_results.assert_called_with({"admin-password": "canonical123"})
+        action_event.set_results.assert_called_with({"operator-password": "canonical123"})
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")

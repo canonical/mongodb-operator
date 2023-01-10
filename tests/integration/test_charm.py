@@ -134,7 +134,7 @@ async def test_set_password_action(ops_test: OpsTest) -> None:
     unit = await find_unit(ops_test, leader=True)
     action = await unit.run_action("set-password")
     action = await action.wait()
-    new_password = action.results["admin-password"]
+    new_password = action.results["operator-password"]
     assert new_password != old_password
     new_password_reported = await get_password(ops_test)
     assert new_password == new_password_reported
@@ -152,7 +152,7 @@ async def test_set_password_action(ops_test: OpsTest) -> None:
     old_password = await get_password(ops_test)
     action = await unit.run_action("set-password", **{"password": "safe_pass"})
     action = await action.wait()
-    new_password = action.results["admin-password"]
+    new_password = action.results["operator-password"]
     assert new_password != old_password
     new_password_reported = await get_password(ops_test)
     assert "safe_pass" == new_password_reported
