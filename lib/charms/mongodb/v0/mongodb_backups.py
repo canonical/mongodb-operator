@@ -7,14 +7,15 @@ This class creates a user and database for each application relation
 and expose needed information for client connection via fields in
 external relation.
 """
-import logging
-
-from charms.mongodb.v0.helpers import generate_password
-from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 from charms.operator_libs_linux.v1 import snap
+from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
+from charms.mongodb.v0.helpers import generate_password
+import logging
+from collections import namedtuple
+
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus
-from pymongo.errors import PyMongoError
+from pymongo.errors import PyMongoError, OperationFailure
 
 # The unique Charmhub library identifier, never change it
 LIBID = "18c461132b824ace91af0d7abe85f40e"
@@ -75,21 +76,41 @@ class MongoDBBackups(Object):
             event.defer()
             return
 
-        # TODO handle PBM configurations set by the user
-        self.charm.unit.status = ActiveStatus()
+        # presets for PBM snap configurations
+        pbm_configs = {}
+        pbm_configs["uri"] = self._pbm_config.uri
+        pbm_configs["storage.s3.type"] = "s3"
+        pbm_configs["storage.s3.serverSideEncryption.sseAlgorithm"] = "aws:kms"
+
+        # parse user configurations
+        for (snap_config_name, charm_config_name) in PBM_S3_CONFIGS:
+            if self.charm.config.get(charm_config_name):
+                pbm_configs[snap_config_name] = self.charm.config.get(charm_config_name)
+
+        try:
+            pbm_snap.set(pbm_configs)
+            self.charm.unit.status = ActiveStatus("")
+        except snap.SnapError as e:
+            logger.error(
+                "Failed to configure the PBM snap with the configurations: %s, failed with error: %s",
+                str(pbm_configs),
+                str(e),
+            )
+            self.charm.unit.status = BlockedStatus("couldn't configure s3 backup options.")
 
     def create_pbm_user(self):
         """Creates the PBM user on the MongoDB database."""
-        if "pbm_user_created" in self.charm.app_peer_data:
-            return
-
         with MongoDBConnection(self.charm.mongodb_config) as mongo:
             # first we must create the necessary roles for PBM
             logger.debug("creating the PBM user roles...")
             mongo.create_role(role_name="pbmAnyAction", privileges=PBM_PRIVILEGES)
             logger.debug("creating the PBM user...")
-            mongo.create_user(self._pbm_config)
-            self.charm.app_peer_data["pbm_user_created"] = "True"
+            try:
+                mongo.create_user(self._pbm_config)
+            except OperationFailure as e:
+                if not e.code == 51003:  # User already exists
+                    logger.error("Cannot add user. error=%r", e)
+                    raise
 
     @property
     def _pbm_config(self) -> MongoDBConfiguration:

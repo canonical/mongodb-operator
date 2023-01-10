@@ -5,6 +5,36 @@ options:
   auto-delete:
     type: boolean
     description: |
-        When a relation is removed, auto-delete ensures that any relevant databases
-        associated with the relation are also removed
+      When a relation is removed, auto-delete ensures that any relevant databases
+      associated with the relation are also removed
     default: false
+
+  s3-storage-region:
+    type: string
+    description: |
+      Region for configuring s3 backups with PBM. Example: "us-west-2".
+
+  s3-storage-bucket:
+    type: string
+    description: |
+      Bucket name for configuring s3 backups with PBM. Example: "pbm-test-bucket-1".
+
+  s3-storage-prefix:
+    type: string
+    description: |
+      Prefix location for configuring s3 backups with PBM. Example: "data/pbm/backup".
+
+  s3-access-key-id:
+    type: string
+    description: |
+      Access key ID for AWS, used in configuring s3 backups with PBM.
+
+  s3-secret-access-key:
+    type: string
+    description: |
+      Secret access key for AWS, used in configuring s3 backups with PBM.
+
+  s3-kms-key-id:
+    type: string
+    description: |
+      KMS key id for server side encryption when configuring s3 backups with PBM.
