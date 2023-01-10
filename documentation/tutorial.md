@@ -8,6 +8,9 @@ The Charmed MongoDB Operator delivers automated operations management from [day 
 - Automatically create MongoDB users via Juju relations. 
 - Enable secure transactions with TLS.
 
+While this tutorial is aimed to guide and teach you as you deploy Charmed MongoDB. It will be most beneficial if you already have a familairy with: 
+- Basic terminal commands.
+- MongoDB concepts such as replication and users.
 
 ## Minimum requirements
 Before we start, make sure your machine meets the following requirements:
@@ -44,7 +47,7 @@ You can list all LXD containers by entering the command `lxc list` in to the com
 sudo snap install juju --classic
 ```
 
-Juju already has a built-in knowledge of LXD and how it works, so there is no additional setup or configuration needed. A controller will be used to deploy and control Charmed MongoDB. All we need to do is run the following command to bootstrap a Juju controller named ‘overlord’ to LXD. This bootstrapping processes can take several minutes depending on how provisioned (RAM, CPU,etc) your machine is:
+Juju already has a built-in knowledge of LXD and how it works, so there is no additional setup or configuration needed. A controller will be used to deploy and control Charmed MongoDB. All we need to do is run the following command to bootstrap a Juju controller named ‘overlord’ to LXD. This bootstrapping processes can take several minutes depending on how provisioned (RAM, CPU, etc.) your machine is:
 ```shell
 juju bootstrap localhost overlord
 ```
@@ -84,7 +87,7 @@ Juju will now fetch Charmed MongoDB and begin deploying it to the LXD cloud. Thi
 watch -c juju status --color
 ```
 
-This command is useful for checking the state of Charmed MongoDB and gathering information about the machines hosting Charmed MongoDB. The command shows the status of Charmed MongoDB along with other helpful information (IP addresses, ports, state, etc). The command updates the status of Charmed MongoDB every couple of second and as the application starts you can watch the status and messages of Charmed MongoDB change. Wait until the application is ready, when it is ready `watch -c juju status --color` will show
+This command is useful for checking the status of Charmed MongoDB and gathering information about the machines hosting Charmed MongoDB. Some of the helpful information it displays include IP addresses, ports, state, etc. The command updates the status of Charmed MongoDB every couple of seconds and as the application starts you can watch the status and messages of Charmed MongoDB change. Wait until the application is ready - when it is ready, `watch -c juju status --color` will show:
 ```
 Every 2.0s: juju status --color                                                                                         ip-172-31-11-104: Fri Dec  2 11:24:30 2022
 
@@ -548,7 +551,7 @@ unit-mongodb-0:
 ```
 The admin password under the result: `admin-password` should match whatever you passed in when you entered the command.
 
-*Note when you change the admin password you will also need to update the admin password the in MongoDB URI; as the old password will no longer be valid.* Update the DB password used in the URI:
+*Note that when you change the admin password you will also need to update the admin password in the MongoDB URI, as the old password will no longer be valid.* To update the DB password used in the URI:
 ```shell
 export DB_PASSWORD=$(juju run-action mongodb/leader get-password --wait | grep admin-password|  awk '{print $2}')
 export URI=mongodb://$DB_USERNAME:$DB_PASSWORD@$HOST_IP/$DB_NAME?replicaSet=$REPL_SET_NAME
