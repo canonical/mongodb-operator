@@ -18,7 +18,7 @@ Before we start, make sure your machine meets the following requirements:
 - Access to the internet for downloading the required snaps and charms.
 
 
-## Pprepare LXD
+## Prepare LXD
 The fastest, simplest way to get started with Charmed MongoDB is to set up a local LXD cloud. LXD is a system container and virtual machine manager; Charmed MongoDB will be run in one of these containers and managed by Juju. While this tutorial covers the basics of LXD, you can [explore more LXD here](https://linuxcontainers.org/lxd/getting-started-cli/). LXD comes pre-installed on Ubuntu 20.04. Verify that LXD is installed by entering the command `which lxd` into the command line, this will output:
 ```
 /snap/bin/lxd
@@ -105,11 +105,7 @@ To exit the screen with `watch -c juju status --color`, enter `ctrl+c`.
 ## Access MongoDB
 *Disclaimer: this part of the tutorial accesses MongoDB via the `admin` user. **Do not** directly interface with the admin user in a production environment. In a production environment [always create a separate user](https://www.mongodb.com/docs/manual/tutorial/create-users/) and connect to MongoDB with that user instead. Later in the section covering Relations we will cover how to access MongoDB without the admin user.*
 
-The first action most users take after installing MongoDB is accessing MongoDB. The easiest way to do this is via the MongoDB shell, with `mongosh`. You can read more about the MongoDB shell [here](https://www.mongodb.com/docs/mongodb-shell/). For this part of the Tutorial we will access MongoDB via  `mongosh`
-
-
-### Install the MongoDB shell
-While MongoDB is installed within the LXD containers that the application is hosted on, it is not installed on your machine. This means that you will have to install the MongoDB shell yourself. Install `mongosh` by following the official [instructions on how to install the MongoDB shell](https://www.mongodb.com/docs/mongodb-shell/install/#std-label-mdb-shell-install).
+The first action most users take after installing MongoDB is accessing MongoDB. The easiest way to do this is via the MongoDB shell, with `mongosh`. You can read more about the MongoDB shell [here](https://www.mongodb.com/docs/mongodb-shell/). For this part of the Tutorial we will access MongoDB via  `mongosh`. Fortunately there is no need to install the Mongo shell, as `mongosh` is already installed on the units hosting the Charmed MongoDB application.
 
 ### MongoDB URI
 Connecting to the database requires a Uniform Resource Identifier (URI), MongoDB expects a [MongoDB specific URI](https://www.mongodb.com/docs/manual/reference/connection-string/). The URI for MongoDB contains information which is used to authenticate us to the database. We use a URI of the format:
@@ -120,7 +116,7 @@ mongodb://<username>:<password>@<hosts>/<database name>?replicaSet=<replica set 
 Connecting via the URI requires that you know the values for `username`, `password`, `hosts`, `database name`, and the `replica set name`. We will show you how to retrieve the necessary fields and set them to environment variables. 
 
 **Retrieving the username:** In this case, we are using the `admin` user to connect to MongoDB. Use `admin` as the username:
-```
+```shell
 export DB_USERNAME="admin"
 ```
 
@@ -142,7 +138,7 @@ unit-mongodb-0:
     started: 2022-12-02 11:30:01 +0000 UTC
 ```
 Use the password under the result: `admin-password`:
-```
+```shell
 export DB_PASSWORD=$(juju run-action mongodb/leader get-password --wait | grep admin-password|  awk '{print $2}')
 ```
 
@@ -162,24 +158,40 @@ Machine  State    Address       Inst id        Series  AZ  Message
 
 ```
 Set the variable `HOST_IP` to the IP address for `mongodb/0`:
-```
+```shell
 export HOST_IP=$(juju run --unit mongodb/0 -- hostname -I | xargs)
 ```
 
 **Retrieving the database name:** In this case we are connecting to the `admin` database. Use `admin` as the database name. Once we access the database via the MongoDB URI, we will create a `test-db` database to store data.
-```
+```shell
 export DB_NAME="admin"
 ```
 
 **Retrieving the replica set name:** The replica set name is the name of the application on Juju hosting MongoDB. The application name in this tutorial is `mongodb`. Use `mongodb` as the replica set name. 
-```
+```shell
 export REPL_SET_NAME="mongodb"
 ```
 
-### Connect via MongoDB URI
-Now that we have the necessary fields to connect to the URI, we can connect to MongoDB via the URI. Enter the following into the command line:
+### Generate the MongoDB URI
+Now that we have the necessary fields to connect to the URI, we can connect to MongoDB with `mongosh` via the URI. We can create the URI with:
 ```shell
-mongosh mongodb://$DB_USERNAME:$DB_PASSWORD@$HOST_IP/$DB_NAME?replicaSet=$REPL_SET_NAME
+export URI=mongodb://$DB_USERNAME:$DB_PASSWORD@$HOST_IP/$DB_NAME?replicaSet=$REPL_SET_NAME
+```
+Now view and save the output of the URI:
+```shell
+echo $URI
+```
+
+### Connect via MongoDB URI
+As said earlier, `mongosh` is already installed in Charmed MongoDB. To access the unit hosting Charmed MongoDB, ssh into it:
+```shell
+juju ssh mongodb/0
+```
+*Note if at any point you'd like to leave the unit hosting Charmed MongoDB, enter* `exit`.
+
+While `ssh`d into `mongodb/0`, we can access `mongosh`, using the URI that we saved in the step [Generate the MongoDB URI](#generate-the-mongodb-uri).
+```shell
+mongosh <saved URI>
 ```
 
 You should now see:
@@ -248,7 +260,7 @@ You can verify that you added the user correctly by entering the command `show u
   }
 ]
 ```
-Feel free to test out any other MongoDB commands. When you’re ready to leave the MongoDB shell you can just type `exit`. Once you've typed `exit` you will be back in the original shell, where you can interact with Juju and LXD.
+Feel free to test out any other MongoDB commands. When you’re ready to leave the MongoDB shell you can just type `exit`. Once you've typed `exit` you will be back in the host of Charmed MongoDB (`mongodb/0`). Exit this host by entering `exit`. Now you will be in your original shell where you first started the tutorial; where you can interact with Juju and LXD.
 
 
 ## Scale Charmed MongoDB
@@ -285,15 +297,29 @@ Machine  State    Address       Inst id        Series  AZ  Message
 ```
 
 You can trust that Charmed MongoDB added these replicas correctly. But if you wanted to verify the replicas got added correctly you could connect to MongoDB via `mongosh`. Since your replica set has 2 additional hosts you will need to update the hosts in your URI. You can retrieve these host IPs with:
-```
+```shell
 export HOST_IP_1=$(juju run --unit mongodb/1 -- hostname -I | xargs)
 export HOST_IP_2=$(juju run --unit mongodb/2 -- hostname -I | xargs)
-
 ```
 
-Then connect with `mongosh` using your new hosts and reuse the `username`, `password`, `database name`, and `replica set name` that you previously used when you *first* connected to MongoDB:
+Then recreate the URI using your new hosts and reuse the `username`, `password`, `database name`, and `replica set name` that you previously used when you *first* connected to MongoDB:
 ```shell
-mongosh mongodb://$DB_USERNAME:$DB_PASSWORD@$HOST_IP,$HOST_IP_1,$HOST_IP_2/$DB_NAME?replicaSet=$REPL_SET_NAME
+export URI=mongodb://$DB_USERNAME:$DB_PASSWORD@$HOST_IP,$HOST_IP_1,$HOST_IP_2/$DB_NAME?replicaSet=$REPL_SET_NAME
+```
+
+Now view and save the output of the URI:
+```shell
+echo $URI
+```
+
+Like earlier we access `mongosh` by `ssh`ing into one of the Charmed MongoDB hosts:
+```shell
+juju ssh mongodb/0
+```
+
+While `ssh`d into `mongodb/0`, we can access `mongosh`, using our new URI that we saved above.
+```shell
+mongosh <saved URI>
 ```
 
 Now type `rs.status()` and you should see your replica set configuration. It should look something like this:
@@ -417,8 +443,11 @@ Now exit the MongoDB shell by typing:
 ```shell
 exit
 ```
-Now you should be back in the shell you started in where you can interact with Juju and LXD.
-
+Now you should be back in the host of Charmed MongoDB (`mongodb/0`). To exit this host type:
+```shell
+exit
+```
+You should now be shell you started in where you can interact with Juju and LXD.
 
 ### Remove replicas
 Removing a unit from the application, scales the replicas down. Before we scale down the replicas, list all the units with `juju status`, here you will see three units `mongodb/0`, `mongodb/1`, and `mongodb/2`. Each of these units hosts a MongoDB replica. To remove the replica hosted on the unit `mongodb/2` enter:
@@ -493,9 +522,10 @@ unit-mongodb-0:
 ```
 The admin password is under the result: `admin-password`. It should be different from your previous password.
 
-*Note when you change the admin password you will also need to update the admin password the in MongoDB URI; as the old password will no longer be valid.* Update the DB password used in the URI:
+*Note when you change the admin password you will also need to update the admin password the in MongoDB URI; as the old password will no longer be valid.* Update the DB password used in the URI and update the URI:
 ```shell
 export DB_PASSWORD=$(juju run-action mongodb/leader get-password --wait | grep admin-password|  awk '{print $2}')
+export URI=mongodb://$DB_USERNAME:$DB_PASSWORD@$HOST_IP/$DB_NAME?replicaSet=$REPL_SET_NAME
 ```
 
 ### Set the admin password
@@ -521,6 +551,7 @@ The admin password under the result: `admin-password` should match whatever you 
 *Note when you change the admin password you will also need to update the admin password the in MongoDB URI; as the old password will no longer be valid.* Update the DB password used in the URI:
 ```shell
 export DB_PASSWORD=$(juju run-action mongodb/leader get-password --wait | grep admin-password|  awk '{print $2}')
+export URI=mongodb://$DB_USERNAME:$DB_PASSWORD@$HOST_IP/$DB_NAME?replicaSet=$REPL_SET_NAME
 ```
 
 ## Relations
@@ -591,14 +622,19 @@ This should output something like:
     enqueued: 2022-12-06 10:33:20 +0000 UTC
     started: 2022-12-06 10:33:24 +0000 UTC
 ```
-*Note: your hostnames, usernames, and passwords will likely be different.*
+Save the value listed under `uris:` *(Note: your hostnames, usernames, and passwords will likely be different.)*
 
 ### Access the related database
-Notice that in the previous step when you typed `juju run-action  database-integrator/0 get-credentials --wait` the command not only outputted the username, password, and database, but also outputted the URI. This means you do not have to generate the URI yourself. To connect to the database associated with the Database Integrator Charm enter:
+Notice that in the previous step when you typed `juju run-action  database-integrator/0 get-credentials --wait` the command not only outputted the username, password, and database, but also outputted the URI. This means you do not have to generate the URI yourself. To connect to this URI first ssh into `mongodb/0`:
 ```shell
-mongosh "<uri from juju run-action  database-integrator/0 get-credentials --wait>"
+juju ssh mongodb/0
 ```
-*Note: be sure you wrap the URI in `"`*
+Then access `mongosh` with the URI that you copied above:
+
+```shell
+mongosh "<uri copied from juju run-action  database-integrator/0 get-credentials --wait>"
+```
+*Note: be sure you wrap the URI in `"` with no trailing whitespace*
 
 You will now be in the mongo shell as the user created for this relation. When you relate two applications Charmed MongoDB automatically sets up a user and database for you. Enter `show dbs` into the MongoDB shell, this will output:
 ```shell
@@ -622,7 +658,15 @@ You can verify this document was inserted by running:
 db.test_collection.find()
 ```
 
-Now exit the MongoDB shell by typing `exit`. Once you've entered `exit`, you should be back in the shell you started in where you can interact with Juju and LXD.
+Now exit the MongoDB shell by typing:
+```shell
+exit
+```
+Now you should be back in the host of Charmed MongoDB (`mongodb/0`). To exit this host type:
+```shell
+exit
+```
+You should now be shell you started in where you can interact with Juju and LXD.
 
 ### Remove the user
 To remove the user, remove the relation. Removing the relation automatically removes the user that was created when the relation was created. Enter the following to remove the relation:
@@ -632,8 +676,10 @@ juju remove-relation mongodb database-integrator
 
 Now try again to connect to the same URI you just used in [Access the related database](#access-the-related-database):
 ```shell
-mongosh "<uri from juju run-action  database-integrator/0 get-credentials --wait>"
+juju ssh mongodb/0
+mongosh "<uri copied from juju run-action  database-integrator/0 get-credentials --wait>"
 ```
+*Note: be sure you wrap the URI in `"` with no trailing whitespace*
 
 This will output an error message:
 ```
@@ -643,14 +689,33 @@ MongoServerError: Authentication failed.
 ```
 As this user no longer exists. This is expected as `juju remove-relation mongodb database-integrator` also removes the user. 
 
+Now exit the MongoDB shell by typing:
+```shell
+exit
+```
+Now you should be back in the host of Charmed MongoDB (`mongodb/0`). To exit this host type:
+```shell
+exit
+```
+You should now be shell you started in where you can interact with Juju and LXD.
+
 If you wanted to recreate this user all you would need to do is relate the the two applications again:
 ```shell
 juju relate database-integrator mongodb
 ```
-Re-relating generates a new password for this user, and therefore a new URI you can see the new URI with `juju run-action  database-integrator/0 get-credentials --wait`. You can connect to the database with this new URI:
+Re-relating generates a new password for this user, and therefore a new URI you can see the new URI with:
 ```shell
-mongosh "<uri from juju run-action  database-integrator/0 get-credentials --wait>"
+juju run-action  database-integrator/0 get-credentials --wait
 ```
+Save the result listed with `uris:`.
+
+You can connect to the database with this new URI:
+```shell
+juju ssh mongodb/0
+mongosh "<uri copied from juju run-action  database-integrator/0 get-credentials --wait>"
+```
+*Note: be sure you wrap the URI in `"` with no trailing whitespace*
+
 From there if you enter `db.test_collection.find()` you will see all of your original documents are still present in the database. 
 
 ## Transcript Layer Security (TLS)
@@ -698,18 +763,34 @@ juju relate tls-certificates-operator mongodb
 ```
 
 ### Connect to MongoDB with TLS
-Once TLS has been enabled we will need to change how we connect to MongoDB. Specifically we will need to specify the TLS CA file along with the TLS Certificate file. These are hosted on the Charmed MongoDB application. Copy them from Charmed MongoDB to your machine:
+Like before, generate and save the URI that is used to connect to MongoDB:
+```
+export URI=mongodb://$DB_USERNAME:$DB_PASSWORD@$HOST_IP$DB_NAME?replicaSet=$REPL_SET_NAME
+echo $URI
+```
+Now ssh into `mongodb/0`:
+```
+juju ssh mongodb/0
+```
+After `ssh`ing into `mongodb/0`, we are now in the unit that is hosting Charmed MongoDB. Once TLS has been enabled we will need to change how we connect to MongoDB. Specifically we will need to specify the TLS CA file along with the TLS Certificate file. These are are on the units hosting the Charmed MongoDB application in the folder `/etc/mongodb/`. If you enter: `ls /etc/mongodb/external*` you should see the external certificate file and the external CA file:
 ```shell
-juju run --unit mongodb/0 -- cat /etc/mongodb/external-ca.crt > external-ca.crt
-juju run --unit mongodb/0 -- cat /etc/mongodb/external-cert.pem > external-cert.pem
+/etc/mongodb/external-ca.crt  /etc/mongodb/external-cert.pem
 ```
 
-As before, we will connect to MongoDB via a MongoDB URI; use the admin user MongoDB URI that you first used to [connect to MongoDB](#connect-via-mongodb-uri). Connect using the URI and the following TLS options:
+As before, we will connect to MongoDB via the saved MongoDB URI. Connect using the saved URI and the following TLS options:
 ```shell
-mongosh mongodb://$DB_USERNAME:$DB_PASSWORD@$HOST_IP/$DB_NAME?replicaSet=$REPL_SET_NAME --tls --tlsCAFile external-ca.crt --tlsCertificateKeyFile external-cert.pem
+mongosh mongodb://$DB_USERNAME:$DB_PASSWORD@$HOST_IP/$DB_NAME?replicaSet=$REPL_SET_NAME --tls --tlsCAFile /etc/mongodb/external-ca.crt --tlsCertificateKeyFile /etc/mongodb/external-cert.pem
 ```
 
-Congratulations, you've now connected to MongoDB with TLS. Now exit the MongoDB shell by typing `exit`. Once you've entered `exit`, you should be back in the shell you started in where you can interact with Juju and LXD.
+Congratulations, you've now connected to MongoDB with TLS. Now exit the MongoDB shell by typing:
+```shell
+exit
+```
+Now you should be back in the host of Charmed MongoDB (`mongodb/0`). To exit this host type:
+```shell
+exit
+```
+You should now be shell you started in where you can interact with Juju and LXD.
 
 ### Disable TLS
 To disable TLS unrelate the two applications:
