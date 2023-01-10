@@ -1,20 +1,19 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-"""In this class, we manage client database relations.
+"""In this class, we manage backup configurations and actions.
 
-This class creates a user and database for each application relation
-and expose needed information for client connection via fields in
-external relation.
+Specifically backups are handled with Percona Backup MongoDB (pbm) which is installed as a snap
+during the install phase. A user for PBM is created when MongoDB is first started during the
+start phase.
 """
 import logging
 
 from charms.mongodb.v0.helpers import generate_password
-from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
+from charms.mongodb.v0.mongodb import MongoDBConfiguration
 from charms.operator_libs_linux.v1 import snap
 from ops.framework import Object
-from ops.model import ActiveStatus, BlockedStatus
-from pymongo.errors import PyMongoError
+from ops.model import ActiveStatus
 
 # The unique Charmhub library identifier, never change it
 LIBID = "18c461132b824ace91af0d7abe85f40e"
@@ -38,11 +37,9 @@ PBM_S3_CONFIGS = [
     ("storage.s3.serverSideEncryption.kmsKeyID", "s3-kms-key-id"),
 ]
 
-PBM_PRIVILEGES = {"resource": {"anyResource": True}, "actions": ["anyAction"]}
-
 
 class MongoDBBackups(Object):
-    """In this class, we manage client database relations."""
+    """In this class, we manage mongodb backups."""
 
     def __init__(self, charm, substrate="k8s"):
         """Manager of MongoDB client relations."""
@@ -67,35 +64,16 @@ class MongoDBBackups(Object):
             event.defer()
             return
 
-        try:
-            self.create_pbm_user()
-        except PyMongoError as e:
-            self.charm.unit.status = BlockedStatus("config change failed")
-            logger.error("Deferring config_changed since: error=%r", e)
-            event.defer()
-            return
-
         # TODO handle PBM configurations set by the user
         self.charm.unit.status = ActiveStatus()
-
-    def create_pbm_user(self):
-        """Creates the PBM user on the MongoDB database."""
-        if "pbm_user_created" in self.charm.app_peer_data:
-            return
-
-        with MongoDBConnection(self.charm.mongodb_config) as mongo:
-            # first we must create the necessary roles for PBM
-            logger.debug("creating the PBM user roles...")
-            mongo.create_role(role_name="pbmAnyAction", privileges=PBM_PRIVILEGES)
-            logger.debug("creating the PBM user...")
-            mongo.create_user(self._pbm_config)
-            self.charm.app_peer_data["pbm_user_created"] = "True"
 
     @property
     def _pbm_config(self) -> MongoDBConfiguration:
         """Construct the config object for pbm user and creates user if necessary."""
         if not self.charm.get_secret("app", "pbm_password"):
             self.charm.set_secret("app", "pbm_password", generate_password())
+
+        logger.error("password is %s", self.charm.get_secret("app", "pbm_password"))
 
         return MongoDBConfiguration(
             replset=self.charm.app.name,
@@ -105,5 +83,5 @@ class MongoDBBackups(Object):
             hosts=self.charm.mongodb_config.hosts,
             roles=["pbm"],
             tls_external=self.charm.tls.get_tls_files("unit") is not None,
-            tls_internal=self.charm.tls.get_tls_files("unit") is not None,
+            tls_internal=self.charm.tls.get_tls_files("app") is not None,
         )

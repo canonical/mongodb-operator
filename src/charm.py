@@ -65,6 +65,7 @@ GPG_URL = "https://www.mongodb.org/static/pgp/server-5.0.asc"
 MONGO_EXEC_LINE = 10
 MONGO_USER = "mongodb"
 MONGO_DATA_DIR = "/data/db"
+PBM_PRIVILEGES = {"resource": {"anyResource": True}, "actions": ["anyAction"]}
 
 # We expect the MongoDB container to use the default ports
 MONGODB_PORT = 27017
@@ -576,6 +577,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 )
                 logger.info("User initialization")
                 self._init_admin_user()
+                self._init_pbm_user()
                 logger.info("Manage relations")
                 self.client_relations.oversee_users(None, None)
             except subprocess.CalledProcessError as e:
@@ -754,6 +756,25 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         logger.debug("User created")
         self.app_peer_data["user_created"] = "True"
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(5),
+        reraise=True,
+        before=before_log(logger, logging.DEBUG),
+    )
+    def _init_pbm_user(self):
+        """Creates the PBM user on the MongoDB database."""
+        if "pbm_user_created" in self.app_peer_data:
+            return
+
+        with MongoDBConnection(self.mongodb_config) as mongo:
+            # first we must create the necessary roles for PBM
+            logger.debug("creating the PBM user roles...")
+            mongo.create_role(role_name="pbmAnyAction", privileges=PBM_PRIVILEGES)
+            logger.debug("creating the PBM user...")
+            mongo.create_user(self.backups._pbm_config)
+            self.app_peer_data["pbm_user_created"] = "True"
 
     def restart_mongod_service(self, auth=None):
         """Restarts the mongod service with its associated configuration."""
