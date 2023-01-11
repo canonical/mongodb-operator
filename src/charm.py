@@ -23,11 +23,11 @@ from charms.mongodb.v0.helpers import (
     get_create_user_cmd,
 )
 from charms.mongodb.v0.mongodb import (
+    CHARM_USERS,
     MongoDBConfiguration,
     MongoDBConnection,
     NotReadyError,
     PyMongoError,
-    CHARM_USERS,
 )
 from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
