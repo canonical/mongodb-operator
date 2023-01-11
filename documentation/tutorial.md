@@ -8,7 +8,7 @@ The Charmed MongoDB Operator delivers automated operations management from [day 
 - Automatically create MongoDB users via Juju relations. 
 - Enable secure transactions with TLS.
 
-While this tutorial is aimed to guide and teach you as you deploy Charmed MongoDB. It will be most beneficial if you already have a familairy with: 
+While this tutorial intends to guide and teach you as you deploy Charmed MongoDB, it will be most beneficial if you already have a familiarity with: 
 - Basic terminal commands.
 - MongoDB concepts such as replication and users.
 
@@ -263,13 +263,13 @@ You can verify that you added the user correctly by entering the command `show u
   }
 ]
 ```
-Feel free to test out any other MongoDB commands. When you’re ready to leave the MongoDB shell you can just type `exit`. Once you've typed `exit` you will be back in the host of Charmed MongoDB (`mongodb/0`). Exit this host by entering `exit`. Now you will be in your original shell where you first started the tutorial; where you can interact with Juju and LXD.
+Feel free to test out any other MongoDB commands. When you’re ready to leave the MongoDB shell you can just type `exit`. Once you've typed `exit` you will be back in the host of Charmed MongoDB (`mongodb/0`). Exit this host by once again typing `exit`. Now you will be in your original shell where you first started the tutorial; here you can interact with Juju and LXD.
 
 
 ## Scale Charmed MongoDB
 Replication is a popular feature of MongoDB; replicas copy data making a database highly available. This means the application can provide self-healing capabilities in case one MongoDB replica fails. 
 
-*Disclaimer: this tutorial hosts replicas all on the same machine, this should not be done in a production environment. to enable high availability in a production environment, replicas should be hosted on different servers to maintain [isolation](https://canonical.com/blog/database-high-availability).*
+*Disclaimer: this tutorial hosts replicas all on the same machine, this should not be done in a production environment. To enable high availability in a production environment, replicas should be hosted on different servers to [maintain isolation](https://canonical.com/blog/database-high-availability).*
 
 
 ### Add replicas
@@ -559,10 +559,10 @@ export URI=mongodb://$DB_USERNAME:$DB_PASSWORD@$HOST_IP/$DB_NAME?replicaSet=$REP
 
 ## Relations
 <!---Juju 3.0 uses integrations; I haven’t been able to find the docs for 2.9 --->
-[Relations](https://juju.is/docs/sdk/integration), or what juju documentation describes as Integration, are the easiest way to create a user for MongoDB in Charmed MongoDB. Relations automatically create a username, password, and database for the desired user/application. As mentioned earlier in the [Access MongoDB](#access-mongodb) it is a better practice to connect to MongoDB via a specific user rather than the admin user.
+Relations, or what Juju documentation [describes as Integration](https://juju.is/docs/sdk/integration), are the easiest way to create a user for MongoDB in Charmed MongoDB. Relations automatically create a username, password, and database for the desired user/application. As mentioned earlier in the [Access MongoDB section](#access-mongodb) it is a better practice to connect to MongoDB via a specific user rather than the admin user.
 
 ### Data Integrator Charm
-Before relating to a charmed application, we must deploy our charmed application. In this tutorial we will relate to the [Data Integrator Charm](https://github.com/canonical/data-integrator). This is a bare-bones charm that allows for central management of database users, providing support for different kind of data platforms (e.g. MongoDB, MySQL, PostgreSQL, Kafka, etc) with a consistent, opinionated and robust user experience. In order to deploy the Data Integrator Charm we must clone its source code from GitHub and create the charm executable ourselves: 
+Before relating to a charmed application, we must first deploy our charmed application. In this tutorial we will relate to the [Data Integrator Charm](https://github.com/canonical/data-integrator). This is a bare-bones charm that allows for central management of database users, providing support for different kinds of data platforms (e.g. MongoDB, MySQL, PostgreSQL, Kafka, etc) with a consistent, opinionated and robust user experience. In order to deploy the Data Integrator Charm we must clone its source code from GitHub and create the charm executable ourselves: 
 
 <!--- note in the future replace this with juju deploy instead of from git --->
 ```shell
@@ -571,7 +571,7 @@ cd data-integrator/
 sudo snap install charmcraft --classic
 charmcraft pack
 ```
-After packing the charm, you can see that a charm executable named `database-integrator_ubuntu-22.04-amd64.charm` has been created in the `data-integrator` directory. When we deploy the charm we can also specify the name of the database that we want created in MongoDB with the `database` config option. To deploy this charm with juju and create a database in MongoDB named `test-database` enter:
+After packing the charm, you can see that a charm executable named `database-integrator_ubuntu-22.04-amd64.charm` has been created in the `data-integrator` directory. When we deploy the charm we can also specify the name of the database that we want created in MongoDB with the `database` config option. To deploy this charm with Juju and create a database in MongoDB named `test-database` enter:
 ```shell
 juju deploy ./database-integrator_ubuntu-22.04-amd64.charm --config database=test-database
 ```
@@ -637,13 +637,13 @@ Then access `mongosh` with the URI that you copied above:
 ```shell
 mongosh "<uri copied from juju run-action  database-integrator/0 get-credentials --wait>"
 ```
-*Note: be sure you wrap the URI in `"` with no trailing whitespace*
+*Note: be sure you wrap the URI in `"` with no trailing whitespace*.
 
 You will now be in the mongo shell as the user created for this relation. When you relate two applications Charmed MongoDB automatically sets up a user and database for you. Enter `show dbs` into the MongoDB shell, this will output:
 ```shell
 test-database  8.00 KiB
 ```
-This is the name of the database we specified when we first deployed the `database-integrator` charm. To create a collection in the "test-database" and then show the collection enter:
+This is the name of the database we specified when we first deployed the `data-integrator` charm. To create a collection in the "test-database" and then show the collection enter:
 ```shell
 db.createCollection("test-collection")
 show collections
@@ -674,7 +674,7 @@ You should now be shell you started in where you can interact with Juju and LXD.
 ### Remove the user
 To remove the user, remove the relation. Removing the relation automatically removes the user that was created when the relation was created. Enter the following to remove the relation:
 ```shell
-juju remove-relation mongodb database-integrator
+juju remove-relation mongodb data-integrator
 ```
 
 Now try again to connect to the same URI you just used in [Access the related database](#access-the-related-database):
@@ -682,7 +682,7 @@ Now try again to connect to the same URI you just used in [Access the related da
 juju ssh mongodb/0
 mongosh "<uri copied from juju run-action  database-integrator/0 get-credentials --wait>"
 ```
-*Note: be sure you wrap the URI in `"` with no trailing whitespace*
+*Note: be sure you wrap the URI in `"` with no trailing whitespace*.
 
 This will output an error message:
 ```
@@ -704,11 +704,11 @@ You should now be shell you started in where you can interact with Juju and LXD.
 
 If you wanted to recreate this user all you would need to do is relate the the two applications again:
 ```shell
-juju relate database-integrator mongodb
+juju relate data-integrator mongodb
 ```
 Re-relating generates a new password for this user, and therefore a new URI you can see the new URI with:
 ```shell
-juju run-action  database-integrator/0 get-credentials --wait
+juju run-action  data-integrator/0 get-credentials --wait
 ```
 Save the result listed with `uris:`.
 
@@ -717,12 +717,12 @@ You can connect to the database with this new URI:
 juju ssh mongodb/0
 mongosh "<uri copied from juju run-action  database-integrator/0 get-credentials --wait>"
 ```
-*Note: be sure you wrap the URI in `"` with no trailing whitespace*
+*Note: be sure you wrap the URI in `"` with no trailing whitespace*.
 
 From there if you enter `db.test_collection.find()` you will see all of your original documents are still present in the database. 
 
 ## Transcript Layer Security (TLS)
-[TLS](https://en.wikipedia.org/wiki/Transport_Layer_Security) is used to encrypt data exchanged between two applications; it secures data transmitted over the network. Typically enabling up TLS within a highly available database and between a highly available database and client/server applications, requires domain specific knowledge and a high level of expertise. Fortunately, the domain specific knowledge has been encoded into Charmed MongoDB. This means enabling TLS on Charmed MongoDB is readily available and requires minimal effort on your end.
+[TLS](https://en.wikipedia.org/wiki/Transport_Layer_Security) is used to encrypt data exchanged between two applications; it secures data transmitted over the network. Typically, enabling TLS within a highly available database, and between a highly available database and client/server applications, requires domain-specific knowledge and a high level of expertise. Fortunately, the domain-specific knowledge has been encoded into Charmed MongoDB. This means enabling TLS on Charmed MongoDB is readily available and requires minimal effort on your end.
 
 Again, relations come in handy here as TLS is enabled via relations; i.e. by relating Charmed MongoDB to the [TLS Certificates Charm](https://charmhub.io/tls-certificates-operator). The TLS Certificates Charm centralises TLS certificate management in a consistent manner and handles providing, requesting, and renewing TLS certificates.
 
@@ -757,7 +757,7 @@ Now we can configure the TLS certificates. Configure the  `tls-certificates-oper
 ```shell
 juju config tls-certificates-operator generate-self-signed-certificates="true" ca-common-name="Tutorial CA" 
 ```
-*Note: this tutorial uses (self signed certificates)[https://en.wikipedia.org/wiki/Self-signed_certificate]; self signed certificates should not be used in a production cluster.*
+*Note: this tutorial uses [self-signed certificates](https://en.wikipedia.org/wiki/Self-signed_certificate); self-signed certificates should not be used in a production cluster.*
 
 ### Enable TLS
 After configuring the certificates `watch -c juju status --color` will show the status of `tls-certificates-operator` as active. To enable TLS on Charmed MongoDB, relate the two applications:
@@ -775,7 +775,7 @@ Now ssh into `mongodb/0`:
 ```
 juju ssh mongodb/0
 ```
-After `ssh`ing into `mongodb/0`, we are now in the unit that is hosting Charmed MongoDB. Once TLS has been enabled we will need to change how we connect to MongoDB. Specifically we will need to specify the TLS CA file along with the TLS Certificate file. These are are on the units hosting the Charmed MongoDB application in the folder `/etc/mongodb/`. If you enter: `ls /etc/mongodb/external*` you should see the external certificate file and the external CA file:
+After `ssh`ing into `mongodb/0`, we are now in the unit that is hosting Charmed MongoDB. Once TLS has been enabled we will need to change how we connect to MongoDB. Specifically we will need to specify the TLS CA file along with the TLS Certificate file. These are on the units hosting the Charmed MongoDB application in the folder `/etc/mongodb/`. If you enter: `ls /etc/mongodb/external*` you should see the external certificate file and the external CA file:
 ```shell
 /etc/mongodb/external-ca.crt  /etc/mongodb/external-cert.pem
 ```
@@ -811,19 +811,19 @@ In this tutorial we've successfully deployed MongoDB, added/removed replicas, ad
 - [Contribute to the code base](https://github.com/canonical/mongodb-operator)
 
 ## Remove Charmed MongoDB and Juju
-If you're done using Charmed MongoDB and Juju and would like to free up resources on your machine you can remove Charmed MongoDB and Juju. *Disclaimer when you remove Charmed MongoDB as shown below you will lose all the data in MongoDB. Further when you remove Juju as shown below you will lose access to any other applications you have hosted on Juju.*
+If you're done using Charmed MongoDB and Juju and would like to free up resources on your machine, you can remove Charmed MongoDB and Juju. *Warning: when you remove Charmed MongoDB as shown below you will lose all the data in MongoDB. Further, when you remove Juju as shown below you will lose access to any other applications you have hosted on Juju.*
 
 To remove Charmed MongoDB and the model it is hosted on run the command:
 ```shell
 juju destroy-model tutorial --destroy-storage
 ```
 
-Next step is to remove the juju controller. You can see all of the available controllers by entering `juju controllers`. To remove the controller enter:
+Next step is to remove the Juju controller. You can see all of the available controllers by entering `juju controllers`. To remove the controller enter:
 ```shell
 juju destroy-controller overlord
 ```
 
-Finally to remove juju all together enter:
+Finally to remove Juju altogether, enter:
 ```shell
 sudo snap remove juju --purge
 ```
