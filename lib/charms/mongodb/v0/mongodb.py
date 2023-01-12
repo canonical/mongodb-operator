@@ -35,7 +35,7 @@ LIBPATCH = 3
 logger = logging.getLogger(__name__)
 
 # List of system usernames needed for correct work on the charm.
-CHARM_USERS = ["operator"]
+CHARM_USERS = ["admin", "backup"]
 
 
 @dataclass
@@ -306,6 +306,23 @@ class MongoDBConnection:
             pwd=password,
         )
 
+    def create_role(self, role_name: str, privileges: dict, roles: dict = []):
+        """Creates a new role.
+
+        Args:
+            role_name: name of the role to be added.
+            privileges: privledges to be associated with the role.
+            roles: List of roles from which this role inherits privileges.
+        """
+        try:
+            self.client.admin.command(
+                "createRole", role_name, privileges=[privileges], roles=roles
+            )
+        except OperationFailure as e:
+            if not e.code == 51002:  # Role already exists
+                logger.error("Cannot add role. error=%r", e)
+                raise e
+
     @staticmethod
     def _get_roles(config: MongoDBConfiguration) -> List[dict]:
         """Generate roles List."""
@@ -314,6 +331,13 @@ class MongoDBConnection:
                 {"role": "userAdminAnyDatabase", "db": "admin"},
                 {"role": "readWriteAnyDatabase", "db": "admin"},
                 {"role": "userAdmin", "db": "admin"},
+            ],
+            "backup": [
+                {"db": "admin", "role": "readWrite", "collection": ""},
+                {"db": "admin", "role": "backup"},
+                {"db": "admin", "role": "clusterMonitor"},
+                {"db": "admin", "role": "restore"},
+                {"db": "admin", "role": "pbmAnyAction"},
             ],
             "default": [
                 {"role": "readWrite", "db": config.database},
