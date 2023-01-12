@@ -23,7 +23,7 @@ def unit_uri(ip_address: str, password, app=APP_NAME) -> str:
         password: password of database.
         app: name of application which has the cluster.
     """
-    return f"mongodb://admin:" f"{password}@" f"{ip_address}:{PORT}/admin?replicaSet={app}"
+    return f"mongodb://operator:" f"{password}@" f"{ip_address}:{PORT}/admin?replicaSet={app}"
 
 
 async def get_password(ops_test: OpsTest, app=APP_NAME) -> str:
@@ -38,7 +38,7 @@ async def get_password(ops_test: OpsTest, app=APP_NAME) -> str:
 
     action = await ops_test.model.units.get(f"{app}/{unit_id}").run_action("get-password")
     action = await action.wait()
-    return action.results["admin-password"]
+    return action.results["operator-password"]
 
 
 @retry(

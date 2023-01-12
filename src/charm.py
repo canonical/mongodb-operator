@@ -23,6 +23,7 @@ from charms.mongodb.v0.helpers import (
     get_create_user_cmd,
 )
 from charms.mongodb.v0.mongodb import (
+    CHARM_USERS,
     MongoDBConfiguration,
     MongoDBConnection,
     NotReadyError,
@@ -108,8 +109,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         The same keyFile and admin password on all members needed, hence it is generated once and
         share between members via the app data.
         """
-        if not self.get_secret("app", "password"):
-            self.set_secret("app", "password", generate_password())
+        if not self.get_secret("app", "operator-password"):
+            self.set_secret("app", "operator-password", generate_password())
 
         if not self.get_secret("app", "keyfile"):
             self.set_secret("app", "keyfile", generate_keyfile())
@@ -408,7 +409,15 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def _on_get_password(self, event: ops.charm.ActionEvent) -> None:
         """Returns the password for the user as an action response."""
-        event.set_results({"admin-password": self.get_secret("app", "password")})
+        username = event.params.get("username", "operator")
+        if username not in CHARM_USERS:
+            event.fail(
+                f"The action can be run only for users used by the charm:"
+                f" {', '.join(CHARM_USERS)} not {username}"
+            )
+            return
+
+        event.set_results({f"{username}-password": self.get_secret("app", f"{username}-password")})
 
     def _on_set_password(self, event: ops.charm.ActionEvent) -> None:
         """Set the password for the admin user."""
@@ -417,13 +426,21 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             event.fail("The action can be run only on leader unit.")
             return
 
+        username = event.params.get("username", "operator")
+        if username not in CHARM_USERS:
+            event.fail(
+                f"The action can be run only for users used by the charm:"
+                f" {', '.join(CHARM_USERS)} not {username}"
+            )
+            return
+
         new_password = generate_password()
         if "password" in event.params:
             new_password = event.params["password"]
 
         with MongoDBConnection(self.mongodb_config) as mongo:
             try:
-                mongo.set_user_password("admin", new_password)
+                mongo.set_user_password(username, new_password)
             except NotReadyError:
                 event.fail(
                     "Failed changing the password: Not all members healthy or finished initial sync."
@@ -433,8 +450,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 event.fail(f"Failed changing the password: {e}")
                 return
 
-        self.set_secret("app", "password", new_password)
-        event.set_results({"admin-password": self.get_secret("app", "password")})
+        self.set_secret("app", f"{username}-password", new_password)
+        event.set_results({f"{username}-password": new_password})
 
     def _open_port_tcp(self, port: int) -> None:
         """Open the given port.
@@ -696,8 +713,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         return MongoDBConfiguration(
             replset=self.app.name,
             database="admin",
-            username="admin",
-            password=self.get_secret("app", "password"),
+            username="operator",
+            password=self.get_secret("app", "operator-password"),
             hosts=set(self._unit_ips),
             roles={"default"},
             tls_external=external_ca is not None,
