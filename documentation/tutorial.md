@@ -42,7 +42,7 @@ You can list all LXD containers by entering the command `lxc list` in to the com
 
 
 ## Install and prepare Juju
-[Juju](https://juju.is/) is an Operator Lifecycle Manager(OLM) for clouds, bare metal, LXD or Kubernetes. We will be using it to deploy and manage Charmed MongoDB. As with LXD, Juju is installed from a snap package:
+Juju is an Operator Lifecycle Manager (OLM) for clouds, bare metal, LXD or Kubernetes. We will be using it to deploy and manage Charmed MongoDB. As with LXD, Juju is installed from a snap package:
 ```shell
 sudo snap install juju --classic
 ```
@@ -199,10 +199,10 @@ mongosh <saved URI>
 
 You should now see:
 ```
-Current Mongosh Log ID:	6389e2adec352d5447551ae0
-Connecting to:		mongodb://<credentials>@10.23.62.156/admin?replicaSet=mongodb&appName=mongosh+1.6.1
-Using MongoDB:		5.0.14
-Using Mongosh:		1.6.1
+Current Mongosh Log ID: 6389e2adec352d5447551ae0
+Connecting to:    mongodb://<credentials>@10.23.62.156/admin?replicaSet=mongodb&appName=mongosh+1.6.1
+Using MongoDB:    5.0.14
+Using Mongosh:    1.6.1
 
 For mongosh info see: https://docs.mongodb.com/mongodb-shell/
 
@@ -263,8 +263,9 @@ You can verify that you added the user correctly by entering the command `show u
   }
 ]
 ```
-Feel free to test out any other MongoDB commands. When you’re ready to leave the MongoDB shell you can just type `exit`. Once you've typed `exit` you will be back in the host of Charmed MongoDB (`mongodb/0`). Exit this host by once again typing `exit`. Now you will be in your original shell where you first started the tutorial; here you can interact with Juju and LXD.
+Feel free to test out any other MongoDB commands. When you’re ready to leave the MongoDB shell you can just type `exit`. Once you've typed `exit` you will be back in the host of Charmed MongoDB (`mongodb/0`). Exit this host by once again typing `exit`. Now you will be in your original shell where you first started the tutorial; here you can interact with Juju and LXD. 
 
+*Note: if you accidentally exit one more time you will leave your terminal session and all of the environment variables used in the URI will be removed. If this happens redefine these variables as described in the section that describes how to [create the MongoDB URI](#mongodb-uri).*
 
 ## Scale Charmed MongoDB
 Replication is a popular feature of MongoDB; replicas copy data making a database highly available. This means the application can provide self-healing capabilities in case one MongoDB replica fails. 
@@ -571,15 +572,15 @@ cd data-integrator/
 sudo snap install charmcraft --classic
 charmcraft pack
 ```
-After packing the charm, you can see that a charm executable named `database-integrator_ubuntu-22.04-amd64.charm` has been created in the `data-integrator` directory. When we deploy the charm we can also specify the name of the database that we want created in MongoDB with the `database` config option. To deploy this charm with Juju and create a database in MongoDB named `test-database` enter:
+After packing the charm, you can see that a charm executable named `data-integrator_ubuntu-22.04-amd64.charm` has been created in the `data-integrator` directory. When we deploy the charm we can also specify the name of the database that we want created in MongoDB with the `database` config option. To deploy this charm with Juju and create a database in MongoDB named `test-database` enter:
 ```shell
-juju deploy ./database-integrator_ubuntu-22.04-amd64.charm --config database=test-database
+juju deploy ./data-integrator_ubuntu-22.04-amd64.charm --config database=test-database
 ```
 
 ### Relate to MongoDB
 Now that the Database Integrator Charm has been set up, we can relate it to MongoDB. This will automatically create a username, password, and database for the Database Integrator Charm. Relate the two applications with:
 ```shell
-juju relate database-integrator mongodb
+juju relate data-integrator mongodb
 ```
 Wait for `watch -c juju status --color` to show:
 ```
@@ -588,11 +589,11 @@ Model     Controller  Cloud/Region         Version  SLA          Timestamp
 tutorial  overlord    localhost/localhost  2.9.37   unsupported  10:32:09Z
 
 App                  Version  Status  Scale  Charm                Channel   Rev  Exposed  Message
-database-integrator           active      1  database-integrator              0  no       received mongodb credentials
+data-integrator           active      1  data-integrator              0  no       received mongodb credentials
 mongodb                       active      2  mongodb              dpe/edge   96  no
 
 Unit                    Workload  Agent  Machine  Public address  Ports      Message
-database-integrator/0*  active    idle   5        10.23.62.216               received mongodb credentials
+data-integrator/0*  active    idle   5        10.23.62.216               received mongodb credentials
 mongodb/0*              active    idle   0        10.23.62.156    27017/tcp
 mongodb/1               active    idle   1        10.23.62.55     27017/tcp  Replica set primary
 
@@ -603,12 +604,12 @@ Machine  State    Address       Inst id        Series  AZ  Message
 ```
 To retrieve information such as the username, password, and database. Enter:
 ```shell
-juju run-action  database-integrator/0 get-credentials --wait
+juju run-action  data-integrator/0 get-credentials --wait
 ```
 This should output something like:
 ```yaml
-​​unit-database-integrator-0:
-  UnitId: database-integrator/0
+​​unit-data-integrator-0:
+  UnitId: data-integrator/0
   id: "24"
   results:
     mongodb:
@@ -628,20 +629,20 @@ This should output something like:
 Save the value listed under `uris:` *(Note: your hostnames, usernames, and passwords will likely be different.)*
 
 ### Access the related database
-Notice that in the previous step when you typed `juju run-action  database-integrator/0 get-credentials --wait` the command not only outputted the username, password, and database, but also outputted the URI. This means you do not have to generate the URI yourself. To connect to this URI first ssh into `mongodb/0`:
+Notice that in the previous step when you typed `juju run-action  data-integrator/0 get-credentials --wait` the command not only outputted the username, password, and database, but also outputted the URI. This means you do not have to generate the URI yourself. To connect to this URI first ssh into `mongodb/0`:
 ```shell
 juju ssh mongodb/0
 ```
 Then access `mongosh` with the URI that you copied above:
 
 ```shell
-mongosh "<uri copied from juju run-action  database-integrator/0 get-credentials --wait>"
+mongosh "<uri copied from juju run-action  data-integrator/0 get-credentials --wait>"
 ```
 *Note: be sure you wrap the URI in `"` with no trailing whitespace*.
 
-You will now be in the mongo shell as the user created for this relation. When you relate two applications Charmed MongoDB automatically sets up a user and database for you. Enter `show dbs` into the MongoDB shell, this will output:
+You will now be in the mongo shell as the user created for this relation. When you relate two applications Charmed MongoDB automatically sets up a user and database for you. Enter `db.getName()` into the MongoDB shell, this will output:
 ```shell
-test-database  8.00 KiB
+test-database
 ```
 This is the name of the database we specified when we first deployed the `data-integrator` charm. To create a collection in the "test-database" and then show the collection enter:
 ```shell
@@ -651,9 +652,9 @@ show collections
 Now insert a document into this database:
 ```shell
 db.test_collection.insertOne(
-	{
-		First_Name: "Jammy",
-		Last_Name: "Jellyfish",
+  {
+    First_Name: "Jammy",
+    Last_Name: "Jellyfish",
   })
 ```
 You can verify this document was inserted by running:
@@ -680,17 +681,17 @@ juju remove-relation mongodb data-integrator
 Now try again to connect to the same URI you just used in [Access the related database](#access-the-related-database):
 ```shell
 juju ssh mongodb/0
-mongosh "<uri copied from juju run-action  database-integrator/0 get-credentials --wait>"
+mongosh "<uri copied from juju run-action  data-integrator/0 get-credentials --wait>"
 ```
 *Note: be sure you wrap the URI in `"` with no trailing whitespace*.
 
 This will output an error message:
 ```
-Current Mongosh Log ID:	638f5ffbdbd9ec94c2e58456
-Connecting to:		mongodb://<credentials>@10.23.62.38,10.23.62.219/mongodb?replicaSet=mongodb&authSource=admin&appName=mongosh+1.6.1
+Current Mongosh Log ID: 638f5ffbdbd9ec94c2e58456
+Connecting to:    mongodb://<credentials>@10.23.62.38,10.23.62.219/mongodb?replicaSet=mongodb&authSource=admin&appName=mongosh+1.6.1
 MongoServerError: Authentication failed.
 ```
-As this user no longer exists. This is expected as `juju remove-relation mongodb database-integrator` also removes the user. 
+As this user no longer exists. This is expected as `juju remove-relation mongodb data-integrator` also removes the user. 
 
 Now exit the MongoDB shell by typing:
 ```shell
@@ -715,7 +716,7 @@ Save the result listed with `uris:`.
 You can connect to the database with this new URI:
 ```shell
 juju ssh mongodb/0
-mongosh "<uri copied from juju run-action  database-integrator/0 get-credentials --wait>"
+mongosh "<uri copied from juju run-action  data-integrator/0 get-credentials --wait>"
 ```
 *Note: be sure you wrap the URI in `"` with no trailing whitespace*.
 
@@ -815,7 +816,7 @@ If you're done using Charmed MongoDB and Juju and would like to free up resource
 
 To remove Charmed MongoDB and the model it is hosted on run the command:
 ```shell
-juju destroy-model tutorial --destroy-storage
+juju destroy-model tutorial --destroy-storage --force
 ```
 
 Next step is to remove the Juju controller. You can see all of the available controllers by entering `juju controllers`. To remove the controller enter:
