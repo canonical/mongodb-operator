@@ -29,6 +29,7 @@ from charms.mongodb.v0.mongodb import (
     NotReadyError,
     PyMongoError,
 )
+from charms.mongodb.v0.mongodb_backups import MongoDBBackups
 from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
@@ -65,6 +66,7 @@ GPG_URL = "https://www.mongodb.org/static/pgp/server-5.0.asc"
 MONGO_EXEC_LINE = 10
 MONGO_USER = "mongodb"
 MONGO_DATA_DIR = "/data/db"
+PBM_PRIVILEGES = {"resource": {"anyResource": True}, "actions": ["anyAction"]}
 
 # We expect the MongoDB container to use the default ports
 MONGODB_PORT = 27017
@@ -80,7 +82,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self._port = MONGODB_PORT
 
         self.framework.observe(self.on.install, self._on_install)
-        self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(self.on.start, self._on_start)
         self.framework.observe(self.on[PEER].relation_joined, self._on_mongodb_relation_joined)
         self.framework.observe(self.on[PEER].relation_changed, self._on_mongodb_relation_handler)
@@ -102,6 +103,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.client_relations = MongoDBProvider(self, substrate="vm")
         self.legacy_client_relations = MongoDBLegacyProvider(self)
         self.tls = MongoDBTLS(self, PEER, substrate="vm")
+        self.backups = MongoDBBackups(self)
 
     def _generate_passwords(self) -> None:
         """Generate passwords and put them into peer relation.
@@ -295,13 +297,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         update_mongod_service(
             auth=auth, machine_ip=self._unit_ip(self.unit), config=self.mongodb_config
         )
-
-    def _on_config_changed(self, _) -> None:
-        """Event handler for configuration changed events."""
-        # TODO
-        # - update existing mongo configurations based on user preferences
-        # - add additional configurations as according to spec doc
-        pass
 
     def _on_start(self, event: ops.charm.StartEvent) -> None:
         """Enables MongoDB service and initialises replica set.
@@ -599,6 +594,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 )
                 logger.info("User initialization")
                 self._init_admin_user()
+                self._init_backup_user()
                 logger.info("Manage relations")
                 self.client_relations.oversee_users(None, None)
             except subprocess.CalledProcessError as e:
@@ -777,6 +773,25 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         logger.debug("User created")
         self.app_peer_data["user_created"] = "True"
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(5),
+        reraise=True,
+        before=before_log(logger, logging.DEBUG),
+    )
+    def _init_backup_user(self):
+        """Creates the backup user on the MongoDB database."""
+        if "backup_user_created" in self.app_peer_data:
+            return
+
+        with MongoDBConnection(self.mongodb_config) as mongo:
+            # first we must create the necessary roles for the PBM tool
+            logger.debug("creating the backup user roles...")
+            mongo.create_role(role_name="pbmAnyAction", privileges=PBM_PRIVILEGES)
+            logger.debug("creating the backup user...")
+            mongo.create_user(self.backups._backup_config)
+            self.app_peer_data["backup_user_created"] = "True"
 
     def restart_mongod_service(self, auth=None):
         """Restarts the mongod service with its associated configuration."""
