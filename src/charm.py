@@ -577,7 +577,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 )
                 logger.info("User initialization")
                 self._init_admin_user()
-                self._init_pbm_user()
+                self._init_backup_user()
                 logger.info("Manage relations")
                 self.client_relations.oversee_users(None, None)
             except subprocess.CalledProcessError as e:
@@ -763,18 +763,18 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         reraise=True,
         before=before_log(logger, logging.DEBUG),
     )
-    def _init_pbm_user(self):
-        """Creates the PBM user on the MongoDB database."""
-        if "pbm_user_created" in self.app_peer_data:
+    def _init_backup_user(self):
+        """Creates the backup user on the MongoDB database."""
+        if "backup_user_created" in self.app_peer_data:
             return
 
         with MongoDBConnection(self.mongodb_config) as mongo:
-            # first we must create the necessary roles for PBM
-            logger.debug("creating the PBM user roles...")
+            # first we must create the necessary roles for the PBM tool
+            logger.debug("creating the backup user roles...")
             mongo.create_role(role_name="pbmAnyAction", privileges=PBM_PRIVILEGES)
-            logger.debug("creating the PBM user...")
-            mongo.create_user(self.backups._pbm_config)
-            self.app_peer_data["pbm_user_created"] = "True"
+            logger.debug("creating the backup user...")
+            mongo.create_user(self.backups._backup_config)
+            self.app_peer_data["backup_user_created"] = "True"
 
     def restart_mongod_service(self, auth=None):
         """Restarts the mongod service with its associated configuration."""
