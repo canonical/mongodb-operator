@@ -8,6 +8,7 @@ during the install phase. A user for PBM is created when MongoDB is first starte
 start phase. This user is named "backup".
 """
 import logging
+import subprocess
 
 from charms.mongodb.v0.helpers import generate_password
 from charms.mongodb.v0.mongodb import MongoDBConfiguration
@@ -64,10 +65,12 @@ class MongoDBBackups(Object):
             event.defer()
             return
 
+        # URI is set with `snap set`
+        pbm_snap.set({"uri": self._backup_config.uri})
+
         # presets for PBM snap configurations
         pbm_configs = {}
-        pbm_configs["uri"] = self._pbm_config.uri
-        pbm_configs["storage.s3.type"] = "s3"
+        pbm_configs["storage.type"] = "s3"
         pbm_configs["storage.s3.serverSideEncryption.sseAlgorithm"] = "aws:kms"
 
         # parse user configurations
@@ -75,18 +78,25 @@ class MongoDBBackups(Object):
             if self.charm.config.get(charm_config_name):
                 pbm_configs[snap_config_name] = self.charm.config.get(charm_config_name)
 
-        try:
-            pbm_snap.set(pbm_configs)
-            self.charm.unit.status = ActiveStatus("")
-        except snap.SnapError as e:
-            logger.error(
-                "Failed to configure the PBM snap with the configurations: %s, failed with error: %s",
-                str(pbm_configs),
-                str(e),
-            )
-            self.charm.unit.status = BlockedStatus("couldn't configure s3 backup options.")
+        for (pbm_key, pbm_value) in pbm_configs.items():
+            try:
+                self._pbm_set_config(pbm_key, pbm_value)
+            except subprocess.CalledProcessError as e:
+                logger.error(
+                    "Failed to configure the PBM snap with key=value %s=%s, failed with error: %s",
+                    str(pbm_key),
+                    str(pbm_value),
+                    str(e),
+                )
+                self.charm.unit.status = BlockedStatus("couldn't configure s3 backup options.")
+                return
 
-        self.charm.unit.status = ActiveStatus()
+        self.charm.unit.status = ActiveStatus("")
+
+    def _pbm_set_config(self, key: str, value: str) -> None:
+        """Runs the percona-backup-mongodb config command for the provided key and value."""
+        config_cmd = f'percona-backup-mongodb config --set {key}="{value}"'
+        subprocess.check_output(config_cmd, shell=True)
 
     @property
     def _backup_config(self) -> MongoDBConfiguration:
