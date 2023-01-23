@@ -5,17 +5,13 @@
 
 Specifically backups are handled with Percona Backup MongoDB (pbm) which is installed as a snap
 during the install phase. A user for PBM is created when MongoDB is first started during the
-start phase.
+start phase. This user is named "backup".
 """
 import logging
 
 from charms.mongodb.v0.helpers import generate_password
 from charms.mongodb.v0.mongodb import MongoDBConfiguration
 from charms.operator_libs_linux.v1 import snap
-from charms.mongodb.v0.mongodb import MongoDBConfiguration
-from charms.mongodb.v0.helpers import generate_password
-import logging
-
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus
 
@@ -93,20 +89,18 @@ class MongoDBBackups(Object):
         self.charm.unit.status = ActiveStatus()
 
     @property
-    def _pbm_config(self) -> MongoDBConfiguration:
-        """Construct the config object for pbm user and creates user if necessary."""
-        if not self.charm.get_secret("app", "pbm_password"):
-            self.charm.set_secret("app", "pbm_password", generate_password())
-
-        logger.error("password is %s", self.charm.get_secret("app", "pbm_password"))
+    def _backup_config(self) -> MongoDBConfiguration:
+        """Construct the config object for backup user and creates user if necessary."""
+        if not self.charm.get_secret("app", "backup_password"):
+            self.charm.set_secret("app", "backup_password", generate_password())
 
         return MongoDBConfiguration(
             replset=self.charm.app.name,
             database="admin",
-            username="pbmuser",
-            password=self.charm.get_secret("app", "pbm_password"),
+            username="backup",
+            password=self.charm.get_secret("app", "backup_password"),
             hosts=self.charm.mongodb_config.hosts,
-            roles=["pbm"],
+            roles=["backup"],
             tls_external=self.charm.tls.get_tls_files("unit") is not None,
             tls_internal=self.charm.tls.get_tls_files("app") is not None,
         )
