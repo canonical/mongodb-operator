@@ -15,11 +15,7 @@ from charms.mongodb.v0.mongodb import MongoDBConfiguration
 from charms.operator_libs_linux.v1 import snap
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus
-from tenacity import (
-    retry,
-    stop_after_attempt,
-    wait_fixed,
-)
+from tenacity import retry, stop_after_attempt, wait_fixed
 
 # The unique Charmhub library identifier, never change it
 LIBID = "18c461132b824ace91af0d7abe85f40e"
@@ -120,7 +116,7 @@ class MongoDBBackups(Object):
 
         try:
             self._backup()
-            event.set_results({"backup-status": "backup started", "Stderr": None})
+            event.set_results({"backup-status": "backup started"})  # , "Stderr": None})
         except subprocess.CalledProcessError as e:
             event.fail(f"Failed to backup MongoDB with error: {str(e)}")
             return
@@ -133,7 +129,7 @@ class MongoDBBackups(Object):
     def _backup(self) -> None:
         """Backup MongoDB with PBM.
 
-        PBM occassionally doesn't suceed on the first attempt so it shoud be retried on failure.
+        PBM occasionally doesn't succeed on the first attempt so it should be retried on failure.
         """
         output = subprocess.check_output("percona-backup-mongodb backup", shell=True)
         logger.debug(output)
