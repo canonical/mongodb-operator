@@ -49,57 +49,7 @@ class MongoDBBackups(Object):
         super().__init__(charm, "client-relations")
         self.charm = charm
         self.substrate = substrate
-        self.framework.observe(self.charm.on.config_changed, self._on_pbm_config_changed)
         self.framework.observe(self.charm.on.create_backup_action, self._on_create_backup_action)
-
-    def _on_pbm_config_changed(self, event) -> None:
-        """Handles PBM configurations."""
-        # handling PBM configurations requires that the pbm snap is installed.
-        if "db_initialised" not in self.charm.app_peer_data:
-            logger.debug("Cannot set PBM configurations, MongoDB has not yet started.")
-            event.defer()
-            return
-
-        snap_cache = snap.SnapCache()
-        pbm_snap = snap_cache["percona-backup-mongodb"]
-
-        if not pbm_snap.present:
-            logger.debug("Cannot set PBM configurations, PBM snap is not yet installed.")
-            event.defer()
-            return
-
-        # URI is set with `snap set`
-        pbm_snap.set({"uri": self._backup_config.uri})
-
-        # presets for PBM snap configurations
-        pbm_configs = {}
-        pbm_configs["storage.type"] = "s3"
-        pbm_configs["storage.s3.serverSideEncryption.sseAlgorithm"] = "aws:kms"
-
-        # parse user configurations
-        for (snap_config_name, charm_config_name) in PBM_S3_CONFIGS:
-            if self.charm.config.get(charm_config_name):
-                pbm_configs[snap_config_name] = self.charm.config.get(charm_config_name)
-
-        for (pbm_key, pbm_value) in pbm_configs.items():
-            try:
-                self._pbm_set_config(pbm_key, pbm_value)
-            except subprocess.CalledProcessError as e:
-                logger.error(
-                    "Failed to configure the PBM snap with key=value %s=%s, failed with error: %s",
-                    str(pbm_key),
-                    str(pbm_value),
-                    str(e),
-                )
-                self.charm.unit.status = BlockedStatus("couldn't configure s3 backup options.")
-                return
-
-        self.charm.unit.status = ActiveStatus("")
-
-    def _pbm_set_config(self, key: str, value: str) -> None:
-        """Runs the percona-backup-mongodb config command for the provided key and value."""
-        config_cmd = f'percona-backup-mongodb config --set {key}="{value}"'
-        subprocess.check_output(config_cmd, shell=True)
 
     def _on_create_backup_action(self, event) -> None:
         try:
