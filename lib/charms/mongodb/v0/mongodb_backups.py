@@ -9,6 +9,7 @@ start phase. This user is named "backup".
 """
 import logging
 import subprocess
+import time
 
 from charms.mongodb.v0.helpers import generate_password
 from charms.mongodb.v0.mongodb import MongoDBConfiguration
@@ -109,30 +110,20 @@ class MongoDBBackups(Object):
                 event.defer()
                 return
             pbm_snap.start(services=["pbm-agent"])
+            # sleep for 10 seconds while pbm snap service starts. Without this running backup will
+            # occasionally fail.
+            time.sleep(10)
         except snap.SnapError as e:
             logger.error("An exception occurred when starting pbm agent, error: %s.", str(e))
             event.fail(f"Failed to backup MongoDB with error: {str(e)}")
             return
 
         try:
-            self._backup()
-            event.set_results({"backup-status": "backup started"})  # , "Stderr": None})
+            subprocess.check_output("percona-backup-mongodb backup", shell=True)
+            event.set_results({"backup-status": "backup started"})
         except subprocess.CalledProcessError as e:
             event.fail(f"Failed to backup MongoDB with error: {str(e)}")
             return
-
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_fixed(5),
-        reraise=True,
-    )
-    def _backup(self) -> None:
-        """Backup MongoDB with PBM.
-
-        PBM occasionally doesn't succeed on the first attempt so it should be retried on failure.
-        """
-        output = subprocess.check_output("percona-backup-mongodb backup", shell=True)
-        logger.debug(output)
 
     @property
     def _backup_config(self) -> MongoDBConfiguration:
