@@ -15,6 +15,11 @@ from charms.mongodb.v0.mongodb import MongoDBConfiguration
 from charms.operator_libs_linux.v1 import snap
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_fixed,
+)
 
 # The unique Charmhub library identifier, never change it
 LIBID = "18c461132b824ace91af0d7abe85f40e"
@@ -48,6 +53,7 @@ class MongoDBBackups(Object):
         self.charm = charm
         self.substrate = substrate
         self.framework.observe(self.charm.on.config_changed, self._on_pbm_config_changed)
+        self.framework.observe(self.charm.on.create_backup_action, self._on_create_backup_action)
 
     def _on_pbm_config_changed(self, event) -> None:
         """Handles PBM configurations."""
@@ -97,6 +103,40 @@ class MongoDBBackups(Object):
         """Runs the percona-backup-mongodb config command for the provided key and value."""
         config_cmd = f'percona-backup-mongodb config --set {key}="{value}"'
         subprocess.check_output(config_cmd, shell=True)
+
+    def _on_create_backup_action(self, event) -> None:
+        try:
+            snap_cache = snap.SnapCache()
+            pbm_snap = snap_cache["percona-backup-mongodb"]
+            if not pbm_snap.present:
+                logger.debug("Cannot start PBM agent, PBM snap is not yet installed.")
+                event.defer()
+                return
+            pbm_snap.start(services=["pbm-agent"])
+        except snap.SnapError as e:
+            logger.error("An exception occurred when starting pbm agent, error: %s.", str(e))
+            event.fail(f"Failed to backup MongoDB with error: {str(e)}")
+            return
+
+        try:
+            self._backup()
+            event.set_results({"backup-status": "backup started", "Stderr": None})
+        except subprocess.CalledProcessError as e:
+            event.fail(f"Failed to backup MongoDB with error: {str(e)}")
+            return
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(5),
+        reraise=True,
+    )
+    def _backup(self) -> None:
+        """Backup MongoDB with PBM.
+
+        PBM occassionally doesn't suceed on the first attempt so it shoud be retried on failure.
+        """
+        output = subprocess.check_output("percona-backup-mongodb backup", shell=True)
+        logger.debug(output)
 
     @property
     def _backup_config(self) -> MongoDBConfiguration:
