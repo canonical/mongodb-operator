@@ -15,6 +15,7 @@ from charms.mongodb.v0.helpers import generate_password
 from charms.mongodb.v0.mongodb import MongoDBConfiguration
 from charms.operator_libs_linux.v1 import snap
 from ops.framework import Object
+from ops.model import MaintenanceStatus
 
 # The unique Charmhub library identifier, never change it
 LIBID = "18c461132b824ace91af0d7abe85f40e"
@@ -37,6 +38,7 @@ PBM_S3_CONFIGS = [
     ("storage.s3.credentials.secret-access-key", "s3-secret-access-key"),
     ("storage.s3.serverSideEncryption.kmsKeyID", "s3-kms-key-id"),
 ]
+S3_RELATION = "s3-credentials"
 
 
 class MongoDBBackups(Object):
@@ -50,6 +52,10 @@ class MongoDBBackups(Object):
         self.framework.observe(self.charm.on.create_backup_action, self._on_create_backup_action)
 
     def _on_create_backup_action(self, event) -> None:
+        if self.model.get_relation(S3_RELATION) is None:
+            event.fail("Relation with s3-integrator charm missing, cannot create backup.")
+            return
+
         try:
             snap_cache = snap.SnapCache()
             pbm_snap = snap_cache["percona-backup-mongodb"]
@@ -69,6 +75,7 @@ class MongoDBBackups(Object):
         try:
             subprocess.check_output("percona-backup-mongodb backup", shell=True)
             event.set_results({"backup-status": "backup started"})
+            self.unit.status = MaintenanceStatus("backup started/running")
         except subprocess.CalledProcessError as e:
             event.fail(f"Failed to backup MongoDB with error: {str(e)}")
             return
