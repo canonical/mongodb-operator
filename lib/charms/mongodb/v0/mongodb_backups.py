@@ -90,9 +90,7 @@ class MongoDBBackups(Object):
                 self._pbm_set_config(pbm_key, pbm_value)
             except subprocess.CalledProcessError as e:
                 logger.error(
-                    "Failed to configure the PBM snap with key=value %s=%s, failed with error: %s",
-                    str(pbm_key),
-                    str(pbm_value),
+                    "Failed to configure the PBM snap failed with error: %s",
                     str(e),
                 )
                 self.charm.unit.status = BlockedStatus("couldn't configure s3 backup options.")
