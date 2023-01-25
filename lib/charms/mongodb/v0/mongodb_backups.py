@@ -15,8 +15,6 @@ from charms.mongodb.v0.helpers import generate_password
 from charms.mongodb.v0.mongodb import MongoDBConfiguration
 from charms.operator_libs_linux.v1 import snap
 from ops.framework import Object
-from ops.model import ActiveStatus, BlockedStatus
-from tenacity import retry, stop_after_attempt, wait_fixed
 
 # The unique Charmhub library identifier, never change it
 LIBID = "18c461132b824ace91af0d7abe85f40e"
