@@ -25,6 +25,9 @@ set-password:
       type: string
       description: The password will be auto-generated if this option is not specified.
 
+create-backup:
+  description: Creates a backup to s3 storage in AWS.
+
 set-tls-private-key:
   description: Set the privates key, which will be used for certificate signing requests (CSR). Run for each unit separately.
   params:
