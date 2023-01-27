@@ -9,13 +9,14 @@ start phase. This user is named "backup".
 """
 import logging
 import subprocess
+import time
 
 from charms.data_platform_libs.v0.s3 import CredentialsChangedEvent, S3Requirer
 from charms.mongodb.v0.helpers import generate_password
 from charms.mongodb.v0.mongodb import MongoDBConfiguration
 from charms.operator_libs_linux.v1 import snap
 from ops.framework import Object
-from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
+from ops.model import ActiveStatus, BlockedStatus, WaitingStatus, MaintenanceStatus
 from tenacity import (
     Retrying,
     before_log,
@@ -67,6 +68,7 @@ class MongoDBBackups(Object):
         self.framework.observe(
             self.s3_client.on.credentials_changed, self._on_s3_credential_changed
         )
+        self.framework.observe(self.charm.on.create_backup_action, self._on_create_backup_action)
 
     def _on_s3_credential_changed(self, event: CredentialsChangedEvent):
         """Sets pbm credentials, resyncs if necessary and reports config errors."""
@@ -197,6 +199,43 @@ class MongoDBBackups(Object):
         """Runs the percona-backup-mongodb config command for the provided key and value."""
         config_cmd = f'percona-backup-mongodb config --set {key}="{value}"'
         subprocess.check_output(config_cmd, shell=True)
+
+    def _on_create_backup_action(self, event) -> None:
+        if self.model.get_relation(S3_RELATION) is None:
+            event.fail("Relation with s3-integrator charm missing, cannot create backup.")
+            return
+
+        try:
+            snap_cache = snap.SnapCache()
+            pbm_snap = snap_cache["percona-backup-mongodb"]
+            if not pbm_snap.present:
+                logger.debug("Cannot start PBM agent, PBM snap is not yet installed.")
+                event.defer()
+                return
+            pbm_snap.start(services=["pbm-agent"])
+            # sleep for 10 seconds while pbm snap service starts. Without this running backup will
+            # occasionally fail.
+            time.sleep(10)
+        except snap.SnapError as e:
+            logger.error("An exception occurred when starting pbm agent, error: %s.", str(e))
+            event.fail(f"Failed to backup MongoDB with error: {str(e)}")
+            return
+
+        # cannot create backup if pbm is not ready
+        status = self._get_pbm_status()
+        self.charm.unit.status = status
+        if isinstance(status, WaitingStatus):
+            logger.debug("pbm is syncing credentials, must wait before running backup")
+            event.defer()
+            return
+
+        try:
+            subprocess.check_output("percona-backup-mongodb backup", shell=True)
+            event.set_results({"backup-status": "backup started"})
+            self.unit.status = MaintenanceStatus("backup started/running")
+        except subprocess.CalledProcessError as e:
+            event.fail(f"Failed to backup MongoDB with error: {str(e)}")
+            return
 
     @property
     def _backup_config(self) -> MongoDBConfiguration:
