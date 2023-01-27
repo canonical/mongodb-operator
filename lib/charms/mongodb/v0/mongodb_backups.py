@@ -9,21 +9,20 @@ start phase. This user is named "backup".
 """
 import logging
 import subprocess
-import time
 
 from charms.data_platform_libs.v0.s3 import CredentialsChangedEvent, S3Requirer
 from charms.mongodb.v0.helpers import generate_password
 from charms.mongodb.v0.mongodb import MongoDBConfiguration
 from charms.operator_libs_linux.v1 import snap
 from ops.framework import Object
-from ops.model import ActiveStatus, BlockedStatus, WaitingStatus, MaintenanceStatus
+from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from tenacity import (
     Retrying,
     before_log,
     retry,
+    retry_if_exception_type,
     stop_after_attempt,
     wait_fixed,
-    retry_if_exception_type,
 )
 
 # The unique Charmhub library identifier, never change it
@@ -221,18 +220,21 @@ class MongoDBBackups(Object):
             event.fail("Relation with s3-integrator charm missing, cannot create backup.")
             return
 
-        # cannot create backup if pbm is not ready
-        status = self._get_pbm_status()
-        self.charm.unit.status = status
-        if isinstance(status, WaitingStatus):
-            logger.debug("pbm is syncing credentials, must wait before running backup")
+        # cannot create backup if pbm is not resynced and ready
+        try:
+            # pbm has a flakely resync and it is a best practice to resync right before creating
+            # a backup see: https://jira.percona.com/browse/PBM-1038
+            subprocess.check_output("percona-backup-mongodb config --force-resync", shell=True)
+            self._verify_resync()
+        except ResyncError:
             event.defer()
+            logger.debug("Sync-ing configurations needs more time, must wait before backup.")
             return
 
         try:
             subprocess.check_output("percona-backup-mongodb backup", shell=True)
             event.set_results({"backup-status": "backup started"})
-            self.unit.status = MaintenanceStatus("backup started/running")
+            self.charm.unit.status = MaintenanceStatus("backup started/running")
         except subprocess.CalledProcessError as e:
             event.fail(f"Failed to backup MongoDB with error: {str(e)}")
             return
