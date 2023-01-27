@@ -16,14 +16,14 @@ from charms.mongodb.v0.helpers import generate_password
 from charms.mongodb.v0.mongodb import MongoDBConfiguration
 from charms.operator_libs_linux.v1 import snap
 from ops.framework import Object
-from ops.model import ActiveStatus, BlockedStatus, WaitingStatus, MaintenanceStatus
+from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from tenacity import (
     Retrying,
     before_log,
     retry,
+    retry_if_exception_type,
     stop_after_attempt,
     wait_fixed,
-    retry_if_exception_type,
 )
 
 # The unique Charmhub library identifier, never change it
@@ -51,7 +51,7 @@ S3_RELATION = "s3-credentials"
 
 
 class ResyncError(Exception):
-    "Raised when pbm is resyncing configurations and is not ready to be used."
+    """Raised when pbm is resyncing configurations and is not ready to be used."""
 
 
 class MongoDBBackups(Object):
@@ -120,9 +120,8 @@ class MongoDBBackups(Object):
             self.charm.unit.status = BlockedStatus("couldn't start pbm")
             return
 
-        subprocess.check_output("percona-backup-mongodb config --force-resync", shell=True)
-
         # wait for re-sync and check if pbm is ready.
+        subprocess.check_output("percona-backup-mongodb config --force-resync", shell=True)
         status = self._get_pbm_status()
         self.charm.unit.status = status
         if isinstance(status, WaitingStatus):
@@ -163,13 +162,13 @@ class MongoDBBackups(Object):
         The pbm status is set by the pbm_agent daemon which needs time to both resync and resolve
         errors in configurations. Resync-ing is a longer process and should take around 5 minutes.
         Configuration errors generally occur when the configurations change and pbm_agent is
-        updating, this is generally quick and should take <15s. If errors are not resolved in 30s
+        updating, this is generally quick and should take <15s. If errors are not resolved in 15s
         it means there is an incorrect configuration which will require user intervention.
 
         Retrying for resync is handled by decorator, retrying for configuration errors is handled
         within this function.
         """
-        # on occassion it takes the pbm_agent daemon time to update its configs, meaning that it
+        # on occasion it takes the pbm_agent daemon time to update its configs, meaning that it
         # will error for incorrect configurations for <15s before resolving itself.
         for attempt in Retrying(
             stop=stop_after_attempt(3),
@@ -179,7 +178,8 @@ class MongoDBBackups(Object):
             with attempt:
                 pbm_status = subprocess.check_output("percona-backup-mongodb status", shell=True)
                 if "Resync" in self._current_pbm_op(pbm_status.decode("utf-8")):
-                    # since this process takes several minutes we should let the user know immediately.
+                    # since this process takes several minutes we should let the user know
+                    # immediately.
                     self.charm.unit.status = WaitingStatus("waiting to sync s3 configurations.")
                     raise ResyncError
 
