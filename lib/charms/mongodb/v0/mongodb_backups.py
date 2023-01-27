@@ -16,14 +16,14 @@ from charms.mongodb.v0.helpers import generate_password
 from charms.mongodb.v0.mongodb import MongoDBConfiguration
 from charms.operator_libs_linux.v1 import snap
 from ops.framework import Object
-from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
+from ops.model import ActiveStatus, BlockedStatus, WaitingStatus, MaintenanceStatus
 from tenacity import (
     Retrying,
     before_log,
     retry,
-    retry_if_exception_type,
     stop_after_attempt,
     wait_fixed,
+    retry_if_exception_type,
 )
 
 # The unique Charmhub library identifier, never change it
@@ -76,7 +76,8 @@ class MongoDBBackups(Object):
 
     def _on_s3_credential_changed(self, event: CredentialsChangedEvent):
         """Sets pbm credentials, resyncs if necessary and reports config errors."""
-        # handling PBM configurations requires that the pbm snap is installed.
+        # handling PBM configurations requires that MongoDB is running and the pbm snap is
+        # installed.
         if "db_initialised" not in self.charm.app_peer_data:
             logger.debug("Cannot set PBM configurations, MongoDB has not yet started.")
             event.defer()
@@ -89,23 +90,21 @@ class MongoDBBackups(Object):
             event.defer()
             return
 
-        # URI is set with `snap set` -- pbm requires that the URI is set before adding configs
+        # pbm requires that the URI is set before adding configs
         pbm_snap.set({"uri": self._backup_config.uri})
 
-        # presets for PBM snap configurations
-        pbm_configs = {}
-        pbm_configs["storage.type"] = "s3"
-
+        # gather PBM snap configurations
+        pbm_configs = {"storage.type": "s3"}
         credentials = self.s3_client.get_s3_connection_info()
         for s3_option, s3_value in credentials.items():
             if s3_option not in S3_PBM_OPTION_MAP:
                 continue
-
             pbm_configs[S3_PBM_OPTION_MAP[s3_option]] = s3_value
 
+        # set and sync options
         try:
             self._set_config_options(pbm_configs)
-            self._sync_config_options()
+            self._resync_config_options(pbm_snap)
         except SetPBMConfigError:
             self.charm.unit.status = BlockedStatus("couldn't configure s3 backup options.")
             return
@@ -129,7 +128,7 @@ class MongoDBBackups(Object):
                 )
                 raise SetPBMConfigError
 
-    def _sync_config_options(self, pbm_snap):
+    def _resync_config_options(self, pbm_snap):
         """Attempts to sync pbm config options and sets status in case of failure."""
         try:
             pbm_snap.start(services=["pbm-agent"])
@@ -140,10 +139,10 @@ class MongoDBBackups(Object):
 
         # wait for re-sync and update charm status based on pbm syncing status.
         subprocess.check_output("percona-backup-mongodb config --force-resync", shell=True)
-        self.charm.unit.status = self._get_pbm_status()
+        self._verify_resync()
 
-    def _get_pbm_status(self):
-        """Returns pbm status based on whether pbm can accept new configurations.
+    def _verify_resync(self):
+        """Sets pbm status based on whether pbm can accept new configurations.
 
         The status of pbm is determined by whether or not pbm_agent is able to accept its given
         configs. Depending on whether or not pbm was able to resolve and resync config changes
@@ -151,7 +150,7 @@ class MongoDBBackups(Object):
         """
         try:
             # get pbm status waits for resync up to 5 minutes
-            self._resolve_pbm()
+            self._get_pbm_status()
         except ResyncError as e:
             self.charm.unit.status = WaitingStatus("waiting to sync s3 configurations.")
             raise e
@@ -159,9 +158,11 @@ class MongoDBBackups(Object):
             if e.returncode == CREDENTIALS_CODE:
                 logger.error("credentials for pbm are invalid.")
                 self.charm.unit.status = BlockedStatus("s3 credentials are incorrect.")
+                return
 
             logger.error(e)
             self.charm.unit.status = BlockedStatus("s3 configurations are incompatible.")
+            return
 
         self.charm.unit.status = ActiveStatus("")
 
@@ -171,7 +172,7 @@ class MongoDBBackups(Object):
         retry=retry_if_exception_type(ResyncError),
         before=before_log(logger, logging.DEBUG),
     )
-    def _resolve_pbm(self) -> None:
+    def _get_pbm_status(self) -> None:
         """Wait for pbm_agent to resolve errors and return the status of pbm.
 
         The pbm status is set by the pbm_agent daemon which needs time to both resync and resolve
@@ -218,22 +219,6 @@ class MongoDBBackups(Object):
     def _on_create_backup_action(self, event) -> None:
         if self.model.get_relation(S3_RELATION) is None:
             event.fail("Relation with s3-integrator charm missing, cannot create backup.")
-            return
-
-        try:
-            snap_cache = snap.SnapCache()
-            pbm_snap = snap_cache["percona-backup-mongodb"]
-            if not pbm_snap.present:
-                logger.debug("Cannot start PBM agent, PBM snap is not yet installed.")
-                event.defer()
-                return
-            pbm_snap.start(services=["pbm-agent"])
-            # sleep for 10 seconds while pbm snap service starts. Without this running backup will
-            # occasionally fail.
-            time.sleep(10)
-        except snap.SnapError as e:
-            logger.error("An exception occurred when starting pbm agent, error: %s.", str(e))
-            event.fail(f"Failed to backup MongoDB with error: {str(e)}")
             return
 
         # cannot create backup if pbm is not ready
