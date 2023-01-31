@@ -139,7 +139,7 @@ class MongoDBBackups(Object):
             return
 
         # wait for re-sync and update charm status based on pbm syncing status. Need to wait for
-        # 2 seconds for pbm_agent to recieve the resync command before verifying.
+        # 2 seconds for pbm_agent to receive the resync command before verifying.
         subprocess.check_output("percona-backup-mongodb config --force-resync", shell=True)
         time.sleep(2)
         self._verify_resync()
@@ -227,7 +227,7 @@ class MongoDBBackups(Object):
         # cannot create backup if pbm is not resynced and ready
         try:
             # pbm has a flakely resync and it is a best practice to resync right before creating
-            # a backup, further it is necessary to sleep to give the agent time to recieve this
+            # a backup, further it is necessary to sleep to give the agent time to receive this
             # operation before verifying resync see: https://jira.percona.com/browse/PBM-1038
             subprocess.check_output("percona-backup-mongodb config --force-resync", shell=True)
             time.sleep(2)
@@ -253,7 +253,7 @@ class MongoDBBackups(Object):
         # cannot list backup if pbm is not resynced and ready
         try:
             # pbm has a flakely resync and it is a best practice to resync right before creating
-            # a backup, further it is necessary to sleep to give the agent time to recieve this
+            # a backup, further it is necessary to sleep to give the agent time to receive this
             # operation before verifying resync see: https://jira.percona.com/browse/PBM-1038
             subprocess.check_output("percona-backup-mongodb config --force-resync", shell=True)
             time.sleep(2)
