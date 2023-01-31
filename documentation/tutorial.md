@@ -42,7 +42,7 @@ You can list all LXD containers by entering the command `lxc list` in to the com
 
 
 ## Install and prepare Juju
-[Juju](https://juju.is/) is an Operator Lifecycle Manager (OLM) for clouds, bare metal, LXD or Kubernetes. We will be using it to deploy and manage Charmed MongoDB. As with LXD, Juju is installed from a snap package:
+Juju is an Operator Lifecycle Manager (OLM) for clouds, bare metal, LXD or Kubernetes. We will be using it to deploy and manage Charmed MongoDB. As with LXD, Juju is installed from a snap package:
 ```shell
 sudo snap install juju --classic
 ```
@@ -564,8 +564,8 @@ juju deploy data-integrator --channel edge --config database-name=test-database
 ```
 The expected output:
 ```
-Located charm "data-integrator" in charm-hub, revision 3
-Deploying "data-integrator" from charm-hub charm "data-integrator", revision 3 in channel edge on jammy
+Located charm "data-integrator" in charm-hub...
+Deploying "data-integrator" from charm-hub charm "data-integrator"...
 ```
 
 ### Relate to MongoDB
