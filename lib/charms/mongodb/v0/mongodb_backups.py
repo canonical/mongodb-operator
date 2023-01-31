@@ -9,6 +9,7 @@ start phase. This user is named "backup".
 """
 import logging
 import subprocess
+import time
 
 from charms.data_platform_libs.v0.s3 import CredentialsChangedEvent, S3Requirer
 from charms.mongodb.v0.helpers import generate_password
@@ -72,6 +73,7 @@ class MongoDBBackups(Object):
             self.s3_client.on.credentials_changed, self._on_s3_credential_changed
         )
         self.framework.observe(self.charm.on.create_backup_action, self._on_create_backup_action)
+        self.framework.observe(self.charm.on.list_backups_action, self._on_list_backups_action)
 
     def _on_s3_credential_changed(self, event: CredentialsChangedEvent):
         """Sets pbm credentials, resyncs if necessary and reports config errors."""
@@ -136,8 +138,10 @@ class MongoDBBackups(Object):
             self.charm.unit.status = BlockedStatus("couldn't start pbm")
             return
 
-        # wait for re-sync and update charm status based on pbm syncing status.
+        # wait for re-sync and update charm status based on pbm syncing status. Need to wait for
+        # 2 seconds for pbm_agent to recieve the resync command before verifying.
         subprocess.check_output("percona-backup-mongodb config --force-resync", shell=True)
+        time.sleep(2)
         self._verify_resync()
 
     def _verify_resync(self):
@@ -223,8 +227,10 @@ class MongoDBBackups(Object):
         # cannot create backup if pbm is not resynced and ready
         try:
             # pbm has a flakely resync and it is a best practice to resync right before creating
-            # a backup see: https://jira.percona.com/browse/PBM-1038
+            # a backup, further it is necessary to sleep to give the agent time to recieve this
+            # operation before verifying resync see: https://jira.percona.com/browse/PBM-1038
             subprocess.check_output("percona-backup-mongodb config --force-resync", shell=True)
+            time.sleep(2)
             self._verify_resync()
         except ResyncError:
             event.defer()
@@ -237,6 +243,33 @@ class MongoDBBackups(Object):
             self.charm.unit.status = MaintenanceStatus("backup started/running")
         except subprocess.CalledProcessError as e:
             event.fail(f"Failed to backup MongoDB with error: {str(e)}")
+            return
+
+    def _on_list_backups_action(self, event) -> None:
+        if self.model.get_relation(S3_RELATION) is None:
+            event.fail("Relation with s3-integrator charm missing, cannot list backups.")
+            return
+
+        # cannot list backup if pbm is not resynced and ready
+        try:
+            # pbm has a flakely resync and it is a best practice to resync right before creating
+            # a backup, further it is necessary to sleep to give the agent time to recieve this
+            # operation before verifying resync see: https://jira.percona.com/browse/PBM-1038
+            subprocess.check_output("percona-backup-mongodb config --force-resync", shell=True)
+            time.sleep(2)
+            self._verify_resync()
+        except ResyncError:
+            event.defer()
+            logger.debug(
+                "Sync-ing configurations needs more time, must wait before listing backups."
+            )
+            return
+
+        try:
+            backups = subprocess.check_output("percona-backup-mongodb list", shell=True)
+            event.set_results({"backups": backups.decode("utf-8")})
+        except subprocess.CalledProcessError as e:
+            event.fail(f"Failed to list MongoDB backups with error: {str(e)}")
             return
 
     @property
