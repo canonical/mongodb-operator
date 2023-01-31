@@ -1,17 +1,18 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
-import tenacity
 import unittest
+from subprocess import CalledProcessError
 from unittest import mock
 from unittest.mock import patch
-from subprocess import CalledProcessError
-from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
-from tests.unit.helpers import patch_network_get
+
+import tenacity
+from charms.mongodb.v0.mongodb_backups import ResyncError, SetPBMConfigError
+from charms.operator_libs_linux.v1 import snap
+from ops.model import BlockedStatus, WaitingStatus
 from ops.testing import Harness
+
 from charm import MongodbOperatorCharm
 from tests.unit.helpers import patch_network_get
-from charms.operator_libs_linux.v1 import snap
-from charms.mongodb.v0.mongodb_backups import MongoDBBackups, ResyncError, SetPBMConfigError
 
 RELATION_NAME = "s3-credentials"
 
@@ -48,7 +49,7 @@ class TestMongoBackups(unittest.TestCase):
 
     @patch("charm.subprocess.check_output")
     def test_verify_resync_cred_error(self, check_output):
-        """Test _verify_resync goes into blocked state when credential error occurs"""
+        """Test _verify_resync goes into blocked state when credential error occurs."""
         check_output.side_effect = CalledProcessError(
             cmd="percona-backup-mongodb status", returncode=403
         )
@@ -57,7 +58,7 @@ class TestMongoBackups(unittest.TestCase):
 
     @patch("charm.subprocess.check_output")
     def test_verify_resync_syncing(self, check_output):
-        """Test _verify_resync goes into waiting state when syncing and raises an error"""
+        """Test _verify_resync goes into waiting state when syncing and raises an error."""
         check_output.return_value = b"Currently running:\n====\nResync op"
 
         # disable retry
@@ -99,7 +100,7 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.subprocess.check_output")
     @patch("charm.MongoDBBackups._verify_resync")
     def test_backup_syncing(self, resync, subprocess):
-        """Verifies backup is defered if more time is needed to resync."""
+        """Verifies backup is deferred if more time is needed to resync."""
         action_event = mock.Mock()
         action_event.params = {}
         resync.side_effect = ResyncError
@@ -129,7 +130,7 @@ class TestMongoBackups(unittest.TestCase):
 
     @patch("ops.framework.EventBase.defer")
     def test_s3_credentials_no_db(self, defer):
-        """Verifies that when there is no DB that setting credentials is defered."""
+        """Verifies that when there is no DB that setting credentials is deferred."""
         del self.harness.charm.app_peer_data["db_initialised"]
 
         # triggering s3 event with correct fields
@@ -149,7 +150,7 @@ class TestMongoBackups(unittest.TestCase):
     @patch("ops.framework.EventBase.defer")
     @patch("charm.snap.SnapCache")
     def test_s3_credentials_no_snap(self, snap, defer):
-        """Verifies that when there is no DB that setting credentials is defered."""
+        """Verifies that when there is no DB that setting credentials is deferred."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = False
         snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
