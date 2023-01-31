@@ -105,6 +105,9 @@ class MongoDBBackups(Object):
         # set and sync options
         try:
             self._set_config_options(pbm_configs)
+            # pbm has a flakely resync and it is necessary to resync twice see:
+            # https://jira.percona.com/browse/PBM-1038
+            self._resync_config_options(pbm_snap)
             self._resync_config_options(pbm_snap)
         except SetPBMConfigError:
             self.charm.unit.status = BlockedStatus("couldn't configure s3 backup options.")
@@ -226,11 +229,6 @@ class MongoDBBackups(Object):
 
         # cannot create backup if pbm is not resynced and ready
         try:
-            # pbm has a flakely resync and it is a best practice to resync right before creating
-            # a backup, further it is necessary to sleep to give the agent time to receive this
-            # operation before verifying resync see: https://jira.percona.com/browse/PBM-1038
-            subprocess.check_output("percona-backup-mongodb config --force-resync", shell=True)
-            time.sleep(2)
             self._verify_resync()
         except ResyncError:
             event.defer()
@@ -252,11 +250,6 @@ class MongoDBBackups(Object):
 
         # cannot list backup if pbm is not resynced and ready
         try:
-            # pbm has a flakely resync and it is a best practice to resync right before creating
-            # a backup, further it is necessary to sleep to give the agent time to receive this
-            # operation before verifying resync see: https://jira.percona.com/browse/PBM-1038
-            subprocess.check_output("percona-backup-mongodb config --force-resync", shell=True)
-            time.sleep(2)
             self._verify_resync()
         except ResyncError:
             event.defer()
