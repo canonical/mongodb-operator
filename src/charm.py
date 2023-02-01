@@ -28,7 +28,7 @@ from charms.mongodb.v0.mongodb import (
     NotReadyError,
     PyMongoError,
 )
-from charms.mongodb.v0.mongodb_backups import MongoDBBackups
+from charms.mongodb.v0.mongodb_backups import S3_RELATION, MongoDBBackups
 from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
@@ -376,6 +376,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         if (
             isinstance(mongodb_status, WaitingStatus)
             or isinstance(mongodb_status, BlockedStatus)
+            or not self.model.get_relation(
+                S3_RELATION
+            )  # if s3 relation doesn't exist only report MongoDB status
             or isinstance(pbm_status, ActiveStatus)  # pbm is ready then report the MongoDB status
         ):
             self.unit.status = mongodb_status
