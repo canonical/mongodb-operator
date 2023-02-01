@@ -369,8 +369,19 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         if self.unit.is_leader():
             self._handle_reconfigure(event)
 
-        # update the units status based on it's replica set config.
-        self.unit.status = build_unit_status(self.mongodb_config, self._unit_ip(self.unit))
+        # update the units status based on it's replica set config and backup status. An error in
+        # the status of MongoDB takes precedence over pbm status.
+        mongodb_status = build_unit_status(self.mongodb_config, self._unit_ip(self.unit))
+        pbm_status = self.backups._get_pbm_status()
+        if (
+            isinstance(mongodb_status, WaitingStatus)
+            or isinstance(mongodb_status, BlockedStatus)
+            or isinstance(pbm_status, ActiveStatus)  # pbm is ready then report the MongoDB status
+            or not pbm_status  # pbm isn't installed yet
+        ):
+            self.unit.status = mongodb_status
+        else:
+            self.unit.status = pbm_status
 
     def _handle_reconfigure(self, event):
         """Reconfigures the replica set if necessary.

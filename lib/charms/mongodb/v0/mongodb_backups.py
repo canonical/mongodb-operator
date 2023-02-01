@@ -1,4 +1,4 @@
-# Copyright 2022 Canonical Ltd.
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 """In this class, we manage backup configurations and actions.
@@ -16,7 +16,13 @@ from charms.mongodb.v0.helpers import generate_password
 from charms.mongodb.v0.mongodb import MongoDBConfiguration
 from charms.operator_libs_linux.v1 import snap
 from ops.framework import Object
-from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
+from ops.model import (
+    ActiveStatus,
+    BlockedStatus,
+    MaintenanceStatus,
+    StatusBase,
+    WaitingStatus,
+)
 from tenacity import (
     Retrying,
     before_log,
@@ -102,19 +108,30 @@ class MongoDBBackups(Object):
                 continue
             pbm_configs[S3_PBM_OPTION_MAP[s3_option]] = s3_value
 
-        # set and sync options
+        # set configs, sync configs, and check for validity of options
         try:
             self._set_config_options(pbm_configs)
             # pbm has a flakely resync and it is necessary to resync twice see:
             # https://jira.percona.com/browse/PBM-1038
             self._resync_config_options(pbm_snap)
             self._resync_config_options(pbm_snap)
+            self.charm.unit.status = ActiveStatus("")
         except SetPBMConfigError:
             self.charm.unit.status = BlockedStatus("couldn't configure s3 backup options.")
             return
         except ResyncError:
+            self.charm.unit.status = WaitingStatus("waiting to sync s3 configurations.")
             event.defer()
             logger.debug("Sync-ing configurations needs more time.")
+            return
+        except subprocess.CalledProcessError as e:
+            if e.returncode == CREDENTIALS_CODE:
+                logger.error("credentials for pbm are invalid.")
+                self.charm.unit.status = BlockedStatus("s3 credentials are incorrect.")
+                return
+
+            logger.error(e)
+            self.charm.unit.status = BlockedStatus("s3 configurations are incompatible.")
             return
 
     def _set_config_options(self, pbm_configs):
@@ -145,32 +162,33 @@ class MongoDBBackups(Object):
         # 2 seconds for pbm_agent to receive the resync command before verifying.
         subprocess.check_output("percona-backup-mongodb config --force-resync", shell=True)
         time.sleep(2)
-        self._verify_resync()
+        self._wait_pbm_status()
 
-    def _verify_resync(self):
-        """Sets pbm status based on whether pbm can accept new configurations.
+    def _get_pbm_status(self) -> StatusBase:
+        """Retrieve pbm status."""
+        snap_cache = snap.SnapCache()
+        pbm_snap = snap_cache["percona-backup-mongodb"]
+        if not pbm_snap.present:
+            return None
 
-        The status of pbm is determined by whether or not pbm_agent is able to accept its given
-        configs. Depending on whether or not pbm was able to resolve and resync config changes
-        pbm_agent will be ready/not ready for backups.
-        """
         try:
-            # get pbm status waits for resync up to 5 minutes
-            self._get_pbm_status()
-        except ResyncError as e:
-            self.charm.unit.status = WaitingStatus("waiting to sync s3 configurations.")
-            raise e
+            pbm_status = subprocess.check_output("percona-backup-mongodb status", shell=True)
+            # pbm is running resync operation
+            if "Resync" in self._current_pbm_op(pbm_status.decode("utf-8")):
+                return WaitingStatus("waiting to sync s3 configurations.")
+
+            # no operations are currently running with pbm
+            if "(none)" in self._current_pbm_op(pbm_status.decode("utf-8")):
+                return ActiveStatus("")
+
+            if "Snapshot backup" in self._current_pbm_op(pbm_status.decode("utf-8")):
+                return MaintenanceStatus("backup started/running")
+
         except subprocess.CalledProcessError as e:
             if e.returncode == CREDENTIALS_CODE:
-                logger.error("credentials for pbm are invalid.")
-                self.charm.unit.status = BlockedStatus("s3 credentials are incorrect.")
-                return
+                return BlockedStatus("s3 credentials are incorrect.")
 
-            logger.error(e)
-            self.charm.unit.status = BlockedStatus("s3 configurations are incompatible.")
-            return
-
-        self.charm.unit.status = ActiveStatus("")
+            return BlockedStatus("s3 configurations are incompatible.")
 
     @retry(
         stop=stop_after_attempt(20),
@@ -178,7 +196,7 @@ class MongoDBBackups(Object):
         retry=retry_if_exception_type(ResyncError),
         before=before_log(logger, logging.DEBUG),
     )
-    def _get_pbm_status(self) -> None:
+    def _wait_pbm_status(self) -> None:
         """Wait for pbm_agent to resolve errors and return the status of pbm.
 
         The pbm status is set by the pbm_agent daemon which needs time to both resync and resolve
@@ -227,12 +245,23 @@ class MongoDBBackups(Object):
             event.fail("Relation with s3-integrator charm missing, cannot create backup.")
             return
 
-        # cannot create backup if pbm is not resynced and ready
-        try:
-            self._verify_resync()
-        except ResyncError:
+        # cannot create backup if pbm is not ready. This could be due to: resyncing, incompatible,
+        # options, incorrect credentials, or already creating a backup
+        pbm_status = self._get_pbm_status()
+        self.charm.unit.status = pbm_status
+        if isinstance(pbm_status, MaintenanceStatus):
+            event.fail(
+                "Can only create one backup at a time, please wait for current backup to finish."
+            )
+            return
+        if isinstance(pbm_status, WaitingStatus):
             event.defer()
-            logger.debug("Sync-ing configurations needs more time, must wait before backup.")
+            logger.debug(
+                "Sync-ing configurations needs more time, must wait before creating a backup."
+            )
+            return
+        if isinstance(pbm_status, BlockedStatus):
+            event.fail(f"Cannot create backup {pbm_status.message}.")
             return
 
         try:
@@ -248,14 +277,18 @@ class MongoDBBackups(Object):
             event.fail("Relation with s3-integrator charm missing, cannot list backups.")
             return
 
-        # cannot list backup if pbm is not resynced and ready
-        try:
-            self._verify_resync()
-        except ResyncError:
+        # cannot list backups if pbm is resyncing, or has incompatible options or incorrect
+        # credentials
+        pbm_status = self._get_pbm_status()
+        self.charm.unit.status = pbm_status
+        if isinstance(pbm_status, WaitingStatus):
             event.defer()
             logger.debug(
                 "Sync-ing configurations needs more time, must wait before listing backups."
             )
+            return
+        if isinstance(pbm_status, BlockedStatus):
+            event.fail(f"Cannot list backups: {pbm_status.message}.")
             return
 
         try:
