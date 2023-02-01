@@ -377,7 +377,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             isinstance(mongodb_status, WaitingStatus)
             or isinstance(mongodb_status, BlockedStatus)
             or isinstance(pbm_status, ActiveStatus)  # pbm is ready then report the MongoDB status
-            or not pbm_status  # pbm isn't installed yet
         ):
             self.unit.status = mongodb_status
         else:

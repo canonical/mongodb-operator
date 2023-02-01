@@ -115,24 +115,21 @@ class MongoDBBackups(Object):
             # https://jira.percona.com/browse/PBM-1038
             self._resync_config_options(pbm_snap)
             self._resync_config_options(pbm_snap)
-            self.charm.unit.status = ActiveStatus("")
         except SetPBMConfigError:
             self.charm.unit.status = BlockedStatus("couldn't configure s3 backup options.")
             return
+        except snap.SnapError as e:
+            logger.error("An exception occurred when starting pbm agent, error: %s.", str(e))
+            self.charm.unit.status = BlockedStatus("couldn't start pbm")
+            return
         except ResyncError:
-            self.charm.unit.status = WaitingStatus("waiting to sync s3 configurations.")
             event.defer()
             logger.debug("Sync-ing configurations needs more time.")
             return
         except subprocess.CalledProcessError as e:
-            if e.returncode == CREDENTIALS_CODE:
-                logger.error("credentials for pbm are invalid.")
-                self.charm.unit.status = BlockedStatus("s3 credentials are incorrect.")
-                return
+            logger.error("Syncing configurations failed: %s", str(e))
 
-            logger.error(e)
-            self.charm.unit.status = BlockedStatus("s3 configurations are incompatible.")
-            return
+        self.charm.unit.status = self._get_pbm_status()
 
     def _set_config_options(self, pbm_configs):
         """Applying given configurations with pbm."""
@@ -151,12 +148,7 @@ class MongoDBBackups(Object):
 
     def _resync_config_options(self, pbm_snap):
         """Attempts to sync pbm config options and sets status in case of failure."""
-        try:
-            pbm_snap.start(services=["pbm-agent"])
-        except snap.SnapError as e:
-            logger.error("An exception occurred when starting pbm agent, error: %s.", str(e))
-            self.charm.unit.status = BlockedStatus("couldn't start pbm")
-            return
+        pbm_snap.start(services=["pbm-agent"])
 
         # wait for re-sync and update charm status based on pbm syncing status. Need to wait for
         # 2 seconds for pbm_agent to receive the resync command before verifying.
@@ -169,7 +161,7 @@ class MongoDBBackups(Object):
         snap_cache = snap.SnapCache()
         pbm_snap = snap_cache["percona-backup-mongodb"]
         if not pbm_snap.present:
-            return None
+            return BlockedStatus("pbm not installed.")
 
         try:
             pbm_status = subprocess.check_output("percona-backup-mongodb status", shell=True)
