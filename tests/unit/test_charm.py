@@ -438,11 +438,13 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charms.mongodb.v0.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
-    def test_update_status_primary(self, connection, status_connection):
+    @patch("charm.MongoDBBackups._get_pbm_status")
+    def test_update_status_primary(self, pbm_status, connection, status_connection):
         """Tests that update status identifies the primary unit and updates status."""
         # assume leader has already initialised the replica set
         self.harness.set_leader(True)
         self.harness.charm.app_peer_data["db_initialised"] = "True"
+        pbm_status.return_value = ActiveStatus("")
 
         self.harness.set_leader(False)
         connection.return_value.__enter__.return_value.is_ready = True
@@ -455,11 +457,13 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charms.mongodb.v0.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
-    def test_update_status_secondary(self, connection, status_connection):
+    @patch("charm.MongoDBBackups._get_pbm_status")
+    def test_update_status_secondary(self, pbm_status, connection, status_connection):
         """Tests that update status identifies secondary units and doesn't update status."""
         # assume leader has already initialised the replica set
         self.harness.set_leader(True)
         self.harness.charm.app_peer_data["db_initialised"] = "True"
+        pbm_status.return_value = ActiveStatus("")
 
         self.harness.set_leader(False)
         connection.return_value.__enter__.return_value.is_ready = True
@@ -472,11 +476,13 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charms.mongodb.v0.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
-    def test_update_status_additional_messages(self, connection, status_connection):
+    @patch("charm.MongoDBBackups._get_pbm_status")
+    def test_update_status_additional_messages(self, pbm_status, connection, status_connection):
         """Tests status updates are correct for non-primary and non-secondary cases."""
         # assume leader has already initialised the replica set
         self.harness.set_leader(True)
         self.harness.charm.app_peer_data["db_initialised"] = "True"
+        pbm_status.return_value = ActiveStatus("")
 
         # Case 1: Unit has not been added to replica set yet
         self.harness.set_leader(False)
