@@ -2,6 +2,7 @@
 # See LICENSE file for licensing details.
 
 from pytest_operator.plugin import OpsTest
+import ops
 
 
 async def app_name(ops_test: OpsTest) -> str:
@@ -20,3 +21,12 @@ async def app_name(ops_test: OpsTest) -> str:
             return app
 
     return None
+
+
+async def count_backups(db_unit: ops.model.Unit) -> int:
+    """Count the number of logical backups."""
+    action = await db_unit.run_action(action_name="list-backups")
+    list_result = await action.wait()
+    backups = list_result.results["backups"]
+    backups = backups.split("\n")
+    return len(backups)
