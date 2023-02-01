@@ -137,7 +137,7 @@ class MongoDBBackups(Object):
     def _set_config_options(self, pbm_configs):
         """Applying given configurations with pbm."""
         # the pbm tool can only set one configuration at a time.
-        for (pbm_key, pbm_value) in pbm_configs.items():
+        for pbm_key, pbm_value in pbm_configs.items():
             try:
                 self._pbm_set_config(pbm_key, pbm_value)
             except subprocess.CalledProcessError:
