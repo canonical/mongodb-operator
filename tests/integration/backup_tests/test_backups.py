@@ -75,7 +75,9 @@ async def test_blocked_incorrect_s3(ops_test: OpsTest) -> None:
 
     # relate after s3 becomes active
     async with ops_test.fast_forward():
-        ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active", raise_on_blocked=True)
+        await ops_test.model.wait_for_idle(
+            apps=[S3_APP_NAME], status="active", raise_on_blocked=True
+        )
     await ops_test.model.add_relation(S3_APP_NAME, db_app_name)
 
     # wait correct application statuses
@@ -84,12 +86,6 @@ async def test_blocked_incorrect_s3(ops_test: OpsTest) -> None:
             ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active"),
             ops_test.model.wait_for_idle(apps=[db_app_name], status="blocked"),
         )
-
-    db_unit = ops_test.model.applications[db_app_name].units[0]
-    print(db_unit.agent_status_message)
-    print(db_unit.agent_status)
-    print(db_unit.workload_status)
-    print(db_unit.workload_status_message)
 
     configuration_parameters = {
         "bucket": "pbm-test-bucket-1",
