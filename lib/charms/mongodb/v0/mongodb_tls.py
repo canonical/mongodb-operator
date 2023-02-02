@@ -79,7 +79,6 @@ class MongoDBTLS(Object):
             event.fail(str(e))
 
     def _request_certificate(self, scope: str, param: Optional[str]):
-
         if param is None:
             key = generate_private_key()
         else:
