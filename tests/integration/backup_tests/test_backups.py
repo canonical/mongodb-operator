@@ -5,6 +5,11 @@ import os
 import helpers
 import pytest
 import asyncio
+from tests.integration.ha_tests.helpers import (
+    start_continous_writes,
+    clear_db_writes,
+    stop_continous_writes,
+)
 from pytest_operator.plugin import OpsTest
 from tenacity import (
     RetryError,
@@ -12,8 +17,19 @@ from tenacity import (
     stop_after_delay,
     wait_fixed,
 )
+import time
 
 S3_APP_NAME = "s3-integrator"
+
+
+@pytest.fixture()
+async def add_writes_to_db(ops_test: OpsTest):
+    """Adds writes to MongoDB for test and clears writes at end of test."""
+    await start_continous_writes(ops_test, 1)
+    time.sleep(20)
+    await stop_continous_writes(ops_test)
+    yield
+    await clear_db_writes(ops_test)
 
 
 @pytest.mark.abort_on_fail
@@ -127,7 +143,12 @@ async def test_create_and_list_backups(ops_test: OpsTest) -> None:
 
 
 @pytest.mark.abort_on_fail
-async def test_multi_backup(ops_test: OpsTest, add_db_writes) -> None:
+async def test_multi_backup(ops_test: OpsTest, add_writes_to_db) -> None:
+    """With writes in the DB test creating a backup while another one is running.
+
+    This test verifies that the first backup is made and that before the second backup is made
+    that pbm correctly resyncs.
+    """
     db_app_name = await helpers.app_name(ops_test)
     db_unit = ops_test.model.applications[db_app_name].units[0]
 
@@ -148,7 +169,8 @@ async def test_multi_backup(ops_test: OpsTest, add_db_writes) -> None:
 
     # create first backup
     action = await db_unit.run_action(action_name="create-backup")
-    await action.wait()
+    first_backup = await action.wait()
+    assert first_backup.status == "completed", "First backup not started."
 
     # while first backup is running change access key, secret keys, and bucket name
     access_key = os.environ.get("AWS_ACCESS_KEY_2", False)
@@ -172,35 +194,32 @@ async def test_multi_backup(ops_test: OpsTest, add_db_writes) -> None:
                 second_backup = await action.wait()
                 assert second_backup.status == "completed"
     except RetryError:
-        assert False, "Second backup not created."
+        assert False, "Second backup not started."
 
-    # verify that backups were made in both buckets
     # the action `create-backup` only confirms that the command was sent to the `pbm`. Creating a
     # backup can take a lot of time so this function returns once the command was successfully
-    # sent to pbm. Therefore we should retry listing the backup several times
-    try:
-        for attempt in Retrying(stop=stop_after_delay(20), wait=wait_fixed(3)):
-            with attempt:
-                backups = await helpers.count_backups(db_unit)
-                assert backups > backups_in_bucket_1
-    except RetryError:
-        assert False, "Backup not created."
+    # sent to pbm. Therefore before checking, wait for Charmed MongoDB to finish creating the
+    # backup
+    async with ops_test.fast_forward():
+        await asyncio.gather(
+            ops_test.model.wait_for_idle(apps=[db_app_name], status="active"),
+        )
+
+    # verify that backups were made in both buckets
+    backups = await helpers.count_backups(db_unit)
+    assert backups > backups_in_bucket_1, "Backup not created in first bucket."
 
     # switch to second bucket and check that bucket
     configuration_parameters = {
         "bucket": "pbm-test-bucket-3",
     }
     await ops_test.model.applications[S3_APP_NAME].set_config(configuration_parameters)
+
     # before checking wait for Charmed MongoDB to finish re-syncing
     async with ops_test.fast_forward():
         await asyncio.gather(
             ops_test.model.wait_for_idle(apps=[db_app_name], status="active"),
         )
 
-    try:
-        for attempt in Retrying(stop=stop_after_delay(20), wait=wait_fixed(3)):
-            with attempt:
-                backups = await helpers.count_backups(db_unit)
-                assert backups > backups_in_bucket_2
-    except RetryError:
-        assert False, "Backup not created."
+    backups = await helpers.count_backups(db_unit)
+    assert backups > backups_in_bucket_2, "Backup not created in second bucket."
