@@ -29,7 +29,7 @@ from charms.mongodb.v0.mongodb import (
     NotReadyError,
     PyMongoError,
 )
-from charms.mongodb.v0.mongodb_backups import MongoDBBackups
+from charms.mongodb.v0.mongodb_backups import S3_RELATION, MongoDBBackups
 from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
@@ -370,8 +370,20 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         if self.unit.is_leader():
             self._handle_reconfigure(event)
 
-        # update the units status based on it's replica set config.
-        self.unit.status = build_unit_status(self.mongodb_config, self._unit_ip(self.unit))
+        # update the units status based on it's replica set config and backup status. An error in
+        # the status of MongoDB takes precedence over pbm status.
+        mongodb_status = build_unit_status(self.mongodb_config, self._unit_ip(self.unit))
+        pbm_status = self.backups._get_pbm_status()
+        if (
+            not isinstance(mongodb_status, ActiveStatus)
+            or not self.model.get_relation(
+                S3_RELATION
+            )  # if s3 relation doesn't exist only report MongoDB status
+            or isinstance(pbm_status, ActiveStatus)  # pbm is ready then report the MongoDB status
+        ):
+            self.unit.status = mongodb_status
+        else:
+            self.unit.status = pbm_status
 
     def _handle_reconfigure(self, event):
         """Reconfigures the replica set if necessary.
