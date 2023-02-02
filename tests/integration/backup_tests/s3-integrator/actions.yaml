@@ -1,0 +1,18 @@
+# Copyright 2022 Canonical Ltd.
+# SPDX-License-Identifier: Apache-2.0
+sync-s3-credentials:
+  description: Synchronize amazon AWS S3 credentials
+  params:
+    access-key:
+      type: string
+      description: Access Key (account) for connecting to the object storage.
+    secret-key:
+      type: string
+      description: Access Key Secret (password) for connecting to the object storage.
+  required: [access-key, secret-key]
+
+get-s3-credentials:
+  description: Returns S3 credentials (access-key and secret-key)
+
+get-s3-connection-info:
+  description: Returns S3 connection parameters

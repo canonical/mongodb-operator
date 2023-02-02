@@ -75,9 +75,7 @@ async def test_blocked_incorrect_s3(ops_test: OpsTest) -> None:
 
     # relate after s3 becomes active
     async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=[S3_APP_NAME], status="active", raise_on_blocked=True
-        )
+        await ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active")
     await ops_test.model.add_relation(S3_APP_NAME, db_app_name)
 
     # wait correct application statuses

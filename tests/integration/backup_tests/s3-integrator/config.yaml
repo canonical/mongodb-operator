@@ -1,0 +1,39 @@
+# Copyright 2022 Canonical Ltd.
+# SPDX-License-Identifier: Apache-2.0
+options:
+  endpoint:
+    type: string
+    description: The endpoint used to connect to the object storage.
+    default: 's3.amazonaws.com'
+  bucket:
+    type: string
+    description: The bucket/container name delivered by the provider.
+    default: ''
+  region:
+    type: string
+    description: The region used to connect to the object storage.
+    default: ''
+  path:
+    type: string
+    description: The path inside the bucket/container to store objects.
+    default: ''
+  attributes:
+    type: string
+    description: The custom metadata (HTTP headers).
+    default: ''
+  s3-uri-style:
+    type: string
+    description: The S3 protocol specific bucket path lookup type.
+    default: ''
+  storage-class:
+    type: string
+    description: Storage Class for objects uploaded to the object storage.
+    default: ''
+  tls-ca-chain:
+    type: string
+    description: The complete CA chain, which can be used for HTTPS validation.
+    default: ''
+  s3-api-version:
+    type: string
+    description: S3 protocol specific API signature.
+    default: ''
