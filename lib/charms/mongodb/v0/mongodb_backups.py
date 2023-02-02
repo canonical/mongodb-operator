@@ -10,6 +10,7 @@ start phase. This user is named "backup".
 import logging
 import subprocess
 import time
+from typing import Dict
 
 from charms.data_platform_libs.v0.s3 import CredentialsChangedEvent, S3Requirer
 from charms.mongodb.v0.helpers import generate_password
@@ -104,22 +105,11 @@ class MongoDBBackups(Object):
         # pbm requires that the URI is set before adding configs
         pbm_snap.set({"uri": self._backup_config.uri})
 
-        # gather PBM snap configurations
-        pbm_configs = {"storage.type": "s3"}
-        credentials = self.s3_client.get_s3_connection_info()
-        for s3_option, s3_value in credentials.items():
-            if s3_option not in S3_PBM_OPTION_MAP:
-                continue
-            pbm_configs[S3_PBM_OPTION_MAP[s3_option]] = s3_value
-
-        # set configs, sync configs, and check for validity of options
+        # Add and sync configuration options while handling errors related to configuring options
+        # and re-syncing PBM.
         try:
-            self._set_config_options(pbm_configs)
-            # pbm has a flakely resync and it is necessary to resync twice see:
-            # https://jira.percona.com/browse/PBM-1038
+            self._set_config_options(self._get_pbm_configs())
             self._resync_config_options(pbm_snap)
-            self._resync_config_options(pbm_snap)
-            self.charm.unit.status = ActiveStatus("")
         except SetPBMConfigError:
             self.charm.unit.status = BlockedStatus("couldn't configure s3 backup options.")
             return
@@ -143,6 +133,16 @@ class MongoDBBackups(Object):
             logger.error("Syncing configurations failed: %s", str(e))
 
         self.charm.unit.status = self._get_pbm_status()
+
+    def _get_pbm_configs(self) -> Dict:
+        """Returns a dictionary of desired PBM configurations."""
+        pbm_configs = {"storage.type": "s3"}
+        credentials = self.s3_client.get_s3_connection_info()
+        for s3_option, s3_value in credentials.items():
+            if s3_option not in S3_PBM_OPTION_MAP:
+                continue
+            pbm_configs[S3_PBM_OPTION_MAP[s3_option]] = s3_value
+        return pbm_configs
 
     def _set_config_options(self, pbm_configs):
         """Applying given configurations with pbm."""
