@@ -64,6 +64,10 @@ class SetPBMConfigError(Exception):
     """Raised when pbm cannot configure a given option."""
 
 
+class PBMBusyError(Exception):
+    """Raised when PBM is busy and cannot run another operation."""
+
+
 class MongoDBBackups(Object):
     """In this class, we manage mongodb backups."""
 
@@ -111,9 +115,6 @@ class MongoDBBackups(Object):
         # set configs, sync configs, and check for validity of options
         try:
             self._set_config_options(pbm_configs)
-            # pbm has a flakely resync and it is necessary to resync twice see:
-            # https://jira.percona.com/browse/PBM-1038
-            self._resync_config_options(pbm_snap)
             self._resync_config_options(pbm_snap)
             self.charm.unit.status = ActiveStatus("")
         except SetPBMConfigError:
@@ -123,6 +124,13 @@ class MongoDBBackups(Object):
             self.charm.unit.status = WaitingStatus("waiting to sync s3 configurations.")
             event.defer()
             logger.debug("Sync-ing configurations needs more time.")
+            return
+        except PBMBusyError:
+            self.charm.unit.status = WaitingStatus("waiting to sync s3 configurations.")
+            logger.debug(
+                "Cannot update configs while PBM is running, must wait for PBM action to finish."
+            )
+            event.defer()
             return
         except subprocess.CalledProcessError as e:
             if e.returncode == CREDENTIALS_CODE:
@@ -157,6 +165,20 @@ class MongoDBBackups(Object):
             logger.error("An exception occurred when starting pbm agent, error: %s.", str(e))
             self.charm.unit.status = BlockedStatus("couldn't start pbm")
             return
+
+        # pbm has a flakely resync and it is necessary to wait for no actions to be running before
+        # resync-ing. See: https://jira.percona.com/browse/PBM-1038
+        for attempt in Retrying(
+            stop=stop_after_attempt(20),
+            wait=wait_fixed(5),
+            reraise=True,
+        ):
+            with attempt:
+                pbm_status = self._get_pbm_status()
+                if isinstance(pbm_status, MaintenanceStatus) or isinstance(
+                    pbm_status, WaitingStatus
+                ):
+                    raise PBMBusyError
 
         # wait for re-sync and update charm status based on pbm syncing status. Need to wait for
         # 2 seconds for pbm_agent to receive the resync command before verifying.
