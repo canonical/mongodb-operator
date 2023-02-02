@@ -1,23 +1,20 @@
 #!/usr/bin/env python3
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
+import asyncio
 import os
+import time
+
 import helpers
 import pytest
-import asyncio
+from pytest_operator.plugin import OpsTest
+from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
+
 from tests.integration.ha_tests.helpers import (
-    start_continous_writes,
     clear_db_writes,
+    start_continous_writes,
     stop_continous_writes,
 )
-from pytest_operator.plugin import OpsTest
-from tenacity import (
-    RetryError,
-    Retrying,
-    stop_after_delay,
-    wait_fixed,
-)
-import time
 
 S3_APP_NAME = "s3-integrator"
 

@@ -1,8 +1,8 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-from pytest_operator.plugin import OpsTest
 import ops
+from pytest_operator.plugin import OpsTest
 
 
 async def app_name(ops_test: OpsTest) -> str:
