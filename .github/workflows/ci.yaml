@@ -127,3 +127,20 @@ jobs:
           provider: lxd
       - name: Run tls integration tests
         run: tox -e tls-integration
+
+  backup-integration-test-lxd:
+    name: Backup integration tests (lxd)
+    needs:
+      - lint
+      - unit-test
+      - lib-check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup operator environment
+        uses: charmed-kubernetes/actions-operator@main
+        with:
+          provider: lxd
+      - name: Run backup integration tests
+        run: tox -e backup-integration
