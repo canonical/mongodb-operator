@@ -181,6 +181,7 @@ class MongoDBBackups(Object):
                 return BlockedStatus("s3 credentials are incorrect.")
 
             return BlockedStatus("s3 configurations are incompatible.")
+        return ActiveStatus("")
 
     @retry(
         stop=stop_after_attempt(20),

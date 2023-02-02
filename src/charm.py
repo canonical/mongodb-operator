@@ -374,8 +374,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         mongodb_status = build_unit_status(self.mongodb_config, self._unit_ip(self.unit))
         pbm_status = self.backups._get_pbm_status()
         if (
-            isinstance(mongodb_status, WaitingStatus)
-            or isinstance(mongodb_status, BlockedStatus)
+            not isinstance(mongodb_status, ActiveStatus)
             or not self.model.get_relation(
                 S3_RELATION
             )  # if s3 relation doesn't exist only report MongoDB status
