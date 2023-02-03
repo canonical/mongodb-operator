@@ -53,6 +53,7 @@ S3_PBM_OPTION_MAP = {
     "path": "storage.s3.prefix",
     "access-key": "storage.s3.credentials.access-key-id",
     "secret-key": "storage.s3.credentials.secret-access-key",
+    "endpoint": "storage.s3.endpointUrl",
 }
 S3_RELATION = "s3-credentials"
 
@@ -141,6 +142,10 @@ class MongoDBBackups(Object):
         for s3_option, s3_value in credentials.items():
             if s3_option not in S3_PBM_OPTION_MAP:
                 continue
+            # TODO remove this once: https://github.com/canonical/s3-integrator/issues/13 is
+            # solved
+            if s3_option == "endpoint" and s3_value == "s3.amazonaws.com":
+                s3_value = ""
             pbm_configs[S3_PBM_OPTION_MAP[s3_option]] = s3_value
         return pbm_configs
 
