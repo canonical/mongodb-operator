@@ -18,6 +18,8 @@ from tests.integration.ha_tests.helpers import (
 )
 
 S3_APP_NAME = "s3-integrator"
+TIMEOUT = 15 * 60
+ENDPOINT = "s3-credentials"
 
 
 @pytest.fixture()
@@ -68,19 +70,23 @@ async def test_blocked_incorrect_s3(ops_test: OpsTest) -> None:
     await helpers.set_credentials(ops_test, cloud="AWS")
 
     # relate after s3 becomes active
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active")
+    await ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active")
+
+    # add and wait for relations
     await ops_test.model.add_relation(S3_APP_NAME, db_app_name)
+    await ops_test.model.block_until(
+        lambda: helpers.is_relation_joined(ops_test, ENDPOINT, ENDPOINT) is True,
+        timeout=TIMEOUT,
+    )
 
     # wait correct application statuses
-    async with ops_test.fast_forward():
-        await asyncio.gather(
-            ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active"),
-            ops_test.model.wait_for_idle(apps=[db_app_name], status="blocked"),
-        )
+    await asyncio.gather(
+        ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active"),
+        ops_test.model.wait_for_idle(apps=[db_app_name], status="blocked"),
+    )
 
     choices = string.ascii_letters + string.digits
-    unique_path = "".join([secrets.choice(choices) for _ in range(8)])
+    unique_path = "".join([secrets.choice(choices) for _ in range(4)])
     configuration_parameters = {
         "bucket": "pbm-test-bucket-1",
         "path": f"mongodb-vm/test-{unique_path}",
@@ -91,11 +97,10 @@ async def test_blocked_incorrect_s3(ops_test: OpsTest) -> None:
     await ops_test.model.applications[S3_APP_NAME].set_config(configuration_parameters)
 
     # after applying correct config options the applications should both be active
-    async with ops_test.fast_forward():
-        await asyncio.gather(
-            ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active"),
-            ops_test.model.wait_for_idle(apps=[db_app_name], status="active"),
-        )
+    await asyncio.gather(
+        ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active"),
+        ops_test.model.wait_for_idle(apps=[db_app_name], status="active"),
+    )
 
 
 @pytest.mark.abort_on_fail
@@ -154,10 +159,10 @@ async def test_multi_backup(ops_test: OpsTest, add_writes_to_db) -> None:
         "region": "",
     }
     await ops_test.model.applications[S3_APP_NAME].set_config(configuration_parameters)
-    async with ops_test.fast_forward():
-        await asyncio.gather(
-            ops_test.model.wait_for_idle(apps=[db_app_name], status="active"),
-        )
+
+    await asyncio.gather(
+        ops_test.model.wait_for_idle(apps=[db_app_name], status="active"),
+    )
 
     # create a backup as soon as possible. might not be immediately possible since only one backup
     # can happen at a time.
@@ -174,10 +179,9 @@ async def test_multi_backup(ops_test: OpsTest, add_writes_to_db) -> None:
     # backup can take a lot of time so this function returns once the command was successfully
     # sent to pbm. Therefore before checking, wait for Charmed MongoDB to finish creating the
     # backup
-    async with ops_test.fast_forward():
-        await asyncio.gather(
-            ops_test.model.wait_for_idle(apps=[db_app_name], status="active"),
-        )
+    await asyncio.gather(
+        ops_test.model.wait_for_idle(apps=[db_app_name], status="active"),
+    )
 
     # verify that backups was made in GCP bucket
     try:
@@ -196,10 +200,9 @@ async def test_multi_backup(ops_test: OpsTest, add_writes_to_db) -> None:
     }
     await ops_test.model.applications[S3_APP_NAME].set_config(configuration_parameters)
     await ops_test.model.applications[S3_APP_NAME].reset_config(["endpoint"])
-    async with ops_test.fast_forward():
-        await asyncio.gather(
-            ops_test.model.wait_for_idle(apps=[db_app_name], status="active"),
-        )
+    await asyncio.gather(
+        ops_test.model.wait_for_idle(apps=[db_app_name], status="active"),
+    )
 
     # verify that backups was made on the AWS bucket
     try:
