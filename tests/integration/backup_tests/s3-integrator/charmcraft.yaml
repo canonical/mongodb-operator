@@ -1,0 +1,15 @@
+# Copyright 2021 Canonical Ltd.
+# SPDX-License-Identifier: Apache-2.0
+type: charm
+parts:
+  charm:
+    build-packages: [git]
+bases:
+  - build-on:
+    - name: ubuntu
+      channel: '20.04'
+      architectures: [amd64]
+    run-on:
+    - name: ubuntu
+      channel: '20.04'
+      architectures: [amd64]

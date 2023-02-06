@@ -1,0 +1,21 @@
+# Copyright 2021 Canonical Ltd.
+# SPDX-License-Identifier: Apache-2.0
+name: s3-integrator
+description: |
+  S3 Integrator is an integrator charm for providing S3 credentials to
+  consumer charms which seek to access shared S3 data. Store the
+  credentials centrally in the integrator charm and relate consumer
+  charms as needed.
+summary: |
+  A provider charm for s3 credentials.
+
+series:
+  - focal
+
+peers:
+  s3-integrator-peers:
+    interface: s3-integrator-peers
+
+provides:
+  s3-credentials:
+    interface: s3-credentials
