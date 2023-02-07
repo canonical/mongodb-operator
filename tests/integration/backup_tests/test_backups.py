@@ -62,29 +62,55 @@ async def test_install_pbm(ops_test: OpsTest) -> None:
 
 
 @pytest.mark.abort_on_fail
-async def test_blocked_incorrect_s3(ops_test: OpsTest) -> None:
-    """Verifies that the charm goes into blocked status when s3 credentials are not compatible."""
+async def test_blocked_incorrect_creds(ops_test: OpsTest) -> None:
+    """Verifies that the charm goes into blocked status when s3 creds are incorrect."""
     db_app_name = await helpers.app_name(ops_test)
 
-    # set AWS credentials for s3 storage
-    await helpers.set_credentials(ops_test, cloud="AWS")
+    # set incorrect s3 credentials
+    s3_integrator_unit = ops_test.model.applications[S3_APP_NAME].units[0]
+    parameters = {"access-key": "user", "secret-key": "doesnt-exist"}
+    action = await s3_integrator_unit.run_action(action_name="sync-s3-credentials", **parameters)
+    await action.wait()
 
-    # relate after s3 becomes active
+    # relate after s3 becomes active add and wait for relation
     await ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active")
-
-    # add and wait for relations
     await ops_test.model.add_relation(S3_APP_NAME, db_app_name)
     await ops_test.model.block_until(
         lambda: helpers.is_relation_joined(ops_test, ENDPOINT, ENDPOINT) is True,
         timeout=TIMEOUT,
     )
 
-    # wait correct application statuses
+    # verify that Charmed MongoDB is blocked and reports incorrect credentials
     await asyncio.gather(
         ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active"),
         ops_test.model.wait_for_idle(apps=[db_app_name], status="blocked"),
     )
+    db_unit = ops_test.model.applications[db_app_name].units[0]
 
+    assert db_unit.workload_status_message == "s3 credentials are incorrect."
+
+
+@pytest.mark.abort_on_fail
+async def test_blocked_incorrect_conf(ops_test: OpsTest) -> None:
+    """Verifies that the charm goes into blocked status when s3 config options are incorrect."""
+    db_app_name = await helpers.app_name(ops_test)
+
+    # set correct AWS credentials for s3 storage but incorrect configs
+    await helpers.set_credentials(ops_test, cloud="AWS")
+
+    # wait for both applications to be idle with the correct statuses
+    await asyncio.gather(
+        ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active"),
+        ops_test.model.wait_for_idle(apps=[db_app_name], status="blocked"),
+    )
+    db_unit = ops_test.model.applications[db_app_name].units[0]
+    assert db_unit.workload_status_message == "s3 configurations are incompatible."
+
+
+@pytest.mark.abort_on_fail
+async def test_ready_correct_conf(ops_test: OpsTest) -> None:
+    """Verifies charm goes into active status when s3 config and creds options are correct."""
+    db_app_name = await helpers.app_name(ops_test)
     choices = string.ascii_letters + string.digits
     unique_path = "".join([secrets.choice(choices) for _ in range(4)])
     configuration_parameters = {
@@ -96,7 +122,7 @@ async def test_blocked_incorrect_s3(ops_test: OpsTest) -> None:
     # apply new configuration options
     await ops_test.model.applications[S3_APP_NAME].set_config(configuration_parameters)
 
-    # after applying correct config options the applications should both be active
+    # after applying correct config options and creds the applications should both be active
     await asyncio.gather(
         ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active"),
         ops_test.model.wait_for_idle(apps=[db_app_name], status="active"),
@@ -197,9 +223,9 @@ async def test_multi_backup(ops_test: OpsTest, add_writes_to_db) -> None:
     configuration_parameters = {
         "bucket": "pbm-test-bucket-1",
         "region": "us-west-2",
+        "endpoint": "",
     }
     await ops_test.model.applications[S3_APP_NAME].set_config(configuration_parameters)
-    await ops_test.model.applications[S3_APP_NAME].reset_config(["endpoint"])
     await asyncio.gather(
         ops_test.model.wait_for_idle(apps=[db_app_name], status="active"),
     )

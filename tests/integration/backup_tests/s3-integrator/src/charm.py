@@ -84,6 +84,7 @@ class S3IntegratorCharm(ops.charm.CharmBase):
                 # reset previous value if present (e.g., juju model-config --reset PARAMETER)
                 if self.get_secret("app", option) is not None:
                     self.set_secret("app", option, None)
+                    update_config.update({option: ""})
                 # skip in case of default value
                 continue
             # manage comma-separated items for attributes
@@ -112,7 +113,8 @@ class S3IntegratorCharm(ops.charm.CharmBase):
             return
         relation_id = event.relation.id
 
-        bucket = event.bucket
+        bucket = self.get_secret("app", "bucket") or event.bucket
+
         logger.debug(f"Desired bucket name: {bucket}")
         assert bucket is not None
         # if bucket name is already specified ignore the one provided by the requirer app

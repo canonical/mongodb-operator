@@ -60,7 +60,7 @@ $ juju run-action s3-integrator/leader get-s3-connection-info --wait
 
 ## Relations 
 
-Relations are supported via the `s3-credentials` interface. To create a relation: 
+Relations are supported via the `s3` interface. To create a relation:
 
 ```bash
 $ juju relate s3-integrator application
@@ -77,3 +77,4 @@ Security issues in the Charmed S3 Integrator Operator can be reported through [L
 ## Contributing
 
 Please see the [Juju SDK docs](https://juju.is/docs/sdk) for guidelines on enhancements to this charm following best practice guidelines, and [CONTRIBUTING.md](https://github.com/canonical/s3-integrator/blob/main/CONTRIBUTING.md) for developer guidance.
+
