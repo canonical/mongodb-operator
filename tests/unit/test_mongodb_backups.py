@@ -6,9 +6,13 @@ from unittest import mock
 from unittest.mock import patch
 
 import tenacity
-from charms.mongodb.v0.mongodb_backups import PBMBusyError, ResyncError, SetPBMConfigError
+from charms.mongodb.v0.mongodb_backups import (
+    PBMBusyError,
+    ResyncError,
+    SetPBMConfigError,
+)
 from charms.operator_libs_linux.v1 import snap
-from ops.model import BlockedStatus, WaitingStatus, MaintenanceStatus, ActiveStatus
+from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from ops.testing import Harness
 
 from charm import MongodbOperatorCharm
@@ -39,6 +43,7 @@ class TestMongoBackups(unittest.TestCase):
 
     @patch("charm.snap.SnapCache")
     def test_get_pbm_status_snap_not_present(self, snap):
+        """Tests that when the snap is not present pbm is in blocked state."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = False
         snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
@@ -48,6 +53,7 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.subprocess.check_output")
     @patch("charm.snap.SnapCache")
     def test_get_pbm_status_resync(self, snap, output):
+        """Tests that when pbm is resyncing that pbm is in waiting state."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
         snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
@@ -57,6 +63,7 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.subprocess.check_output")
     @patch("charm.snap.SnapCache")
     def test_get_pbm_status_running(self, snap, output):
+        """Tests that when pbm not running an op that pbm is in active state."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
         snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
@@ -66,6 +73,7 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.subprocess.check_output")
     @patch("charm.snap.SnapCache")
     def test_get_pbm_status_backup(self, snap, output):
+        """Tests that when pbm running a backup that pbm is in maintenance state."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
         snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
@@ -77,6 +85,7 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.subprocess.check_output")
     @patch("charm.snap.SnapCache")
     def test_get_pbm_status_incorrect_cred(self, snap, output):
+        """Tests that when pbm has incorrect credentials that pbm is in blocked state."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
         snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
@@ -88,6 +97,7 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.subprocess.check_output")
     @patch("charm.snap.SnapCache")
     def test_get_pbm_status_incorrect_conf(self, snap, output):
+        """Tests that when pbm has incorrect configs that pbm is in blocked state."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
         snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
@@ -96,7 +106,7 @@ class TestMongoBackups(unittest.TestCase):
 
     @patch("charm.subprocess.check_output")
     def test_verify_resync_config_error(self, check_output):
-        """."""
+        """Tests that when pbm cannot resync due to configs that it raises an error."""
         mock_snap = mock.Mock()
         check_output.side_effect = CalledProcessError(
             cmd="percona-backup-mongodb status", returncode=42
@@ -107,7 +117,7 @@ class TestMongoBackups(unittest.TestCase):
 
     @patch("charm.subprocess.check_output")
     def test_verify_resync_cred_error(self, check_output):
-        """."""
+        """Tests that when pbm cannot resync due to creds that it raises an error."""
         mock_snap = mock.Mock()
         check_output.side_effect = CalledProcessError(
             cmd="percona-backup-mongodb status", returncode=403
@@ -117,7 +127,7 @@ class TestMongoBackups(unittest.TestCase):
 
     @patch("charm.subprocess.check_output")
     def test_verify_resync_syncing(self, check_output):
-        """."""
+        """Tests that when pbm needs more time to resync that it raises an error."""
         mock_snap = mock.Mock()
         check_output.return_value = b"Currently running:\n====\nResync op"
 
@@ -182,7 +192,7 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.subprocess.check_output")
     @patch("charm.snap.SnapCache")
     def test_backup_running_backup(self, snap, output):
-        """."""
+        """Verifies backup is fails if another backup is already running."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
         snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
@@ -199,7 +209,7 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.subprocess.check_output")
     @patch("charm.snap.SnapCache")
     def test_backup_wrong_cred(self, snap, output):
-        """."""
+        """Verifies backup is fails if the credentials are incorrect."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
         snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
@@ -218,7 +228,7 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.MongoDBBackups._get_pbm_status")
     @patch("charm.snap.SnapCache")
     def test_backup_failed(self, snap, pbm_status, output):
-        """."""
+        """Verifies backup is fails if the pbm command failed."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
         snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
@@ -261,8 +271,8 @@ class TestMongoBackups(unittest.TestCase):
 
     @patch("charm.subprocess.check_output")
     @patch("charm.snap.SnapCache")
-    def test_backup_wrong_cred(self, snap, output):
-        """."""
+    def test_backup_list_wrong_cred(self, snap, output):
+        """Verifies backup list fails with wrong credentials."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
         snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
@@ -281,7 +291,7 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.MongoDBBackups._get_pbm_status")
     @patch("charm.snap.SnapCache")
     def test_backup_list_failed(self, snap, pbm_status, output):
-        """."""
+        """Verifies backup list fails if the pbm command fails."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
         snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
