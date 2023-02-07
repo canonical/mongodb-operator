@@ -10,6 +10,8 @@ from charms.mongodb.v0.mongodb_backups import (
     PBMBusyError,
     ResyncError,
     SetPBMConfigError,
+    stop_after_attempt,
+    wait_fixed,
 )
 from charms.operator_libs_linux.v1 import snap
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
@@ -139,19 +141,22 @@ class TestMongoBackups(unittest.TestCase):
         with self.assertRaises(ResyncError):
             self.harness.charm.backups._resync_config_options(mock_snap)
 
+    @patch("charms.mongodb.v0.mongodb_backups.wait_fixed")
+    @patch("charms.mongodb.v0.mongodb_backups.stop_after_attempt")
     @patch("charm.MongoDBBackups._get_pbm_status")
-    def test_resync_config_options_failure(self, pbm_status):
+    def test_resync_config_options_failure(self, pbm_status, retry_stop, retry_wait):
         """Verifies _resync_config_options raises an error when a resync cannot be performed"""
+        retry_stop.return_value = stop_after_attempt(1)
+        retry_stop.return_value = wait_fixed(1)
+        pbm_status.return_value = WaitingStatus()
+        mock_snap = mock.Mock()
+        with self.assertRaises(PBMBusyError):
+            self.harness.charm.backups._resync_config_options(mock_snap)
 
-        # pbm_status.return_value = WaitingStatus()
-        # mock_snap = mock.Mock()
-        # with self.assertRaises(PBMBusyError):
-        #     self.harness.charm.backups._resync_config_options(mock_snap)
-
-        # pbm_status.return_value = MaintenanceStatus()
-        # mock_snap = mock.Mock()
-        # with self.assertRaises(PBMBusyError):
-        #     self.harness.charm.backups._resync_config_options(mock_snap)
+        pbm_status.return_value = MaintenanceStatus()
+        mock_snap = mock.Mock()
+        with self.assertRaises(PBMBusyError):
+            self.harness.charm.backups._resync_config_options(mock_snap)
 
     @patch("charm.subprocess.check_output")
     def test_set_config_options(self, check_output):
