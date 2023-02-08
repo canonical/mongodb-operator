@@ -37,17 +37,13 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy one unit of MongoDB."""
     # it is possible for users to provide their own cluster for HA testing. Hence check if there
     # is a pre-existing cluster.
-    if await helpers.app_name(ops_test):
-        return
+    if not await helpers.app_name(ops_test):
+        db_charm = await ops_test.build_charm(".")
+        await ops_test.model.deploy(db_charm, num_units=1)
 
-    db_charm = await ops_test.build_charm(".")
-    await ops_test.model.deploy(db_charm, num_units=1)
+    # deploy the s3 integrator charm
+    await ops_test.model.deploy(S3_APP_NAME, channel="edge")
 
-    # TODO remove this once s3-integrator charm is published.
-    # build and deploy the s3 integrator
-    charm_path = "tests/integration/backup_tests/s3-integrator"
-    s3_charm = await ops_test.build_charm(charm_path)
-    await ops_test.model.deploy(s3_charm, num_units=1)
     await ops_test.model.wait_for_idle()
 
 
