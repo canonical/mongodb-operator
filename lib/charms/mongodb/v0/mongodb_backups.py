@@ -207,6 +207,9 @@ class MongoDBBackups(Object):
             if "Snapshot backup" in self._current_pbm_op(pbm_status.decode("utf-8")):
                 return MaintenanceStatus("backup started/running")
 
+            if "Snapshot restore" in self._current_pbm_op(pbm_status.decode("utf-8")):
+                return MaintenanceStatus("restore started/running")
+
         except subprocess.CalledProcessError as e:
             # pbm pipes a return code of 1, but its output shows the true error code so it is
             # necessary to parse the output
@@ -277,9 +280,7 @@ class MongoDBBackups(Object):
         pbm_status = self._get_pbm_status()
         self.charm.unit.status = pbm_status
         if isinstance(pbm_status, MaintenanceStatus):
-            event.fail(
-                "Can only create one backup at a time, please wait for current backup to finish."
-            )
+            event.fail("Please wait for current backup/restore to finish.")
             return
         if isinstance(pbm_status, WaitingStatus):
             event.defer()
@@ -325,7 +326,7 @@ class MongoDBBackups(Object):
             event.fail(f"Failed to list MongoDB backups with error: {str(e)}")
             return
 
-    def _on_restore_backup_action(self, event) -> None:
+    def _on_restore_action(self, event) -> None:
         if self.model.get_relation(S3_RELATION) is None:
             event.fail("Relation with s3-integrator charm missing, cannot restore from a backup.")
             return
@@ -340,7 +341,7 @@ class MongoDBBackups(Object):
         pbm_status = self._get_pbm_status()
         self.charm.unit.status = pbm_status
         if isinstance(pbm_status, MaintenanceStatus):
-            event.fail("TODO change me to include something about backup OR restore occuring")
+            event.fail("Please wait for current backup/restore to finish.")
             return
         if isinstance(pbm_status, WaitingStatus):
             event.defer()
@@ -392,7 +393,9 @@ class MongoDBBackups(Object):
             database="admin",
             username="backup",
             password=self.charm.get_secret("app", "backup_password"),
-            hosts=self.charm.mongodb_config.hosts,
+            hosts=[
+                self.charm._unit_ip(self.charm.unit)
+            ],  # pbm cannot make a direct connection if multiple hosts are used
             roles=["backup"],
             tls_external=self.charm.tls.get_tls_files("unit") is not None,
             tls_internal=self.charm.tls.get_tls_files("app") is not None,
