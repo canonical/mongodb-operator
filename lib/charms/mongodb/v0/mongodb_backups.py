@@ -52,6 +52,7 @@ S3_PBM_OPTION_MAP = {
     "access-key": "storage.s3.credentials.access-key-id",
     "secret-key": "storage.s3.credentials.secret-access-key",
     "endpoint": "storage.s3.endpointUrl",
+    "storage-class": "storage.s3.storageClass",
 }
 S3_RELATION = "s3-credentials"
 
