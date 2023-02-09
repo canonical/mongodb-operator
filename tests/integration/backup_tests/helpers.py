@@ -26,7 +26,7 @@ async def app_name(ops_test: OpsTest) -> str:
     return None
 
 
-async def count_backups(db_unit: ops.model.Unit) -> int:
+async def count_logical_backups(db_unit: ops.model.Unit) -> int:
     """Count the number of logical backups."""
     action = await db_unit.run_action(action_name="list-backups")
     list_result = await action.wait()

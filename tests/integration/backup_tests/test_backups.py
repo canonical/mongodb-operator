@@ -148,7 +148,7 @@ async def test_create_and_list_backups(ops_test: OpsTest) -> None:
     try:
         for attempt in Retrying(stop=stop_after_delay(20), wait=wait_fixed(3)):
             with attempt:
-                backups = await helpers.count_backups(db_unit)
+                backups = await helpers.count_logical_backups(db_unit)
                 assert backups == 1
     except RetryError:
         assert backups == 1, "Backup not created."
