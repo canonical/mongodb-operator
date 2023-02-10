@@ -30,7 +30,7 @@ The fastest, simplest way to get started with Charmed MongoDB is to set up a loc
 Although LXD is already installed, we need to run `lxd init` to perform post-installation tasks. For this tutorial the default parameters are preferred and the network bridge should be set to have no IPv6 addresses, since Juju does not support IPv6 addresses with LXD:
 ```shell
 lxd init --auto
-lxc network set lxdbr0 ipv6.address none 
+lxc network set lxdbr0 ipv6.address none
 ```
 
 You can list all LXD containers by entering the command `lxc list` in to the command line. Although at this point in the tutorial none should exist and you'll only see this as output:
@@ -84,13 +84,11 @@ juju deploy mongodb --channel dpe/edge
 
 Juju will now fetch Charmed MongoDB and begin deploying it to the LXD cloud. This process can take several minutes depending on how provisioned (RAM, CPU,etc) your machine is. You can track the progress by running:
 ```shell
-watch -c juju status --color
+juju status --watch 1s
 ```
 
-This command is useful for checking the status of Charmed MongoDB and gathering information about the machines hosting Charmed MongoDB. Some of the helpful information it displays include IP addresses, ports, state, etc. The command updates the status of Charmed MongoDB every couple of seconds and as the application starts you can watch the status and messages of Charmed MongoDB change. Wait until the application is ready - when it is ready, `watch -c juju status --color` will show:
+This command is useful for checking the status of Charmed MongoDB and gathering information about the machines hosting Charmed MongoDB. Some of the helpful information it displays include IP addresses, ports, state, etc. The command updates the status of Charmed MongoDB every second and as the application starts you can watch the status and messages of Charmed MongoDB change. Wait until the application is ready - when it is ready, `juju status --watch 1s` will show:
 ```
-Every 2.0s: juju status --color                                                                                         ip-172-31-11-104: Fri Dec  2 11:24:30 2022
-
 Model     Controller  Cloud/Region         Version  SLA          Timestamp
 tutorial  overlord    localhost/localhost  2.9.37   unsupported  11:24:30Z
 
@@ -103,7 +101,7 @@ mongodb/0*  active    idle   0        10.23.62.156    27017/tcp
 Machine  State    Address       Inst id        Series  AZ  Message
 0        started  10.23.62.156  juju-d35d30-0  focal       Running
 ```
-To exit the screen with `watch -c juju status --color`, enter `ctrl+c`.
+To exit the screen with `juju status --watch 1s`, enter `Ctrl+c`.
 
 ## Access MongoDB
 > **!** *Disclaimer: this part of the tutorial accesses MongoDB via the `admin` user. **Do not** directly interface with the admin user in a production environment. In a production environment [always create a separate user](https://www.mongodb.com/docs/manual/tutorial/create-users/) and connect to MongoDB with that user instead. Later in the section covering Relations we will cover how to access MongoDB without the admin user.*
@@ -279,10 +277,8 @@ You can add two replicas to your deployed MongoDB application with:
 juju add-unit mongodb -n 2
 ```
 
-You can now watch the replica set add these replicas with: `watch -c juju status --color`. It usually takes several minutes for the replicas to be added to the replica set. You’ll know that all three replicas are ready when `watch -c juju status --color` reports:
+You can now watch the replica set add these replicas with: `juju status --watch 1s`. It usually takes several minutes for the replicas to be added to the replica set. You’ll know that all three replicas are ready when `juju status --watch 1s` reports:
 ```
-Every 2.0s: juju status --color                                                                                                                                                ip-172-31-11-104: Fri Dec  2 14:36:50 2022
-
 Model     Controller  Cloud/Region         Version  SLA          Timestamp
 tutorial  overlord    localhost/localhost  2.9.37   unsupported  14:42:04Z
 
@@ -459,10 +455,8 @@ Removing a unit from the application, scales the replicas down. Before we scale 
 juju remove-unit mongodb/2
 ```
 
-You’ll know that the replica was successfully removed when `watch -c juju status --color` reports:
+You’ll know that the replica was successfully removed when `juju status --watch 1s` reports:
 ```
-Every 2.0s: juju status --color                                                                                                                                                ip-172-31-11-104: Fri Dec  2 14:44:25 2022
-
 Model     Controller  Cloud/Region         Version  SLA          Timestamp
 tutorial  overlord    localhost/localhost  2.9.37   unsupported  14:44:25Z
 
@@ -563,18 +557,15 @@ export URI=mongodb://$DB_USERNAME:$DB_PASSWORD@$HOST_IP/$DB_NAME?replicaSet=$REP
 Relations, or what Juju documentation [describes as Integration](https://juju.is/docs/sdk/integration), are the easiest way to create a user for MongoDB in Charmed MongoDB. Relations automatically create a username, password, and database for the desired user/application. As mentioned earlier in the [Access MongoDB section](#access-mongodb) it is a better practice to connect to MongoDB via a specific user rather than the admin user.
 
 ### Data Integrator Charm
-Before relating to a charmed application, we must first deploy our charmed application. In this tutorial we will relate to the [Data Integrator Charm](https://github.com/canonical/data-integrator). This is a bare-bones charm that allows for central management of database users, providing support for different kinds of data platforms (e.g. MongoDB, MySQL, PostgreSQL, Kafka, etc) with a consistent, opinionated and robust user experience. In order to deploy the Data Integrator Charm we must clone its source code from GitHub and create the charm executable ourselves: 
+Before relating to a charmed application, we must first deploy our charmed application. In this tutorial we will relate to the [Data Integrator Charm](https://charmhub.io/data-integrator). This is a bare-bones charm that allows for central management of database users, providing support for different kinds of data platforms (e.g. MongoDB, MySQL, PostgreSQL, Kafka, etc) with a consistent, opinionated and robust user experience. In order to deploy the Data Integrator Charm we can use the command `juju deploy` we have learned above:
 
-<!--- note in the future replace this with juju deploy instead of from git --->
 ```shell
-git clone https://github.com/canonical/data-integrator.git
-cd data-integrator/
-sudo snap install charmcraft --classic
-charmcraft pack
+juju deploy data-integrator --channel edge --config database-name=test-database
 ```
-After packing the charm, you can see that a charm executable named `data-integrator_ubuntu-22.04-amd64.charm` has been created in the `data-integrator` directory. When we deploy the charm we can also specify the name of the database that we want created in MongoDB with the `database` config option. To deploy this charm with Juju and create a database in MongoDB named `test-database` enter:
-```shell
-juju deploy ./data-integrator_ubuntu-22.04-amd64.charm --config database=test-database
+The expected output:
+```
+Located charm "data-integrator" in charm-hub...
+Deploying "data-integrator" from charm-hub charm "data-integrator"...
 ```
 
 ### Relate to MongoDB
@@ -582,14 +573,14 @@ Now that the Database Integrator Charm has been set up, we can relate it to Mong
 ```shell
 juju relate data-integrator mongodb
 ```
-Wait for `watch -c juju status --color` to show:
+Wait for `juju status --watch 1s` to show:
 ```
 ubuntu@ip-172-31-11-104:~/data-integrator$ juju status
 Model     Controller  Cloud/Region         Version  SLA          Timestamp
 tutorial  overlord    localhost/localhost  2.9.37   unsupported  10:32:09Z
 
 App                  Version  Status  Scale  Charm                Channel   Rev  Exposed  Message
-data-integrator           active      1  data-integrator              0  no       received mongodb credentials
+data-integrator               active      1  data-integrator      edge       3   no
 mongodb                       active      2  mongodb              dpe/edge   96  no
 
 Unit                    Workload  Agent  Machine  Public address  Ports      Message
@@ -604,7 +595,7 @@ Machine  State    Address       Inst id        Series  AZ  Message
 ```
 To retrieve information such as the username, password, and database. Enter:
 ```shell
-juju run-action  data-integrator/0 get-credentials --wait
+juju run-action data-integrator/leader get-credentials --wait
 ```
 This should output something like:
 ```yaml
@@ -629,14 +620,14 @@ This should output something like:
 Save the value listed under `uris:` *(Note: your hostnames, usernames, and passwords will likely be different.)*
 
 ### Access the related database
-Notice that in the previous step when you typed `juju run-action  data-integrator/0 get-credentials --wait` the command not only outputted the username, password, and database, but also outputted the URI. This means you do not have to generate the URI yourself. To connect to this URI first ssh into `mongodb/0`:
+Notice that in the previous step when you typed `juju run-action data-integrator/leader get-credentials --wait` the command not only outputted the username, password, and database, but also outputted the URI. This means you do not have to generate the URI yourself. To connect to this URI first ssh into `mongodb/0`:
 ```shell
 juju ssh mongodb/0
 ```
 Then access `mongosh` with the URI that you copied above:
 
 ```shell
-mongosh "<uri copied from juju run-action  data-integrator/0 get-credentials --wait>"
+mongosh "<uri copied from juju run-action data-integrator/leader get-credentials --wait>"
 ```
 *Note: be sure you wrap the URI in `"` with no trailing whitespace*.
 
@@ -681,7 +672,7 @@ juju remove-relation mongodb data-integrator
 Now try again to connect to the same URI you just used in [Access the related database](#access-the-related-database):
 ```shell
 juju ssh mongodb/0
-mongosh "<uri copied from juju run-action  data-integrator/0 get-credentials --wait>"
+mongosh "<uri copied from juju run-action data-integrator/leader get-credentials --wait>"
 ```
 *Note: be sure you wrap the URI in `"` with no trailing whitespace*.
 
@@ -709,14 +700,14 @@ juju relate data-integrator mongodb
 ```
 Re-relating generates a new password for this user, and therefore a new URI you can see the new URI with:
 ```shell
-juju run-action  data-integrator/0 get-credentials --wait
+juju run-action data-integrator/leader get-credentials --wait
 ```
 Save the result listed with `uris:`.
 
 You can connect to the database with this new URI:
 ```shell
 juju ssh mongodb/0
-mongosh "<uri copied from juju run-action  data-integrator/0 get-credentials --wait>"
+mongosh "<uri copied from juju run-action data-integrator/leader get-credentials --wait>"
 ```
 *Note: be sure you wrap the URI in `"` with no trailing whitespace*.
 
@@ -734,7 +725,7 @@ Before enabling TLS on Charmed MongoDB we must first deploy the `TLS-certificate
 juju deploy tls-certificates-operator --channel=edge
 ```
 
-Wait until the `tls-certificates-operator` is ready to be configured. When it is ready to be configured `watch -c juju status --color`. Will show:
+Wait until the `tls-certificates-operator` is ready to be configured. When it is ready to be configured `juju status --watch 1s`. Will show:
 ```
 Model     Controller  Cloud/Region         Version  SLA          Timestamp
 tutorial  overlord    localhost/localhost  2.9.37   unsupported  09:24:12Z
@@ -761,7 +752,7 @@ juju config tls-certificates-operator generate-self-signed-certificates="true" c
 *Note: this tutorial uses [self-signed certificates](https://en.wikipedia.org/wiki/Self-signed_certificate); self-signed certificates should not be used in a production cluster.*
 
 ### Enable TLS
-After configuring the certificates `watch -c juju status --color` will show the status of `tls-certificates-operator` as active. To enable TLS on Charmed MongoDB, relate the two applications:
+After configuring the certificates `juju status --watch 1s` will show the status of `tls-certificates-operator` as active. To enable TLS on Charmed MongoDB, relate the two applications:
 ```shell
 juju relate tls-certificates-operator mongodb
 ```
@@ -805,7 +796,7 @@ juju remove-relation mongodb tls-certificates-operator
 ## Next Steps
 In this tutorial we've successfully deployed MongoDB, added/removed replicas, added/removed users to/from the database, and even enabled and disabled TLS. You may now keep your Charmed MongoDB deployment running and write to the database or remove it entirely using the steps in [Remove Charmed MongoDB and Juju](#remove-charmed-mongodb-and-juju). If you're looking for what to do next you can:
 - Run [Charmed MongoDB on Kubernetes](https://github.com/canonical/mongodb-k8s-operator).
-- Check out our Charmed offerings of [PostGres](https://charmhub.io/postgresql?channel=edge) and [Kafka](https://charmhub.io/kafka?channel=edge).
+- Check out our Charmed offerings of [PostgreSQL](https://charmhub.io/postgresql?channel=edge) and [Kafka](https://charmhub.io/kafka?channel=edge).
 - Read about [High Availability Best Practices](https://canonical.com/blog/database-high-availability)
 - [Report](https://github.com/canonical/mongodb-operator/issues) any problems you encountered.
 - [Give us your feedback](https://chat.charmhub.io/charmhub/channels/data-platform).
