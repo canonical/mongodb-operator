@@ -506,7 +506,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         Args:
             packages: list of packages to install.
         """
-        for (snap_name, snap_channel) in packages:
+        for snap_name, snap_channel in packages:
             try:
                 snap_cache = snap.SnapCache()
                 snap_package = snap_cache[snap_name]
