@@ -144,3 +144,8 @@ jobs:
           provider: lxd
       - name: Run backup integration tests
         run: tox -e backup-integration
+        env:
+          AWS_ACCESS_KEY: "${{ secrets.AWS_ACCESS_KEY }}"
+          AWS_SECRET_KEY: "${{ secrets.AWS_SECRET_KEY }}"
+          GCP_ACCESS_KEY: "${{ secrets.GCP_ACCESS_KEY }}"
+          GCP_SECRET_KEY: "${{ secrets.GCP_SECRET_KEY }}"

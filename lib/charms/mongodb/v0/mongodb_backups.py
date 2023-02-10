@@ -43,8 +43,6 @@ LIBAPI = 0
 # to 0 if you are raising the major API version
 LIBPATCH = 1
 
-CREDENTIALS_CODE = 403
-
 logger = logging.getLogger(__name__)
 
 S3_PBM_OPTION_MAP = {
@@ -54,6 +52,7 @@ S3_PBM_OPTION_MAP = {
     "access-key": "storage.s3.credentials.access-key-id",
     "secret-key": "storage.s3.credentials.secret-access-key",
     "endpoint": "storage.s3.endpointUrl",
+    "storage-class": "storage.s3.storageClass",
 }
 S3_RELATION = "s3-credentials"
 
@@ -142,10 +141,7 @@ class MongoDBBackups(Object):
         for s3_option, s3_value in credentials.items():
             if s3_option not in S3_PBM_OPTION_MAP:
                 continue
-            # TODO remove this once: https://github.com/canonical/s3-integrator/issues/13 is
-            # solved
-            if s3_option == "endpoint" and s3_value == "s3.amazonaws.com":
-                s3_value = ""
+
             pbm_configs[S3_PBM_OPTION_MAP[s3_option]] = s3_value
         return pbm_configs
 
@@ -196,7 +192,9 @@ class MongoDBBackups(Object):
             return BlockedStatus("pbm not installed.")
 
         try:
-            pbm_status = subprocess.check_output("percona-backup-mongodb status", shell=True)
+            pbm_status = subprocess.check_output(
+                "percona-backup-mongodb status", shell=True, stderr=subprocess.STDOUT
+            )
             # pbm is running resync operation
             if "Resync" in self._current_pbm_op(pbm_status.decode("utf-8")):
                 return WaitingStatus("waiting to sync s3 configurations.")
@@ -209,7 +207,10 @@ class MongoDBBackups(Object):
                 return MaintenanceStatus("backup started/running")
 
         except subprocess.CalledProcessError as e:
-            if e.returncode == CREDENTIALS_CODE:
+            # pbm pipes a return code of 1, but its output shows the true error code so it is
+            # necessary to parse the output
+            error_message = e.output.decode("utf-8")
+            if "status code: 403" in error_message:
                 return BlockedStatus("s3 credentials are incorrect.")
 
             return BlockedStatus("s3 configurations are incompatible.")
@@ -334,7 +335,9 @@ class MongoDBBackups(Object):
             database="admin",
             username="backup",
             password=self.charm.get_secret("app", "backup_password"),
-            hosts=self.charm.mongodb_config.hosts,
+            hosts=[
+                self.charm._unit_ip(self.charm.unit)
+            ],  # pbm cannot make a direct connection if multiple hosts are used
             roles=["backup"],
             tls_external=self.charm.tls.get_tls_files("unit") is not None,
             tls_internal=self.charm.tls.get_tls_files("app") is not None,
