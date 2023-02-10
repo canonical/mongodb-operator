@@ -17,10 +17,19 @@ set-password:
       description: The password will be auto-generated if this option is not specified.
 
 create-backup:
-  description: Creates a backup to s3 storage in AWS.
+  description: Create a database backup.
+    S3 credentials are retrieved from a relation with the S3 integrator charm.
 
 list-backups:
-  description: Lists backups in s3 storage in AWS.
+  description: List available backup_ids in the S3 bucket and path provided by the S3 integrator charm.
+
+restore:
+  description: Restore a database backup.
+    S3 credentials are retrieved from a relation with the S3 integrator charm.
+  params:
+    backup-id:
+      type: string
+      description: A backup-id to identify the backup to restore. Format of <%Y-%m-%dT%H:%M:%SZ>
 
 set-tls-private-key:
   description: Set the privates key, which will be used for certificate signing requests (CSR). Run for each unit separately.
