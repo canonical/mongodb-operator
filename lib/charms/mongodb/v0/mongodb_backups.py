@@ -10,7 +10,7 @@ start phase. This user is named "backup".
 import logging
 import subprocess
 import time
-from typing import Dict
+from typing import Dict, Tuple
 
 from charms.data_platform_libs.v0.s3 import CredentialsChangedEvent, S3Requirer
 from charms.mongodb.v0.helpers import generate_password
@@ -319,10 +319,61 @@ class MongoDBBackups(Object):
 
         try:
             backups = subprocess.check_output("percona-backup-mongodb list", shell=True)
-            event.set_results({"backups": backups.decode("utf-8")})
+            formatted_list = self._generate_backup_list_output(backups.decode("utf-8"))
+            event.set_results({"backups": formatted_list})
         except subprocess.CalledProcessError as e:
             event.fail(f"Failed to list MongoDB backups with error: {str(e)}")
             return
+
+    def _generate_backup_list_output(self, backup_list_raw) -> str:
+        backup_list_raw = backup_list_raw.split("\n")
+        backup_list = []
+        for line in backup_list_raw:
+            if self._line_contains_backup(line):
+                backup_list.append(self._parse_backup(line))
+
+        # backup_list_processed contains all completed backups, add other backup types
+        backup_list.extend(self._get_failed_backups())
+        backup_list.extend(self._get_inprocess_backups())
+
+        # now sort by time
+        backup_list_sorted = sorted(backup_list, key=lambda pair: pair[0])
+
+        # now convert list of tuples to a table format
+        return self._format_backup_list(backup_list_sorted)
+
+    def _format_backup_list(self, backup_list):
+        formatted_list = ""
+        for backup_id, backup_type, backup_status in backup_list:
+            formatted_list += f"{backup_id} {backup_type} {backup_status}\n"
+
+        return formatted_list
+
+    def _get_failed_backups(self):
+        return []
+
+    def _get_inprocess_backups(self):
+        return []
+
+    def _line_contains_backup(self, backup_line: str) -> bool:
+        """Todo"""
+        if "restore_to_time" in backup_line:
+            return True
+
+        return False
+
+    def _parse_backup(self, backup_info: str) -> Tuple[str, str, str]:
+        """todo
+
+        backup_info: str info from pbm of the format:
+            2023-02-08T15:19:34Z <logical> [restore_to_time: 2023-02-08T15:19:39Z]
+        """
+        backup_id = backup_info.split()[0]
+        backup_type = "logical" if "logical" in backup_info else "physical"
+        # if backup exists in `pbm backup list` it is finished. PBM docs specify that
+        # `pbm backup list` only outputs finished backups
+        backup_status = "finished"
+        return (backup_id, backup_type, backup_status)
 
     @property
     def _backup_config(self) -> MongoDBConfiguration:
