@@ -320,7 +320,8 @@ class MongoDBBackups(Object):
         try:
             backups = subprocess.check_output("percona-backup-mongodb list", shell=True)
             formatted_list = self._generate_backup_list_output(backups.decode("utf-8"))
-            event.set_results({"backups": formatted_list})
+            formatted_list = bytes(formatted_list, "utf-8")
+            event.set_results({"backups": formatted_list.decode("utf-8")})
         except subprocess.CalledProcessError as e:
             event.fail(f"Failed to list MongoDB backups with error: {str(e)}")
             return
@@ -342,10 +343,15 @@ class MongoDBBackups(Object):
         # now convert list of tuples to a table format
         return self._format_backup_list(backup_list_sorted)
 
-    def _format_backup_list(self, backup_list):
-        formatted_list = ""
+    def _format_backup_list(self, backup_list) -> str:
+        formatted_list = "\n{:<21s} | {:<9s} | {:<12s}\n".format(
+            "backup-id", "backup-type", "backup-status"
+        )
+        formatted_list += "_" * len(formatted_list) + "\n"
         for backup_id, backup_type, backup_status in backup_list:
-            formatted_list += f"{backup_id} {backup_type} {backup_status}\n"
+            formatted_list += "{:<21s} | {:<9s} | {:<12s}\n".format(
+                backup_id, backup_type, backup_status
+            )
 
         return formatted_list
 
