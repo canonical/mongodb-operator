@@ -13,7 +13,6 @@ from charms.mongodb.v0.mongodb_backups import (
     stop_after_attempt,
     wait_fixed,
 )
-from charms.operator_libs_linux.v1 import snap
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from ops.testing import Harness
 
@@ -92,7 +91,7 @@ class TestMongoBackups(unittest.TestCase):
         mock_pbm_snap.present = True
         snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
         output.side_effect = CalledProcessError(
-            cmd="percona-backup-mongodb status", returncode=403
+            cmd="percona-backup-mongodb status", returncode=403, output=b"status code: 403"
         )
         self.assertTrue(isinstance(self.harness.charm.backups._get_pbm_status(), BlockedStatus))
 
@@ -103,7 +102,9 @@ class TestMongoBackups(unittest.TestCase):
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
         snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
-        output.side_effect = CalledProcessError(cmd="percona-backup-mongodb status", returncode=42)
+        output.side_effect = CalledProcessError(
+            cmd="percona-backup-mongodb status", returncode=42, output=b""
+        )
         self.assertTrue(isinstance(self.harness.charm.backups._get_pbm_status(), BlockedStatus))
 
     @patch("charm.subprocess.check_output")
@@ -122,7 +123,7 @@ class TestMongoBackups(unittest.TestCase):
         """Tests that when pbm cannot resync due to creds that it raises an error."""
         mock_snap = mock.Mock()
         check_output.side_effect = CalledProcessError(
-            cmd="percona-backup-mongodb status", returncode=403
+            cmd="percona-backup-mongodb status", returncode=403, output=b"status code: 403"
         )
         with self.assertRaises(CalledProcessError):
             self.harness.charm.backups._resync_config_options(mock_snap)
@@ -145,7 +146,7 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charms.mongodb.v0.mongodb_backups.stop_after_attempt")
     @patch("charm.MongoDBBackups._get_pbm_status")
     def test_resync_config_options_failure(self, pbm_status, retry_stop, retry_wait):
-        """Verifies _resync_config_options raises an error when a resync cannot be performed"""
+        """Verifies _resync_config_options raises an error when a resync cannot be performed."""
         retry_stop.return_value = stop_after_attempt(1)
         retry_stop.return_value = wait_fixed(1)
         pbm_status.return_value = WaitingStatus()
@@ -222,7 +223,7 @@ class TestMongoBackups(unittest.TestCase):
         action_event = mock.Mock()
         action_event.params = {}
         output.side_effect = CalledProcessError(
-            cmd="percona-backup-mongodb status", returncode=403
+            cmd="percona-backup-mongodb status", returncode=403, output=b"status code: 403"
         )
 
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
@@ -259,7 +260,7 @@ class TestMongoBackups(unittest.TestCase):
 
     @patch("charm.subprocess.check_output")
     @patch("charm.snap.SnapCache")
-    def test_backup_syncing(self, snap, output):
+    def test_backup_list_syncing(self, snap, output):
         """Verifies backup list is deferred if more time is needed to resync."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
@@ -285,7 +286,7 @@ class TestMongoBackups(unittest.TestCase):
         action_event = mock.Mock()
         action_event.params = {}
         output.side_effect = CalledProcessError(
-            cmd="percona-backup-mongodb status", returncode=403
+            cmd="percona-backup-mongodb status", returncode=403, output=b"status code: 403"
         )
 
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
@@ -311,14 +312,6 @@ class TestMongoBackups(unittest.TestCase):
         self.harness.charm.backups._on_list_backups_action(action_event)
 
         action_event.fail.assert_called()
-
-    @patch("ops.framework.EventBase.defer")
-    @patch("charm.snap.SnapCache")
-    def test_s3_credentials_no_snap(self, snap, defer):
-        """Verifies that when there is no DB that setting credentials is deferred."""
-        mock_pbm_snap = mock.Mock()
-        mock_pbm_snap.present = False
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
 
     @patch("ops.framework.EventBase.defer")
     def test_s3_credentials_no_db(self, defer):
@@ -517,10 +510,10 @@ class TestMongoBackups(unittest.TestCase):
         snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
         self.harness.charm.app_peer_data["db_initialised"] = "True"
         resync.side_effect = CalledProcessError(
-            cmd="percona-backup-mongodb status", returncode=403
+            cmd="percona-backup-mongodb status", returncode=403, output=b"status code: 403"
         )
         output.side_effect = CalledProcessError(
-            cmd="percona-backup-mongodb status", returncode=403
+            cmd="percona-backup-mongodb status", returncode=403, output=b"status code: 403"
         )
 
         # triggering s3 event with correct fields

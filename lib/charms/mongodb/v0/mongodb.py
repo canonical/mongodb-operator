@@ -321,7 +321,7 @@ class MongoDBConnection:
         except OperationFailure as e:
             if not e.code == 51002:  # Role already exists
                 logger.error("Cannot add role. error=%r", e)
-                raise
+                raise e
 
     @staticmethod
     def _get_roles(config: MongoDBConfiguration) -> List[dict]:
