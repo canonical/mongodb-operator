@@ -209,7 +209,7 @@ async def test_multi_backup(ops_test: OpsTest, add_writes_to_db) -> None:
     try:
         for attempt in Retrying(stop=stop_after_delay(4), wait=wait_fixed(5)):
             with attempt:
-                backups = await helpers.count_backups(db_unit)
+                backups = await helpers.count_logical_backups(db_unit)
                 assert backups == 1, "Backup not created in bucket on GCP."
     except RetryError:
         assert backups == 1, "Backup not created in first bucket on GCP."
@@ -230,7 +230,7 @@ async def test_multi_backup(ops_test: OpsTest, add_writes_to_db) -> None:
     try:
         for attempt in Retrying(stop=stop_after_delay(4), wait=wait_fixed(5)):
             with attempt:
-                backups = await helpers.count_backups(db_unit)
+                backups = await helpers.count_logical_backups(db_unit)
                 assert backups == 2, "Backup not created in second bucket on AWS."
     except RetryError:
         assert backups == 2, "Backup not created in second bucket on AWS."

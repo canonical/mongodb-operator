@@ -368,20 +368,6 @@ class MongoDBBackups(Object):
             event.fail(f"Failed to restore MongoDB with error: {str(e)}")
             return
 
-    def _backup_id_exists(self, backup_id) -> bool:
-        """Checks if a given backup id exists in the current list of backups.
-
-        This may only be run if pbm is ready (i.e. not syncing or poorly configured).
-        """
-        existing_backups = subprocess.check_output("percona-backup-mongodb list", shell=True)
-        existing_backups = existing_backups.decode("utf-8")
-
-        for backup_info in existing_backups:
-            if backup_id in backup_info:
-                return True
-
-        return False
-
     @property
     def _backup_config(self) -> MongoDBConfiguration:
         """Construct the config object for backup user and creates user if necessary."""
