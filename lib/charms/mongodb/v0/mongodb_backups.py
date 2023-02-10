@@ -10,6 +10,7 @@ start phase. This user is named "backup".
 import logging
 import subprocess
 import time
+from typing import Dict
 
 from charms.data_platform_libs.v0.s3 import CredentialsChangedEvent, S3Requirer
 from charms.mongodb.v0.helpers import generate_password
@@ -42,8 +43,6 @@ LIBAPI = 0
 # to 0 if you are raising the major API version
 LIBPATCH = 1
 
-CREDENTIALS_CODE = 403
-
 logger = logging.getLogger(__name__)
 
 S3_PBM_OPTION_MAP = {
@@ -52,6 +51,8 @@ S3_PBM_OPTION_MAP = {
     "path": "storage.s3.prefix",
     "access-key": "storage.s3.credentials.access-key-id",
     "secret-key": "storage.s3.credentials.secret-access-key",
+    "endpoint": "storage.s3.endpointUrl",
+    "storage-class": "storage.s3.storageClass",
 }
 S3_RELATION = "s3-credentials"
 
@@ -62,6 +63,10 @@ class ResyncError(Exception):
 
 class SetPBMConfigError(Exception):
     """Raised when pbm cannot configure a given option."""
+
+
+class PBMBusyError(Exception):
+    """Raised when PBM is busy and cannot run another operation."""
 
 
 class MongoDBBackups(Object):
@@ -100,20 +105,10 @@ class MongoDBBackups(Object):
         # pbm requires that the URI is set before adding configs
         pbm_snap.set({"uri": self._backup_config.uri})
 
-        # gather PBM snap configurations
-        pbm_configs = {"storage.type": "s3"}
-        credentials = self.s3_client.get_s3_connection_info()
-        for s3_option, s3_value in credentials.items():
-            if s3_option not in S3_PBM_OPTION_MAP:
-                continue
-            pbm_configs[S3_PBM_OPTION_MAP[s3_option]] = s3_value
-
-        # set configs, sync configs, and check for validity of options
+        # Add and sync configuration options while handling errors related to configuring options
+        # and re-syncing PBM.
         try:
-            self._set_config_options(pbm_configs)
-            # pbm has a flakely resync and it is necessary to resync twice see:
-            # https://jira.percona.com/browse/PBM-1038
-            self._resync_config_options(pbm_snap)
+            self._set_config_options(self._get_pbm_configs())
             self._resync_config_options(pbm_snap)
         except SetPBMConfigError:
             self.charm.unit.status = BlockedStatus("couldn't configure s3 backup options.")
@@ -123,13 +118,32 @@ class MongoDBBackups(Object):
             self.charm.unit.status = BlockedStatus("couldn't start pbm")
             return
         except ResyncError:
+            self.charm.unit.status = WaitingStatus("waiting to sync s3 configurations.")
             event.defer()
             logger.debug("Sync-ing configurations needs more time.")
+            return
+        except PBMBusyError:
+            self.charm.unit.status = WaitingStatus("waiting to sync s3 configurations.")
+            logger.debug(
+                "Cannot update configs while PBM is running, must wait for PBM action to finish."
+            )
+            event.defer()
             return
         except subprocess.CalledProcessError as e:
             logger.error("Syncing configurations failed: %s", str(e))
 
         self.charm.unit.status = self._get_pbm_status()
+
+    def _get_pbm_configs(self) -> Dict:
+        """Returns a dictionary of desired PBM configurations."""
+        pbm_configs = {"storage.type": "s3"}
+        credentials = self.s3_client.get_s3_connection_info()
+        for s3_option, s3_value in credentials.items():
+            if s3_option not in S3_PBM_OPTION_MAP:
+                continue
+
+            pbm_configs[S3_PBM_OPTION_MAP[s3_option]] = s3_value
+        return pbm_configs
 
     def _set_config_options(self, pbm_configs):
         """Applying given configurations with pbm."""
@@ -150,6 +164,20 @@ class MongoDBBackups(Object):
         """Attempts to sync pbm config options and sets status in case of failure."""
         pbm_snap.start(services=["pbm-agent"])
 
+        # pbm has a flakely resync and it is necessary to wait for no actions to be running before
+        # resync-ing. See: https://jira.percona.com/browse/PBM-1038
+        for attempt in Retrying(
+            stop=stop_after_attempt(20),
+            wait=wait_fixed(5),
+            reraise=True,
+        ):
+            with attempt:
+                pbm_status = self._get_pbm_status()
+                if isinstance(pbm_status, MaintenanceStatus) or isinstance(
+                    pbm_status, WaitingStatus
+                ):
+                    raise PBMBusyError
+
         # wait for re-sync and update charm status based on pbm syncing status. Need to wait for
         # 2 seconds for pbm_agent to receive the resync command before verifying.
         subprocess.check_output("percona-backup-mongodb config --force-resync", shell=True)
@@ -164,7 +192,9 @@ class MongoDBBackups(Object):
             return BlockedStatus("pbm not installed.")
 
         try:
-            pbm_status = subprocess.check_output("percona-backup-mongodb status", shell=True)
+            pbm_status = subprocess.check_output(
+                "percona-backup-mongodb status", shell=True, stderr=subprocess.STDOUT
+            )
             # pbm is running resync operation
             if "Resync" in self._current_pbm_op(pbm_status.decode("utf-8")):
                 return WaitingStatus("waiting to sync s3 configurations.")
@@ -177,7 +207,10 @@ class MongoDBBackups(Object):
                 return MaintenanceStatus("backup started/running")
 
         except subprocess.CalledProcessError as e:
-            if e.returncode == CREDENTIALS_CODE:
+            # pbm pipes a return code of 1, but its output shows the true error code so it is
+            # necessary to parse the output
+            error_message = e.output.decode("utf-8")
+            if "status code: 403" in error_message:
                 return BlockedStatus("s3 credentials are incorrect.")
 
             return BlockedStatus("s3 configurations are incompatible.")
@@ -302,7 +335,9 @@ class MongoDBBackups(Object):
             database="admin",
             username="backup",
             password=self.charm.get_secret("app", "backup_password"),
-            hosts=self.charm.mongodb_config.hosts,
+            hosts=[
+                self.charm._unit_ip(self.charm.unit)
+            ],  # pbm cannot make a direct connection if multiple hosts are used
             roles=["backup"],
             tls_external=self.charm.tls.get_tls_files("unit") is not None,
             tls_internal=self.charm.tls.get_tls_files("app") is not None,
