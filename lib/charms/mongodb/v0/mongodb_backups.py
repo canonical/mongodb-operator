@@ -332,7 +332,9 @@ class MongoDBBackups(Object):
             if self._line_contains_backup(line):
                 backup_list.append(self._parse_backup(line))
 
-        # backup_list_processed contains all completed backups, add other backup types
+        # As of pbm version 1.4.0, only successfully completed backups are listed with `pbm list`.
+        # To view currently information about a running or a failed backup, it is necessary to
+        # view pbm status.
         backup_list.extend(self._get_failed_backups())
         backup_list.extend(self._get_inprogress_backups())
 
@@ -352,7 +354,32 @@ class MongoDBBackups(Object):
         return "\n".join(backups)
 
     def _get_failed_backups(self):
-        return []
+        """Retrieve a list of failed backups.
+
+        Failed backups are shown with `pbm status` under the field `backups`."""
+        failed_backups = []
+        backups = []
+        pbm_status = subprocess.check_output(
+            "percona-backup-mongodb status", shell=True, stderr=subprocess.STDOUT
+        )
+        pbm_status = pbm_status.decode("utf-8")
+        pbm_status = pbm_status.split("\n")
+        for i in range(0, len(pbm_status)):
+            line = pbm_status[i]
+            # list of backups is two lines after the line "Backups:"
+            if line == "Backups:":
+                backups = pbm_status[i + 2 :]
+
+        for backup in backups:
+            # pbm status also lists successful backups, so we need to skip these
+            if not "error" in backup.lower():
+                continue
+
+            backup_id = backup.split()[0]
+            backup_type = "logical" if "logical" in backup else "physical"
+            failed_backups.append((backup_id, backup_type, "failed"))
+
+        return failed_backups
 
     def _get_inprogress_backups(self):
         """todo"""
