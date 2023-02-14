@@ -415,7 +415,7 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.MongoDBBackups._resync_config_options")
     @patch("ops.framework.EventBase.defer")
     def test_s3_credentials_syncing(self, defer, resync, _set_config_options, snap):
-        """Test charm defers when more time is needed to sync pbm."""
+        """Test charm defers when more time is needed to sync pbm credentials."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
         mock_pbm_snap.set = mock.Mock()
