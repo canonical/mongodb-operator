@@ -345,11 +345,13 @@ class MongoDBBackups(Object):
         return self._format_backup_list(backup_list_sorted)
 
     def _format_backup_list(self, backup_list) -> str:
-        backups = ["{:<21s} | {:<9s} | {:s}".format("backup-id", "backup-type", "backup-status")]
+        backups = ["{:<21s} | {:<12s} | {:s}".format("backup-id", "backup-type", "backup-status")]
 
         backups.append("-" * len(backups[0]))
         for backup_id, backup_type, backup_status in backup_list:
-            backups.append("{:<21s} | {:<9s} | {:s}".format(backup_id, backup_type, backup_status))
+            backups.append(
+                "{:<21s} | {:<12s} | {:s}".format(backup_id, backup_type, backup_status)
+            )
 
         return "\n".join(backups)
 
@@ -391,7 +393,7 @@ class MongoDBBackups(Object):
             return []
 
         # only one backup can be in progress at a time
-        backup_id = current_pbm_op.split()[2][1:-3]
+        backup_id = current_pbm_op.split()[2][1:-2]
         # TODO change backup type once physical backups are available.
         return [(backup_id, "logical", "in progress")]
 
