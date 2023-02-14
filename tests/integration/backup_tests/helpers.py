@@ -3,9 +3,100 @@
 import os
 
 import ops
+from tests.integration.ha_tests.helpers import MongoClient, get_password, subprocess
 from pytest_operator.plugin import OpsTest
 
 S3_APP_NAME = "s3-integrator"
+
+
+async def clear_db_writes(ops_test: OpsTest) -> bool:
+    """Stop the DB process and remove any writes to the test collection."""
+    await stop_continous_writes(ops_test)
+
+    # remove collection from database
+    app = await app_name(ops_test)
+    password = await get_password(ops_test, app)
+    hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
+    hosts = ",".join(hosts)
+    connection_string = f"mongodb://admin:{password}@{hosts}/admin?replicaSet={app}"
+
+    client = MongoClient(connection_string)
+    db = client["admin"]
+
+    # collection for continuous writes
+    test_collection = db["test_collection"]
+    test_collection.drop()
+
+    # collection for replication tests
+    test_collection = db["test_ubuntu_collection"]
+    test_collection.drop()
+
+    client.close()
+
+
+async def start_continous_writes(ops_test: OpsTest, starting_number: int) -> None:
+    """Starts continuous writes to MongoDB with available replicas.
+
+    In the future this should be put in a dummy charm.
+    """
+    app = await app_name(ops_test)
+    password = await get_password(ops_test, app)
+    hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
+    hosts = ",".join(hosts)
+    connection_string = f"mongodb://admin:{password}@{hosts}/admin?replicaSet={app}"
+
+    # run continuous writes in the background.
+    subprocess.Popen(
+        [
+            "python3",
+            "tests/integration/backup_tests/continuous_writes.py",
+            connection_string,
+            str(starting_number),
+        ]
+    )
+
+
+async def stop_continous_writes(ops_test: OpsTest, down_unit=None) -> int:
+    """Stops continuous writes to MongoDB and returns the last written value.
+
+    In the future this should be put in a dummy charm.
+    """
+    # stop the process
+    proc = subprocess.Popen(["pkill", "-9", "-f", "continuous_writes.py"])
+
+    # wait for process to be killed
+    proc.communicate()
+
+    app = await app_name(ops_test)
+    password = await get_password(ops_test, app, down_unit)
+    hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
+    hosts = ",".join(hosts)
+    connection_string = f"mongodb://admin:{password}@{hosts}/admin?replicaSet={app}"
+
+    client = MongoClient(connection_string)
+    db = client["new-db"]
+    test_collection = db["test_collection"]
+
+    # last written value should be the highest number in the database.
+    last_written_value = test_collection.find_one(sort=[("number", -1)])
+    client.close()
+    return last_written_value
+
+
+async def count_writes(ops_test: OpsTest, down_unit=None) -> int:
+    """New versions of pymongo no longer support the count operation, instead find is used."""
+    app = await app_name(ops_test)
+    password = await get_password(ops_test, app, down_unit)
+    hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
+    hosts = ",".join(hosts)
+    connection_string = f"mongodb://admin:{password}@{hosts}/admin?replicaSet={app}"
+
+    client = MongoClient(connection_string)
+    db = client["admin"]
+    test_collection = db["test_collection"]
+    count = test_collection.count_documents({})
+    client.close()
+    return count
 
 
 async def app_name(ops_test: OpsTest) -> str:
