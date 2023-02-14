@@ -532,7 +532,7 @@ class TestMongoBackups(unittest.TestCase):
         self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
 
     def test_parse_backup(self):
-        """TODO"""
+        """Checks that parsing backups from `pbm list` produces the correct output."""
         backup_id, backup_type, backup_status = self.harness.charm.backups._parse_backup(
             "2023-02-08T15:19:34Z <logical> [restore_to_time: 2023-02-08T15:19:39Z]"
         )
@@ -541,34 +541,39 @@ class TestMongoBackups(unittest.TestCase):
         self.assertEqual(backup_status, "finished")
 
     def test_line_contains_backup(self):
-        """TODO"""
+        """Test helper that returns a bool if a backup is present."""
+        # Case 1: backup is present
         contains_backup = self.harness.charm.backups._line_contains_backup(
             "2023-02-08T15:19:34Z <logical> [restore_to_time: 2023-02-08T15:19:39Z]"
         )
         self.assertEqual(contains_backup, True)
 
+        # Case 2: no backup is present
         contains_backup = self.harness.charm.backups._line_contains_backup("Pbm status summary:")
         self.assertEqual(contains_backup, False)
 
     @patch("charm.subprocess.check_output")
     def test_get_inprogress_backups(self, check_output):
-        """TODO"""
-
+        """Tests in progress backups are correctly reported."""
+        # Case 1: no backup is occurring
         check_output.return_value = b"Snapshot backup:\n====\nResync op"
         inprogress_backups = self.harness.charm.backups._get_inprogress_backups()
         self.assertEqual(inprogress_backups, [])
 
+        # Case 2: a backup is occurring
         check_output.return_value = b'Currently running:\n====\nSnapshot backup "2023-02-14T13:58:27Z", started at 2023-02-14T13:58:27Z. Status: snapshot backup. [op id: 63eb93834febe519118a501c]'
         inprogress_backups = self.harness.charm.backups._get_inprogress_backups()
         self.assertEqual(inprogress_backups, [("2023-02-14T13:58:27Z", "logical", "in progress")])
 
     @patch("charm.subprocess.check_output")
     def test_get_failed_backups(self, check_output):
-        """TODO"""
+        """Tests that failed backups are correctly identified."""
+        # Case 1: `pbm status` only shows successful backups
         check_output.return_value = b"Backups:\n====\n2023-02-08T15:19:34Z <logical> [restore_to_time: 2023-02-08T15:19:39Z]"
         failed_backups = self.harness.charm.backups._get_failed_backups()
         assert failed_backups == []
 
+        # Case 2: `pbm status` shows failed backup
         check_output.return_value = b"Backups:\n====\n2023-02-14T13:54:48Z 0.00B <logical> [ERROR: get file 2023-02-14T13:54:48Z/mongodb/metadata.json: no such file] [2023-02-14T13:58:28Z]"
         failed_backups = self.harness.charm.backups._get_failed_backups()
         backup_id, backup_type, backup_status = failed_backups[0]
@@ -579,7 +584,11 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.MongoDBBackups._get_inprogress_backups")
     @patch("charm.MongoDBBackups._get_failed_backups")
     def test_generate_backup_list_output(self, failed_backups, inprogress_backups):
-        """TODO"""
+        """Tests correct formation of backup list output.
+
+        Specifically the spacing of the backups, the header, the backup order, and the backup
+        contents.
+        """
         successful_backups = "Backup snapshots:\n1990-02-08T15:19:34Z <physical> [restore_to_time: 2023-02-08T15:19:39Z]"
         failed_backups.return_value = [("2000-02-14T13:54:48Z", "logical", "failed")]
         inprogress_backups.return_value = [("2001-02-14T13:58:27Z", "logical", "in progress")]

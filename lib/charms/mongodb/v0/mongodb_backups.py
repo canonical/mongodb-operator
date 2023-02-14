@@ -326,6 +326,13 @@ class MongoDBBackups(Object):
             return
 
     def _generate_backup_list_output(self, backup_list_raw) -> str:
+        """Generates a list of backups in a formatted table.
+
+        List contains successful, failed, and in progress backups in order of ascending time.
+
+        Args:
+            backup_list_raw: output from the command `pbm list`
+        """
         backup_list_raw = backup_list_raw.split("\n")
         backup_list = []
         for line in backup_list_raw:
@@ -345,6 +352,7 @@ class MongoDBBackups(Object):
         return self._format_backup_list(backup_list_sorted)
 
     def _format_backup_list(self, backup_list) -> str:
+        """Formats provided list of backups as a table."""
         backups = ["{:<21s} | {:<12s} | {:s}".format("backup-id", "backup-type", "backup-status")]
 
         backups.append("-" * len(backups[0]))
@@ -358,7 +366,8 @@ class MongoDBBackups(Object):
     def _get_failed_backups(self):
         """Retrieve a list of failed backups.
 
-        Failed backups are shown with `pbm status` under the field `backups`."""
+        Failed backups are shown with `pbm status` under the field `backups`.
+        """
         failed_backups = []
         backups = []
         pbm_status = subprocess.check_output(
@@ -368,13 +377,13 @@ class MongoDBBackups(Object):
         pbm_status = pbm_status.split("\n")
         for i in range(0, len(pbm_status)):
             line = pbm_status[i]
-            # list of backups is two lines after the line "Backups:"
+            # list of backups after the line "Backups:"
             if line == "Backups:":
-                backups = pbm_status[i + 2 :]
+                backups = pbm_status[i:]
 
         for backup in backups:
             # pbm status also lists successful backups, so we need to skip these
-            if not "error" in backup.lower():
+            if "error" not in backup.lower():
                 continue
 
             backup_id = backup.split()[0]
@@ -384,12 +393,15 @@ class MongoDBBackups(Object):
         return failed_backups
 
     def _get_inprogress_backups(self):
-        """todo"""
+        """Retrieve a list of in-progress backups.
+
+        In-progress backups are shown with `pbm status` under the current operation.
+        """
         pbm_status = subprocess.check_output(
             "percona-backup-mongodb status", shell=True, stderr=subprocess.STDOUT
         )
         current_pbm_op = self._current_pbm_op(pbm_status.decode("utf-8"))
-        if not "Snapshot backup" in current_pbm_op:
+        if "Snapshot backup" not in current_pbm_op:
             return []
 
         # only one backup can be in progress at a time
@@ -398,17 +410,18 @@ class MongoDBBackups(Object):
         return [(backup_id, "logical", "in progress")]
 
     def _line_contains_backup(self, backup_line: str) -> bool:
-        """Todo"""
+        """Parses lines from `pbm list` and returns whether a backup is present."""
         if "restore_to_time" in backup_line:
             return True
 
         return False
 
     def _parse_backup(self, backup_info: str) -> Tuple[str, str, str]:
-        """todo
+        """Parses backup information from `pbm list` and returns information as a tuple.
 
-        backup_info: str info from pbm of the format:
-            2023-02-08T15:19:34Z <logical> [restore_to_time: 2023-02-08T15:19:39Z]
+        Args:
+            backup_info: str info from pbm of the format:
+                2023-02-08T15:19:34Z <logical> [restore_to_time: 2023-02-08T15:19:39Z]
         """
         backup_id = backup_info.split()[0]
         backup_type = "logical" if "logical" in backup_info else "physical"
