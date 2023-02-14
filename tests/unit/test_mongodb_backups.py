@@ -530,3 +530,73 @@ class TestMongoBackups(unittest.TestCase):
 
         defer.assert_not_called()
         self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
+
+    def test_parse_backup(self):
+        """TODO"""
+        backup_id, backup_type, backup_status = self.harness.charm.backups._parse_backup(
+            "2023-02-08T15:19:34Z <logical> [restore_to_time: 2023-02-08T15:19:39Z]"
+        )
+        self.assertEqual(backup_id, "2023-02-08T15:19:34Z")
+        self.assertEqual(backup_type, "logical")
+        self.assertEqual(backup_status, "finished")
+
+    def test_line_contains_backup(self):
+        """TODO"""
+        contains_backup = self.harness.charm.backups._line_contains_backup(
+            "2023-02-08T15:19:34Z <logical> [restore_to_time: 2023-02-08T15:19:39Z]"
+        )
+        self.assertEqual(contains_backup, True)
+
+        contains_backup = self.harness.charm.backups._line_contains_backup("Pbm status summary:")
+        self.assertEqual(contains_backup, False)
+
+    @patch("charm.subprocess.check_output")
+    def test_get_inprogress_backups(self, check_output):
+        """TODO"""
+
+        check_output.return_value = b"Snapshot backup:\n====\nResync op"
+        inprogress_backups = self.harness.charm.backups._get_inprogress_backups()
+        self.assertEqual(inprogress_backups, [])
+
+        check_output.return_value = b'Currently running:\n====\nSnapshot backup "2023-02-14T13:58:27Z", started at 2023-02-14T13:58:27Z. Status: snapshot backup. [op id: 63eb93834febe519118a501c]'
+        inprogress_backups = self.harness.charm.backups._get_inprogress_backups()
+        self.assertEqual(inprogress_backups, [("2023-02-14T13:58:27Z", "logical", "in progress")])
+
+    @patch("charm.subprocess.check_output")
+    def test_get_failed_backups(self, check_output):
+        """TODO"""
+        check_output.return_value = b"Backups:\n====\n2023-02-08T15:19:34Z <logical> [restore_to_time: 2023-02-08T15:19:39Z]"
+        failed_backups = self.harness.charm.backups._get_failed_backups()
+        assert failed_backups == []
+
+        check_output.return_value = b"Backups:\n====\n2023-02-14T13:54:48Z 0.00B <logical> [ERROR: get file 2023-02-14T13:54:48Z/mongodb/metadata.json: no such file] [2023-02-14T13:58:28Z]"
+        failed_backups = self.harness.charm.backups._get_failed_backups()
+        backup_id, backup_type, backup_status = failed_backups[0]
+        self.assertEqual(backup_id, "2023-02-14T13:54:48Z")
+        self.assertEqual(backup_type, "logical")
+        self.assertEqual(backup_status, "failed")
+
+    @patch("charm.MongoDBBackups._get_inprogress_backups")
+    @patch("charm.MongoDBBackups._get_failed_backups")
+    def test_generate_backup_list_output(self, failed_backups, inprogress_backups):
+        """TODO"""
+        successful_backups = "Backup snapshots:\n1990-02-08T15:19:34Z <physical> [restore_to_time: 2023-02-08T15:19:39Z]"
+        failed_backups.return_value = [("2000-02-14T13:54:48Z", "logical", "failed")]
+        inprogress_backups.return_value = [("2001-02-14T13:58:27Z", "logical", "in progress")]
+
+        formatted_output = self.harness.charm.backups._generate_backup_list_output(
+            successful_backups
+        )
+        formatted_output = formatted_output.split("\n")
+        header = formatted_output[0]
+        self.assertEqual(header, "backup-id             | backup-type  | backup-status")
+        divider = formatted_output[1]
+        self.assertEqual(
+            divider, "-" * len("backup-id             | backup-type  | backup-status")
+        )
+        eariest_backup = formatted_output[2]
+        self.assertEqual(eariest_backup, "1990-02-08T15:19:34Z  | physical     | finished")
+        failed_backup = formatted_output[3]
+        self.assertEqual(failed_backup, "2000-02-14T13:54:48Z  | logical      | failed")
+        inprogress_backup = formatted_output[4]
+        self.assertEqual(inprogress_backup, "2001-02-14T13:58:27Z  | logical      | in progress")
