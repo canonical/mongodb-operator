@@ -343,16 +343,13 @@ class MongoDBBackups(Object):
         return self._format_backup_list(backup_list_sorted)
 
     def _format_backup_list(self, backup_list) -> str:
-        formatted_list = "\n{:<21s} | {:<9s} | {:<12s}\n".format(
-            "backup-id", "backup-type", "backup-status"
-        )
-        formatted_list += "_" * len(formatted_list) + "\n"
-        for backup_id, backup_type, backup_status in backup_list:
-            formatted_list += "{:<21s} | {:<9s} | {:<12s}\n".format(
-                backup_id, backup_type, backup_status
-            )
+        backups = ["{:<21s} | {:<9s} | {:s}".format("backup-id", "backup-type", "backup-status")]
 
-        return formatted_list
+        backups.append("-" * len(backups[0]))
+        for backup_id, backup_type, backup_status in backup_list:
+            backups.append("{:<21s} | {:<9s} | {:s}".format(backup_id, backup_type, backup_status))
+
+        return "\n".join(backups)
 
     def _get_failed_backups(self):
         return []
