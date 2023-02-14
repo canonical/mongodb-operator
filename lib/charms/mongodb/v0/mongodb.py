@@ -242,13 +242,15 @@ class MongoDBConnection:
         self.client.admin.command("replSetReconfig", rs_config["config"])
 
     @retry(
-        stop=stop_after_attempt(3),
+        stop=stop_after_attempt(120),
         wait=wait_fixed(5),
         reraise=True,
         before=before_log(logger, logging.DEBUG),
     )
     def remove_replset_member(self, hostname: str) -> None:
         """Remove member from replica set config inside MongoDB.
+
+        Retries up to ten minutes when failure occurs during removal.
 
         Raises:
             ConfigurationError, ConfigurationError, OperationFailure, NotReadyError
