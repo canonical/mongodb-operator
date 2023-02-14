@@ -320,8 +320,7 @@ class MongoDBBackups(Object):
         try:
             backups = subprocess.check_output("percona-backup-mongodb list", shell=True)
             formatted_list = self._generate_backup_list_output(backups.decode("utf-8"))
-            formatted_list = bytes(formatted_list, "utf-8")
-            event.set_results({"backups": formatted_list.decode("utf-8")})
+            event.set_results({"backups": formatted_list})
         except subprocess.CalledProcessError as e:
             event.fail(f"Failed to list MongoDB backups with error: {str(e)}")
             return
@@ -335,7 +334,7 @@ class MongoDBBackups(Object):
 
         # backup_list_processed contains all completed backups, add other backup types
         backup_list.extend(self._get_failed_backups())
-        backup_list.extend(self._get_inprocess_backups())
+        backup_list.extend(self._get_inprogress_backups())
 
         # now sort by time
         backup_list_sorted = sorted(backup_list, key=lambda pair: pair[0])
@@ -358,8 +357,19 @@ class MongoDBBackups(Object):
     def _get_failed_backups(self):
         return []
 
-    def _get_inprocess_backups(self):
-        return []
+    def _get_inprogress_backups(self):
+        """todo"""
+        pbm_status = subprocess.check_output(
+            "percona-backup-mongodb status", shell=True, stderr=subprocess.STDOUT
+        )
+        current_pbm_op = self._current_pbm_op(pbm_status.decode("utf-8"))
+        if not "Snapshot backup" in current_pbm_op:
+            return []
+
+        # only one backup can be in progress at a time
+        backup_id = current_pbm_op.split()[2][1:-3]
+        # TODO change backup type once physical backups are available.
+        return [(backup_id, "logical", "in progress")]
 
     def _line_contains_backup(self, backup_line: str) -> bool:
         """Todo"""
@@ -378,8 +388,7 @@ class MongoDBBackups(Object):
         backup_type = "logical" if "logical" in backup_info else "physical"
         # if backup exists in `pbm backup list` it is finished. PBM docs specify that
         # `pbm backup list` only outputs finished backups
-        backup_status = "finished"
-        return (backup_id, backup_type, backup_status)
+        return (backup_id, backup_type, "finished")
 
     @property
     def _backup_config(self) -> MongoDBConfiguration:
