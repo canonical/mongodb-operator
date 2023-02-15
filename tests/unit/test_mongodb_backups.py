@@ -530,3 +530,50 @@ class TestMongoBackups(unittest.TestCase):
 
         defer.assert_not_called()
         self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
+
+    @patch("charm.subprocess.check_output")
+    def test_generate_backup_list_output(self, check_output):
+        """Tests correct formation of backup list output.
+
+        Specifically the spacing of the backups, the header, the backup order, and the backup
+        contents.
+        """
+        # case 1: running backup is listed in error state
+        with open("tests/unit/data/pbm_status_duplicate_running.txt") as f:
+            output_contents = f.readlines()
+            output_contents = "".join(output_contents)
+
+        check_output.return_value = output_contents.encode("utf-8")
+        formatted_output = self.harness.charm.backups._generate_backup_list_output()
+        formatted_output = formatted_output.split("\n")
+        header = formatted_output[0]
+        self.assertEqual(header, "backup-id             | backup-type  | backup-status")
+        divider = formatted_output[1]
+        self.assertEqual(divider, "-" * len(header))
+        eariest_backup = formatted_output[2]
+        self.assertEqual(eariest_backup, "1900-02-14T13:59:14Z  | physical     | failed")
+        failed_backup = formatted_output[3]
+        self.assertEqual(failed_backup, "2000-02-14T14:09:43Z  | logical      | finished")
+        inprogress_backup = formatted_output[4]
+        self.assertEqual(inprogress_backup, "2023-02-14T17:06:38Z  | logical      | in progress")
+
+        # case 2: running backup is not listed in error state
+        with open("tests/unit/data/pbm_status.txt") as f:
+            output_contents = f.readlines()
+            output_contents = "".join(output_contents)
+
+        check_output.return_value = output_contents.encode("utf-8")
+        formatted_output = self.harness.charm.backups._generate_backup_list_output()
+        formatted_output = formatted_output.split("\n")
+        header = formatted_output[0]
+        self.assertEqual(header, "backup-id             | backup-type  | backup-status")
+        divider = formatted_output[1]
+        self.assertEqual(
+            divider, "-" * len("backup-id             | backup-type  | backup-status")
+        )
+        eariest_backup = formatted_output[2]
+        self.assertEqual(eariest_backup, "1900-02-14T13:59:14Z  | physical     | failed")
+        failed_backup = formatted_output[3]
+        self.assertEqual(failed_backup, "2000-02-14T14:09:43Z  | logical      | finished")
+        inprogress_backup = formatted_output[4]
+        self.assertEqual(inprogress_backup, "2023-02-14T17:06:38Z  | logical      | in progress")
