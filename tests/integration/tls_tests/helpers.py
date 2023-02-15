@@ -23,7 +23,7 @@ async def mongo_tls_command(ops_test: OpsTest) -> str:
     replica_set_hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
     password = await get_password(ops_test, app)
     hosts = ",".join(replica_set_hosts)
-    replica_set_uri = f"mongodb://admin:" f"{password}@" f"{hosts}/admin?replicaSet={app}"
+    replica_set_uri = f"mongodb://operator:" f"{password}@" f"{hosts}/admin?replicaSet={app}"
 
     return (
         f"mongo '{replica_set_uri}'  --eval 'rs.status()'"
