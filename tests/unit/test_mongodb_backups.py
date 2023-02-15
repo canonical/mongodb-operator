@@ -549,9 +549,7 @@ class TestMongoBackups(unittest.TestCase):
         header = formatted_output[0]
         self.assertEqual(header, "backup-id             | backup-type  | backup-status")
         divider = formatted_output[1]
-        self.assertEqual(
-            divider, "-" * len("backup-id             | backup-type  | backup-status")
-        )
+        self.assertEqual(divider, "-" * len(header))
         eariest_backup = formatted_output[2]
         self.assertEqual(eariest_backup, "1900-02-14T13:59:14Z  | physical     | failed")
         failed_backup = formatted_output[3]
