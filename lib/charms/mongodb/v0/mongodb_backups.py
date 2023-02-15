@@ -338,7 +338,7 @@ class MongoDBBackups(Object):
         )
         # processes finished and failed backups
         pbm_status = json.loads(pbm_status.decode("utf-8"))
-        backups = pbm_status["backups"]["snapshot"]
+        backups = pbm_status["backups"]["snapshot"] or []
         for backup in backups:
             backup_status = "finished"
             if backup["status"] == "error":
