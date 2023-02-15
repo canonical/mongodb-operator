@@ -7,11 +7,11 @@ Specifically backups are handled with Percona Backup MongoDB (pbm) which is inst
 during the install phase. A user for PBM is created when MongoDB is first started during the
 start phase. This user is named "backup".
 """
+import json
 import logging
 import subprocess
 import time
-from typing import Dict, Tuple
-import json
+from typing import Dict
 
 from charms.data_platform_libs.v0.s3 import CredentialsChangedEvent, S3Requirer
 from charms.mongodb.v0.helpers import generate_password
@@ -332,7 +332,6 @@ class MongoDBBackups(Object):
 
         Raises CalledProcessError
         """
-
         backup_list = []
         pbm_status = subprocess.check_output(
             "percona-backup-mongodb status --out=json", shell=True, stderr=subprocess.STDOUT
