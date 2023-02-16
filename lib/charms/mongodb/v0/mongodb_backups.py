@@ -426,7 +426,7 @@ class MongoDBBackups(Object):
 
         return MongoDBConfiguration(
             replset=self.charm.app.name,
-            database="admin",
+            database="",
             username="backup",
             password=self.charm.get_secret("app", "backup_password"),
             hosts=[
