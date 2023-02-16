@@ -7,11 +7,11 @@ import string
 import time
 
 import helpers
-import tests.integration.ha_tests.helpers as ha_helpers
 import pytest
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
+import tests.integration.ha_tests.helpers as ha_helpers
 
 S3_APP_NAME = "s3-integrator"
 TIMEOUT = 15 * 60
@@ -20,7 +20,7 @@ ENDPOINT = "s3-credentials"
 
 @pytest.fixture()
 async def continuous_writes_to_db(ops_test: OpsTest):
-    """Continously writes to DB for the duration of the test."""
+    """Continuously writes to DB for the duration of the test."""
     await ha_helpers.start_continous_writes(ops_test, 1)
     yield
     await ha_helpers.stop_continous_writes(ops_test)

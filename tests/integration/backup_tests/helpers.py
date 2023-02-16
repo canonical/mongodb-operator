@@ -3,7 +3,6 @@
 import os
 
 import ops
-from tests.integration.ha_tests.helpers import MongoClient, get_password, subprocess
 from pytest_operator.plugin import OpsTest
 
 S3_APP_NAME = "s3-integrator"
