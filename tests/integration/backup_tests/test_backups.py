@@ -134,7 +134,7 @@ async def test_create_and_list_backups(ops_test: OpsTest) -> None:
     action = await db_unit.run_action(action_name="list-backups")
     list_result = await action.wait()
     backups = list_result.results["backups"]
-    assert "Backup snapshots" in backups, "backups not listed"
+    assert backups, "backups not outputted"
 
     # verify backup is started
     action = await db_unit.run_action(action_name="create-backup")

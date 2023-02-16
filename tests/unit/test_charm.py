@@ -7,7 +7,7 @@ from unittest.mock import call, patch
 
 import requests
 from charms.operator_libs_linux.v1 import snap, systemd
-from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
+from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from ops.testing import Harness
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
 
@@ -27,6 +27,8 @@ PYMONGO_EXCEPTIONS = [
     ConfigurationError("error message"),
     OperationFailure("error message"),
 ]
+
+S3_RELATION_NAME = "s3-credentials"
 
 
 class TestCharm(unittest.TestCase):
@@ -439,6 +441,109 @@ class TestCharm(unittest.TestCase):
     @patch("charms.mongodb.v0.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.build_unit_status")
+    def test_update_status_mongodb_error(
+        self, get_mongodb_status, get_pbm_status, connection, status_connection
+    ):
+        """Tests that when MongoDB is not active, that is reported instead of pbm."""
+        # assume leader has already initialised the replica set
+        self.harness.set_leader(True)
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        connection.return_value.__enter__.return_value.is_ready = True
+
+        pbm_statuses = [
+            ActiveStatus("pbm"),
+            BlockedStatus("pbm"),
+            MaintenanceStatus("pbm"),
+            WaitingStatus("pbm"),
+        ]
+        mongodb_statuses = [
+            BlockedStatus("mongodb"),
+            MaintenanceStatus("mongodb"),
+            WaitingStatus("mongodb"),
+        ]
+        self.harness.add_relation(S3_RELATION_NAME, "s3-integrator")
+
+        for pbm_status in pbm_statuses:
+            for mongodb_status in mongodb_statuses:
+                get_pbm_status.return_value = pbm_status
+                get_mongodb_status.return_value = mongodb_status
+                self.harness.charm.on.update_status.emit()
+                self.assertEqual(self.harness.charm.unit.status, mongodb_status)
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charms.mongodb.v0.helpers.MongoDBConnection")
+    @patch("charm.MongoDBConnection")
+    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.build_unit_status")
+    def test_update_status_pbm_error(
+        self, get_mongodb_status, get_pbm_status, connection, status_connection
+    ):
+        """Tests when MongoDB is active and pbm is in the error state, pbm status is reported."""
+        # assume leader has already initialised the replica set
+        self.harness.set_leader(True)
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        connection.return_value.__enter__.return_value.is_ready = True
+
+        pbm_statuses = [
+            BlockedStatus("pbm"),
+            MaintenanceStatus("pbm"),
+            WaitingStatus("pbm"),
+        ]
+        mongodb_statuses = [ActiveStatus("mongodb")]
+        self.harness.add_relation(S3_RELATION_NAME, "s3-integrator")
+
+        for pbm_status in pbm_statuses:
+            for mongodb_status in mongodb_statuses:
+                get_pbm_status.return_value = pbm_status
+                get_mongodb_status.return_value = mongodb_status
+                self.harness.charm.on.update_status.emit()
+                self.assertEqual(self.harness.charm.unit.status, pbm_status)
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charms.mongodb.v0.helpers.MongoDBConnection")
+    @patch("charm.MongoDBConnection")
+    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.build_unit_status")
+    def test_update_status_pbm_and_mongodb_ready(
+        self, get_mongodb_status, get_pbm_status, connection, status_connection
+    ):
+        """Tests when both Mongodb and pbm are ready that MongoDB status is reported."""
+        # assume leader has already initialised the replica set
+        self.harness.set_leader(True)
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        connection.return_value.__enter__.return_value.is_ready = True
+
+        self.harness.add_relation(S3_RELATION_NAME, "s3-integrator")
+
+        get_pbm_status.return_value = ActiveStatus("pbm")
+        get_mongodb_status.return_value = ActiveStatus("mongodb")
+        self.harness.charm.on.update_status.emit()
+        self.assertEqual(self.harness.charm.unit.status, ActiveStatus("mongodb"))
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charms.mongodb.v0.helpers.MongoDBConnection")
+    @patch("charm.MongoDBConnection")
+    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.build_unit_status")
+    def test_update_status_no_s3(
+        self, get_mongodb_status, get_pbm_status, connection, status_connection
+    ):
+        """Tests when the s3 relation isn't present that the MongoDB status is reported."""
+        # assume leader has already initialised the replica set
+        self.harness.set_leader(True)
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        connection.return_value.__enter__.return_value.is_ready = True
+
+        get_pbm_status.return_value = BlockedStatus("pbm")
+        get_mongodb_status.return_value = ActiveStatus("mongodb")
+        self.harness.charm.on.update_status.emit()
+        self.assertEqual(self.harness.charm.unit.status, ActiveStatus("mongodb"))
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charms.mongodb.v0.helpers.MongoDBConnection")
+    @patch("charm.MongoDBConnection")
+    @patch("charm.MongoDBBackups._get_pbm_status")
     def test_update_status_primary(self, pbm_status, connection, status_connection):
         """Tests that update status identifies the primary unit and updates status."""
         # assume leader has already initialised the replica set
@@ -637,15 +742,15 @@ class TestCharm(unittest.TestCase):
     def test_set_password(self, connection):
         """Tests that a new admin password is generated and is returned to the user."""
         self.harness.set_leader(True)
-        original_password = self.harness.charm.app_peer_data["password"]
+        original_password = self.harness.charm.app_peer_data["operator-password"]
         action_event = mock.Mock()
         action_event.params = {}
         self.harness.charm._on_set_password(action_event)
-        new_password = self.harness.charm.app_peer_data["password"]
+        new_password = self.harness.charm.app_peer_data["operator-password"]
 
         # verify app data is updated and results are reported to user
         self.assertNotEqual(original_password, new_password)
-        action_event.set_results.assert_called_with({"admin-password": new_password})
+        action_event.set_results.assert_called_with({"operator-password": new_password})
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
@@ -655,18 +760,18 @@ class TestCharm(unittest.TestCase):
         action_event = mock.Mock()
         action_event.params = {"password": "canonical123"}
         self.harness.charm._on_set_password(action_event)
-        new_password = self.harness.charm.app_peer_data["password"]
+        new_password = self.harness.charm.app_peer_data["operator-password"]
 
         # verify app data is updated and results are reported to user
         self.assertEqual("canonical123", new_password)
-        action_event.set_results.assert_called_with({"admin-password": "canonical123"})
+        action_event.set_results.assert_called_with({"operator-password": "canonical123"})
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
     def test_set_password_failure(self, connection):
         """Tests failure to reset password does not update app data and failure is reported."""
         self.harness.set_leader(True)
-        original_password = self.harness.charm.app_peer_data["password"]
+        original_password = self.harness.charm.app_peer_data["operator-password"]
         action_event = mock.Mock()
         action_event.params = {}
 
@@ -675,7 +780,7 @@ class TestCharm(unittest.TestCase):
                 exception
             )
             self.harness.charm._on_set_password(action_event)
-            current_password = self.harness.charm.app_peer_data["password"]
+            current_password = self.harness.charm.app_peer_data["operator-password"]
 
             # verify passwords are not updated.
             self.assertEqual(current_password, original_password)

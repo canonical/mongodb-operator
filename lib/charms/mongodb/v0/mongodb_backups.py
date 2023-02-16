@@ -7,6 +7,7 @@ Specifically backups are handled with Percona Backup MongoDB (pbm) which is inst
 during the install phase. A user for PBM is created when MongoDB is first started during the
 start phase. This user is named "backup".
 """
+import json
 import logging
 import subprocess
 import time
@@ -320,8 +321,8 @@ class MongoDBBackups(Object):
             return
 
         try:
-            backups = subprocess.check_output("percona-backup-mongodb list", shell=True)
-            event.set_results({"backups": backups.decode("utf-8")})
+            formatted_list = self._generate_backup_list_output()
+            event.set_results({"backups": formatted_list})
         except subprocess.CalledProcessError as e:
             event.fail(f"Failed to list MongoDB backups with error: {str(e)}")
             return
@@ -368,6 +369,55 @@ class MongoDBBackups(Object):
             event.fail(f"Failed to restore MongoDB with error: {str(e)}")
             return
 
+    def _generate_backup_list_output(self) -> str:
+        """Generates a list of backups in a formatted table.
+
+        List contains successful, failed, and in progress backups in order of ascending time.
+
+        Raises CalledProcessError
+        """
+        backup_list = []
+        pbm_status = subprocess.check_output(
+            "percona-backup-mongodb status --out=json", shell=True, stderr=subprocess.STDOUT
+        )
+        # processes finished and failed backups
+        pbm_status = json.loads(pbm_status.decode("utf-8"))
+        backups = pbm_status["backups"]["snapshot"] or []
+        for backup in backups:
+            backup_status = "finished"
+            if backup["status"] == "error":
+                backup_status = "failed"
+            if backup["status"] != "error" and backup["status"] != "done":
+                backup_status = "in progress"
+            backup_list.append((backup["name"], backup["type"], backup_status))
+
+        # process in progress backups
+        running_backup = pbm_status["running"]
+        if running_backup.get("type", None) == "backup":
+            # backups are sorted in reverse order
+            last_reported_backup = backup_list[0]
+            # pbm will occasionally report backups that are currently running as failed, so it is
+            # necessary to correct the backup list in this case.
+            if last_reported_backup[0] == running_backup["name"]:
+                backup_list[0] = (last_reported_backup[0], last_reported_backup[1], "in progress")
+            else:
+                backup_list.append((running_backup["name"], "logical", "in progress"))
+
+        # sort by time and return formatted output
+        return self._format_backup_list(sorted(backup_list, key=lambda pair: pair[0]))
+
+    def _format_backup_list(self, backup_list) -> str:
+        """Formats provided list of backups as a table."""
+        backups = ["{:<21s} | {:<12s} | {:s}".format("backup-id", "backup-type", "backup-status")]
+
+        backups.append("-" * len(backups[0]))
+        for backup_id, backup_type, backup_status in backup_list:
+            backups.append(
+                "{:<21s} | {:<12s} | {:s}".format(backup_id, backup_type, backup_status)
+            )
+
+        return "\n".join(backups)
+
     @property
     def _backup_config(self) -> MongoDBConfiguration:
         """Construct the config object for backup user and creates user if necessary."""
@@ -376,7 +426,7 @@ class MongoDBBackups(Object):
 
         return MongoDBConfiguration(
             replset=self.charm.app.name,
-            database="admin",
+            database="",
             username="backup",
             password=self.charm.get_secret("app", "backup_password"),
             hosts=[

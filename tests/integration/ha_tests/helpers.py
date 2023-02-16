@@ -54,7 +54,7 @@ def replica_set_client(replica_ips: List[str], password: str, app=APP_NAME) -> M
     hosts = ["{}:{}".format(replica_ip, PORT) for replica_ip in replica_ips]
     hosts = ",".join(hosts)
 
-    replica_set_uri = f"mongodb://admin:" f"{password}@" f"{hosts}/admin?replicaSet={app}"
+    replica_set_uri = f"mongodb://operator:" f"{password}@" f"{hosts}/admin?replicaSet={app}"
     return MongoClient(replica_set_uri)
 
 
@@ -91,7 +91,7 @@ def unit_uri(ip_address: str, password, app=APP_NAME) -> str:
         password: password of database.
         app: name of application which has the cluster.
     """
-    return f"mongodb://admin:" f"{password}@" f"{ip_address}:{PORT}/admin?replicaSet={app}"
+    return f"mongodb://operator:" f"{password}@" f"{ip_address}:{PORT}/admin?replicaSet={app}"
 
 
 async def get_password(ops_test: OpsTest, app, down_unit=None) -> str:
@@ -108,7 +108,7 @@ async def get_password(ops_test: OpsTest, app, down_unit=None) -> str:
 
     action = await ops_test.model.units.get(f"{app}/{unit_id}").run_action("get-password")
     action = await action.wait()
-    return action.results["admin-password"]
+    return action.results["operator-password"]
 
 
 async def fetch_primary(
@@ -250,7 +250,7 @@ async def clear_db_writes(ops_test: OpsTest) -> bool:
     password = await get_password(ops_test, app)
     hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
     hosts = ",".join(hosts)
-    connection_string = f"mongodb://admin:{password}@{hosts}/admin?replicaSet={app}"
+    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app}"
 
     client = MongoClient(connection_string)
     db = client["new-db"]
@@ -275,7 +275,7 @@ async def start_continous_writes(ops_test: OpsTest, starting_number: int) -> Non
     password = await get_password(ops_test, app)
     hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
     hosts = ",".join(hosts)
-    connection_string = f"mongodb://admin:{password}@{hosts}/admin?replicaSet={app}"
+    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app}"
 
     # run continuous writes in the background.
     subprocess.Popen(
@@ -303,7 +303,7 @@ async def stop_continous_writes(ops_test: OpsTest, down_unit=None) -> int:
     password = await get_password(ops_test, app, down_unit)
     hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
     hosts = ",".join(hosts)
-    connection_string = f"mongodb://admin:{password}@{hosts}/admin?replicaSet={app}"
+    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app}"
 
     client = MongoClient(connection_string)
     db = client["new-db"]
@@ -321,7 +321,7 @@ async def count_writes(ops_test: OpsTest, down_unit=None) -> int:
     password = await get_password(ops_test, app, down_unit)
     hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
     hosts = ",".join(hosts)
-    connection_string = f"mongodb://admin:{password}@{hosts}/admin?replicaSet={app}"
+    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app}"
 
     client = MongoClient(connection_string)
     db = client["new-db"]
@@ -338,7 +338,7 @@ async def secondary_up_to_date(ops_test: OpsTest, unit_ip, expected_writes) -> b
     """
     app = await app_name(ops_test)
     password = await get_password(ops_test, app)
-    connection_string = f"mongodb://admin:{password}@{unit_ip}:{PORT}/admin?"
+    connection_string = f"mongodb://operator:{password}@{unit_ip}:{PORT}/admin?"
     client = MongoClient(connection_string, directConnection=True)
 
     try:
