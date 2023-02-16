@@ -35,11 +35,7 @@ LIBPATCH = 4
 logger = logging.getLogger(__name__)
 
 # List of system usernames needed for correct work on the charm.
-<<<<<<< HEAD
-CHARM_USERS = ["admin", "backup"]
-=======
 CHARM_USERS = ["operator", "backup"]
->>>>>>> main
 
 
 @dataclass
