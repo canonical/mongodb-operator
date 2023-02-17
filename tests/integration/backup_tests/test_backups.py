@@ -132,8 +132,7 @@ async def test_ready_correct_conf(ops_test: OpsTest) -> None:
 
 @pytest.mark.abort_on_fail
 async def test_create_and_list_backups(ops_test: OpsTest) -> None:
-    db_app_name = await helpers.app_name(ops_test)
-    db_unit = ops_test.model.applications[db_app_name].units[0]
+    db_unit = await helpers.get_leader_unit(ops_test)
 
     # verify backup list works
     action = await db_unit.run_action(action_name="list-backups")
@@ -168,9 +167,14 @@ async def test_multi_backup(ops_test: OpsTest, continuous_writes_to_db) -> None:
     in GCP is made, and that before the second backup is made that pbm correctly resyncs.
     """
     db_app_name = await helpers.app_name(ops_test)
-    db_unit = ops_test.model.applications[db_app_name].units[0]
+    db_unit = await helpers.get_leader_unit(ops_test)
 
-    # create first backup
+    # create first backup once ready
+    async with ops_test.fast_forward():
+        await asyncio.gather(
+            ops_test.model.wait_for_idle(apps=[db_app_name], status="active"),
+        )
+
     action = await db_unit.run_action(action_name="create-backup")
     first_backup = await action.wait()
     assert first_backup.status == "completed", "First backup not started."
@@ -251,7 +255,7 @@ async def test_restore(ops_test: OpsTest, add_writes_to_db) -> None:
 
     # create a backup in the AWS bucket
     db_app_name = await helpers.app_name(ops_test)
-    db_unit = ops_test.model.applications[db_app_name].units[0]
+    db_unit = await helpers.get_leader_unit(ops_test)
     prev_backups = await helpers.count_logical_backups(db_unit)
     action = await db_unit.run_action(action_name="create-backup")
     first_backup = await action.wait()
@@ -323,7 +327,7 @@ async def test_restore_new_cluster(ops_test: OpsTest, add_writes_to_db, cloud_pr
     # create a backup
     writes_in_old_cluster = await ha_helpers.count_writes(ops_test, db_app_name)
     assert writes_in_old_cluster > 0, "old cluster has no writes."
-    db_unit = ops_test.model.applications[db_app_name].units[0]
+    db_unit = await helpers.get_leader_unit(ops_test)
     prev_backups = await helpers.count_logical_backups(db_unit)
     action = await db_unit.run_action(action_name="create-backup")
     backup = await action.wait()
@@ -355,12 +359,8 @@ async def test_restore_new_cluster(ops_test: OpsTest, add_writes_to_db, cloud_pr
         ops_test.model.wait_for_idle(apps=[db_app_name], status="active"),
     )
 
-    db_leader_unit = None
-    for unit in ops_test.model.applications[db_app_name].units:
-        if await unit.is_leader_from_status():
-            db_leader_unit = unit
-
-    action = await db_leader_unit.run_action("set-password", **{"password": old_password})
+    db_unit = await helpers.get_leader_unit(ops_test)
+    action = await db_unit.run_action("set-password", **{"password": old_password})
     action = await action.wait()
     assert action.status == "completed"
 
@@ -377,7 +377,6 @@ async def test_restore_new_cluster(ops_test: OpsTest, add_writes_to_db, cloud_pr
     )
 
     # find most recent backup id and restore
-    db_unit = ops_test.model.applications[db_app_name].units[0]
     action = await db_unit.run_action(action_name="list-backups")
     list_result = await action.wait()
     list_result = list_result.results["backups"]

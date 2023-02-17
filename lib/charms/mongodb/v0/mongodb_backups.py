@@ -276,6 +276,12 @@ class MongoDBBackups(Object):
             event.fail("Relation with s3-integrator charm missing, cannot create backup.")
             return
 
+        # only leader can create backups. This prevents multiple backups from being attempted at
+        # once.
+        if not self.charm.unit.is_leader():
+            event.fail("The action can be run only on leader unit.")
+            return
+
         # cannot create backup if pbm is not ready. This could be due to: resyncing, incompatible,
         # options, incorrect credentials, or already creating a backup
         pbm_status = self._get_pbm_status()

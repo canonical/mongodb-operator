@@ -8,6 +8,14 @@ from pytest_operator.plugin import OpsTest
 S3_APP_NAME = "s3-integrator"
 
 
+async def get_leader_unit(ops_test: OpsTest) -> ops.model.Unit:
+    """Returns the leader unit of the database charm."""
+    db_app_name = await app_name(ops_test)
+    for unit in ops_test.model.applications[db_app_name].units:
+        if await unit.is_leader_from_status():
+            return unit
+
+
 async def app_name(ops_test: OpsTest) -> str:
     """Returns the name of the cluster running MongoDB.
 
