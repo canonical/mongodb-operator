@@ -355,9 +355,14 @@ async def test_restore_new_cluster(ops_test: OpsTest, add_writes_to_db, cloud_pr
         ops_test.model.wait_for_idle(apps=[db_app_name], status="active"),
     )
 
-    db_unit = ops_test.model.applications[db_app_name].units[0]
-    action = await db_unit.run_action("set-password", **{"password": old_password})
+    db_leader_unit = None
+    for unit in ops_test.model.applications[db_app_name].units:
+        if await unit.is_leader_from_status():
+            db_leader_unit = unit
+
+    action = await db_leader_unit.run_action("set-password", **{"password": old_password})
     action = await action.wait()
+    assert action.status == "completed"
 
     # relate to s3 - s3 has the necessary configurations
     await ops_test.model.add_relation(S3_APP_NAME, db_app_name)

@@ -10,6 +10,7 @@ from charms.operator_libs_linux.v1 import snap, systemd
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from ops.testing import Harness
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
+from tenacity import stop_after_attempt
 
 from charm import MongodbOperatorCharm, NotReadyError, URLError, apt, subprocess
 from tests.unit.helpers import patch_network_get
@@ -688,14 +689,18 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    def test_storage_detaching_failure_does_not_defer(self, connection):
+    @patch("charm.stop_after_attempt")
+    def test_storage_detaching_failure_does_not_defer(self, retry_stop, connection):
         """Test that failure in removing replica does not defer the hook.
 
         Deferring Storage Detached hooks can result in un-predicable behavior and while it is
         technically possible to defer the event, it shouldn't be. This test verifies that no
         attempt to defer storage detached as made.
         """
-        for exception in [PYMONGO_EXCEPTIONS, NotReadyError]:
+        retry_stop.return_value = stop_after_attempt(1)
+        exceptions = PYMONGO_EXCEPTIONS
+        exceptions.append(NotReadyError)
+        for exception in exceptions:
             connection.return_value.__enter__.return_value.remove_replset_member.side_effect = (
                 exception
             )
