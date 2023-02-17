@@ -43,7 +43,7 @@ from ops.model import (
     Relation,
     WaitingStatus,
 )
-from tenacity import before_log, retry, stop_after_attempt, wait_fixed
+from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
 from machine_helpers import (
     MONGOD_SERVICE_DEFAULT_PATH,
@@ -147,11 +147,18 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         primary while it still has access to its storage.
         """
         try:
-            # remove_replset_member retries for ten minutes in an attempt to resolve race
-            # conditions it is not possible to defer in storage detached.
-            with MongoDBConnection(self.mongodb_config) as mongo:
-                logger.debug("Removing %s from replica set", self._unit_ip(self.unit))
-                mongo.remove_replset_member(self._unit_ip(self.unit))
+            # retries over a period of 10 minutes in an attempt to resolve race conditions it is
+            # not possible to defer in storage detached.
+            logger.debug("Removing %s from replica set", self._unit_ip(self.unit))
+            for attempt in Retrying(
+                stop=stop_after_attempt(10),
+                wait=wait_fixed(1),
+                reraise=True,
+            ):
+                with attempt:
+                    # remove_replset_member retries for 60 seconds
+                    with MongoDBConnection(self.mongodb_config) as mongo:
+                        mongo.remove_replset_member(self._unit_ip(self.unit))
         except NotReadyError:
             logger.info(
                 "Failed to remove %s from replica set, another member is syncing", self.unit.name
@@ -356,6 +363,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             if not direct_mongo.is_ready:
                 logger.debug("mongodb service is not ready yet, restarting.")
                 self.restart_mongod_service()
+                # ensure that the correct port is open for the service
+                self._open_port_tcp(self._port)
                 self.unit.status = WaitingStatus("Waiting for MongoDB to start")
                 event.defer()
                 return
