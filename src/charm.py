@@ -356,6 +356,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             if not direct_mongo.is_ready:
                 logger.debug("mongodb service is not ready yet, restarting.")
                 self.restart_mongod_service()
+                # ensure that the correct port is open for the service
+                self._open_port_tcp(self._port)
                 self.unit.status = WaitingStatus("Waiting for MongoDB to start")
                 event.defer()
                 return
