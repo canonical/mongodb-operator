@@ -621,7 +621,8 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongodbOperatorCharm.restart_mongod_service")
-    def test_update_status_not_ready(self, restart, connection):
+    @patch("charm.MongodbOperatorCharm._open_port_tcp")
+    def test_update_status_not_ready(self, tcp, restart, connection):
         """Tests that if mongod is not running on this unit it restarts it."""
         connection.return_value.__enter__.return_value.is_ready = False
 

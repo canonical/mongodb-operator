@@ -252,18 +252,19 @@ async def test_restore(ops_test: OpsTest, add_writes_to_db) -> None:
     # create a backup in the AWS bucket
     db_app_name = await helpers.app_name(ops_test)
     db_unit = ops_test.model.applications[db_app_name].units[0]
+    prev_backups = await helpers.count_logical_backups(db_unit)
     action = await db_unit.run_action(action_name="create-backup")
     first_backup = await action.wait()
     assert first_backup.status == "completed", "First backup not started."
 
-    # verify that backups was made on the AWS bucket
+    # verify that backup was made on the bucket
     try:
         for attempt in Retrying(stop=stop_after_delay(4), wait=wait_fixed(5)):
             with attempt:
                 backups = await helpers.count_logical_backups(db_unit)
-                assert backups == 3, "Backup not created in bucket on AWS."
+                assert backups == prev_backups + 1, "Backup not created."
     except RetryError:
-        assert backups == 3, "Backup not created in bucket on AWS."
+        assert backups == prev_backups + 1, "Backup not created."
 
     # clear writes
     assert number_writes > 0, "no writes backed up"
@@ -328,14 +329,14 @@ async def test_restore_new_cluster(ops_test: OpsTest, add_writes_to_db, cloud_pr
     backup = await action.wait()
     assert backup.status == "completed", "Backup not started."
 
-    # verify that backup was made on the AWS bucket
+    # verify that backup was made on the bucket
     try:
         for attempt in Retrying(stop=stop_after_delay(4), wait=wait_fixed(5)):
             with attempt:
                 backups = await helpers.count_logical_backups(db_unit)
                 assert backups == prev_backups + 1, "Backup not created."
     except RetryError:
-        assert backups == 3, "Backup not created."
+        assert backups == prev_backups + 1, "Backup not created."
 
     # save old password, since after restoring we will need this password to authenticate.
     old_password = await ha_helpers.get_password(ops_test, db_app_name)
