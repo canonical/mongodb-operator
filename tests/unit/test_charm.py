@@ -12,7 +12,8 @@ from ops.testing import Harness
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
 
 from charm import MongodbOperatorCharm, NotReadyError, URLError, apt, subprocess
-from tests.unit.helpers import patch_network_get
+
+from .helpers import patch_network_get
 
 REPO_NAME = "deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"
 GPG_URL = "https://www.mongodb.org/static/pgp/server-5.0.asc"
@@ -344,7 +345,7 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBConnection")
-    @patch("lib.charms.mongodb.v0.mongodb.MongoClient")
+    @patch("charms.mongodb.v0.mongodb.MongoClient")
     def test_relation_joined_get_members_failure(self, client, connection, defer):
         """Tests reconfigure does not execute when unable to get the replica set members.
 

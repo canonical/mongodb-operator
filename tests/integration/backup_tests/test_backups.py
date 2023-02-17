@@ -6,16 +6,16 @@ import secrets
 import string
 import time
 
-import helpers
 import pytest
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
-from tests.integration.ha_tests.helpers import (
+from ..ha_tests.helpers import (
     clear_db_writes,
     start_continous_writes,
     stop_continous_writes,
 )
+from . import helpers
 
 S3_APP_NAME = "s3-integrator"
 TIMEOUT = 15 * 60

@@ -7,7 +7,13 @@ import os
 import time
 
 import pytest
-from helpers import (
+from pymongo import MongoClient
+from pymongo.errors import PyMongoError, ServerSelectionTimeoutError
+from pytest_operator.plugin import OpsTest
+from tenacity import RetryError
+
+from .ha_tests.helpers import app_name, kill_unit_process
+from .helpers import (
     APP_NAME,
     PORT,
     UNIT_IDS,
@@ -16,12 +22,6 @@ from helpers import (
     get_password,
     unit_uri,
 )
-from pymongo import MongoClient
-from pymongo.errors import PyMongoError, ServerSelectionTimeoutError
-from pytest_operator.plugin import OpsTest
-from tenacity import RetryError
-
-from tests.integration.ha_tests.helpers import app_name, kill_unit_process
 
 logger = logging.getLogger(__name__)
 
