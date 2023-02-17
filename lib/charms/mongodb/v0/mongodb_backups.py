@@ -86,6 +86,7 @@ class MongoDBBackups(Object):
         )
         self.framework.observe(self.charm.on.create_backup_action, self._on_create_backup_action)
         self.framework.observe(self.charm.on.list_backups_action, self._on_list_backups_action)
+        self.framework.observe(self.charm.on.restore_action, self._on_restore_action)
 
     def _on_s3_credential_changed(self, event: CredentialsChangedEvent):
         """Sets pbm credentials, resyncs if necessary and reports config errors."""
@@ -207,6 +208,9 @@ class MongoDBBackups(Object):
             if "Snapshot backup" in self._current_pbm_op(pbm_status.decode("utf-8")):
                 return MaintenanceStatus("backup started/running")
 
+            if "Snapshot restore" in self._current_pbm_op(pbm_status.decode("utf-8")):
+                return MaintenanceStatus("restore started/running")
+
         except subprocess.CalledProcessError as e:
             # pbm pipes a return code of 1, but its output shows the true error code so it is
             # necessary to parse the output
@@ -323,6 +327,48 @@ class MongoDBBackups(Object):
             event.set_results({"backups": formatted_list})
         except subprocess.CalledProcessError as e:
             event.fail(f"Failed to list MongoDB backups with error: {str(e)}")
+            return
+
+    def _on_restore_action(self, event) -> None:
+        if self.model.get_relation(S3_RELATION) is None:
+            event.fail("Relation with s3-integrator charm missing, cannot restore from a backup.")
+            return
+
+        backup_id = event.params.get("backup-id")
+        if not backup_id:
+            event.fail("Missing backup-id to restore")
+            return
+
+        # cannot restore backup if pbm is not ready. This could be due to: resyncing, incompatible,
+        # options, incorrect credentials, creating a backup, or already performing a restore.
+        pbm_status = self._get_pbm_status()
+        self.charm.unit.status = pbm_status
+        if isinstance(pbm_status, MaintenanceStatus):
+            event.fail("Please wait for current backup/restore to finish.")
+            return
+        if isinstance(pbm_status, WaitingStatus):
+            event.defer()
+            logger.debug("Sync-ing configurations needs more time, must wait before restoring.")
+            return
+        if isinstance(pbm_status, BlockedStatus):
+            event.fail(f"Cannot create backup {pbm_status.message}.")
+            return
+
+        try:
+            subprocess.check_output(
+                f"percona-backup-mongodb restore {backup_id}", shell=True, stderr=subprocess.STDOUT
+            )
+            event.set_results({"restore-status": "restore started"})
+            self.charm.unit.status = MaintenanceStatus("restore started/running")
+        except subprocess.CalledProcessError as e:
+            error_message = e.output.decode("utf-8")
+            if f"backup '{backup_id}' not found" in error_message:
+                event.fail(
+                    f"Backup id: {backup_id} does not exist in list of backups, please check list-backups for the available backup_ids."
+                )
+                return
+
+            event.fail(f"Failed to restore MongoDB with error: {str(e)}")
             return
 
     def _generate_backup_list_output(self) -> str:
