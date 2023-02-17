@@ -147,8 +147,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         primary while it still has access to its storage.
         """
         try:
-            # remove_replset_member retries for one minute in an attempt to resolve race conditions
-            # it is not possible to defer in storage detached.
+            # remove_replset_member retries for ten minutes in an attempt to resolve race
+            # conditions it is not possible to defer in storage detached.
             with MongoDBConnection(self.mongodb_config) as mongo:
                 logger.debug("Removing %s from replica set", self._unit_ip(self.unit))
                 mongo.remove_replset_member(self._unit_ip(self.unit))

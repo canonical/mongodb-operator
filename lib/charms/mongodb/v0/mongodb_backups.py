@@ -281,7 +281,9 @@ class MongoDBBackups(Object):
         pbm_status = self._get_pbm_status()
         self.charm.unit.status = pbm_status
         if isinstance(pbm_status, MaintenanceStatus):
-            event.fail("Please wait for current backup/restore to finish.")
+            event.fail(
+                "Can only create one backup at a time, please wait for current backup to finish."
+            )
             return
         if isinstance(pbm_status, WaitingStatus):
             event.defer()
