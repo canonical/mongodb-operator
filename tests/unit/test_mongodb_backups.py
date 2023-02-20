@@ -579,7 +579,7 @@ class TestMongoBackups(unittest.TestCase):
         self.assertEqual(inprogress_backup, "2023-02-14T17:06:38Z  | logical      | in progress")
 
     def test_restore_without_rel(self):
-        """Verifies no backups are attempted without s3 relation."""
+        """Verifies no restores are attempted without s3 relation."""
         action_event = mock.Mock()
         action_event.params = {"backup-id": "back-me-up"}
 
@@ -589,7 +589,7 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.subprocess.check_output")
     @patch("charm.snap.SnapCache")
     def test_restore_syncing(self, snap, output):
-        """Verifies backup is deferred if more time is needed to resync."""
+        """Verifies restore is deferred if more time is needed to resync."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
         snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
@@ -606,7 +606,7 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.subprocess.check_output")
     @patch("charm.snap.SnapCache")
     def test_restore_running_backup(self, snap, output):
-        """Verifies backup is fails if another backup is already running."""
+        """Verifies restore is fails if another backup is already running."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
         snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
@@ -623,7 +623,7 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.subprocess.check_output")
     @patch("charm.snap.SnapCache")
     def test_restore_wrong_cred(self, snap, output):
-        """Verifies backup is fails if the credentials are incorrect."""
+        """Verifies restore is fails if the credentials are incorrect."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
         snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
@@ -642,7 +642,7 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.MongoDBBackups._get_pbm_status")
     @patch("charm.snap.SnapCache")
     def test_restore_failed(self, snap, pbm_status, output):
-        """Verifies backup is fails if the pbm command failed."""
+        """Verifies restore is fails if the pbm command failed."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
         snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
