@@ -27,7 +27,7 @@ MONGOD_SERVICE_DEFAULT_PATH = "/etc/systemd/system/mongod.service"
 RESTART_OPTIONS = ["Restart=always\n", "RestartSec=5s\n"]
 # limits ensure that the process will not continuously retry to restart if it continuously fails to
 # restart.
-RESTARTING_LIMITS = ["StartLimitIntervalSec=500\n", "StartLimitBurst=5\n"]
+RESTARTING_LIMITS = ["StartLimitIntervalSec=500s\n", "StartLimitBurst=5\n"]
 
 MONGO_USER = "mongodb"
 MONGO_DATA_DIR = "/data/db"
@@ -109,8 +109,6 @@ def add_self_healing(service_lines):
         if "[Unit]" in line:
             service_lines.insert(index + 1, RESTARTING_LIMITS[0])
             service_lines.insert(index + 1, RESTARTING_LIMITS[1])
-
-        if "[Service]" in line:
             service_lines.insert(index + 1, RESTART_OPTIONS[0])
             service_lines.insert(index + 1, RESTART_OPTIONS[1])
 

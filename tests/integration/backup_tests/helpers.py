@@ -1,7 +1,6 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 import os
-
 import ops
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_attempt, wait_fixed
@@ -12,6 +11,18 @@ TIMEOUT = 10 * 60
 
 async def destory_cluster(ops_test: OpsTest, cluster_name: str) -> None:
     """Destroy the cluster and wait for its removal."""
+    units = ops_test.model.applications[cluster_name].units
+    # best practice to scale down before removing the entire cluster. Wait for cluster to settle
+    # removing the next
+    for i in range(0, len(units[:-1])):
+        await units[i].remove()
+        await ops_test.model.block_until(
+            lambda: len(ops_test.model.applications[cluster_name].units) == len(units) - i - 1,
+            timeout=TIMEOUT,
+        )
+        ops_test.model.wait_for_idle(apps=[cluster_name], status="active")
+
+    # now that the cluster only has one unit left we can remove the application from Juju
     await ops_test.model.applications[cluster_name].destroy()
 
     # verify there are no more units.
