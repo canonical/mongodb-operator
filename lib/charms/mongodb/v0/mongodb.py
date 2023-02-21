@@ -264,8 +264,6 @@ class MongoDBConnection:
             raise NotReadyError
 
         # avoid downtime we need to reelect new primary if removable member is the primary.
-        # However it is impossible to step down if this is a single node replica set, skip
-        # if there are no other planned replicas.
         logger.debug("primary: %r", self._is_primary(rs_status, hostname))
         if self._is_primary(rs_status, hostname):
             self.client.admin.command("replSetStepDown", {"stepDownSecs": "60"})

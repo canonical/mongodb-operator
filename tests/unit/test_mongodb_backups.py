@@ -577,3 +577,85 @@ class TestMongoBackups(unittest.TestCase):
         self.assertEqual(failed_backup, "2000-02-14T14:09:43Z  | logical      | finished")
         inprogress_backup = formatted_output[4]
         self.assertEqual(inprogress_backup, "2023-02-14T17:06:38Z  | logical      | in progress")
+
+    def test_restore_without_rel(self):
+        """Verifies no restores are attempted without s3 relation."""
+        action_event = mock.Mock()
+        action_event.params = {"backup-id": "back-me-up"}
+
+        self.harness.charm.backups._on_restore_action(action_event)
+        action_event.fail.assert_called()
+
+    @patch("charm.subprocess.check_output")
+    @patch("charm.snap.SnapCache")
+    def test_restore_syncing(self, snap, output):
+        """Verifies restore is deferred if more time is needed to resync."""
+        mock_pbm_snap = mock.Mock()
+        mock_pbm_snap.present = True
+        snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
+
+        action_event = mock.Mock()
+        action_event.params = {"backup-id": "back-me-up"}
+        output.return_value = b"Currently running:\n====\nResync op"
+
+        self.harness.add_relation(RELATION_NAME, "s3-integrator")
+        self.harness.charm.backups._on_restore_action(action_event)
+
+        action_event.defer.assert_called()
+
+    @patch("charm.subprocess.check_output")
+    @patch("charm.snap.SnapCache")
+    def test_restore_running_backup(self, snap, output):
+        """Verifies restore is fails if another backup is already running."""
+        mock_pbm_snap = mock.Mock()
+        mock_pbm_snap.present = True
+        snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
+
+        action_event = mock.Mock()
+        action_event.params = {"backup-id": "back-me-up"}
+        output.return_value = b"Currently running:\n====\nSnapshot backup"
+
+        self.harness.add_relation(RELATION_NAME, "s3-integrator")
+        self.harness.charm.backups._on_restore_action(action_event)
+
+        action_event.fail.assert_called()
+
+    @patch("charm.subprocess.check_output")
+    @patch("charm.snap.SnapCache")
+    def test_restore_wrong_cred(self, snap, output):
+        """Verifies restore is fails if the credentials are incorrect."""
+        mock_pbm_snap = mock.Mock()
+        mock_pbm_snap.present = True
+        snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
+
+        action_event = mock.Mock()
+        action_event.params = {"backup-id": "back-me-up"}
+        output.side_effect = CalledProcessError(
+            cmd="percona-backup-mongodb status", returncode=403, output=b"status code: 403"
+        )
+
+        self.harness.add_relation(RELATION_NAME, "s3-integrator")
+        self.harness.charm.backups._on_restore_action(action_event)
+        action_event.fail.assert_called()
+
+    @patch("charm.subprocess.check_output")
+    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.snap.SnapCache")
+    def test_restore_failed(self, snap, pbm_status, output):
+        """Verifies restore is fails if the pbm command failed."""
+        mock_pbm_snap = mock.Mock()
+        mock_pbm_snap.present = True
+        snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
+
+        action_event = mock.Mock()
+        action_event.params = {"backup-id": "back-me-up"}
+        pbm_status.return_value = ActiveStatus("")
+
+        output.side_effect = CalledProcessError(
+            cmd="percona-backup-mongodb backup", returncode=42, output=b"failed"
+        )
+
+        self.harness.add_relation(RELATION_NAME, "s3-integrator")
+        self.harness.charm.backups._on_restore_action(action_event)
+
+        action_event.fail.assert_called()
