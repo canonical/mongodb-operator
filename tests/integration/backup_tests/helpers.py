@@ -7,24 +7,18 @@ from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_attempt, wait_fixed
 
 S3_APP_NAME = "s3-integrator"
-TIMEOUT = 15 * 60
+TIMEOUT = 10 * 60
 
 
 async def destory_cluster(ops_test: OpsTest, cluster_name: str) -> None:
     """Destroy the cluster and wait for its removal."""
     await ops_test.model.applications[cluster_name].destroy()
 
-    # verify there are no more units. Python libs juju cannot
-    try:
-        for attempt in Retrying(stop=stop_after_attempt(TIMEOUT / 10), wait=wait_fixed(10)):
-            with attempt:
-                assert (
-                    cluster_name not in ops_test.model.applications
-                ), f"db {cluster_name} is still available with {len(ops_test.model.applications[cluster_name].units)} units"
-    except RetryError:
-        assert (
-            cluster_name not in ops_test.model.applications
-        ), f"db {cluster_name} is still available with {len(ops_test.model.applications[cluster_name].units)} units"
+    # verify there are no more units.
+    await ops_test.model.block_until(
+        lambda: cluster_name not in ops_test.model.applications,
+        timeout=TIMEOUT,
+    )
 
 
 async def create_and_verify_backup(ops_test: OpsTest) -> None:

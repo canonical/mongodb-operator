@@ -146,6 +146,14 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         If the removing unit is primary also allow it to step down and elect another unit as
         primary while it still has access to its storage.
         """
+        # if we are removing the last replica it will not be able to step down as primary and we
+        # cannot reconfigure the replica set to have 0 members- to prevent retrying for 10 minutes
+        # set this flag to True. please note that planned_units will always be >=1. When planned
+        # units is 1 that means there are no other peers expected.
+        single_node_replica_set = self.app.planned_units() == 1 and len(self._peers.units) == 0
+        if single_node_replica_set:
+            return
+
         try:
             # retries over a period of 10 minutes in an attempt to resolve race conditions it is
             # not possible to defer in storage detached.
