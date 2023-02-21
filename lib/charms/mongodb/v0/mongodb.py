@@ -263,8 +263,7 @@ class MongoDBConnection:
             # before giving up.
             raise NotReadyError
 
-        # avoid downtime we need to reelect new primary
-        # if removable member is the primary.
+        # avoid downtime we need to reelect new primary if removable member is the primary.
         logger.debug("primary: %r", self._is_primary(rs_status, hostname))
         if self._is_primary(rs_status, hostname):
             self.client.admin.command("replSetStepDown", {"stepDownSecs": "60"})
