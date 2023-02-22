@@ -270,7 +270,8 @@ async def test_restore(ops_test: OpsTest, add_writes_to_db) -> None:
     except RetryError:
         assert backups == prev_backups + 1, "Backup not created."
 
-    # add writes to be cleared after restoring the backup.
+    # add writes to be cleared after restoring the backup. Note these are written to the same
+    # collection that was backed up.
     await helpers.insert_unwanted_data(ops_test)
     new_number_of_writes = await ha_helpers.count_writes(ops_test)
     assert new_number_of_writes > number_writes, "No writes to be cleared after restoring."
@@ -334,7 +335,7 @@ async def test_restore_new_cluster(ops_test: OpsTest, add_writes_to_db, cloud_pr
 
     # remove the old cluster and make a new cluster with the same name. Backups with PBM are
     # incompatible if their cluster names differ.
-    await helpers.destory_cluster(ops_test, db_app_name)
+    await helpers.destroy_cluster(ops_test, db_app_name)
 
     db_charm = await ops_test.build_charm(".")
     await ops_test.model.deploy(db_charm, num_units=3, application_name=db_app_name)

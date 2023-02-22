@@ -13,7 +13,7 @@ S3_APP_NAME = "s3-integrator"
 TIMEOUT = 10 * 60
 
 
-async def destory_cluster(ops_test: OpsTest, cluster_name: str) -> None:
+async def destroy_cluster(ops_test: OpsTest, cluster_name: str) -> None:
     """Destroy the cluster and wait for its removal."""
     units = ops_test.model.applications[cluster_name].units
     # best practice to scale down before removing the entire cluster. Wait for cluster to settle
