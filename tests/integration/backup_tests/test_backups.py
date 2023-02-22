@@ -270,10 +270,10 @@ async def test_restore(ops_test: OpsTest, add_writes_to_db) -> None:
     except RetryError:
         assert backups == prev_backups + 1, "Backup not created."
 
-    # clear writes
-    assert number_writes > 0, "no writes backed up"
-    await ha_helpers.clear_db_writes(ops_test)
-    assert await ha_helpers.count_writes(ops_test) == 0, "writes not cleared from db."
+    # add writes to be cleared after restoring the backup.
+    await helpers.insert_unwanted_data(ops_test)
+    new_number_of_writes = await ha_helpers.count_writes(ops_test)
+    assert new_number_of_writes > number_writes, "No writes to be cleared after restoring."
 
     # find most recent backup id and restore
     action = await db_unit.run_action(action_name="list-backups")

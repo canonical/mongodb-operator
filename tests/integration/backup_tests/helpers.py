@@ -3,8 +3,11 @@
 import os
 
 import ops
+from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_attempt, wait_fixed
+
+import tests.integration.ha_tests.helpers as ha_helpers
 
 S3_APP_NAME = "s3-integrator"
 TIMEOUT = 10 * 60
@@ -116,3 +119,18 @@ def is_relation_joined(ops_test: OpsTest, endpoint_one: str, endpoint_two: str) 
         if endpoint_one in endpoints and endpoint_two in endpoints:
             return True
     return False
+
+
+async def insert_unwanted_data(ops_test: OpsTest) -> None:
+    """Inserts the data into the MongoDB cluster via primary replica."""
+    app = await app_name(ops_test)
+    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
+    primary = (await ha_helpers.replica_set_primary(ip_addresses, ops_test)).public_address
+    password = await ha_helpers.get_password(ops_test, app)
+    client = MongoClient(ha_helpers.unit_uri(primary, password, app), directConnection=True)
+    db = client["new-db"]
+    test_collection = db["test_collection"]
+    test_collection.insert_one({"unwanted_data": "bad data 1"})
+    test_collection.insert_one({"unwanted_data": "bad data 2"})
+    test_collection.insert_one({"unwanted_data": "bad data 3"})
+    client.close()
