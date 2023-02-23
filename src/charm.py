@@ -624,6 +624,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 logger.info("User initialization")
                 self._init_admin_user()
                 self._init_backup_user()
+                self._init_monitor_user()
                 logger.info("Manage relations")
                 self.client_relations.oversee_users(None, None)
             except subprocess.CalledProcessError as e:
@@ -747,6 +748,23 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         )
 
     @property
+    def mongodb_config(self) -> MongoDBConfiguration:
+        """Generates a MongoDBConfiguration object for this deployment of MongoDB."""
+        if not self.charm.get_secret("app", "monitor-password"):
+            self.charm.set_secret("app", "monitor-password", generate_password())
+
+        return MongoDBConfiguration(
+            replset=self.app.name,
+            database="",
+            username="monitor",
+            password=self.get_secret("app", "monitor-password"),
+            hosts=set(self._unit_ips),
+            roles={"monitor"},
+            tls_external=self.tls.get_tls_files("unit") is not None,
+            tls_internal=self.tls.get_tls_files("app") is not None,
+        )
+
+    @property
     def unit_peer_data(self) -> Dict:
         """Peer relation data object."""
         relation = self.model.get_relation(PEER)
@@ -802,6 +820,22 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         logger.debug("User created")
         self.app_peer_data["user_created"] = "True"
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(5),
+        reraise=True,
+        before=before_log(logger, logging.DEBUG),
+    )
+    def _init_monitor_user(self):
+        """Creates the monitor user on the MongoDB database."""
+        if "monitor_user_created" in self.app_peer_data:
+            return
+
+        with MongoDBConnection(self.mongodb_config) as mongo:
+            logger.debug("creating the monitor user...")
+            mongo.create_user(self._monitioring_config)
+            self.app_peer_data["monitor_user_created"] = "True"
 
     @retry(
         stop=stop_after_attempt(3),
