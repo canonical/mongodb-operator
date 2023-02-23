@@ -168,7 +168,7 @@ async def test_set_password_action(ops_test: OpsTest) -> None:
 
 
 async def test_monitor_user(ops_test: OpsTest) -> None:
-    """Test verifies that the monitor user can perform operations such as 'rs.conf()'"""
+    """Test verifies that the monitor user can perform operations such as 'rs.conf()'."""
     unit = ops_test.model.applications[APP_NAME].units[0]
     password = await get_password(ops_test, "mongodb", "monitor")
     replica_set_hosts = [
