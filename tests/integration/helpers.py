@@ -40,7 +40,7 @@ async def get_password(ops_test: OpsTest, app=APP_NAME, username="operator") -> 
         "get-password", **{"username": username}
     )
     action = await action.wait()
-    return action.results[f"{username}-password"]
+    return action.results["password"]
 
 
 @retry(

@@ -445,7 +445,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             )
             return
 
-        event.set_results({f"{username}-password": self.get_secret("app", f"{username}-password")})
+        event.set_results({"password": self.get_secret("app", f"{username}-password")})
 
     def _on_set_password(self, event: ops.charm.ActionEvent) -> None:
         """Set the password for the admin user."""
@@ -479,7 +479,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 return
 
         self.set_secret("app", f"{username}-password", new_password)
-        event.set_results({f"{username}-password": new_password})
+        event.set_results({"password": new_password})
 
     def _open_port_tcp(self, port: int) -> None:
         """Open the given port.
