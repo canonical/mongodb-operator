@@ -26,7 +26,7 @@ def unit_uri(ip_address: str, password, app=APP_NAME) -> str:
     return f"mongodb://operator:" f"{password}@" f"{ip_address}:{PORT}/admin?replicaSet={app}"
 
 
-async def get_password(ops_test: OpsTest, app=APP_NAME) -> str:
+async def get_password(ops_test: OpsTest, app=APP_NAME, username="operator") -> str:
     """Use the charm action to retrieve the password from provided unit.
 
     Returns:
@@ -36,9 +36,11 @@ async def get_password(ops_test: OpsTest, app=APP_NAME) -> str:
     unit_name = ops_test.model.applications[app].units[0].name
     unit_id = unit_name.split("/")[1]
 
-    action = await ops_test.model.units.get(f"{app}/{unit_id}").run_action("get-password")
+    action = await ops_test.model.units.get(f"{app}/{unit_id}").run_action(
+        "get-password", **{"username": username}
+    )
     action = await action.wait()
-    return action.results["operator-password"]
+    return action.results[f"{username}-password"]
 
 
 @retry(

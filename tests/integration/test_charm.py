@@ -167,6 +167,22 @@ async def test_set_password_action(ops_test: OpsTest) -> None:
         client.close()
 
 
+async def test_monitor_user(ops_test: OpsTest) -> None:
+    """Test verifies that the monitor user can perform operations such as 'rs.conf()'"""
+    unit = ops_test.model.applications[APP_NAME].units[0]
+    password = await get_password(ops_test, "mongodb", "monitor")
+    replica_set_hosts = [
+        unit.public_address for unit in ops_test.model.applications["mongodb"].units
+    ]
+    hosts = ",".join(replica_set_hosts)
+    replica_set_uri = f"mongodb://monitor:{password}@{hosts}/admin?replicaSet=mongodb"
+
+    admin_mongod_cmd = f"mongo '{replica_set_uri}'  --eval 'rs.conf()'"
+    check_monitor_cmd = f"run --unit {unit.name} -- {admin_mongod_cmd}"
+    return_code, _, _ = await ops_test.juju(*check_monitor_cmd.split())
+    assert return_code == 0, "command rs.conf() on monitor user does not work"
+
+
 async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
     """Tests that there is exactly one replica set primary unit reported by juju."""
 
