@@ -331,6 +331,11 @@ class MongoDBConnection:
                 {"role": "readWriteAnyDatabase", "db": "admin"},
                 {"role": "userAdmin", "db": "admin"},
             ],
+            "monitor": [
+                {"role": "explainRole", "db": "admin"},
+                {"role": "clusterMonitor", "db": "admin"},
+                {"role": "read", "db": "local"},
+            ],
             "backup": [
                 {"db": "admin", "role": "readWrite", "collection": ""},
                 {"db": "admin", "role": "backup"},
