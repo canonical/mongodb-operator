@@ -11,6 +11,7 @@ import json
 import logging
 import subprocess
 import time
+import re
 from typing import Dict
 
 from charms.data_platform_libs.v0.s3 import CredentialsChangedEvent, S3Requirer
@@ -56,6 +57,8 @@ S3_PBM_OPTION_MAP = {
     "storage-class": "storage.s3.storageClass",
 }
 S3_RELATION = "s3-credentials"
+REMAPPING_PATTERN = r"[\[]incompatible: Backup doesn't match current cluster topology - it has different replica set names. Extra shards in the backup will cause this, for a simple example. The extra/unknown replica set names found in the backup are: [^,\s]+([.] Backup has no data for the config server or sole replicaset)?[\]]"
+IDENTIFY_CLUSTER_NAME = r"incompatible: Backup doesn't match current cluster topology - it has different replica set names. Extra shards in the backup will cause this, for a simple example. The extra/unknown replica set names found in the backup are: (.*?). Backup has no data for the config server or sole replicaset"
 
 
 class ResyncError(Exception):
@@ -361,8 +364,12 @@ class MongoDBBackups(Object):
             return
 
         try:
+
+            remapping_args = self._remap_replicaset(backup_id)
             subprocess.check_output(
-                f"percona-backup-mongodb restore {backup_id}", shell=True, stderr=subprocess.STDOUT
+                f"percona-backup-mongodb restore {backup_id} {remapping_args}",
+                shell=True,
+                stderr=subprocess.STDOUT,
             )
             event.set_results({"restore-status": "restore started"})
             self.charm.unit.status = MaintenanceStatus("restore started/running")
@@ -376,6 +383,50 @@ class MongoDBBackups(Object):
 
             event.fail(f"Failed to restore MongoDB with error: {str(e)}")
             return
+
+    def _backup_from_different_cluster(self, backup_status: str) -> bool:
+        """Returns if a given backup was made on a different cluster."""
+        return re.search(REMAPPING_PATTERN, backup_status) is not None
+
+    def _remap_replicaset(self, backup_id: str) -> str:
+        """Returns options for remapping a replica set during a cluster migration restore.
+
+        Args:
+            backup_id: str of the backup to check for remapping
+
+        Raises: CalledProcessError
+        """
+        pbm_status = subprocess.check_output(
+            "percona-backup-mongodb status --out=json", shell=True, stderr=subprocess.STDOUT
+        )
+        pbm_status = json.loads(pbm_status.decode("utf-8"))
+
+        # grab the error status from the backup if present
+        backups = pbm_status["backups"]["snapshot"] or []
+        for backup in backups:
+            if not backup_id == backup["name"]:
+                continue
+
+            if "error" not in backup:
+                backup_status = ""
+                break
+
+            backup_status = backup["error"] or ""
+            break
+
+        if not self._backup_from_different_cluster(backup_status):
+            return ""
+
+        # TODO in the future when we support conf servers and shards this will need to be more
+        # comprehensive.
+        old_cluster_name = re.search(IDENTIFY_CLUSTER_NAME, backup_status).group(1)
+        current_cluster_name = self.charm.app.name
+        logger.debug(
+            "Replica set remapping is necessary for restore, old cluster name: %s ; new cluster name: %s",
+            old_cluster_name,
+            current_cluster_name,
+        )
+        return f"--replset-remapping {current_cluster_name}={old_cluster_name}"
 
     def _generate_backup_list_output(self) -> str:
         """Generates a list of backups in a formatted table.
