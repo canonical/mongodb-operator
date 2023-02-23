@@ -59,6 +59,12 @@ jobs:
           provider: lxd
       - name: Run charm integration tests
         run: tox -e charm-integration
+      - name: Upload charmcraft logs
+        uses: actions/upload-artifact@v2
+        with:
+          name: charmcraft-logs
+          path: /home/runner/.local/state/charmcraft/log/charmcraft-log-*
+        if: failure()
 
   ha-integration-test-lxd:
     name: HA integration tests (lxd)
@@ -76,6 +82,12 @@ jobs:
           provider: lxd
       - name: Run ha integration tests
         run: tox -e ha-integration
+      - name: Upload charmcraft logs
+        uses: actions/upload-artifact@v2
+        with:
+          name: charmcraft-logs
+          path: /home/runner/.local/state/charmcraft/log/charmcraft-log-*
+        if: failure()
 
   relation-integration-test-lxd:
     name: Relation integration tests (lxd)
@@ -93,6 +105,12 @@ jobs:
           provider: lxd
       - name: Run relation integration tests
         run: tox -e relation-integration
+      - name: Upload charmcraft logs
+        uses: actions/upload-artifact@v2
+        with:
+          name: charmcraft-logs
+          path: /home/runner/.local/state/charmcraft/log/charmcraft-log-*
+        if: failure()
 
   legacy-relation-integration-test-lxd:
     name: Legacay relation integration tests (lxd)
@@ -110,6 +128,12 @@ jobs:
           provider: lxd
       - name: Run legacy relation integration tests
         run: tox -e legacy-integration
+      - name: Upload charmcraft logs
+        uses: actions/upload-artifact@v2
+        with:
+          name: charmcraft-logs
+          path: /home/runner/.local/state/charmcraft/log/charmcraft-log-*
+        if: failure()
 
   tls-integration-test-lxd:
     name: TLS integration tests (lxd)
@@ -127,6 +151,12 @@ jobs:
           provider: lxd
       - name: Run tls integration tests
         run: tox -e tls-integration
+      - name: Upload charmcraft logs
+        uses: actions/upload-artifact@v2
+        with:
+          name: charmcraft-logs
+          path: /home/runner/.local/state/charmcraft/log/charmcraft-log-*
+        if: failure()
 
   backup-integration-test-lxd:
     name: Backup integration tests (lxd)
@@ -149,3 +179,9 @@ jobs:
           AWS_SECRET_KEY: "${{ secrets.AWS_SECRET_KEY }}"
           GCP_ACCESS_KEY: "${{ secrets.GCP_ACCESS_KEY }}"
           GCP_SECRET_KEY: "${{ secrets.GCP_SECRET_KEY }}"
+      - name: Upload charmcraft logs
+        uses: actions/upload-artifact@v2
+        with:
+          name: charmcraft-logs
+          path: /home/runner/.local/state/charmcraft/log/charmcraft-log-*
+        if: failure()
