@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 # systemd gives files in /etc/systemd/system/ precedence over those in /lib/systemd/system/ hence
 # our changed file in /etc will be read while maintaining the original one in /lib.
-MONGOD_SERVICE_UPSTREAM_PATH = "/lib/systemd/system/snap.charmed-mongodb.mongod.service"
+# MONGOD_SERVICE_UPSTREAM_PATH = "/lib/systemd/system/snap.charmed-mongodb.mongod.service"
 MONGOD_SERVICE_DEFAULT_PATH = "/etc/systemd/system/snap.charmed-mongodb.mongod.service"
 
 # restart options specify that systemd should attempt to restart the service on failure.
@@ -48,7 +48,7 @@ def start_with_auth(path):
 
 def update_mongod_service(auth: bool, machine_ip: str, config: MongoDBConfiguration) -> None:
     """Updates the mongod service file with the new options for starting."""
-    with open(MONGOD_SERVICE_UPSTREAM_PATH, "r") as mongodb_service_file:
+    with open(MONGOD_SERVICE_DEFAULT_PATH, "r") as mongodb_service_file:
         mongodb_service = mongodb_service_file.readlines()
 
     # replace start command with our parameterized one
@@ -69,8 +69,8 @@ def update_mongod_service(auth: bool, machine_ip: str, config: MongoDBConfigurat
     mongodb_user = pwd.getpwnam(MONGO_USER)
     os.chown(MONGO_DATA_DIR, mongodb_user.pw_uid, mongodb_user.pw_gid)
 
-    # # changes to service files are only applied after reloading
-    # systemd.daemon_reload()
+    # changes to service files are only applied after reloading, this is needed even for snaps
+    systemd.daemon_reload()
 
 
 def add_self_healing(service_lines):

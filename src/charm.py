@@ -47,7 +47,6 @@ from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
 from machine_helpers import (
     MONGOD_SERVICE_DEFAULT_PATH,
-    MONGOD_SERVICE_UPSTREAM_PATH,
     push_file_to_unit,
     start_with_auth,
     update_mongod_service,
@@ -326,7 +325,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self.unit.status = MaintenanceStatus("starting MongoDB")
             snap_cache = snap.SnapCache()
             mongodb_snap = snap_cache["charmed-mongodb"]
-            mongodb_snap.restart(services=["mongod"])
+            mongodb_snap.start(services=["mongod"])
             self.unit.status = ActiveStatus()
         except snap.SnapError as e:
             logger.error("An exception occurred when starting mongod agent, error: %s.", str(e))
@@ -368,15 +367,20 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # being able to start the process at all. If this is the case we need to restart the
         # process ourselves. We defer to give it time to get started before reporting its
         # status.
-        with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
-            if not direct_mongo.is_ready:
-                logger.debug("mongodb service is not ready yet, restarting.")
-                self.restart_mongod_service()
-                # ensure that the correct port is open for the service
-                self._open_port_tcp(self._port)
-                self.unit.status = WaitingStatus("Waiting for MongoDB to start")
-                event.defer()
-                return
+        try:
+            with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
+                if not direct_mongo.is_ready:
+                    logger.debug("mongodb service is not ready yet, restarting.")
+                    self.restart_mongod_service()
+                    # ensure that the correct port is open for the service
+                    self._open_port_tcp(self._port)
+                    self.unit.status = WaitingStatus("Waiting for MongoDB to start")
+                    event.defer()
+                    return
+        except snap.SnapError as e:
+            logger.error("An exception occurred when starting mongod agent, error: %s.", str(e))
+            self.unit.status = BlockedStatus("couldn't start MongoDB")
+            return
 
         # no need to report on replica set status until initialised
         if "db_initialised" not in self.app_peer_data:
@@ -837,7 +841,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 self._unit_ip(self.unit),
                 config=self.mongodb_config,
             )
-            mongodb_snap.restart(services=["mongod"])
+            mongodb_snap.start(services=["mongod"])
         except snap.SnapError as e:
             logger.error("An exception occurred when starting mongod agent, error: %s.", str(e))
             self.unit.status = BlockedStatus("couldn't start MongoDB")
@@ -846,15 +850,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
     def auth_enabled(self) -> bool:
         """Checks if mongod service is has auth enabled for the current unit."""
         # if there are no service files then auth is not enabled
-        if not os.path.exists(MONGOD_SERVICE_UPSTREAM_PATH) and not os.path.exists(
-            MONGOD_SERVICE_DEFAULT_PATH
-        ):
-            return False
-
-        # The default file has previority over the upstream, but when the default file doesn't
-        # exist then the upstream configurations are used.
         if not os.path.exists(MONGOD_SERVICE_DEFAULT_PATH):
-            return start_with_auth(MONGOD_SERVICE_UPSTREAM_PATH)
+            return False
 
         return start_with_auth(MONGOD_SERVICE_DEFAULT_PATH)
 
