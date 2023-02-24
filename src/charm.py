@@ -49,9 +49,7 @@ from machine_helpers import (
     MONGOD_SERVICE_DEFAULT_PATH,
     MONGOD_SERVICE_UPSTREAM_PATH,
     push_file_to_unit,
-    start_mongod_service,
     start_with_auth,
-    stop_mongod_service,
     update_mongod_service,
 )
 
@@ -64,7 +62,7 @@ REPO_ENTRY = (
 )
 GPG_URL = "https://www.mongodb.org/static/pgp/server-5.0.asc"
 MONGO_EXEC_LINE = 10
-MONGO_USER = "mongodb"
+MONGO_USER = "snap_daemon"
 MONGO_DATA_DIR = "/data/db"
 PBM_PRIVILEGES = {"resource": {"anyResource": True}, "actions": ["anyAction"]}
 
@@ -326,9 +324,12 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         try:
             logger.debug("starting MongoDB.")
             self.unit.status = MaintenanceStatus("starting MongoDB")
-            start_mongod_service()
+            snap_cache = snap.SnapCache()
+            mongodb_snap = snap_cache["charmed-mongodb"]
+            mongodb_snap.restart(services=["mongod"])
             self.unit.status = ActiveStatus()
-        except systemd.SystemdError:
+        except snap.SnapError as e:
+            logger.error("An exception occurred when starting mongod agent, error: %s.", str(e))
             self.unit.status = BlockedStatus("couldn't start MongoDB")
             return
 
@@ -827,13 +828,20 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         if auth is None:
             auth = self.auth_enabled()
 
-        stop_mongod_service()
-        update_mongod_service(
-            auth,
-            self._unit_ip(self.unit),
-            config=self.mongodb_config,
-        )
-        start_mongod_service()
+        try:
+            snap_cache = snap.SnapCache()
+            mongodb_snap = snap_cache["charmed-mongodb"]
+            mongodb_snap.stop(services=["mongod"])
+            update_mongod_service(
+                auth,
+                self._unit_ip(self.unit),
+                config=self.mongodb_config,
+            )
+            mongodb_snap.restart(services=["mongod"])
+        except snap.SnapError as e:
+            logger.error("An exception occurred when starting mongod agent, error: %s.", str(e))
+            self.unit.status = BlockedStatus("couldn't start MongoDB")
+            return
 
     def auth_enabled(self) -> bool:
         """Checks if mongod service is has auth enabled for the current unit."""
