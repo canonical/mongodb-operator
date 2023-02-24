@@ -3,9 +3,63 @@
 import os
 
 import ops
+from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
+from tenacity import RetryError, Retrying, stop_after_attempt, wait_fixed
+
+import tests.integration.ha_tests.helpers as ha_helpers
 
 S3_APP_NAME = "s3-integrator"
+TIMEOUT = 10 * 60
+
+
+async def destroy_cluster(ops_test: OpsTest, cluster_name: str) -> None:
+    """Destroy the cluster and wait for its removal."""
+    units = ops_test.model.applications[cluster_name].units
+    # best practice to scale down before removing the entire cluster. Wait for cluster to settle
+    # removing the next
+    for i in range(0, len(units[:-1])):
+        await units[i].remove()
+        await ops_test.model.block_until(
+            lambda: len(ops_test.model.applications[cluster_name].units) == len(units) - i - 1,
+            timeout=TIMEOUT,
+        )
+        ops_test.model.wait_for_idle(apps=[cluster_name], status="active")
+
+    # now that the cluster only has one unit left we can remove the application from Juju
+    await ops_test.model.applications[cluster_name].destroy()
+
+    # verify there are no more units.
+    await ops_test.model.block_until(
+        lambda: cluster_name not in ops_test.model.applications,
+        timeout=TIMEOUT,
+    )
+
+
+async def create_and_verify_backup(ops_test: OpsTest) -> None:
+    """Creates and verifies that a backup was successfully created."""
+    db_unit = await get_leader_unit(ops_test)
+    prev_backups = await count_logical_backups(db_unit)
+    action = await db_unit.run_action(action_name="create-backup")
+    backup = await action.wait()
+    assert backup.status == "completed", "Backup not started."
+
+    # verify that backup was made on the bucket
+    try:
+        for attempt in Retrying(stop=stop_after_attempt(4), wait=wait_fixed(5)):
+            with attempt:
+                backups = await count_logical_backups(db_unit)
+                assert backups == prev_backups + 1, "Backup not created."
+    except RetryError:
+        assert backups == prev_backups + 1, "Backup not created."
+
+
+async def get_leader_unit(ops_test: OpsTest) -> ops.model.Unit:
+    """Returns the leader unit of the database charm."""
+    db_app_name = await app_name(ops_test)
+    for unit in ops_test.model.applications[db_app_name].units:
+        if await unit.is_leader_from_status():
+            return unit
 
 
 async def app_name(ops_test: OpsTest) -> str:
@@ -65,3 +119,18 @@ def is_relation_joined(ops_test: OpsTest, endpoint_one: str, endpoint_two: str) 
         if endpoint_one in endpoints and endpoint_two in endpoints:
             return True
     return False
+
+
+async def insert_unwanted_data(ops_test: OpsTest) -> None:
+    """Inserts the data into the MongoDB cluster via primary replica."""
+    app = await app_name(ops_test)
+    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
+    primary = (await ha_helpers.replica_set_primary(ip_addresses, ops_test)).public_address
+    password = await ha_helpers.get_password(ops_test, app)
+    client = MongoClient(ha_helpers.unit_uri(primary, password, app), directConnection=True)
+    db = client["new-db"]
+    test_collection = db["test_collection"]
+    test_collection.insert_one({"unwanted_data": "bad data 1"})
+    test_collection.insert_one({"unwanted_data": "bad data 2"})
+    test_collection.insert_one({"unwanted_data": "bad data 3"})
+    client.close()

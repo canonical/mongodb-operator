@@ -35,7 +35,7 @@ LIBPATCH = 4
 logger = logging.getLogger(__name__)
 
 # List of system usernames needed for correct work on the charm.
-CHARM_USERS = ["operator", "backup"]
+CHARM_USERS = ["operator", "backup", "monitor"]
 
 
 @dataclass
@@ -242,15 +242,13 @@ class MongoDBConnection:
         self.client.admin.command("replSetReconfig", rs_config["config"])
 
     @retry(
-        stop=stop_after_attempt(120),
-        wait=wait_fixed(5),
+        stop=stop_after_attempt(20),
+        wait=wait_fixed(3),
         reraise=True,
         before=before_log(logger, logging.DEBUG),
     )
     def remove_replset_member(self, hostname: str) -> None:
         """Remove member from replica set config inside MongoDB.
-
-        Retries up to ten minutes when failure occurs during removal.
 
         Raises:
             ConfigurationError, ConfigurationError, OperationFailure, NotReadyError
@@ -265,8 +263,7 @@ class MongoDBConnection:
             # before giving up.
             raise NotReadyError
 
-        # avoid downtime we need to reelect new primary
-        # if removable member is the primary.
+        # avoid downtime we need to reelect new primary if removable member is the primary.
         logger.debug("primary: %r", self._is_primary(rs_status, hostname))
         if self._is_primary(rs_status, hostname):
             self.client.admin.command("replSetStepDown", {"stepDownSecs": "60"})
@@ -333,6 +330,11 @@ class MongoDBConnection:
                 {"role": "userAdminAnyDatabase", "db": "admin"},
                 {"role": "readWriteAnyDatabase", "db": "admin"},
                 {"role": "userAdmin", "db": "admin"},
+            ],
+            "monitor": [
+                {"role": "explainRole", "db": "admin"},
+                {"role": "clusterMonitor", "db": "admin"},
+                {"role": "read", "db": "local"},
             ],
             "backup": [
                 {"db": "admin", "role": "readWrite", "collection": ""},

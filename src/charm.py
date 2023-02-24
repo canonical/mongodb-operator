@@ -43,7 +43,7 @@ from ops.model import (
     Relation,
     WaitingStatus,
 )
-from tenacity import before_log, retry, stop_after_attempt, wait_fixed
+from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
 from machine_helpers import (
     MONGOD_SERVICE_DEFAULT_PATH,
@@ -67,6 +67,10 @@ MONGO_EXEC_LINE = 10
 MONGO_USER = "mongodb"
 MONGO_DATA_DIR = "/data/db"
 PBM_PRIVILEGES = {"resource": {"anyResource": True}, "actions": ["anyAction"]}
+MONITOR_PRIVILEGES = {
+    "resource": {"db": "", "collection": ""},
+    "actions": ["listIndexes", "listCollections", "dbStats", "dbHash", "collStats", "find"],
+}
 
 # We expect the MongoDB container to use the default ports
 MONGODB_PORT = 27017
@@ -146,12 +150,27 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         If the removing unit is primary also allow it to step down and elect another unit as
         primary while it still has access to its storage.
         """
+        # if we are removing the last replica it will not be able to step down as primary and we
+        # cannot reconfigure the replica set to have 0 members. To prevent retrying for 10 minutes
+        # set this flag to True. please note that planned_units will always be >=1. When planned
+        # units is 1 that means there are no other peers expected.
+        single_node_replica_set = self.app.planned_units() == 1 and len(self._peers.units) == 0
+        if single_node_replica_set:
+            return
+
         try:
-            # remove_replset_member retries for ten minutes in an attempt to resolve race
-            # conditions it is not possible to defer in storage detached.
-            with MongoDBConnection(self.mongodb_config) as mongo:
-                logger.debug("Removing %s from replica set", self._unit_ip(self.unit))
-                mongo.remove_replset_member(self._unit_ip(self.unit))
+            # retries over a period of 10 minutes in an attempt to resolve race conditions it is
+            # not possible to defer in storage detached.
+            logger.debug("Removing %s from replica set", self._unit_ip(self.unit))
+            for attempt in Retrying(
+                stop=stop_after_attempt(10),
+                wait=wait_fixed(1),
+                reraise=True,
+            ):
+                with attempt:
+                    # remove_replset_member retries for 60 seconds
+                    with MongoDBConnection(self.mongodb_config) as mongo:
+                        mongo.remove_replset_member(self._unit_ip(self.unit))
         except NotReadyError:
             logger.info(
                 "Failed to remove %s from replica set, another member is syncing", self.unit.name
@@ -356,6 +375,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             if not direct_mongo.is_ready:
                 logger.debug("mongodb service is not ready yet, restarting.")
                 self.restart_mongod_service()
+                # ensure that the correct port is open for the service
+                self._open_port_tcp(self._port)
                 self.unit.status = WaitingStatus("Waiting for MongoDB to start")
                 event.defer()
                 return
@@ -424,7 +445,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             )
             return
 
-        event.set_results({f"{username}-password": self.get_secret("app", f"{username}-password")})
+        event.set_results({"password": self.get_secret("app", f"{username}-password")})
 
     def _on_set_password(self, event: ops.charm.ActionEvent) -> None:
         """Set the password for the admin user."""
@@ -458,7 +479,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 return
 
         self.set_secret("app", f"{username}-password", new_password)
-        event.set_results({f"{username}-password": new_password})
+        event.set_results({"password": new_password})
 
     def _open_port_tcp(self, port: int) -> None:
         """Open the given port.
@@ -607,6 +628,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 logger.info("User initialization")
                 self._init_admin_user()
                 self._init_backup_user()
+                self._init_monitor_user()
                 logger.info("Manage relations")
                 self.client_relations.oversee_users(None, None)
             except subprocess.CalledProcessError as e:
@@ -730,6 +752,23 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         )
 
     @property
+    def monitor_config(self) -> MongoDBConfiguration:
+        """Generates a MongoDBConfiguration object for this deployment of MongoDB."""
+        if not self.get_secret("app", "monitor-password"):
+            self.set_secret("app", "monitor-password", generate_password())
+
+        return MongoDBConfiguration(
+            replset=self.app.name,
+            database="",
+            username="monitor",
+            password=self.get_secret("app", "monitor-password"),
+            hosts=set(self._unit_ips),
+            roles={"monitor"},
+            tls_external=self.tls.get_tls_files("unit") is not None,
+            tls_internal=self.tls.get_tls_files("app") is not None,
+        )
+
+    @property
     def unit_peer_data(self) -> Dict:
         """Peer relation data object."""
         relation = self.model.get_relation(PEER)
@@ -785,6 +824,24 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         logger.debug("User created")
         self.app_peer_data["user_created"] = "True"
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(5),
+        reraise=True,
+        before=before_log(logger, logging.DEBUG),
+    )
+    def _init_monitor_user(self):
+        """Creates the monitor user on the MongoDB database."""
+        if "monitor_user_created" in self.app_peer_data:
+            return
+
+        with MongoDBConnection(self.mongodb_config) as mongo:
+            logger.debug("creating the monitor user roles...")
+            mongo.create_role(role_name="explainRole", privileges=MONITOR_PRIVILEGES)
+            logger.debug("creating the monitor user...")
+            mongo.create_user(self.monitor_config)
+            self.app_peer_data["monitor_user_created"] = "True"
 
     @retry(
         stop=stop_after_attempt(3),

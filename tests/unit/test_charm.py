@@ -10,6 +10,7 @@ from charms.operator_libs_linux.v1 import snap, systemd
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from ops.testing import Harness
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
+from tenacity import stop_after_attempt
 
 from charm import MongodbOperatorCharm, NotReadyError, URLError, apt, subprocess
 
@@ -622,7 +623,8 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongodbOperatorCharm.restart_mongod_service")
-    def test_update_status_not_ready(self, restart, connection):
+    @patch("charm.MongodbOperatorCharm._open_port_tcp")
+    def test_update_status_not_ready(self, tcp, restart, connection):
         """Tests that if mongod is not running on this unit it restarts it."""
         connection.return_value.__enter__.return_value.is_ready = False
 
@@ -688,14 +690,18 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    def test_storage_detaching_failure_does_not_defer(self, connection):
+    @patch("charm.stop_after_attempt")
+    def test_storage_detaching_failure_does_not_defer(self, retry_stop, connection):
         """Test that failure in removing replica does not defer the hook.
 
         Deferring Storage Detached hooks can result in un-predicable behavior and while it is
         technically possible to defer the event, it shouldn't be. This test verifies that no
         attempt to defer storage detached as made.
         """
-        for exception in [PYMONGO_EXCEPTIONS, NotReadyError]:
+        retry_stop.return_value = stop_after_attempt(1)
+        exceptions = PYMONGO_EXCEPTIONS
+        exceptions.append(NotReadyError)
+        for exception in exceptions:
             connection.return_value.__enter__.return_value.remove_replset_member.side_effect = (
                 exception
             )
@@ -751,7 +757,7 @@ class TestCharm(unittest.TestCase):
 
         # verify app data is updated and results are reported to user
         self.assertNotEqual(original_password, new_password)
-        action_event.set_results.assert_called_with({"operator-password": new_password})
+        action_event.set_results.assert_called_with({"password": new_password})
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
@@ -765,7 +771,7 @@ class TestCharm(unittest.TestCase):
 
         # verify app data is updated and results are reported to user
         self.assertEqual("canonical123", new_password)
-        action_event.set_results.assert_called_with({"operator-password": "canonical123"})
+        action_event.set_results.assert_called_with({"password": "canonical123"})
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
