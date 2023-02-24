@@ -5,6 +5,14 @@ on:
     secrets:
       CHARMHUB_TOKEN:
         required: true
+      AWS_ACCESS_KEY:
+        required: true
+      AWS_SECRET_KEY:
+        required: true
+      GCP_ACCESS_KEY:
+        required: true
+      GCP_SECRET_KEY:
+        required: true
 
 jobs:
   lint:

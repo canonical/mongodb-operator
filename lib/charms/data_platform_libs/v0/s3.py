@@ -1,4 +1,4 @@
-# Copyright 2022 Canonical Ltd.
+# Copyright 2023 Canonical Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -139,7 +139,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 2
 
 logger = logging.getLogger(__name__)
 
@@ -249,6 +249,41 @@ class S3Provider(Object):
             except (json.decoder.JSONDecodeError, TypeError):
                 connection_data[key] = raw_relation_data[key]
         return connection_data
+
+    # def _diff(self, event: RelationChangedEvent) -> Diff:
+    #     """Retrieves the diff of the data in the relation changed databag.
+
+    #     Args:
+    #         event: relation changed event.
+
+    #     Returns:
+    #         a Diff instance containing the added, deleted and changed
+    #             keys from the event relation databag.
+    #     """
+    #     # Retrieve the old data from the data key in the application relation databag.
+    #     old_data = json.loads(event.relation.data[self.local_app].get("data", "{}"))
+    #     # Retrieve the new data from the event relation databag.
+    #     new_data = {
+    #         key: value for key, value in event.relation.data[event.app].items() if key != "data"
+    #     }
+
+    #     # These are the keys that were added to the databag and triggered this event.
+    #     added = new_data.keys() - old_data.keys()
+    #     # These are the keys that were removed from the databag and triggered this event.
+    #     deleted = old_data.keys() - new_data.keys()
+    #     # These are the keys that already existed in the databag,
+    #     # but had their values changed.
+    #     changed = {
+    #         key for key in old_data.keys() & new_data.keys() if old_data[key] != new_data[key]
+    #     }
+
+    #     # TODO: evaluate the possibility of losing the diff if some error
+    #     # happens in the charm before the diff is completely checked (DPE-412).
+    #     # Convert the new_data to a serializable format and save it for a next diff check.
+    #     event.relation.data[self.local_app].update({"data": json.dumps(new_data)})
+
+    #     # Return the diff with all possible changes.
+    #     return Diff(added, changed, deleted)
 
     def _diff(self, event: RelationChangedEvent) -> Diff:
         """Retrieves the diff of the data in the relation changed databag.
