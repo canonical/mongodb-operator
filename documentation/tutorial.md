@@ -77,9 +77,9 @@ Model "admin/tutorial" is empty.
 
 
 ## Deploy Charmed MongoDB
-To deploy Charmed MongoDB, all you need to do is run the following command, which will fetch the charm from [Charmhub](https://charmhub.io/mongodb?channel=dpe/edge) and deploy it to your model:
+To deploy Charmed MongoDB, all you need to do is run the following command, which will fetch the charm from [Charmhub](https://charmhub.io/mongodb?channel=5/edge) and deploy it to your model:
 ```shell
-juju deploy mongodb --channel dpe/edge
+juju deploy mongodb --channel 5/edge
 ```
 
 Juju will now fetch Charmed MongoDB and begin deploying it to the LXD cloud. This process can take several minutes depending on how provisioned (RAM, CPU,etc) your machine is. You can track the progress by running:
@@ -93,7 +93,7 @@ Model     Controller  Cloud/Region         Version  SLA          Timestamp
 tutorial  overlord    localhost/localhost  2.9.37   unsupported  11:24:30Z
 
 App      Version  Status  Scale  Charm    Channel   Rev  Exposed  Message
-mongodb           active      1  mongodb  dpe/edge   96  no
+mongodb           active      1  mongodb  5/edge   96  no
 
 Unit        Workload  Agent  Machine  Public address  Ports      Message
 mongodb/0*  active    idle   0        10.23.62.156    27017/tcp
@@ -149,7 +149,7 @@ Model     Controller  Cloud/Region         Version  SLA          Timestamp
 tutorial  overlord    localhost/localhost  2.9.37   unsupported  11:31:16Z
 
 App      Version  Status  Scale  Charm    Channel   Rev  Exposed  Message
-mongodb           active      1  mongodb  dpe/edge   96  no       Replica set primary
+mongodb           active      1  mongodb  5/edge   96  no       Replica set primary
 
 Unit        Workload  Agent  Machine  Public address  Ports      Message
 mongodb/0*  active    idle   0        <host IP>    27017/tcp  Replica set primary
@@ -283,7 +283,7 @@ Model     Controller  Cloud/Region         Version  SLA          Timestamp
 tutorial  overlord    localhost/localhost  2.9.37   unsupported  14:42:04Z
 
 App      Version  Status  Scale  Charm    Channel   Rev  Exposed  Message
-mongodb           active      3  mongodb  dpe/edge   96  no       Replica set primary
+mongodb           active      3  mongodb  5/edge   96  no       Replica set primary
 
 Unit        Workload  Agent  Machine  Public address  Ports      Message
 mongodb/0*  active    idle   0        10.23.62.156    27017/tcp  Replica set primary
@@ -461,7 +461,7 @@ Model     Controller  Cloud/Region         Version  SLA          Timestamp
 tutorial  overlord    localhost/localhost  2.9.37   unsupported  14:44:25Z
 
 App      Version  Status  Scale  Charm    Channel   Rev  Exposed  Message
-mongodb           active      2  mongodb  dpe/edge   96  no       Replica set primary
+mongodb           active      2  mongodb  5/edge   96  no       Replica set primary
 
 Unit        Workload  Agent  Machine  Public address  Ports      Message
 mongodb/0*  active    idle   0        10.23.62.156    27017/tcp  Replica set primary
@@ -581,7 +581,7 @@ tutorial  overlord    localhost/localhost  2.9.37   unsupported  10:32:09Z
 
 App                  Version  Status  Scale  Charm                Channel   Rev  Exposed  Message
 data-integrator               active      1  data-integrator      edge       3   no
-mongodb                       active      2  mongodb              dpe/edge   96  no
+mongodb                       active      2  mongodb              5/edge   96  no
 
 Unit                    Workload  Agent  Machine  Public address  Ports      Message
 data-integrator/0*  active    idle   5        10.23.62.216               received mongodb credentials
@@ -731,7 +731,7 @@ Model     Controller  Cloud/Region         Version  SLA          Timestamp
 tutorial  overlord    localhost/localhost  2.9.37   unsupported  09:24:12Z
 
 App                        Version  Status   Scale  Charm                      Channel   Rev  Exposed  Message
-mongodb                             active       2  mongodb                    dpe/edge   96  no       Replica set primary
+mongodb                             active       2  mongodb                    5/edge   96  no       Replica set primary
 tls-certificates-operator           blocked      1  tls-certificates-operator  edge       16  no       Configuration options missing: ['certificate', 'ca-certificate']
 
 Unit                          Workload  Agent  Machine  Public address  Ports      Message
