@@ -70,7 +70,7 @@ PBM_PRIVILEGES = {"resource": {"anyResource": True}, "actions": ["anyAction"]}
 
 # We expect the MongoDB container to use the default ports
 MONGODB_PORT = 27017
-SNAP_PACKAGES = [("percona-backup-mongodb", "edge")]
+SNAP_PACKAGES = [("percona-backup-mongodb", "edge"), ("charmed-mongodb", "5.0/edge")]
 REL_NAME = "database"
 
 
@@ -300,10 +300,10 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         """
         self.unit.status = MaintenanceStatus("installing MongoDB")
         try:
-            self._add_repository(REPO_URL, GPG_URL, REPO_ENTRY)
-            self._install_apt_packages(["mongodb-org"])
+            # self._add_repository(REPO_URL, GPG_URL, REPO_ENTRY)
+            # self._install_apt_packages(["mongodb-org"])
             self._install_snap_packages(packages=SNAP_PACKAGES)
-        except (apt.InvalidSourceError, ValueError, apt.GPGKeyError, URLError, snap.SnapError):
+        except (snap.SnapError):  # apt.InvalidSourceError, ValueError, apt.GPGKeyError, URLError,
             self.unit.status = BlockedStatus("couldn't install MongoDB")
 
         # if a new unit is joining a cluster with a legacy relation it should start without auth
