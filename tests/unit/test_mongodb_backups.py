@@ -17,7 +17,8 @@ from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingSta
 from ops.testing import Harness
 
 from charm import MongodbOperatorCharm
-from tests.unit.helpers import patch_network_get
+
+from .helpers import patch_network_get
 
 RELATION_NAME = "s3-credentials"
 

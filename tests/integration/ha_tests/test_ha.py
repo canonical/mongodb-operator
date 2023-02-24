@@ -6,11 +6,12 @@
 import asyncio
 import time
 
-import helpers
 import pytest
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
+
+from . import helpers
 
 ANOTHER_DATABASE_APP_NAME = "another-database-a"
 MONGOD_PROCESS = "/usr/bin/mongod"

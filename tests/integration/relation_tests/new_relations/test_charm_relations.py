@@ -12,11 +12,8 @@ from pymongo.errors import OperationFailure
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError
 
-from tests.integration.ha_tests.helpers import replica_set_primary
-from tests.integration.relation_tests.new_relations.helpers import (
-    get_application_relation_data,
-    verify_application_data,
-)
+from ...ha_tests.helpers import replica_set_primary
+from .helpers import get_application_relation_data, verify_application_data
 
 MEDIAN_REELECTION_TIME = 12
 APPLICATION_APP_NAME = "application"

@@ -10,7 +10,7 @@ from pymongo.errors import OperationFailure
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
-from tests.integration.relation_tests.legacy_relations.api import GraylogApi
+from .api import GraylogApi
 
 logger = logging.getLogger(__name__)
 DEFAULT_REST_API_TIMEOUT = 120
