@@ -63,7 +63,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: charmcraft-logs
-          path: /home/runner/.local/state/charmcraft/log/charmcraft-log-*
+          path: /home/runner/.local/state/charmcraft/log/charmcraft-*
         if: failure()
 
   ha-integration-test-lxd:
@@ -86,7 +86,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: charmcraft-logs
-          path: /home/runner/.local/state/charmcraft/log/charmcraft-log-*
+          path: /home/runner/.local/state/charmcraft/log/charmcraft-*
         if: failure()
 
   relation-integration-test-lxd:
@@ -109,7 +109,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: charmcraft-logs
-          path: /home/runner/.local/state/charmcraft/log/charmcraft-log-*
+          path: /home/runner/.local/state/charmcraft/log/charmcraft-*
         if: failure()
 
   legacy-relation-integration-test-lxd:
@@ -132,7 +132,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: charmcraft-logs
-          path: /home/runner/.local/state/charmcraft/log/charmcraft-log-*
+          path: /home/runner/.local/state/charmcraft/log/charmcraft-*
         if: failure()
 
   tls-integration-test-lxd:
@@ -155,7 +155,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: charmcraft-logs
-          path: /home/runner/.local/state/charmcraft/log/charmcraft-log-*
+          path: /home/runner/.local/state/charmcraft/log/charmcraft-*
         if: failure()
 
   backup-integration-test-lxd:
@@ -183,5 +183,5 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: charmcraft-logs
-          path: /home/runner/.local/state/charmcraft/log/charmcraft-log-*
+          path: /home/runner/.local/state/charmcraft/log/charmcraft-*
         if: failure()
