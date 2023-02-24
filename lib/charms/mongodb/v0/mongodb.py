@@ -35,7 +35,7 @@ LIBPATCH = 4
 logger = logging.getLogger(__name__)
 
 # List of system usernames needed for correct work on the charm.
-CHARM_USERS = ["operator", "backup"]
+CHARM_USERS = ["operator", "backup", "monitor"]
 
 
 @dataclass
@@ -330,6 +330,11 @@ class MongoDBConnection:
                 {"role": "userAdminAnyDatabase", "db": "admin"},
                 {"role": "readWriteAnyDatabase", "db": "admin"},
                 {"role": "userAdmin", "db": "admin"},
+            ],
+            "monitor": [
+                {"role": "explainRole", "db": "admin"},
+                {"role": "clusterMonitor", "db": "admin"},
+                {"role": "read", "db": "local"},
             ],
             "backup": [
                 {"db": "admin", "role": "readWrite", "collection": ""},
