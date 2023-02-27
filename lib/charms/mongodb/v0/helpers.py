@@ -23,11 +23,12 @@ LIBPATCH = 3
 
 
 # path to store mongodb ketFile
-KEY_FILE = "/etc/mongodb/keyFile"
-TLS_EXT_PEM_FILE = "/etc/mongodb/external-cert.pem"
-TLS_EXT_CA_FILE = "/etc/mongodb/external-ca.crt"
-TLS_INT_PEM_FILE = "/etc/mongodb/internal-cert.pem"
-TLS_INT_CA_FILE = "/etc/mongodb/internal-ca.crt"
+MONGO_COMMON_DIR = "/var/snap/charmed-mongodb/common"
+KEY_FILE = f"{MONGO_COMMON_DIR}/keyFile"
+TLS_EXT_PEM_FILE = f"{MONGO_COMMON_DIR}/external-cert.pem"
+TLS_EXT_CA_FILE = f"{MONGO_COMMON_DIR}/external-ca.crt"
+TLS_INT_PEM_FILE = f"{MONGO_COMMON_DIR}/internal-cert.pem"
+TLS_INT_CA_FILE = f"{MONGO_COMMON_DIR}/internal-ca.crt"
 
 
 logger = logging.getLogger(__name__)

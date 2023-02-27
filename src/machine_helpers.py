@@ -30,7 +30,8 @@ RESTART_OPTIONS = ["Restart=always\n", "RestartSec=20\n"]
 RESTARTING_LIMITS = ["StartLimitIntervalSec=500\n", "StartLimitBurst=5\n"]
 
 MONGO_USER = "snap_daemon"
-MONGO_DATA_DIR = "/data/db"
+MONGO_COMMON_DIR = "/var/snap/charmed-mongodb/common"
+MONGO_DATA_DIR = f"{MONGO_COMMON_DIR}/db"
 
 
 def start_with_auth(path):

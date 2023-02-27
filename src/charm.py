@@ -62,7 +62,8 @@ REPO_ENTRY = (
 GPG_URL = "https://www.mongodb.org/static/pgp/server-5.0.asc"
 MONGO_EXEC_LINE = 10
 MONGO_USER = "snap_daemon"
-MONGO_DATA_DIR = "/data/db"
+MONGO_COMMON_DIR = "/var/snap/charmed-mongodb/common"
+MONGO_DATA_DIR = f"{MONGO_COMMON_DIR}/db"
 PBM_PRIVILEGES = {"resource": {"anyResource": True}, "actions": ["anyAction"]}
 
 # We expect the MongoDB container to use the default ports
@@ -582,7 +583,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         # put keyfile on the machine with appropriate permissions
         push_file_to_unit(
-            parent_dir="/etc/mongodb/",
+            parent_dir=MONGO_COMMON_DIR,
             file_name=KEY_FILE,
             file_contents=self.get_secret("app", "keyfile"),
         )
@@ -592,23 +593,23 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         external_ca, external_pem = self.tls.get_tls_files("unit")
         if external_ca is not None:
             push_file_to_unit(
-                parent_dir="/etc/mongodb/", file_name=TLS_EXT_CA_FILE, file_contents=external_ca
+                parent_dir=MONGO_COMMON_DIR, file_name=TLS_EXT_CA_FILE, file_contents=external_ca
             )
 
         if external_pem is not None:
             push_file_to_unit(
-                parent_dir="/etc/mongodb/", file_name=TLS_EXT_PEM_FILE, file_contents=external_pem
+                parent_dir=MONGO_COMMON_DIR, file_name=TLS_EXT_PEM_FILE, file_contents=external_pem
             )
 
         internal_ca, internal_pem = self.tls.get_tls_files("app")
         if internal_ca is not None:
             push_file_to_unit(
-                parent_dir="/etc/mongodb/", file_name=TLS_INT_CA_FILE, file_contents=internal_ca
+                parent_dir=MONGO_COMMON_DIR, file_name=TLS_INT_CA_FILE, file_contents=internal_ca
             )
 
         if internal_pem is not None:
             push_file_to_unit(
-                parent_dir="/etc/mongodb/", file_name=TLS_INT_PEM_FILE, file_contents=internal_pem
+                parent_dir=MONGO_COMMON_DIR, file_name=TLS_INT_PEM_FILE, file_contents=internal_pem
             )
 
     def _initialise_replica_set(self, event: ops.charm.StartEvent) -> None:
