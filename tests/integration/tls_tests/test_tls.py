@@ -8,12 +8,13 @@ from pytest_operator.plugin import OpsTest
 
 from .helpers import check_tls, time_file_created, time_process_started
 
+MONGO_COMMON_DIR = "/var/snap/charmed-mongodb/common"
+EXTERNAL_CERT_PATH = f"{MONGO_COMMON_DIR}/external-ca.crt"
 TLS_CERTIFICATES_APP_NAME = "tls-certificates-operator"
 DATABASE_APP_NAME = "mongodb"
 TLS_TEST_DATA = "tests/integration/tls_tests/data"
-EXTERNAL_CERT_PATH = "/etc/mongodb/external-ca.crt"
-INTERNAL_CERT_PATH = "/etc/mongodb/internal-ca.crt"
-DB_SERVICE = "mongod.service"
+INTERNAL_CERT_PATH = f"{MONGO_COMMON_DIR}/internal-ca.crt"
+DB_SERVICE = "snap.charmed-mongodb.mongod.service"
 
 
 @pytest.mark.abort_on_fail
