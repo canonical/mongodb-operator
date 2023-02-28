@@ -34,7 +34,7 @@ from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
 from charms.operator_libs_linux.v0 import apt
-from charms.operator_libs_linux.v1 import snap, systemd
+from charms.operator_libs_linux.v1 import snap
 from ops.main import main
 from ops.model import (
     ActiveStatus,
@@ -301,10 +301,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         """
         self.unit.status = MaintenanceStatus("installing MongoDB")
         try:
-            # self._add_repository(REPO_URL, GPG_URL, REPO_ENTRY)
-            # self._install_apt_packages(["mongodb-org"])
             self._install_snap_packages(packages=SNAP_PACKAGES)
-        except (snap.SnapError):  # apt.InvalidSourceError, ValueError, apt.GPGKeyError, URLError,
+        except snap.SnapError:
             self.unit.status = BlockedStatus("couldn't install MongoDB")
 
         # if a new unit is joining a cluster with a legacy relation it should start without auth

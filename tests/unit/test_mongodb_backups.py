@@ -108,8 +108,9 @@ class TestMongoBackups(unittest.TestCase):
         self.assertTrue(isinstance(self.harness.charm.backups._get_pbm_status(), BlockedStatus))
 
     @patch("charm.subprocess.check_output")
-    def test_verify_resync_config_error(self, check_output):
-        """Tests that when pbm cannot resync due to configs that it raises an error."""
+    @patch("charm.MongoDBBackups._get_pbm_status")
+    def test_verify_resync_config_error(self, _get_pbm_status, check_output):
+        """Tests that when pbm cannot perform the resync command it raises an error."""
         mock_snap = mock.Mock()
         check_output.side_effect = CalledProcessError(
             cmd="percona-backup-mongodb status", returncode=42
@@ -129,7 +130,8 @@ class TestMongoBackups(unittest.TestCase):
             self.harness.charm.backups._resync_config_options(mock_snap)
 
     @patch("charm.subprocess.check_output")
-    def test_verify_resync_syncing(self, check_output):
+    @patch("charm.MongoDBBackups._get_pbm_status")
+    def test_verify_resync_syncing(self, _get_pbm_status, check_output):
         """Tests that when pbm needs more time to resync that it raises an error."""
         mock_snap = mock.Mock()
         check_output.return_value = b"Currently running:\n====\nResync op"

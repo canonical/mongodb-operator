@@ -6,7 +6,7 @@ from unittest import mock
 from unittest.mock import call, patch
 
 import requests
-from charms.operator_libs_linux.v1 import snap, systemd
+from charms.operator_libs_linux.v1 import snap
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from ops.testing import Harness
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
@@ -43,13 +43,19 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongoDBConnection")
     @patch("charm.MongodbOperatorCharm._init_admin_user")
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
-    @patch("charm.systemd.service_start")
+    @patch("charm.snap.SnapCache")
     @patch("charm.push_file_to_unit")
     @patch("builtins.open")
     def test_on_start_not_leader_doesnt_initialise_replica_set(
-        self, open, path, service_start, _open_port_tcp, init_admin, connection
+        self, open, path, snap, _open_port_tcp, init_admin, connection
     ):
         """Tests that a non leader unit does not initialise the replica set."""
+        # set snap data
+        mock_mongodb_snap = mock.Mock()
+        mock_mongodb_snap.present = True
+        mock_mongodb_snap.start = mock.Mock()
+        snap.return_value = {"charmed-mongodb": mock_mongodb_snap}
+
         # Only leader can set RelationData
         self.harness.set_leader(True)
         self.harness.charm.app_peer_data["keyfile"] = "/etc/mongodb/keyFile"
@@ -57,7 +63,7 @@ class TestCharm(unittest.TestCase):
         self.harness.set_leader(False)
         self.harness.charm.on.start.emit()
 
-        service_start.assert_called()
+        mock_mongodb_snap.start.assert_called()
         _open_port_tcp.assert_called()
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus())
         connection.return_value.__enter__.return_value.init_replset.assert_not_called()
@@ -67,16 +73,12 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongoDBConnection")
     @patch("charm.MongodbOperatorCharm._init_admin_user")
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
-    @patch("charm.systemd.service_start", side_effect=systemd.SystemdError)
-    @patch("charm.systemd.service_running", return_value=False)
     @patch("charm.push_file_to_unit")
     @patch("builtins.open")
-    def test_on_start_systemd_failure_leads_to_blocked_status(
+    def test_on_start_snap_failure_leads_to_blocked_status(
         self,
         open,
         path,
-        service_running,
-        service_start,
         _open_port_tcp,
         init_admin,
         connection,
@@ -84,8 +86,6 @@ class TestCharm(unittest.TestCase):
         """Test failures on systemd result in blocked status."""
         self.harness.set_leader(True)
         self.harness.charm.on.start.emit()
-        service_start.assert_called()
-
         self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
         _open_port_tcp.assert_not_called()
 
@@ -93,35 +93,9 @@ class TestCharm(unittest.TestCase):
         init_admin.assert_not_called()
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.systemd._systemctl", side_effect=systemd.SystemdError)
-    @patch("charm.systemd.service_start")
-    @patch("charm.systemd.service_running", return_value=True)
-    @patch("charm.MongodbOperatorCharm._open_port_tcp")
-    @patch("charm.push_file_to_unit")
-    @patch("builtins.open")
-    @patch("charm.MongoDBConnection")
-    @patch("charm.MongodbOperatorCharm._init_admin_user")
-    def test_on_start_mongo_service_ready_doesnt_reenable(
-        self,
-        init_admin,
-        connection,
-        open,
-        path,
-        _open_port_tcp,
-        service_running,
-        service_start,
-        _systemctl,
-    ):
-        """Test verifies that is MongoDB service is available that we don't re-enable it."""
-        self.harness.set_leader(True)
-        self.harness.charm.on.start.emit()
-        service_running.assert_called()
-        service_start.assert_not_called()
-
-    @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
     @patch("charm.MongodbOperatorCharm._initialise_replica_set")
-    @patch("charm.systemd.service_running", return_value=True)
+    @patch("charm.snap.SnapCache")
     @patch("charm.push_file_to_unit")
     @patch("builtins.open")
     @patch("charm.MongoDBConnection")
@@ -132,11 +106,17 @@ class TestCharm(unittest.TestCase):
         connection,
         open,
         path,
-        service_running,
+        snap,
         initialise_replica_set,
         _open_port_tcp,
     ):
         """Test verifies that we wait to initialise replica set when mongod is not running."""
+        # set snap data
+        mock_mongodb_snap = mock.Mock()
+        mock_mongodb_snap.present = True
+        mock_mongodb_snap.start = mock.Mock()
+        snap.return_value = {"charmed-mongodb": mock_mongodb_snap}
+
         self.harness.set_leader(True)
         connection.return_value.__enter__.return_value.is_ready = False
 
@@ -147,13 +127,17 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
-    @patch("charm.systemd.service_running", return_value=True)
+    @patch("charm.snap.SnapCache")
     @patch("charm.push_file_to_unit")
     @patch("builtins.open")
-    def test_start_unable_to_open_tcp_moves_to_blocked(
-        self, open, path, service_running, _open_port_tcp
-    ):
+    def test_start_unable_to_open_tcp_moves_to_blocked(self, open, path, snap, _open_port_tcp):
         """Test verifies that if TCP port cannot be opened we go to the blocked state."""
+        # set snap data
+        mock_mongodb_snap = mock.Mock()
+        mock_mongodb_snap.present = True
+        mock_mongodb_snap.start = mock.Mock()
+        snap.return_value = {"charmed-mongodb": mock_mongodb_snap}
+
         self.harness.set_leader(True)
         _open_port_tcp.side_effect = subprocess.CalledProcessError(
             cmd="open-port 27017/TCP", returncode=1
@@ -410,7 +394,7 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
-    @patch("charm.systemd.service_start")
+    @patch("charm.snap.SnapCache")
     @patch("charm.push_file_to_unit")
     @patch("builtins.open")
     @patch("charm.MongoDBConnection")
@@ -421,10 +405,14 @@ class TestCharm(unittest.TestCase):
         connection,
         open,
         path,
-        service_start,
+        snap_cache,
         _,
     ):
         """Tests that failure to initialise replica set goes into Waiting Status."""
+        # set snap data
+        mock_mongodb_snap = mock.Mock()
+        snap.return_value = {"charmed-mongodb": mock_mongodb_snap}
+
         # set peer data so that leader doesn't reconfigure set on set_leader
 
         self.harness.set_leader(True)
@@ -792,14 +780,14 @@ class TestCharm(unittest.TestCase):
             self.assertEqual(current_password, original_password)
             action_event.fail.assert_called()
 
-    @patch("charm.MONGOD_SERVICE_UPSTREAM_PATH", "/tmp/missing_file")
+    @patch("charm.MONGOD_SERVICE_DEFAULT_PATH", "/tmp/missing_file")
     def test_auth_enabled_file_does_not_exist(self):
         self.assertEqual(self.harness.charm.auth_enabled(), False)
 
-    @patch("charm.MONGOD_SERVICE_UPSTREAM_PATH", "tests/unit/data/mongodb_auth.service")
+    @patch("charm.MONGOD_SERVICE_DEFAULT_PATH", "tests/unit/data/mongodb_auth.service")
     def test_auth_dis_enabled(self):
         self.assertEqual(self.harness.charm.auth_enabled(), True)
 
-    @patch("charm.MONGOD_SERVICE_UPSTREAM_PATH", "tests/unit/data/mongodb.service")
+    @patch("charm.MONGOD_SERVICE_DEFAULT_PATH", "tests/unit/data/mongodb.service")
     def test_auth_enabled(self):
         self.assertEqual(self.harness.charm.auth_enabled(), False)
