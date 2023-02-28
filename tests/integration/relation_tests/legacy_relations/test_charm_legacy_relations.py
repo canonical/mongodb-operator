@@ -8,7 +8,7 @@ import yaml
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
-from tests.integration.relation_tests.legacy_relations.helpers import (
+from .helpers import (
     GRAYLOG_APP_NAME,
     ApiTimeoutError,
     _verify_rest_api_is_alive,

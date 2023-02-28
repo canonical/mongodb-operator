@@ -31,12 +31,12 @@ tls internal key - `string`;  TLS external key for encryption inside the cluster
 ### Basic Usage
 To deploy a single unit of MongoDB using its default configuration
 ```shell
-juju deploy mongodb --channel dpe/edge
+juju deploy mongodb --channel 5/edge
 ```
 
 It is customary to use MongoDB with replication. Hence usually more than one unit (preferably an odd number to prohibit a "split-brain" scenario) is deployed. To deploy MongoDB with multiple replicas, specify the number of desired units with the `-n` option.
 ```shell
-juju deploy mongodb --channel dpe/edge -n <number_of_replicas>
+juju deploy mongodb --channel 5/edge -n <number_of_replicas>
 ```
 
 To retrieve primary replica one can use the action `get-primary` on any of the units running MongoDB
