@@ -97,7 +97,7 @@ def generate_service_args(auth: bool, machine_ip: str, config: MongoDBConfigurat
     options.
     """
     mongod_start_args = [
-        "ExecStart=/usr/bin/mongod",
+        "ExecStart=/usr/bin/snap run charmed-mongodb.mongod",
         # bind to localhost and external interfaces
         "--bind_ip_all",
         # part of replicaset

@@ -35,7 +35,9 @@ logger = logging.getLogger(__name__)
 
 
 # noinspection GrazieInspection
-def get_create_user_cmd(config: MongoDBConfiguration, mongo_path="mongo") -> List[str]:
+def get_create_user_cmd(
+    config: MongoDBConfiguration, mongo_path="charmed-mongodb.mongo"
+) -> List[str]:
     """Creates initial admin user for MongoDB.
 
     Initial admin user can be created only through localhost connection.

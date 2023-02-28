@@ -68,7 +68,10 @@ PBM_PRIVILEGES = {"resource": {"anyResource": True}, "actions": ["anyAction"]}
 
 # We expect the MongoDB container to use the default ports
 MONGODB_PORT = 27017
-SNAP_PACKAGES = [("percona-backup-mongodb", "edge"), ("charmed-mongodb", "5.0/edge")]
+SNAP_PACKAGES = [
+    ("percona-backup-mongodb", "edge"),
+    ("charmed-mongodb", "5.0/edge/whatever-mia-wants"),
+]
 REL_NAME = "database"
 
 
