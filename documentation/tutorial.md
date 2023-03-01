@@ -106,7 +106,7 @@ To exit the screen with `juju status --watch 1s`, enter `Ctrl+c`.
 ## Access MongoDB
 > **!** *Disclaimer: this part of the tutorial accesses MongoDB via the `admin` user. **Do not** directly interface with the admin user in a production environment. In a production environment [always create a separate user](https://www.mongodb.com/docs/manual/tutorial/create-users/) and connect to MongoDB with that user instead. Later in the section covering Relations we will cover how to access MongoDB without the admin user.*
 
-The first action most users take after installing MongoDB is accessing MongoDB. The easiest way to do this is via the MongoDB shell, with `mongo`. You can read more about the MongoDB shell [here](https://www.mongodb.com/docs/mongodb-shell/). For this part of the Tutorial we will access MongoDB via  `mongo`. Fortunately there is no need to install the Mongo shell, as `mongo` is already installed on the units hosting the Charmed MongoDB application.
+The first action most users take after installing MongoDB is accessing MongoDB. The easiest way to do this is via the MongoDB shell, with `mongo`. You can read more about the MongoDB shell [here](https://www.mongodb.com/docs/mongodb-shell/). For this part of the Tutorial we will access MongoDB via  `mongo`. Fortunately there is no need to install the Mongo shell, as `mongo` is already installed on the units hosting the Charmed MongoDB application as `charmed-mongodb.mongo`. 
 
 ### MongoDB URI
 Connecting to the database requires a Uniform Resource Identifier (URI), MongoDB expects a [MongoDB specific URI](https://www.mongodb.com/docs/manual/reference/connection-string/). The URI for MongoDB contains information which is used to authenticate us to the database. We use a URI of the format:
@@ -174,7 +174,7 @@ export REPL_SET_NAME="mongodb"
 ```
 
 ### Generate the MongoDB URI
-Now that we have the necessary fields to connect to the URI, we can connect to MongoDB with `mongo` via the URI. We can create the URI with:
+Now that we have the necessary fields to connect to the URI, we can connect to MongoDB with `charmed-mongodb.mongo` via the URI. We can create the URI with:
 ```shell
 export URI=mongodb://$DB_USERNAME:$DB_PASSWORD@$HOST_IP/$DB_NAME?replicaSet=$REPL_SET_NAME
 ```
@@ -184,7 +184,7 @@ echo $URI
 ```
 
 ### Connect via MongoDB URI
-As said earlier, `mongo` is already installed in Charmed MongoDB. To access the unit hosting Charmed MongoDB, ssh into it:
+As said earlier, `mongo` is already installed in Charmed MongoDB as `charmed-mongodb.mongo`. To access the unit hosting Charmed MongoDB, ssh into it:
 ```shell
 juju ssh mongodb/0
 ```
@@ -192,17 +192,17 @@ juju ssh mongodb/0
 
 While `ssh`d into `mongodb/0`, we can access `mongo`, using the URI that we saved in the step [Generate the MongoDB URI](#generate-the-mongodb-uri).
 ```shell
-mongo <saved URI>
+charmed-mongodb.mongo <saved URI>
 ```
 
 You should now see:
 ```
-Current mongo Log ID: 6389e2adec352d5447551ae0
-Connecting to:    mongodb://<credentials>@10.23.62.156/admin?replicaSet=mongodb&appName=mongo+1.6.1
+Current Mongosh Log ID: 6389e2adec352d5447551ae0
+Connecting to:    mongodb://<credentials>@10.23.62.156/admin?replicaSet=mongodb&appName=mongosh+1.6.1
 Using MongoDB:    5.0.14
-Using mongo:    1.6.1
+Using Mongosh:    1.6.1
 
-For mongo info see: https://docs.mongodb.com/mongodb-shell/
+For mongosh info see: https://docs.mongodb.com/mongodb-shell/
 
 
 To help improve our products, anonymous usage data is collected and sent to MongoDB periodically (https://www.mongodb.com/legal/privacy-policy).
@@ -296,7 +296,7 @@ Machine  State    Address       Inst id        Series  AZ  Message
 2        started  10.23.62.243  juju-d35d30-2  focal       Running
 ```
 
-You can trust that Charmed MongoDB added these replicas correctly. But if you wanted to verify the replicas got added correctly you could connect to MongoDB via `mongo`. Since your replica set has 2 additional hosts you will need to update the hosts in your URI. You can retrieve these host IPs with:
+You can trust that Charmed MongoDB added these replicas correctly. But if you wanted to verify the replicas got added correctly you could connect to MongoDB via `charmed-mongodb.mongo`. Since your replica set has 2 additional hosts you will need to update the hosts in your URI. You can retrieve these host IPs with:
 ```shell
 export HOST_IP_1=$(juju run --unit mongodb/1 -- hostname -I | xargs)
 export HOST_IP_2=$(juju run --unit mongodb/2 -- hostname -I | xargs)
@@ -317,9 +317,9 @@ Like earlier we access `mongo` by `ssh`ing into one of the Charmed MongoDB hosts
 juju ssh mongodb/0
 ```
 
-While `ssh`d into `mongodb/0`, we can access `mongo`, using our new URI that we saved above.
+While `ssh`d into `mongodb/0`, we can access `mongo` with `charmed-mongodb.mongo`, using our new URI that we saved above.
 ```shell
-mongo <saved URI>
+charmed-mongodb.mongo <saved URI>
 ```
 
 Now type `rs.status()` and you should see your replica set configuration. It should look something like this:
@@ -627,7 +627,7 @@ juju ssh mongodb/0
 Then access `mongo` with the URI that you copied above:
 
 ```shell
-mongo "<uri copied from juju run-action data-integrator/leader get-credentials --wait>"
+charmed-mongodb.mongo "<uri copied from juju run-action data-integrator/leader get-credentials --wait>"
 ```
 *Note: be sure you wrap the URI in `"` with no trailing whitespace*.
 
@@ -672,14 +672,14 @@ juju remove-relation mongodb data-integrator
 Now try again to connect to the same URI you just used in [Access the related database](#access-the-related-database):
 ```shell
 juju ssh mongodb/0
-mongo "<uri copied from juju run-action data-integrator/leader get-credentials --wait>"
+charmed-mongodb.mongo "<uri copied from juju run-action data-integrator/leader get-credentials --wait>"
 ```
 *Note: be sure you wrap the URI in `"` with no trailing whitespace*.
 
 This will output an error message:
 ```
-Current mongo Log ID: 638f5ffbdbd9ec94c2e58456
-Connecting to:    mongodb://<credentials>@10.23.62.38,10.23.62.219/mongodb?replicaSet=mongodb&authSource=admin&appName=mongo+1.6.1
+Current Mongosh Log ID: 638f5ffbdbd9ec94c2e58456
+Connecting to:    mongodb://<credentials>@10.23.62.38,10.23.62.219/mongodb?replicaSet=mongodb&authSource=admin&appName=mongosh+1.6.1
 MongoServerError: Authentication failed.
 ```
 As this user no longer exists. This is expected as `juju remove-relation mongodb data-integrator` also removes the user. 
@@ -707,7 +707,7 @@ Save the result listed with `uris:`.
 You can connect to the database with this new URI:
 ```shell
 juju ssh mongodb/0
-mongo "<uri copied from juju run-action data-integrator/leader get-credentials --wait>"
+charmed-mongodb.mongo "<uri copied from juju run-action data-integrator/leader get-credentials --wait>"
 ```
 *Note: be sure you wrap the URI in `"` with no trailing whitespace*.
 
@@ -774,7 +774,7 @@ After `ssh`ing into `mongodb/0`, we are now in the unit that is hosting Charmed 
 
 As before, we will connect to MongoDB via the saved MongoDB URI. Connect using the saved URI and the following TLS options:
 ```shell
-mongo mongodb://$DB_USERNAME:$DB_PASSWORD@$HOST_IP/$DB_NAME?replicaSet=$REPL_SET_NAME --tls --tlsCAFile /etc/mongodb/external-ca.crt --tlsCertificateKeyFile /etc/mongodb/external-cert.pem
+charmed-mongodb.mongo mongodb://$DB_USERNAME:$DB_PASSWORD@$HOST_IP/$DB_NAME?replicaSet=$REPL_SET_NAME --tls --tlsCAFile /etc/mongodb/external-ca.crt --tlsCertificateKeyFile /etc/mongodb/external-cert.pem
 ```
 
 Congratulations, you've now connected to MongoDB with TLS. Now exit the MongoDB shell by typing:
