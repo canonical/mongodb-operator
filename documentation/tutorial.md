@@ -767,14 +767,14 @@ Now ssh into `mongodb/0`:
 ```
 juju ssh mongodb/0
 ```
-After `ssh`ing into `mongodb/0`, we are now in the unit that is hosting Charmed MongoDB. Once TLS has been enabled we will need to change how we connect to MongoDB. Specifically we will need to specify the TLS CA file along with the TLS Certificate file. These are on the units hosting the Charmed MongoDB application in the folder `/etc/mongodb/`. If you enter: `ls /etc/mongodb/external*` you should see the external certificate file and the external CA file:
+After `ssh`ing into `mongodb/0`, we are now in the unit that is hosting Charmed MongoDB. Once TLS has been enabled we will need to change how we connect to MongoDB. Specifically we will need to specify the TLS CA file along with the TLS Certificate file. These are on the units hosting the Charmed MongoDB application in the folder `/var/snap/charmed-mongodb/common`. If you enter: `ls /var/snap/charmed-mongodb/common/external*` you should see the external certificate file and the external CA file:
 ```shell
-/etc/mongodb/external-ca.crt  /etc/mongodb/external-cert.pem
+/var/snap/charmed-mongodb/common/external-ca.crt /var/snap/charmed-mongodb/common/external-cert.pem
 ```
 
 As before, we will connect to MongoDB via the saved MongoDB URI. Connect using the saved URI and the following TLS options:
 ```shell
-charmed-mongodb.mongo mongodb://$DB_USERNAME:$DB_PASSWORD@$HOST_IP/$DB_NAME?replicaSet=$REPL_SET_NAME --tls --tlsCAFile /etc/mongodb/external-ca.crt --tlsCertificateKeyFile /etc/mongodb/external-cert.pem
+charmed-mongodb.mongo mongodb://$DB_USERNAME:$DB_PASSWORD@$HOST_IP/$DB_NAME?replicaSet=$REPL_SET_NAME --tls --tlsCAFile /var/snap/charmed-mongodb/common/external-ca.crt --tlsCertificateKeyFile /var/snap/charmed-mongodb/common/external-cert.pem
 ```
 
 Congratulations, you've now connected to MongoDB with TLS. Now exit the MongoDB shell by typing:

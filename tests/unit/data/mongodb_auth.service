@@ -8,7 +8,7 @@ Wants=network-online.target
 User=mongodb
 Group=mongodb
 EnvironmentFile=-/etc/default/mongod
-ExecStart=/usr/bin/mongod --bind_ip localhost,10.148.92.89 --replSet mongodb --auth --clusterAuthMode=keyFile --keyFile=/etc/mongodb/keyFile
+ExecStart=/usr/bin/mongod --bind_ip localhost,10.148.92.89 --replSet mongodb --auth --clusterAuthMode=keyFile --keyFile=/var/snap/charmed-mongodb/common/keyFile
 PIDFile=/var/run/mongodb/mongod.pid
 # file size
 LimitFSIZE=infinity

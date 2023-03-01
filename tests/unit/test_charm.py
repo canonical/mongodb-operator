@@ -56,10 +56,6 @@ class TestCharm(unittest.TestCase):
         mock_mongodb_snap.start = mock.Mock()
         snap.return_value = {"charmed-mongodb": mock_mongodb_snap}
 
-        # Only leader can set RelationData
-        self.harness.set_leader(True)
-        self.harness.charm.app_peer_data["keyfile"] = "/etc/mongodb/keyFile"
-
         self.harness.set_leader(False)
         self.harness.charm.on.start.emit()
 
