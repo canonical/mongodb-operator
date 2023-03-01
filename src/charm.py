@@ -833,6 +833,13 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
     def auth_enabled(self) -> bool:
         """Checks if mongod service is has auth enabled for the current unit."""
         # if there are no service files then auth is not enabled
+        if not os.path.exists(MONGOD_SERVICE_UPSTREAM_PATH) and not os.path.exists(
+            MONGOD_SERVICE_DEFAULT_PATH
+        ):
+            return False
+
+        # The default file has previority over the upstream, but when the default file doesn't
+        # exist then the upstream configurations are used which do not have auth.
         if not os.path.exists(MONGOD_SERVICE_DEFAULT_PATH):
             return False
 
