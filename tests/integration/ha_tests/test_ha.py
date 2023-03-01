@@ -14,7 +14,6 @@ from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 from . import helpers
 
 ANOTHER_DATABASE_APP_NAME = "another-database-a"
-MONGOD_PROCESS = "/usr/bin/mongod"
 MEDIAN_REELECTION_TIME = 12
 RESTART_DELAY = 60 * 3
 ORIGINAL_RESTART_DELAY = 5
