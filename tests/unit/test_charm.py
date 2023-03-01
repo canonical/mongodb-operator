@@ -5,7 +5,6 @@ import unittest
 from unittest import mock
 from unittest.mock import call, patch
 
-import requests
 from charms.operator_libs_linux.v1 import snap
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from ops.testing import Harness
