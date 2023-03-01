@@ -109,8 +109,8 @@ def generate_service_args(auth: bool, machine_ip: str, config: MongoDBConfigurat
         if config.tls_external:
             mongod_start_args.extend(
                 [
-                    f"--tlsCAFile={TLS_EXT_CA_FILE}",
-                    f"--tlsCertificateKeyFile={TLS_EXT_PEM_FILE}",
+                    f"--tlsCAFile={MONGO_COMMON_DIR}/{TLS_EXT_CA_FILE}",
+                    f"--tlsCertificateKeyFile={MONGO_COMMON_DIR}/{TLS_EXT_PEM_FILE}",
                     # allow non-TLS connections
                     "--tlsMode=preferTLS",
                 ]
@@ -122,8 +122,8 @@ def generate_service_args(auth: bool, machine_ip: str, config: MongoDBConfigurat
                 [
                     "--clusterAuthMode=x509",
                     "--tlsAllowInvalidCertificates",
-                    f"--tlsClusterCAFile={TLS_INT_CA_FILE}",
-                    f"--tlsClusterFile={TLS_INT_PEM_FILE}",
+                    f"--tlsClusterCAFile={MONGO_COMMON_DIR}/{TLS_INT_CA_FILE}",
+                    f"--tlsClusterFile={MONGO_COMMON_DIR}/{TLS_INT_PEM_FILE}",
                 ]
             )
         else:
@@ -131,7 +131,7 @@ def generate_service_args(auth: bool, machine_ip: str, config: MongoDBConfigurat
             mongod_start_args.extend(
                 [
                     "--clusterAuthMode=keyFile",
-                    f"--keyFile={KEY_FILE}",
+                    f"--keyFile={MONGO_COMMON_DIR}/{KEY_FILE}",
                 ]
             )
 
@@ -144,6 +144,7 @@ def generate_service_args(auth: bool, machine_ip: str, config: MongoDBConfigurat
 def push_file_to_unit(parent_dir, file_name, file_contents) -> None:
     """K8s charms can push files to their containers easily, this is the vm charm workaround."""
     Path(parent_dir).mkdir(parents=True, exist_ok=True)
+    file_name = f"{parent_dir}/{file_name}"
     with open(file_name, "w") as write_file:
         write_file.write(file_contents)
 

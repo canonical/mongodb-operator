@@ -15,7 +15,7 @@ class TestCharm(unittest.TestCase):
                 "--replSet=my_repl_set",
                 "--auth",
                 "--clusterAuthMode=keyFile",
-                f"--keyFile={machine_helpers.KEY_FILE}",
+                f"--keyFile={machine_helpers.MONGO_COMMON_DIR}/{machine_helpers.KEY_FILE}",
                 "\n",
             ]
         )

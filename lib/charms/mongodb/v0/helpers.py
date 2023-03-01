@@ -23,12 +23,11 @@ LIBPATCH = 3
 
 
 # path to store mongodb ketFile
-MONGO_COMMON_DIR = "/var/snap/charmed-mongodb/common"
-KEY_FILE = f"{MONGO_COMMON_DIR}/keyFile"
-TLS_EXT_PEM_FILE = f"{MONGO_COMMON_DIR}/external-cert.pem"
-TLS_EXT_CA_FILE = f"{MONGO_COMMON_DIR}/external-ca.crt"
-TLS_INT_PEM_FILE = f"{MONGO_COMMON_DIR}/internal-cert.pem"
-TLS_INT_CA_FILE = f"{MONGO_COMMON_DIR}/internal-ca.crt"
+KEY_FILE = "keyFile"
+TLS_EXT_PEM_FILE = "external-cert.pem"
+TLS_EXT_CA_FILE = "external-ca.crt"
+TLS_INT_PEM_FILE = "internal-cert.pem"
+TLS_INT_CA_FILE = "internal-ca.crt"
 
 
 logger = logging.getLogger(__name__)
@@ -67,7 +66,7 @@ def get_create_user_cmd(
     ]
 
 
-def get_mongod_cmd(config: MongoDBConfiguration) -> str:
+def get_mongod_cmd(config: MongoDBConfiguration, mongo_files_dir="/etc/mongodb") -> str:
     """Construct the MongoDB startup command line.
 
     Returns:
@@ -85,8 +84,8 @@ def get_mongod_cmd(config: MongoDBConfiguration) -> str:
     if config.tls_external:
         cmd.extend(
             [
-                f"--tlsCAFile={TLS_EXT_CA_FILE}",
-                f"--tlsCertificateKeyFile={TLS_EXT_PEM_FILE}",
+                f"--tlsCAFile={mongo_files_dir}/{TLS_EXT_CA_FILE}",
+                f"--tlsCertificateKeyFile={mongo_files_dir}/{TLS_EXT_PEM_FILE}",
                 # allow non-TLS connections
                 "--tlsMode=preferTLS",
             ]
@@ -98,8 +97,8 @@ def get_mongod_cmd(config: MongoDBConfiguration) -> str:
             [
                 "--clusterAuthMode=x509",
                 "--tlsAllowInvalidCertificates",
-                f"--tlsClusterCAFile={TLS_INT_CA_FILE}",
-                f"--tlsClusterFile={TLS_INT_PEM_FILE}",
+                f"--tlsClusterCAFile={mongo_files_dir}/{TLS_INT_CA_FILE}",
+                f"--tlsClusterFile={mongo_files_dir}/{TLS_INT_PEM_FILE}",
             ]
         )
     else:
@@ -107,7 +106,7 @@ def get_mongod_cmd(config: MongoDBConfiguration) -> str:
         cmd.extend(
             [
                 "--clusterAuthMode=keyFile",
-                f"--keyFile={KEY_FILE}",
+                f"--keyFile={mongo_files_dir}/{KEY_FILE}",
             ]
         )
     return " ".join(cmd)
