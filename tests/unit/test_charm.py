@@ -12,7 +12,7 @@ from ops.testing import Harness
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
 from tenacity import stop_after_attempt
 
-from charm import MongodbOperatorCharm, NotReadyError, URLError, apt, subprocess
+from charm import MongodbOperatorCharm, NotReadyError, subprocess
 
 from .helpers import patch_network_get
 
@@ -168,122 +168,13 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.update_mongod_service")
-    @patch("charm.MongodbOperatorCharm._add_repository")
-    @patch("charm.MongodbOperatorCharm._install_apt_packages")
     @patch("charm.snap.SnapCache")
     @patch("charm.check_call")
-    def test_install_snap_packages_failure(
-        self, _call, snap_cache, _install_apt_packages, _add_repository, update_mongod_service
-    ):
+    def test_install_snap_packages_failure(self, _call, snap_cache, update_mongod_service):
         """Test verifies the correct functions get called when installing apt packages."""
         snap_cache.side_effect = snap.SnapError
         self.harness.charm.on.install.emit()
         self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
-
-    @patch("charm.apt.add_package")
-    @patch("charm.apt.update")
-    def test_install_apt_packages_sucess(self, update, add_package):
-        """Test verifies the correct functions get called when installing apt packages."""
-        self.harness.charm._install_apt_packages(["test-package"])
-        update.assert_called()
-        add_package.assert_called_with(["test-package"])
-
-    @patch("charm.apt.add_package")
-    @patch("charm.apt.update")
-    def test_install_apt_packages_update_failure(self, update, add_package):
-        """Test verifies handling of apt update failure."""
-        update.side_effect = subprocess.CalledProcessError(cmd="apt-get update", returncode=1)
-        with self.assertLogs("charm", "ERROR") as logs:
-            self.harness.charm._install_apt_packages(["test-package"])
-            self.assertIn("failed to update apt cache: ", "".join(logs.output))
-            self.assertEqual(
-                self.harness.charm.unit.status, BlockedStatus("couldn't install MongoDB")
-            )
-
-    @patch("charm.apt.add_package")
-    @patch("charm.apt.update")
-    def test_install_apt_packages_add_package_failure(self, update, add_package):
-        """Test verifies handling of apt add failure."""
-        exceptions = [apt.PackageNotFoundError(), TypeError("package format incorrect")]
-        log_messages = [
-            "ERROR:charm:a specified package not found in package cache or on system",
-            "ERROR:charm:could not add package(s) to install: package format incorrect",
-        ]
-
-        for exception, log_message in zip(exceptions, log_messages):
-            with self.assertLogs("charm", "ERROR") as logs:
-                add_package.side_effect = exception
-                self.harness.charm._install_apt_packages(["test-package"])
-                self.assertIn(log_message, logs.output)
-
-            self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
-
-    @patch("charm.apt.RepositoryMapping", return_value=set())
-    @patch("charm.apt.DebianRepository.from_repo_line")
-    @patch("charm.apt.DebianRepository.import_key")
-    def test_add_repository_success(self, import_key, from_repo_line, repo_map):
-        """Test operations of add repository though a full execution.
-
-        Tests the execution of add repository such that there are no exceptions through, ensuring
-        that the repository is properly added.
-        """
-        # preset values
-        req = requests.get(GPG_URL)
-        mongodb_public_key = req.text
-
-        # verify we add the MongoDB repository
-        repos = self.harness.charm._add_repository(REPO_NAME, GPG_URL, REPO_ENTRY)
-        from_repo_line.assert_called()
-        (from_repo_line.return_value.import_key).assert_called_with(mongodb_public_key)
-        self.assertEqual(repos, {from_repo_line.return_value})
-
-    @patch("charm.apt.RepositoryMapping", return_value=set())
-    @patch("charm.apt.DebianRepository.from_repo_line")
-    @patch("charm.urlopen")
-    def test_add_repository_gpg_fail_leads_to_blocked(self, urlopen, from_repo_line, repo_map):
-        """Test verifies that issues with GPG key lead to a blocked state."""
-        # preset values
-        urlopen.side_effect = URLError("urlopen error")
-        self.harness.charm._add_repository(REPO_NAME, GPG_URL, REPO_ENTRY)
-
-        # verify we don't add repo when an exception occurs and that we enter blocked state
-        self.assertEqual(repo_map.return_value, set())
-        self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
-
-    @patch("charm.apt.RepositoryMapping")
-    @patch("charm.apt.DebianRepository.from_repo_line")
-    def test_add_repository_cant_create_list_file_blocks(self, from_repo_line, repo_map):
-        """Test verifies that issues with creating list file lead to a blocked state."""
-        exceptions = [
-            apt.InvalidSourceError("invalid source message"),
-            ValueError("value message"),
-        ]
-        exceptions_types = [apt.InvalidSourceError, ValueError]
-
-        for exception_type, exception in zip(exceptions_types, exceptions):
-            # verify an exception is raised when repo line fails
-            with self.assertRaises(exception_type):
-                from_repo_line.side_effect = exception
-                self.harness.charm._add_repository(REPO_NAME, GPG_URL, REPO_ENTRY)
-
-    @patch("charm.apt.RepositoryMapping")
-    @patch("charm.apt.DebianRepository.from_repo_line")
-    def test_add_repository_cant_import_key_blocks(self, from_repo_line, repo_map):
-        """Test verifies that issues with importing GPG key lead to a blocked state."""
-        # verify an exception is raised when we cannot import GPG key
-        with self.assertRaises(apt.GPGKeyError):
-            (from_repo_line.return_value.import_key).side_effect = apt.GPGKeyError(
-                "import key error"
-            )
-            self.harness.charm._add_repository(REPO_NAME, GPG_URL, REPO_ENTRY)
-
-    @patch("charm.apt.RepositoryMapping", return_value=REPO_MAP)
-    @patch("charm.apt.DebianRepository.from_repo_line")
-    def test_add_repository_already_added(self, from_repo_line, repo_map):
-        """Test verifies that if a repo is already added that the installed repos don't change."""
-        # verify we don't change the repos if we already have the repo of interest
-        repos = self.harness.charm._add_repository(REPO_NAME, GPG_URL, REPO_ENTRY)
-        self.assertEqual(repos, REPO_MAP)
 
     @patch_network_get(private_address="1.1.1.1")
     def test_unit_ips(self):
