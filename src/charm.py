@@ -47,6 +47,7 @@ from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
 from machine_helpers import (
     MONGOD_SERVICE_DEFAULT_PATH,
+    MONGOD_SERVICE_UPSTREAM_PATH,
     push_file_to_unit,
     start_with_auth,
     update_mongod_service,
@@ -311,6 +312,13 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         # if a new unit is joining a cluster with a legacy relation it should start without auth
         auth = not self.client_relations._get_users_from_relations(None, rel="obsolete")
+
+        # save the original systemd file to be referenced by the charm later on. The upstream path
+        # will hold the original file while the default path will be the one loaded by systemd
+        # since systemd gives files in /etc/systemd/system/ precedence over those in
+        # /lib/systemd/system/
+        check_call(["cp", MONGOD_SERVICE_DEFAULT_PATH, MONGOD_SERVICE_UPSTREAM_PATH])
+
         # Construct the mongod startup commandline args for systemd and reload the daemon.
         update_mongod_service(
             auth=auth, machine_ip=self._unit_ip(self.unit), config=self.mongodb_config

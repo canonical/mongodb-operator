@@ -171,8 +171,9 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongodbOperatorCharm._add_repository")
     @patch("charm.MongodbOperatorCharm._install_apt_packages")
     @patch("charm.snap.SnapCache")
+    @patch("charm.check_call")
     def test_install_snap_packages_failure(
-        self, snap_cache, _install_apt_packages, _add_repository, update_mongod_service
+        self, _call, snap_cache, _install_apt_packages, _add_repository, update_mongod_service
     ):
         """Test verifies the correct functions get called when installing apt packages."""
         snap_cache.side_effect = snap.SnapError
