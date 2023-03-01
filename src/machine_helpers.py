@@ -29,6 +29,7 @@ RESTART_OPTIONS = ["Restart=always\n", "RestartSec=20\n"]
 # restart.
 RESTARTING_LIMITS = ["StartLimitIntervalSec=500\n", "StartLimitBurst=5\n"]
 
+ROOT_USER_GID = 0
 MONGO_USER = "snap_daemon"
 MONGO_COMMON_DIR = "/var/snap/charmed-mongodb/common"
 MONGO_DATA_DIR = f"{MONGO_COMMON_DIR}/db"
@@ -146,9 +147,12 @@ def push_file_to_unit(parent_dir, file_name, file_contents) -> None:
     with open(file_name, "w") as write_file:
         write_file.write(file_contents)
 
-    os.chmod(file_name, 0o400)
+    if "keyFile" in file_name:
+        os.chmod(file_name, 0o400)
+    else:
+        os.chmod(file_name, 0o440)
     mongodb_user = pwd.getpwnam(MONGO_USER)
-    os.chown(file_name, mongodb_user.pw_uid, mongodb_user.pw_gid)
+    os.chown(file_name, mongodb_user.pw_uid, ROOT_USER_GID)
 
 
 class ApplicationHostNotFoundError(Exception):
