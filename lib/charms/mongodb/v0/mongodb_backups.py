@@ -401,15 +401,12 @@ class MongoDBBackups(Object):
 
         # grab the error status from the backup if present
         backups = pbm_status["backups"]["snapshot"] or []
+        backup_status = ""
         for backup in backups:
             if not backup_id == backup["name"]:
                 continue
 
-            if "error" not in backup:
-                backup_status = ""
-                break
-
-            backup_status = backup["error"] or ""
+            backup_status = backup.get("error", "")
             break
 
         if not self._backup_from_different_cluster(backup_status):
