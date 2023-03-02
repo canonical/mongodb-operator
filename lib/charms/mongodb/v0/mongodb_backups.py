@@ -440,7 +440,15 @@ class MongoDBBackups(Object):
         for backup in backups:
             backup_status = "finished"
             if backup["status"] == "error":
-                backup_status = "failed"
+                # TODO check for remapping here
+                backup_status = backup.get("error", "")
+                # backups from a different cluster have an error status, but they should show as
+                # finished
+                if self._backup_from_different_cluster(backup_status):
+                    backup_status = "finished"
+                else:
+                    # display reason for failure if available
+                    backup_status = backup.get("error", "failed")
             if backup["status"] != "error" and backup["status"] != "done":
                 backup_status = "in progress"
             backup_list.append((backup["name"], backup["type"], backup_status))
