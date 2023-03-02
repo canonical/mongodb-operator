@@ -57,7 +57,7 @@ S3_PBM_OPTION_MAP = {
     "storage-class": "storage.s3.storageClass",
 }
 S3_RELATION = "s3-credentials"
-REMAPPING_PATTERN = r"Backup doesn't match current cluster topology - it has different replica set names. Extra shards in the backup will cause this, for a simple example. The extra/unknown replica set names found in the backup are: (.*?). Backup has no data for the config server or sole replicaset"
+REMAPPING_PATTERN = r"\ABackup doesn't match current cluster topology - it has different replica set names. Extra shards in the backup will cause this, for a simple example. The extra/unknown replica set names found in the backup are: ([^,\s]+)([.] Backup has no data for the config server or sole replicaset)?\Z"
 
 
 class ResyncError(Exception):
