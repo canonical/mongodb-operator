@@ -57,8 +57,7 @@ S3_PBM_OPTION_MAP = {
     "storage-class": "storage.s3.storageClass",
 }
 S3_RELATION = "s3-credentials"
-REMAPPING_PATTERN = r"[\[]incompatible: Backup doesn't match current cluster topology - it has different replica set names. Extra shards in the backup will cause this, for a simple example. The extra/unknown replica set names found in the backup are: [^,\s]+([.] Backup has no data for the config server or sole replicaset)?[\]]"
-IDENTIFY_CLUSTER_NAME = r"incompatible: Backup doesn't match current cluster topology - it has different replica set names. Extra shards in the backup will cause this, for a simple example. The extra/unknown replica set names found in the backup are: (.*?). Backup has no data for the config server or sole replicaset"
+REMAPPING_PATTERN = r"Backup doesn't match current cluster topology - it has different replica set names. Extra shards in the backup will cause this, for a simple example. The extra/unknown replica set names found in the backup are: (.*?). Backup has no data for the config server or sole replicaset"
 
 
 class ResyncError(Exception):
@@ -419,7 +418,7 @@ class MongoDBBackups(Object):
 
         # TODO in the future when we support conf servers and shards this will need to be more
         # comprehensive.
-        old_cluster_name = re.search(IDENTIFY_CLUSTER_NAME, backup_status).group(1)
+        old_cluster_name = re.search(REMAPPING_PATTERN, backup_status).group(1)
         current_cluster_name = self.charm.app.name
         logger.debug(
             "Replica set remapping is necessary for restore, old cluster name: %s ; new cluster name: %s",
