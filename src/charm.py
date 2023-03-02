@@ -45,7 +45,6 @@ from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
 from machine_helpers import (
     MONGOD_SERVICE_DEFAULT_PATH,
-    MONGOD_SERVICE_UPSTREAM_PATH,
     push_file_to_unit,
     start_with_auth,
     update_mongod_service,
@@ -303,12 +302,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         # if a new unit is joining a cluster with a legacy relation it should start without auth
         auth = not self.client_relations._get_users_from_relations(None, rel="obsolete")
-
-        # save the original systemd file to be referenced by the charm later on. The upstream path
-        # will hold the original file while the default path will be the one loaded by systemd
-        # since systemd gives files in /etc/systemd/system/ precedence over those in
-        # /lib/systemd/system/
-        check_call(["cp", MONGOD_SERVICE_DEFAULT_PATH, MONGOD_SERVICE_UPSTREAM_PATH])
 
         # Construct the mongod startup commandline args for systemd and reload the daemon.
         update_mongod_service(
@@ -832,14 +825,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def auth_enabled(self) -> bool:
         """Checks if mongod service is has auth enabled for the current unit."""
-        # if there are no service files then auth is not enabled
-        if not os.path.exists(MONGOD_SERVICE_UPSTREAM_PATH) and not os.path.exists(
-            MONGOD_SERVICE_DEFAULT_PATH
-        ):
-            return False
-
-        # The default file has previority over the upstream, but when the default file doesn't
-        # exist then the upstream configurations are used which do not have auth.
+        # if there are no service file then auth is not enabled
         if not os.path.exists(MONGOD_SERVICE_DEFAULT_PATH):
             return False
 

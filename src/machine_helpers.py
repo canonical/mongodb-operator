@@ -18,16 +18,7 @@ from charms.operator_libs_linux.v1 import systemd
 
 logger = logging.getLogger(__name__)
 
-# systemd gives files in /etc/systemd/system/ precedence over those in /lib/systemd/system/ hence
-# our changed file in /etc will be read while maintaining the original one in /lib.
-MONGOD_SERVICE_UPSTREAM_PATH = "/lib/systemd/system/snap.charmed-mongodb.mongod.service"
 MONGOD_SERVICE_DEFAULT_PATH = "/etc/systemd/system/snap.charmed-mongodb.mongod.service"
-
-# restart options specify that systemd should attempt to restart the service on failure.
-RESTART_OPTIONS = ["Restart=always\n", "RestartSec=20\n"]
-# limits ensure that the process will not continuously retry to restart if it continuously fails to
-# restart.
-RESTARTING_LIMITS = ["StartLimitIntervalSec=500\n", "StartLimitBurst=5\n"]
 
 ROOT_USER_GID = 0
 MONGO_USER = "snap_daemon"
@@ -50,7 +41,7 @@ def start_with_auth(path):
 
 def update_mongod_service(auth: bool, machine_ip: str, config: MongoDBConfiguration) -> None:
     """Updates the mongod service file with the new options for starting."""
-    with open(MONGOD_SERVICE_UPSTREAM_PATH, "r") as mongodb_service_file:
+    with open(MONGOD_SERVICE_DEFAULT_PATH, "r") as mongodb_service_file:
         mongodb_service = mongodb_service_file.readlines()
 
     # replace start command with our parameterized one
@@ -58,9 +49,6 @@ def update_mongod_service(auth: bool, machine_ip: str, config: MongoDBConfigurat
     for index, line in enumerate(mongodb_service):
         if "ExecStart" in line:
             mongodb_service[index] = mongod_start_args
-
-    # self healing is implemented via systemd
-    add_self_healing(mongodb_service)
 
     with open(MONGOD_SERVICE_DEFAULT_PATH, "w") as service_file:
         service_file.writelines(mongodb_service)
@@ -71,21 +59,6 @@ def update_mongod_service(auth: bool, machine_ip: str, config: MongoDBConfigurat
 
     # changes to service files are only applied after reloading, this is needed even for snaps
     systemd.daemon_reload()
-
-
-def add_self_healing(service_lines):
-    """Updates the service file to auto-restart the DB service on service failure.
-
-    Options for restarting allow for auto-restart on crashed services, i.e. DB killed, DB frozen,
-    DB terminated.
-    """
-    for index, line in enumerate(service_lines):
-        if "[Unit]" in line:
-            service_lines.insert(index + 1, RESTARTING_LIMITS[0])
-            service_lines.insert(index + 1, RESTARTING_LIMITS[1])
-        if "[Service]" in line:
-            service_lines.insert(index + 1, RESTART_OPTIONS[0])
-            service_lines.insert(index + 1, RESTART_OPTIONS[1])
 
 
 def generate_service_args(auth: bool, machine_ip: str, config: MongoDBConfiguration) -> str:
