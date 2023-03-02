@@ -48,7 +48,7 @@ class TestMongoBackups(unittest.TestCase):
         """Tests that when the snap is not present pbm is in blocked state."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = False
-        snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
+        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
 
         self.assertTrue(isinstance(self.harness.charm.backups._get_pbm_status(), BlockedStatus))
 
@@ -58,7 +58,7 @@ class TestMongoBackups(unittest.TestCase):
         """Tests that when pbm is resyncing that pbm is in waiting state."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
-        snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
+        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
         output.return_value = b"Currently running:\n====\nResync op"
         self.assertTrue(isinstance(self.harness.charm.backups._get_pbm_status(), WaitingStatus))
 
@@ -68,7 +68,7 @@ class TestMongoBackups(unittest.TestCase):
         """Tests that when pbm not running an op that pbm is in active state."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
-        snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
+        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
         output.return_value = b"Currently running:\n====\n(none)"
         self.assertTrue(isinstance(self.harness.charm.backups._get_pbm_status(), ActiveStatus))
 
@@ -78,7 +78,7 @@ class TestMongoBackups(unittest.TestCase):
         """Tests that when pbm running a backup that pbm is in maintenance state."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
-        snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
+        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
         output.return_value = b"Currently running:\n====\nSnapshot backup"
         self.assertTrue(
             isinstance(self.harness.charm.backups._get_pbm_status(), MaintenanceStatus)
@@ -90,9 +90,9 @@ class TestMongoBackups(unittest.TestCase):
         """Tests that when pbm has incorrect credentials that pbm is in blocked state."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
-        snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
+        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
         output.side_effect = CalledProcessError(
-            cmd="percona-backup-mongodb status", returncode=403, output=b"status code: 403"
+            cmd="charmed-mongodb.pbm status", returncode=403, output=b"status code: 403"
         )
         self.assertTrue(isinstance(self.harness.charm.backups._get_pbm_status(), BlockedStatus))
 
@@ -102,9 +102,9 @@ class TestMongoBackups(unittest.TestCase):
         """Tests that when pbm has incorrect configs that pbm is in blocked state."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
-        snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
+        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
         output.side_effect = CalledProcessError(
-            cmd="percona-backup-mongodb status", returncode=42, output=b""
+            cmd="charmed-mongodb.pbm status", returncode=42, output=b""
         )
         self.assertTrue(isinstance(self.harness.charm.backups._get_pbm_status(), BlockedStatus))
 
@@ -114,7 +114,7 @@ class TestMongoBackups(unittest.TestCase):
         """Tests that when pbm cannot perform the resync command it raises an error."""
         mock_snap = mock.Mock()
         check_output.side_effect = CalledProcessError(
-            cmd="percona-backup-mongodb status", returncode=42
+            cmd="charmed-mongodb.pbm status", returncode=42
         )
 
         with self.assertRaises(CalledProcessError):
@@ -125,7 +125,7 @@ class TestMongoBackups(unittest.TestCase):
         """Tests that when pbm cannot resync due to creds that it raises an error."""
         mock_snap = mock.Mock()
         check_output.side_effect = CalledProcessError(
-            cmd="percona-backup-mongodb status", returncode=403, output=b"status code: 403"
+            cmd="charmed-mongodb.pbm status", returncode=403, output=b"status code: 403"
         )
         with self.assertRaises(CalledProcessError):
             self.harness.charm.backups._resync_config_options(mock_snap)
@@ -167,7 +167,7 @@ class TestMongoBackups(unittest.TestCase):
         """Verifies _set_config_options failure raises SetPBMConfigError."""
         check_output.side_effect = (
             CalledProcessError(
-                cmd="percona-backup-mongodb config --set this_key=doesnt_exist", returncode=42
+                cmd="charmed-mongodb.pbm config --set this_key=doesnt_exist", returncode=42
             ),
         )
         with self.assertRaises(SetPBMConfigError):
@@ -187,7 +187,7 @@ class TestMongoBackups(unittest.TestCase):
         """Verifies backup is deferred if more time is needed to resync."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
-        snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
+        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
 
         action_event = mock.Mock()
         action_event.params = {}
@@ -204,7 +204,7 @@ class TestMongoBackups(unittest.TestCase):
         """Verifies backup is fails if another backup is already running."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
-        snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
+        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
 
         action_event = mock.Mock()
         action_event.params = {}
@@ -221,12 +221,12 @@ class TestMongoBackups(unittest.TestCase):
         """Verifies backup is fails if the credentials are incorrect."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
-        snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
+        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
 
         action_event = mock.Mock()
         action_event.params = {}
         output.side_effect = CalledProcessError(
-            cmd="percona-backup-mongodb status", returncode=403, output=b"status code: 403"
+            cmd="charmed-mongodb.pbm status", returncode=403, output=b"status code: 403"
         )
 
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
@@ -240,13 +240,13 @@ class TestMongoBackups(unittest.TestCase):
         """Verifies backup is fails if the pbm command failed."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
-        snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
+        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
 
         action_event = mock.Mock()
         action_event.params = {}
         pbm_status.return_value = ActiveStatus("")
 
-        output.side_effect = CalledProcessError(cmd="percona-backup-mongodb backup", returncode=42)
+        output.side_effect = CalledProcessError(cmd="charmed-mongodb.pbm backup", returncode=42)
 
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
         self.harness.charm.backups._on_create_backup_action(action_event)
@@ -267,7 +267,7 @@ class TestMongoBackups(unittest.TestCase):
         """Verifies backup list is deferred if more time is needed to resync."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
-        snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
+        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
 
         action_event = mock.Mock()
         action_event.params = {}
@@ -284,12 +284,12 @@ class TestMongoBackups(unittest.TestCase):
         """Verifies backup list fails with wrong credentials."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
-        snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
+        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
 
         action_event = mock.Mock()
         action_event.params = {}
         output.side_effect = CalledProcessError(
-            cmd="percona-backup-mongodb status", returncode=403, output=b"status code: 403"
+            cmd="charmed-mongodb.pbm status", returncode=403, output=b"status code: 403"
         )
 
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
@@ -303,13 +303,13 @@ class TestMongoBackups(unittest.TestCase):
         """Verifies backup list fails if the pbm command fails."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
-        snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
+        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
 
         action_event = mock.Mock()
         action_event.params = {}
         pbm_status.return_value = ActiveStatus("")
 
-        output.side_effect = CalledProcessError(cmd="percona-backup-mongodb list", returncode=42)
+        output.side_effect = CalledProcessError(cmd="charmed-mongodb.pbm list", returncode=42)
 
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
         self.harness.charm.backups._on_list_backups_action(action_event)
@@ -341,7 +341,7 @@ class TestMongoBackups(unittest.TestCase):
         """Verifies that when there is no DB that setting credentials is deferred."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = False
-        snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
+        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
         self.harness.charm.app_peer_data["db_initialised"] = "True"
 
         # triggering s3 event with correct fields
@@ -366,7 +366,7 @@ class TestMongoBackups(unittest.TestCase):
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
         mock_pbm_snap.set = mock.Mock()
-        snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
+        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
         _set_config_options.side_effect = SetPBMConfigError
         self.harness.charm.app_peer_data["db_initialised"] = "True"
 
@@ -394,7 +394,7 @@ class TestMongoBackups(unittest.TestCase):
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
         mock_pbm_snap.set = mock.Mock()
-        snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
+        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
         self.harness.charm.app_peer_data["db_initialised"] = "True"
         resync.side_effect = SetPBMConfigError
 
@@ -422,7 +422,7 @@ class TestMongoBackups(unittest.TestCase):
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
         mock_pbm_snap.set = mock.Mock()
-        snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
+        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
         self.harness.charm.app_peer_data["db_initialised"] = "True"
         resync.side_effect = ResyncError
 
@@ -451,7 +451,7 @@ class TestMongoBackups(unittest.TestCase):
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
         mock_pbm_snap.set = mock.Mock()
-        snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
+        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
         self.harness.charm.app_peer_data["db_initialised"] = "True"
         resync.side_effect = PBMBusyError
 
@@ -480,7 +480,7 @@ class TestMongoBackups(unittest.TestCase):
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
         mock_pbm_snap.set = mock.Mock()
-        snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
+        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
         self.harness.charm.app_peer_data["db_initialised"] = "True"
         resync.side_effect = snap.SnapError
 
@@ -510,13 +510,13 @@ class TestMongoBackups(unittest.TestCase):
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
         mock_pbm_snap.set = mock.Mock()
-        snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
+        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
         self.harness.charm.app_peer_data["db_initialised"] = "True"
         resync.side_effect = CalledProcessError(
-            cmd="percona-backup-mongodb status", returncode=403, output=b"status code: 403"
+            cmd="charmed-mongodb.pbm status", returncode=403, output=b"status code: 403"
         )
         output.side_effect = CalledProcessError(
-            cmd="percona-backup-mongodb status", returncode=403, output=b"status code: 403"
+            cmd="charmed-mongodb.pbm status", returncode=403, output=b"status code: 403"
         )
 
         # triggering s3 event with correct fields
@@ -595,7 +595,7 @@ class TestMongoBackups(unittest.TestCase):
         """Verifies restore is deferred if more time is needed to resync."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
-        snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
+        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
 
         action_event = mock.Mock()
         action_event.params = {"backup-id": "back-me-up"}
@@ -612,7 +612,7 @@ class TestMongoBackups(unittest.TestCase):
         """Verifies restore is fails if another backup is already running."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
-        snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
+        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
 
         action_event = mock.Mock()
         action_event.params = {"backup-id": "back-me-up"}
@@ -629,12 +629,12 @@ class TestMongoBackups(unittest.TestCase):
         """Verifies restore is fails if the credentials are incorrect."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
-        snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
+        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
 
         action_event = mock.Mock()
         action_event.params = {"backup-id": "back-me-up"}
         output.side_effect = CalledProcessError(
-            cmd="percona-backup-mongodb status", returncode=403, output=b"status code: 403"
+            cmd="charmed-mongodb.pbm status", returncode=403, output=b"status code: 403"
         )
 
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
@@ -648,14 +648,14 @@ class TestMongoBackups(unittest.TestCase):
         """Verifies restore is fails if the pbm command failed."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
-        snap.return_value = {"percona-backup-mongodb": mock_pbm_snap}
+        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
 
         action_event = mock.Mock()
         action_event.params = {"backup-id": "back-me-up"}
         pbm_status.return_value = ActiveStatus("")
 
         output.side_effect = CalledProcessError(
-            cmd="percona-backup-mongodb backup", returncode=42, output=b"failed"
+            cmd="charmed-mongodb.pbm backup", returncode=42, output=b"failed"
         )
 
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
