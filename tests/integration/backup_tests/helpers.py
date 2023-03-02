@@ -54,9 +54,9 @@ async def create_and_verify_backup(ops_test: OpsTest) -> None:
         assert backups == prev_backups + 1, "Backup not created."
 
 
-async def get_leader_unit(ops_test: OpsTest) -> ops.model.Unit:
+async def get_leader_unit(ops_test: OpsTest, db_app_name=None) -> ops.model.Unit:
     """Returns the leader unit of the database charm."""
-    db_app_name = await app_name(ops_test)
+    db_app_name = db_app_name or await app_name(ops_test)
     for unit in ops_test.model.applications[db_app_name].units:
         if await unit.is_leader_from_status():
             return unit
