@@ -9,9 +9,9 @@ start phase. This user is named "backup".
 """
 import json
 import logging
+import re
 import subprocess
 import time
-import re
 from typing import Dict
 
 from charms.data_platform_libs.v0.s3 import CredentialsChangedEvent, S3Requirer
@@ -363,7 +363,6 @@ class MongoDBBackups(Object):
             return
 
         try:
-
             remapping_args = self._remap_replicaset(backup_id)
             subprocess.check_output(
                 f"percona-backup-mongodb restore {backup_id} {remapping_args}",
