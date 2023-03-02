@@ -448,7 +448,7 @@ class MongoDBBackups(Object):
                     backup_status = "finished"
                 else:
                     # display reason for failure if available
-                    backup_status = backup.get("error", "failed")
+                    backup_status = "failed: " + backup.get("error", "N/A")
             if backup["status"] != "error" and backup["status"] != "done":
                 backup_status = "in progress"
             backup_list.append((backup["name"], backup["type"], backup_status))
