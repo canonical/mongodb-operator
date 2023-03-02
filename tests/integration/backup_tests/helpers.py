@@ -93,6 +93,19 @@ async def count_logical_backups(db_unit: ops.model.Unit) -> int:
     return backups
 
 
+async def count_failed_backups(db_unit: ops.model.Unit) -> int:
+    """Count the number of failed backups."""
+    action = await db_unit.run_action(action_name="list-backups")
+    list_result = await action.wait()
+    list_result = list_result.results["backups"]
+    list_result = list_result.split("\n")
+    failed_backups = 0
+    for res in list_result:
+        failed_backups += 1 if "failed" in res else 0
+
+    return failed_backups
+
+
 async def set_credentials(ops_test: OpsTest, cloud: str) -> None:
     """Sets the s3 crednetials for the provided cloud, valid options are AWS or GCP."""
     # set access key and secret keys

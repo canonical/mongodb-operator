@@ -358,6 +358,11 @@ async def test_restore_new_cluster(ops_test: OpsTest, add_writes_to_db, cloud_pr
         ops_test.model.wait_for_idle(apps=[NEW_CLUSTER], status="active"),
     )
 
+    # verify that the listed backups from the old cluster are not listed as failed.
+    assert (
+        await helpers.count_failed_backups(db_unit) == 0
+    ), "Backups from old cluster are listed as failed"
+
     # find most recent backup id and restore
     action = await db_unit.run_action(action_name="list-backups")
     list_result = await action.wait()
