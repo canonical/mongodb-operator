@@ -108,7 +108,7 @@ async def get_password(ops_test: OpsTest, app, down_unit=None) -> str:
 
     action = await ops_test.model.units.get(f"{app}/{unit_id}").run_action("get-password")
     action = await action.wait()
-    return action.results["operator-password"]
+    return action.results["password"]
 
 
 async def fetch_primary(

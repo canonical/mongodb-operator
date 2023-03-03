@@ -483,14 +483,14 @@ class MongoDBBackups(Object):
     @property
     def _backup_config(self) -> MongoDBConfiguration:
         """Construct the config object for backup user and creates user if necessary."""
-        if not self.charm.get_secret("app", "backup_password"):
-            self.charm.set_secret("app", "backup_password", generate_password())
+        if not self.charm.get_secret("app", "backup-password"):
+            self.charm.set_secret("app", "backup-password", generate_password())
 
         return MongoDBConfiguration(
             replset=self.charm.app.name,
             database="",
             username="backup",
-            password=self.charm.get_secret("app", "backup_password"),
+            password=self.charm.get_secret("app", "backup-password"),
             hosts=[
                 self.charm._unit_ip(self.charm.unit)
             ],  # pbm cannot make a direct connection if multiple hosts are used

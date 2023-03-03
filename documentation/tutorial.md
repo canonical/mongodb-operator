@@ -77,9 +77,9 @@ Model "admin/tutorial" is empty.
 
 
 ## Deploy Charmed MongoDB
-To deploy Charmed MongoDB, all you need to do is run the following command, which will fetch the charm from [Charmhub](https://charmhub.io/mongodb?channel=dpe/edge) and deploy it to your model:
+To deploy Charmed MongoDB, all you need to do is run the following command, which will fetch the charm from [Charmhub](https://charmhub.io/mongodb?channel=5/edge) and deploy it to your model:
 ```shell
-juju deploy mongodb --channel dpe/edge
+juju deploy mongodb --channel 5/edge
 ```
 
 Juju will now fetch Charmed MongoDB and begin deploying it to the LXD cloud. This process can take several minutes depending on how provisioned (RAM, CPU,etc) your machine is. You can track the progress by running:
@@ -93,7 +93,7 @@ Model     Controller  Cloud/Region         Version  SLA          Timestamp
 tutorial  overlord    localhost/localhost  2.9.37   unsupported  11:24:30Z
 
 App      Version  Status  Scale  Charm    Channel   Rev  Exposed  Message
-mongodb           active      1  mongodb  dpe/edge   96  no
+mongodb           active      1  mongodb  5/edge   96  no
 
 Unit        Workload  Agent  Machine  Public address  Ports      Message
 mongodb/0*  active    idle   0        10.23.62.156    27017/tcp
@@ -131,16 +131,16 @@ unit-mongodb-0:
   UnitId: mongodb/0
   id: "2"
   results:
-    admin-password: <password>
+    password: <password>
   status: completed
   timing:
     completed: 2022-12-02 11:30:01 +0000 UTC
     enqueued: 2022-12-02 11:29:57 +0000 UTC
     started: 2022-12-02 11:30:01 +0000 UTC
 ```
-Use the password under the result: `admin-password`:
+Use the password under the result: `password`:
 ```shell
-export DB_PASSWORD=$(juju run-action mongodb/leader get-password --wait | grep admin-password|  awk '{print $2}')
+export DB_PASSWORD=$(juju run-action mongodb/leader get-password --wait | grep password|  awk '{print $2}')
 ```
 
 **Retrieving the hosts:** The hosts are the units hosting the MongoDB application. The host’s IP address can be found with `juju status`:
@@ -149,7 +149,7 @@ Model     Controller  Cloud/Region         Version  SLA          Timestamp
 tutorial  overlord    localhost/localhost  2.9.37   unsupported  11:31:16Z
 
 App      Version  Status  Scale  Charm    Channel   Rev  Exposed  Message
-mongodb           active      1  mongodb  dpe/edge   96  no       Replica set primary
+mongodb           active      1  mongodb  5/edge   96  no       Replica set primary
 
 Unit        Workload  Agent  Machine  Public address  Ports      Message
 mongodb/0*  active    idle   0        <host IP>    27017/tcp  Replica set primary
@@ -283,7 +283,7 @@ Model     Controller  Cloud/Region         Version  SLA          Timestamp
 tutorial  overlord    localhost/localhost  2.9.37   unsupported  14:42:04Z
 
 App      Version  Status  Scale  Charm    Channel   Rev  Exposed  Message
-mongodb           active      3  mongodb  dpe/edge   96  no       Replica set primary
+mongodb           active      3  mongodb  5/edge   96  no       Replica set primary
 
 Unit        Workload  Agent  Machine  Public address  Ports      Message
 mongodb/0*  active    idle   0        10.23.62.156    27017/tcp  Replica set primary
@@ -461,7 +461,7 @@ Model     Controller  Cloud/Region         Version  SLA          Timestamp
 tutorial  overlord    localhost/localhost  2.9.37   unsupported  14:44:25Z
 
 App      Version  Status  Scale  Charm    Channel   Rev  Exposed  Message
-mongodb           active      2  mongodb  dpe/edge   96  no       Replica set primary
+mongodb           active      2  mongodb  5/edge   96  no       Replica set primary
 
 Unit        Workload  Agent  Machine  Public address  Ports      Message
 mongodb/0*  active    idle   0        10.23.62.156    27017/tcp  Replica set primary
@@ -490,14 +490,14 @@ unit-mongodb-0:
   UnitId: mongodb/0
   id: "2"
   results:
-    admin-password: <password>
+    password: <password>
   status: completed
   timing:
     completed: 2022-12-02 11:30:01 +0000 UTC
     enqueued: 2022-12-02 11:29:57 +0000 UTC
     started: 2022-12-02 11:30:01 +0000 UTC
 ```
-The admin password is under the result: `admin-password`.
+The admin password is under the result: `password`.
 
 
 ### Rotate the admin password
@@ -511,18 +511,18 @@ unit-mongodb-0:
   UnitId: mongodb/0
   id: "4"
   results:
-    admin-password: <new password>
+    password: <new password>
   status: completed
   timing:
     completed: 2022-12-02 14:53:30 +0000 UTC
     enqueued: 2022-12-02 14:53:25 +0000 UTC
     started: 2022-12-02 14:53:28 +0000 UTC
 ```
-The admin password is under the result: `admin-password`. It should be different from your previous password.
+The admin password is under the result: `password`. It should be different from your previous password.
 
 *Note when you change the admin password you will also need to update the admin password the in MongoDB URI; as the old password will no longer be valid.* Update the DB password used in the URI and update the URI:
 ```shell
-export DB_PASSWORD=$(juju run-action mongodb/leader get-password --wait | grep admin-password|  awk '{print $2}')
+export DB_PASSWORD=$(juju run-action mongodb/leader get-password --wait | grep password|  awk '{print $2}')
 export URI=mongodb://$DB_USERNAME:$DB_PASSWORD@$HOST_IP/$DB_NAME?replicaSet=$REPL_SET_NAME
 ```
 
@@ -537,18 +537,18 @@ unit-mongodb-0:
   UnitId: mongodb/0
   id: "4"
   results:
-    admin-password: <password>
+    password: <password>
   status: completed
   timing:
     completed: 2022-12-02 14:53:30 +0000 UTC
     enqueued: 2022-12-02 14:53:25 +0000 UTC
     started: 2022-12-02 14:53:28 +0000 UTC
 ```
-The admin password under the result: `admin-password` should match whatever you passed in when you entered the command.
+The admin password under the result: `password` should match whatever you passed in when you entered the command.
 
 *Note that when you change the admin password you will also need to update the admin password in the MongoDB URI, as the old password will no longer be valid.* To update the DB password used in the URI:
 ```shell
-export DB_PASSWORD=$(juju run-action mongodb/leader get-password --wait | grep admin-password|  awk '{print $2}')
+export DB_PASSWORD=$(juju run-action mongodb/leader get-password --wait | grep password|  awk '{print $2}')
 export URI=mongodb://$DB_USERNAME:$DB_PASSWORD@$HOST_IP/$DB_NAME?replicaSet=$REPL_SET_NAME
 ```
 
@@ -581,7 +581,7 @@ tutorial  overlord    localhost/localhost  2.9.37   unsupported  10:32:09Z
 
 App                  Version  Status  Scale  Charm                Channel   Rev  Exposed  Message
 data-integrator               active      1  data-integrator      edge       3   no
-mongodb                       active      2  mongodb              dpe/edge   96  no
+mongodb                       active      2  mongodb              5/edge   96  no
 
 Unit                    Workload  Agent  Machine  Public address  Ports      Message
 data-integrator/0*  active    idle   5        10.23.62.216               received mongodb credentials
@@ -731,7 +731,7 @@ Model     Controller  Cloud/Region         Version  SLA          Timestamp
 tutorial  overlord    localhost/localhost  2.9.37   unsupported  09:24:12Z
 
 App                        Version  Status   Scale  Charm                      Channel   Rev  Exposed  Message
-mongodb                             active       2  mongodb                    dpe/edge   96  no       Replica set primary
+mongodb                             active       2  mongodb                    5/edge   96  no       Replica set primary
 tls-certificates-operator           blocked      1  tls-certificates-operator  edge       16  no       Configuration options missing: ['certificate', 'ca-certificate']
 
 Unit                          Workload  Agent  Machine  Public address  Ports      Message

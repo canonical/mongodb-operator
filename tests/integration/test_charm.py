@@ -7,7 +7,13 @@ import os
 import time
 
 import pytest
-from helpers import (
+from pymongo import MongoClient
+from pymongo.errors import PyMongoError, ServerSelectionTimeoutError
+from pytest_operator.plugin import OpsTest
+from tenacity import RetryError
+
+from .ha_tests.helpers import app_name, kill_unit_process
+from .helpers import (
     APP_NAME,
     PORT,
     UNIT_IDS,
@@ -16,12 +22,6 @@ from helpers import (
     get_password,
     unit_uri,
 )
-from pymongo import MongoClient
-from pymongo.errors import PyMongoError, ServerSelectionTimeoutError
-from pytest_operator.plugin import OpsTest
-from tenacity import RetryError
-
-from tests.integration.ha_tests.helpers import app_name, kill_unit_process
 
 logger = logging.getLogger(__name__)
 
@@ -134,7 +134,7 @@ async def test_set_password_action(ops_test: OpsTest) -> None:
     unit = await find_unit(ops_test, leader=True)
     action = await unit.run_action("set-password")
     action = await action.wait()
-    new_password = action.results["operator-password"]
+    new_password = action.results["password"]
     assert new_password != old_password
     new_password_reported = await get_password(ops_test)
     assert new_password == new_password_reported
@@ -152,7 +152,7 @@ async def test_set_password_action(ops_test: OpsTest) -> None:
     old_password = await get_password(ops_test)
     action = await unit.run_action("set-password", **{"password": "safe_pass"})
     action = await action.wait()
-    new_password = action.results["operator-password"]
+    new_password = action.results["password"]
     assert new_password != old_password
     new_password_reported = await get_password(ops_test)
     assert "safe_pass" == new_password_reported
@@ -165,6 +165,22 @@ async def test_set_password_action(ops_test: OpsTest) -> None:
         assert False, f"Failed to access collection with new password, error: {e}"
     finally:
         client.close()
+
+
+async def test_monitor_user(ops_test: OpsTest) -> None:
+    """Test verifies that the monitor user can perform operations such as 'rs.conf()'."""
+    unit = ops_test.model.applications[APP_NAME].units[0]
+    password = await get_password(ops_test, "mongodb", "monitor")
+    replica_set_hosts = [
+        unit.public_address for unit in ops_test.model.applications["mongodb"].units
+    ]
+    hosts = ",".join(replica_set_hosts)
+    replica_set_uri = f"mongodb://monitor:{password}@{hosts}/admin?replicaSet=mongodb"
+
+    admin_mongod_cmd = f"mongo '{replica_set_uri}'  --eval 'rs.conf()'"
+    check_monitor_cmd = f"run --unit {unit.name} -- {admin_mongod_cmd}"
+    return_code, _, _ = await ops_test.juju(*check_monitor_cmd.split())
+    assert return_code == 0, "command rs.conf() on monitor user does not work"
 
 
 async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
