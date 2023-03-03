@@ -4,9 +4,8 @@
 # See LICENSE file for licensing details.
 import json
 import logging
-import os
 import subprocess
-from subprocess import check_call
+from subprocess import check_call, check_output
 from typing import Dict, List, Optional
 
 import ops.charm
@@ -43,12 +42,7 @@ from ops.model import (
 )
 from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
-from machine_helpers import (
-    MONGOD_SERVICE_DEFAULT_PATH,
-    push_file_to_unit,
-    start_with_auth,
-    update_mongod_service,
-)
+from machine_helpers import DB_PROCESS, push_file_to_unit, update_mongod_service
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +62,7 @@ MONITOR_PRIVILEGES = {
 MONGODB_PORT = 27017
 SNAP_PACKAGES = [
     ("percona-backup-mongodb", "edge"),
-    ("charmed-mongodb", "5.0/edge"),
+    ("charmed-mongodb", "5.0/edge/pass-args"),
 ]
 REL_NAME = "database"
 
@@ -825,11 +819,14 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def auth_enabled(self) -> bool:
         """Checks if mongod service is has auth enabled for the current unit."""
-        # if there are no service file then auth is not enabled
-        if not os.path.exists(MONGOD_SERVICE_DEFAULT_PATH):
-            return False
+        # Check if the current process that is running `mongod` has the auth flag
+        output = check_output(f"ps aux | grep {DB_PROCESS}", shell=True)
+        output = output.decode("utf-8")
 
-        return start_with_auth(MONGOD_SERVICE_DEFAULT_PATH)
+        if "--auth" in output:
+            return True
+
+        return False
 
 
 class AdminUserCreationError(Exception):

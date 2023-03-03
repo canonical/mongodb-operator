@@ -668,10 +668,12 @@ class TestCharm(unittest.TestCase):
             self.assertEqual(current_password, original_password)
             action_event.fail.assert_called()
 
-    @patch("charm.MONGOD_SERVICE_DEFAULT_PATH", "/tmp/missing_file")
-    def test_auth_enabled_file_does_not_exist(self):
+    @patch("charm.check_output")
+    def test_auth_not_enabled(self, check_output):
+        check_output.return_value = b"/snap/charmed-mongodb/14/usr/bin/mongod --config /var/snap/charmed-mongodb/common/mongod.conf --bind_ip_all"
         self.assertEqual(self.harness.charm.auth_enabled(), False)
 
-    @patch("charm.MONGOD_SERVICE_DEFAULT_PATH", "tests/unit/data/mongodb_auth.service")
-    def test_auth_enabled(self):
+    @patch("charm.check_output")
+    def test_auth_enabled(self, check_output):
+        check_output.return_value = b"/snap/charmed-mongodb/14/usr/bin/mongod --auth --config /var/snap/charmed-mongodb/common/mongod.conf --bind_ip_all"
         self.assertEqual(self.harness.charm.auth_enabled(), True)

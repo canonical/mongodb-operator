@@ -18,40 +18,35 @@ from charms.operator_libs_linux.v1 import systemd
 
 logger = logging.getLogger(__name__)
 
-MONGOD_SERVICE_DEFAULT_PATH = "/etc/systemd/system/snap.charmed-mongodb.mongod.service"
-
+ENV_VAR_PATH = "/etc/environment"
+DB_PROCESS = "/usr/bin/mongod"
 ROOT_USER_GID = 0
 MONGO_USER = "snap_daemon"
 MONGO_COMMON_DIR = "/var/snap/charmed-mongodb/common"
 MONGO_DATA_DIR = f"{MONGO_COMMON_DIR}/db"
 
 
-def start_with_auth(path):
-    """Returns true is a mongod service file has the auth configuration."""
-    with open(path, "r") as mongodb_service_file:
-        mongodb_service = mongodb_service_file.readlines()
-
-    for _, line in enumerate(mongodb_service):
-        # ExecStart contains the line with the arguments to start mongod service.
-        if "ExecStart" in line and "--auth" in line:
-            return True
-
-    return False
-
-
 def update_mongod_service(auth: bool, machine_ip: str, config: MongoDBConfiguration) -> None:
     """Updates the mongod service file with the new options for starting."""
-    with open(MONGOD_SERVICE_DEFAULT_PATH, "r") as mongodb_service_file:
-        mongodb_service = mongodb_service_file.readlines()
+    with open(ENV_VAR_PATH, "r") as env_var_file:
+        env_vars = env_var_file.readlines()
 
-    # replace start command with our parameterized one
+    # write our arguments and write them to /etc/environment - the environment variable here is
+    # read in in the charmed-mongob.mongod.service file.
     mongod_start_args = generate_service_args(auth, machine_ip, config)
-    for index, line in enumerate(mongodb_service):
-        if "ExecStart" in line:
-            mongodb_service[index] = mongod_start_args
+    args_added = False
+    for index, line in enumerate(env_vars):
+        if "MONGOD_ARGS" in line:
+            args_added = True
+            env_vars[index] = f"MONGOD_ARGS={mongod_start_args}\n"
 
-    with open(MONGOD_SERVICE_DEFAULT_PATH, "w") as service_file:
-        service_file.writelines(mongodb_service)
+    # if it is the first time adding these args to the file - will will need to append them to the
+    # file
+    if not args_added:
+        env_vars.append(f"MONGOD_ARGS={mongod_start_args}\n")
+
+    with open(ENV_VAR_PATH, "w") as service_file:
+        service_file.writelines(env_vars)
 
     # mongod requires permissions to /data/db
     mongodb_user = pwd.getpwnam(MONGO_USER)
@@ -69,7 +64,6 @@ def generate_service_args(auth: bool, machine_ip: str, config: MongoDBConfigurat
     options.
     """
     mongod_start_args = [
-        "ExecStart=/usr/bin/snap run charmed-mongodb.mongod",
         # bind to localhost and external interfaces
         "--bind_ip_all",
         # part of replicaset
