@@ -16,6 +16,7 @@ from . import helpers
 S3_APP_NAME = "s3-integrator"
 TIMEOUT = 15 * 60
 ENDPOINT = "s3-credentials"
+NEW_CLUSTER = "new-mongodb"
 
 
 @pytest.fixture()
@@ -333,23 +334,20 @@ async def test_restore_new_cluster(ops_test: OpsTest, add_writes_to_db, cloud_pr
     # save old password, since after restoring we will need this password to authenticate.
     old_password = await ha_helpers.get_password(ops_test, db_app_name)
 
-    # remove the old cluster and make a new cluster with the same name. Backups with PBM are
-    # incompatible if their cluster names differ.
-    await helpers.destroy_cluster(ops_test, db_app_name)
-
+    # deploy a new cluster with a different name
     db_charm = await ops_test.build_charm(".")
-    await ops_test.model.deploy(db_charm, num_units=3, application_name=db_app_name)
+    await ops_test.model.deploy(db_charm, num_units=3, application_name=NEW_CLUSTER)
     await asyncio.gather(
-        ops_test.model.wait_for_idle(apps=[db_app_name], status="active"),
+        ops_test.model.wait_for_idle(apps=[NEW_CLUSTER], status="active"),
     )
 
-    db_unit = await helpers.get_leader_unit(ops_test)
+    db_unit = await helpers.get_leader_unit(ops_test, db_app_name=NEW_CLUSTER)
     action = await db_unit.run_action("set-password", **{"password": old_password})
     action = await action.wait()
     assert action.status == "completed"
 
     # relate to s3 - s3 has the necessary configurations
-    await ops_test.model.add_relation(S3_APP_NAME, db_app_name)
+    await ops_test.model.add_relation(S3_APP_NAME, NEW_CLUSTER)
     await ops_test.model.block_until(
         lambda: helpers.is_relation_joined(ops_test, ENDPOINT, ENDPOINT) is True,
         timeout=TIMEOUT,
@@ -357,7 +355,7 @@ async def test_restore_new_cluster(ops_test: OpsTest, add_writes_to_db, cloud_pr
 
     # wait for new cluster to sync
     await asyncio.gather(
-        ops_test.model.wait_for_idle(apps=[db_app_name], status="active"),
+        ops_test.model.wait_for_idle(apps=[NEW_CLUSTER], status="active"),
     )
 
     # find most recent backup id and restore
@@ -374,7 +372,7 @@ async def test_restore_new_cluster(ops_test: OpsTest, add_writes_to_db, cloud_pr
     try:
         for attempt in Retrying(stop=stop_after_delay(4), wait=wait_fixed(20)):
             with attempt:
-                writes_in_new_cluster = await ha_helpers.count_writes(ops_test, db_app_name)
+                writes_in_new_cluster = await ha_helpers.count_writes(ops_test, NEW_CLUSTER)
                 assert (
                     writes_in_new_cluster == writes_in_old_cluster
                 ), "new cluster writes do not match old cluster writes after restore"
@@ -382,3 +380,5 @@ async def test_restore_new_cluster(ops_test: OpsTest, add_writes_to_db, cloud_pr
         assert (
             writes_in_new_cluster == writes_in_old_cluster
         ), "new cluster writes do not match old cluster writes after restore"
+
+    await helpers.destroy_cluster(ops_test, cluster_name=NEW_CLUSTER)
