@@ -42,7 +42,7 @@ from ops.model import (
 )
 from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
-from machine_helpers import DB_PROCESS, push_file_to_unit, update_mongod_service
+from machine_helpers import ENV_VAR_PATH, push_file_to_unit, update_mongod_service
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ MONITOR_PRIVILEGES = {
 MONGODB_PORT = 27017
 SNAP_PACKAGES = [
     ("percona-backup-mongodb", "edge"),
-    ("charmed-mongodb", "5.0/edge/pass-args"),
+    ("charmed-mongodb", "5/edge"),
 ]
 REL_NAME = "database"
 
@@ -293,6 +293,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self._install_snap_packages(packages=SNAP_PACKAGES)
         except snap.SnapError:
             self.unit.status = BlockedStatus("couldn't install MongoDB")
+            return
 
         # if a new unit is joining a cluster with a legacy relation it should start without auth
         auth = not self.client_relations._get_users_from_relations(None, rel="obsolete")
@@ -822,13 +823,14 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             return
 
     def auth_enabled(self) -> bool:
-        """Checks if mongod service is has auth enabled for the current unit."""
-        # Check if the current process that is running `mongod` has the auth flag
-        output = check_output(f"ps aux | grep {DB_PROCESS}", shell=True)
-        output = output.decode("utf-8")
+        """Returns true is a mongod service has the auth configuration."""
+        with open(ENV_VAR_PATH, "r") as env_vars_file:
+            env_vars = env_vars_file.readlines()
 
-        if "--auth" in output:
-            return True
+        for _, line in enumerate(env_vars):
+            # ExecStart contains the line with the arguments to start mongod service.
+            if "MONGOD_ARGS" in line and "--auth" in line:
+                return True
 
         return False
 

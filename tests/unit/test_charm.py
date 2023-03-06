@@ -671,12 +671,10 @@ class TestCharm(unittest.TestCase):
             self.assertEqual(current_password, original_password)
             action_event.fail.assert_called()
 
-    @patch("charm.check_output")
-    def test_auth_not_enabled(self, check_output):
-        check_output.return_value = b"/snap/charmed-mongodb/14/usr/bin/mongod --config /var/snap/charmed-mongodb/common/mongod.conf --bind_ip_all"
+    @patch("charm.ENV_VAR_PATH", "tests/unit/data/env.txt")
+    def test_auth_not_enabled(self):
         self.assertEqual(self.harness.charm.auth_enabled(), False)
 
-    @patch("charm.check_output")
-    def test_auth_enabled(self, check_output):
-        check_output.return_value = b"/snap/charmed-mongodb/14/usr/bin/mongod --auth --config /var/snap/charmed-mongodb/common/mongod.conf --bind_ip_all"
+    @patch("charm.ENV_VAR_PATH", "tests/unit/data/env_auth.txt")
+    def test_auth_enabled(self):
         self.assertEqual(self.harness.charm.auth_enabled(), True)

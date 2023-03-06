@@ -624,7 +624,7 @@ async def update_service_logging(ops_test: OpsTest, unit, logging: bool):
 
         if logging:
             if LOGGING_OPTIONS not in line:
-                mongodb_service[index] = line + LOGGING_OPTIONS + "\n"
+                mongodb_service[index] = line + " " + LOGGING_OPTIONS + "\n"
         else:
             if LOGGING_OPTIONS in line:
                 mongodb_service[index] = line.replace(LOGGING_OPTIONS, "") + "\n"
@@ -649,6 +649,18 @@ async def update_service_logging(ops_test: OpsTest, unit, logging: bool):
     return_code, _, _ = await ops_test.juju(*reload_cmd.split())
     if return_code != 0:
         raise ProcessError(f"Command: {reload_cmd} failed on unit: {unit.name}.")
+
+
+async def stop_mongod(ops_test: OpsTest, unit) -> None:
+    """Safely stops the mongod process."""
+    stop_db_process = f"run --unit {unit.name} snap stop charmed-mongodb.mongod"
+    await ops_test.juju(*stop_db_process.split())
+
+
+async def start_mongod(ops_test: OpsTest, unit) -> None:
+    """Safely starts the mongod process."""
+    start_db_process = f"run --unit {unit.name} snap start charmed-mongodb.mongod"
+    await ops_test.juju(*start_db_process.split())
 
 
 @retry(stop=stop_after_attempt(8), wait=wait_fixed(15))
