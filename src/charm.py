@@ -297,6 +297,10 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # if a new unit is joining a cluster with a legacy relation it should start without auth
         auth = not self.client_relations._get_users_from_relations(None, rel="obsolete")
 
+        # clear the default config file - user provided config files will be added in the config
+        # hook
+        check_output("truncate -s 0 /var/snap/charmed-mongodb/common/mongod.conf", shell=True)
+
         # Construct the mongod startup commandline args for systemd and reload the daemon.
         update_mongod_service(
             auth=auth, machine_ip=self._unit_ip(self.unit), config=self.mongodb_config

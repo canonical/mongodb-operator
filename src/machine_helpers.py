@@ -38,12 +38,12 @@ def update_mongod_service(auth: bool, machine_ip: str, config: MongoDBConfigurat
     for index, line in enumerate(env_vars):
         if "MONGOD_ARGS" in line:
             args_added = True
-            env_vars[index] = f"MONGOD_ARGS={mongod_start_args}\n"
+            env_vars[index] = f"MONGOD_ARGS={mongod_start_args}"
 
     # if it is the first time adding these args to the file - will will need to append them to the
     # file
     if not args_added:
-        env_vars.append(f"MONGOD_ARGS={mongod_start_args}\n")
+        env_vars.append(f"MONGOD_ARGS={mongod_start_args}")
 
     with open(ENV_VAR_PATH, "w") as service_file:
         service_file.writelines(env_vars)
@@ -68,6 +68,8 @@ def generate_service_args(auth: bool, machine_ip: str, config: MongoDBConfigurat
         "--bind_ip_all",
         # part of replicaset
         f"--replSet={config.replset}",
+        # db must be located within the snap common directory since the snap is strictly confined
+        f"--dbpath={MONGO_DATA_DIR}",
     ]
 
     if auth:

@@ -20,7 +20,8 @@ provides:
 storage:
   mongodb:
     type: filesystem
-    location: /data/db
+    # mongod is strictly confined in the charmed-mongodb snap
+    location: /var/snap/charmed-mongodb/common/db
 
 peers:
   database-peers:

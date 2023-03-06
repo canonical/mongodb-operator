@@ -165,7 +165,10 @@ class TestCharm(unittest.TestCase):
     @patch("charm.update_mongod_service")
     @patch("charm.snap.SnapCache")
     @patch("charm.check_call")
-    def test_install_snap_packages_failure(self, _call, snap_cache, update_mongod_service):
+    @patch("charm.check_output")
+    def test_install_snap_packages_failure(
+        self, check_output, _call, snap_cache, update_mongod_service
+    ):
         """Test verifies the correct functions get called when installing apt packages."""
         snap_cache.side_effect = snap.SnapError
         self.harness.charm.on.install.emit()
