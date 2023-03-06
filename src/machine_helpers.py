@@ -48,10 +48,6 @@ def update_mongod_service(auth: bool, machine_ip: str, config: MongoDBConfigurat
     with open(ENV_VAR_PATH, "w") as service_file:
         service_file.writelines(env_vars)
 
-    # mongod requires permissions to /data/db
-    mongodb_user = pwd.getpwnam(MONGO_USER)
-    os.chown(MONGO_DATA_DIR, mongodb_user.pw_uid, mongodb_user.pw_gid)
-
     # changes to service files are only applied after reloading, this is needed even for snaps
     systemd.daemon_reload()
 
