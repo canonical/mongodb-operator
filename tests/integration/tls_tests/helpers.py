@@ -11,10 +11,7 @@ from ..ha_tests.helpers import app_name
 from ..helpers import get_password
 
 PORT = 27017
-# TODO: Update this when a new revision is available. In a future PR we should handle automatic
-# installs and updates to the charm
-MONGODB_SNAP_REVISION = "19"
-MONGODB_SNAP_DATA_DIR = f"/var/snap/charmed-mongodb/{MONGODB_SNAP_REVISION}"
+MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
 
 MONGOD_CONF_DIR = f"{MONGODB_SNAP_DATA_DIR}/etc/mongod"
 MONGO_COMMON_DIR = "/var/snap/charmed-mongodb/common"

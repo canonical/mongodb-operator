@@ -22,11 +22,8 @@ DB_PROCESS = "/usr/bin/mongod"
 ROOT_USER_GID = 0
 MONGO_USER = "snap_daemon"
 
-# TODO: Update this when a new revision is available. In a future PR we should handle automatic
-# installs and updates to the charm
-MONGODB_SNAP_REVISION = "19"
 MONGODB_COMMON_DIR = "/var/snap/charmed-mongodb/common"
-MONGODB_SNAP_DATA_DIR = f"/var/snap/charmed-mongodb/{MONGODB_SNAP_REVISION}"
+MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
 
 MONGOD_CONF_DIR = f"{MONGODB_SNAP_DATA_DIR}/etc/mongod"
 MONGOD_CONF_FILE_PATH = f"{MONGOD_CONF_DIR}/mongod.conf"
