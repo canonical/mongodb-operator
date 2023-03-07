@@ -5,7 +5,7 @@
 import json
 import logging
 import subprocess
-from subprocess import check_call, check_output
+from subprocess import check_call
 from typing import Dict, List, Optional
 
 import ops.charm
@@ -51,6 +51,7 @@ GPG_URL = "https://www.mongodb.org/static/pgp/server-5.0.asc"
 MONGO_EXEC_LINE = 10
 MONGO_USER = "snap_daemon"
 MONGO_COMMON_DIR = "/var/snap/charmed-mongodb/common"
+MONGOD_CONF = f"{MONGO_COMMON_DIR}/mongod.conf"
 MONGO_DATA_DIR = f"{MONGO_COMMON_DIR}/db"
 PBM_PRIVILEGES = {"resource": {"anyResource": True}, "actions": ["anyAction"]}
 MONITOR_PRIVILEGES = {
@@ -299,8 +300,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         auth = not self.client_relations._get_users_from_relations(None, rel="obsolete")
 
         # clear the default config file - user provided config files will be added in the config
-        # hook
-        check_output("truncate -s 0 /var/snap/charmed-mongodb/common/mongod.conf", shell=True)
+        # changed hook
+        with open(MONGOD_CONF, "r+") as file:
+            file.truncate(0)
 
         # Construct the mongod startup commandline args for systemd and reload the daemon.
         update_mongod_service(
@@ -360,28 +362,15 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self.unit.status = BlockedStatus("cannot have both legacy and new relations")
             return
 
-        # Occasionally mongod.service will try to restart too quickly leading to systemd not
-        # being able to start the process at all. If this is the case we need to restart the
-        # process ourselves. We defer to give it time to get started before reporting its
-        # status.
-        try:
-            with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
-                if not direct_mongo.is_ready:
-                    logger.debug("mongodb service is not ready yet, restarting.")
-                    self.restart_mongod_service()
-                    # ensure that the correct port is open for the service
-                    self._open_port_tcp(self._port)
-                    self.unit.status = WaitingStatus("Waiting for MongoDB to start")
-                    event.defer()
-                    return
-        except snap.SnapError as e:
-            logger.error("An exception occurred when starting mongod agent, error: %s.", str(e))
-            self.unit.status = BlockedStatus("couldn't start MongoDB")
-            return
-
         # no need to report on replica set status until initialised
         if "db_initialised" not in self.app_peer_data:
             return
+
+        # Cannot check more advanced MongoDB statuses if mongod hasn't started.
+        with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
+            if not direct_mongo.is_ready:
+                self.unit.status = WaitingStatus("Waiting for MongoDB to start")
+                return
 
         # leader should periodically handle configuring the replica set. Incidents such as network
         # cuts can lead to new IP addresses and therefore will require a reconfigure. Especially

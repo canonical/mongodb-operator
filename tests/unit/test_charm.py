@@ -165,10 +165,7 @@ class TestCharm(unittest.TestCase):
     @patch("charm.update_mongod_service")
     @patch("charm.snap.SnapCache")
     @patch("charm.check_call")
-    @patch("charm.check_output")
-    def test_install_snap_packages_failure(
-        self, check_output, _call, snap_cache, update_mongod_service
-    ):
+    def test_install_snap_packages_failure(self, _call, snap_cache, update_mongod_service):
         """Test verifies the correct functions get called when installing apt packages."""
         snap_cache.side_effect = snap.SnapError
         self.harness.charm.on.install.emit()
@@ -500,17 +497,15 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    @patch("charm.MongodbOperatorCharm.restart_mongod_service")
-    @patch("charm.MongodbOperatorCharm._open_port_tcp")
-    def test_update_status_not_ready(self, tcp, restart, connection):
+    def test_update_status_not_ready(self, connection):
         """Tests that if mongod is not running on this unit it restarts it."""
         connection.return_value.__enter__.return_value.is_ready = False
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
 
         self.harness.charm.on.update_status.emit()
         self.assertEqual(
             self.harness.charm.unit.status, WaitingStatus("Waiting for MongoDB to start")
         )
-        restart.assert_called()
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")

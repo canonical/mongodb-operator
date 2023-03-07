@@ -14,7 +14,6 @@ from charms.mongodb.v0.helpers import (
     TLS_INT_PEM_FILE,
 )
 from charms.mongodb.v0.mongodb import MongoDBConfiguration
-from charms.operator_libs_linux.v1 import systemd
 
 logger = logging.getLogger(__name__)
 
@@ -47,9 +46,6 @@ def update_mongod_service(auth: bool, machine_ip: str, config: MongoDBConfigurat
 
     with open(ENV_VAR_PATH, "w") as service_file:
         service_file.writelines(env_vars)
-
-    # changes to service files are only applied after reloading, this is needed even for snaps
-    systemd.daemon_reload()
 
 
 def generate_service_args(auth: bool, machine_ip: str, config: MongoDBConfiguration) -> str:
@@ -117,6 +113,7 @@ def push_file_to_unit(parent_dir, file_name, file_contents) -> None:
         os.chmod(file_name, 0o400)
     else:
         os.chmod(file_name, 0o440)
+
     mongodb_user = pwd.getpwnam(MONGO_USER)
     os.chown(file_name, mongodb_user.pw_uid, ROOT_USER_GID)
 
