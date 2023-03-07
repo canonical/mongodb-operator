@@ -42,17 +42,21 @@ from ops.model import (
 )
 from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
-from machine_helpers import ENV_VAR_PATH, push_file_to_unit, update_mongod_service
+from machine_helpers import (
+    ENV_VAR_PATH,
+    MONGOD_CONF_DIR,
+    MONGOD_CONF_FILE_PATH,
+    push_file_to_unit,
+    update_mongod_service,
+)
 
 logger = logging.getLogger(__name__)
 
 PEER = "database-peers"
 GPG_URL = "https://www.mongodb.org/static/pgp/server-5.0.asc"
 MONGO_EXEC_LINE = 10
-MONGO_USER = "snap_daemon"
-MONGO_COMMON_DIR = "/var/snap/charmed-mongodb/common"
-MONGOD_CONF = f"{MONGO_COMMON_DIR}/mongod.conf"
-MONGO_DATA_DIR = f"{MONGO_COMMON_DIR}/db"
+
+
 PBM_PRIVILEGES = {"resource": {"anyResource": True}, "actions": ["anyAction"]}
 MONITOR_PRIVILEGES = {
     "resource": {"db": "", "collection": ""},
@@ -63,7 +67,7 @@ MONITOR_PRIVILEGES = {
 MONGODB_PORT = 27017
 SNAP_PACKAGES = [
     ("percona-backup-mongodb", "edge"),
-    ("charmed-mongodb", "5/edge"),
+    ("charmed-mongodb", "5/edge/update-file-paths"),
 ]
 REL_NAME = "database"
 
@@ -301,7 +305,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         # clear the default config file - user provided config files will be added in the config
         # changed hook
-        with open(MONGOD_CONF, "r+") as file:
+        with open(MONGOD_CONF_FILE_PATH, "r+") as file:
             file.truncate(0)
 
         # Construct the mongod startup commandline args for systemd and reload the daemon.
@@ -510,7 +514,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         # put keyfile on the machine with appropriate permissions
         push_file_to_unit(
-            parent_dir=MONGO_COMMON_DIR,
+            parent_dir=MONGOD_CONF_DIR,
             file_name=KEY_FILE,
             file_contents=self.get_secret("app", "keyfile"),
         )
@@ -520,23 +524,23 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         external_ca, external_pem = self.tls.get_tls_files("unit")
         if external_ca is not None:
             push_file_to_unit(
-                parent_dir=MONGO_COMMON_DIR, file_name=TLS_EXT_CA_FILE, file_contents=external_ca
+                parent_dir=MONGOD_CONF_DIR, file_name=TLS_EXT_CA_FILE, file_contents=external_ca
             )
 
         if external_pem is not None:
             push_file_to_unit(
-                parent_dir=MONGO_COMMON_DIR, file_name=TLS_EXT_PEM_FILE, file_contents=external_pem
+                parent_dir=MONGOD_CONF_DIR, file_name=TLS_EXT_PEM_FILE, file_contents=external_pem
             )
 
         internal_ca, internal_pem = self.tls.get_tls_files("app")
         if internal_ca is not None:
             push_file_to_unit(
-                parent_dir=MONGO_COMMON_DIR, file_name=TLS_INT_CA_FILE, file_contents=internal_ca
+                parent_dir=MONGOD_CONF_DIR, file_name=TLS_INT_CA_FILE, file_contents=internal_ca
             )
 
         if internal_pem is not None:
             push_file_to_unit(
-                parent_dir=MONGO_COMMON_DIR, file_name=TLS_INT_PEM_FILE, file_contents=internal_pem
+                parent_dir=MONGOD_CONF_DIR, file_name=TLS_INT_PEM_FILE, file_contents=internal_pem
             )
 
     def _initialise_replica_set(self, event: ops.charm.StartEvent) -> None:

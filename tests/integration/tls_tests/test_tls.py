@@ -6,14 +6,17 @@ import time
 import pytest
 from pytest_operator.plugin import OpsTest
 
-from .helpers import check_tls, time_file_created, time_process_started
+from .helpers import (
+    EXTERNAL_CERT_PATH,
+    INTERNAL_CERT_PATH,
+    check_tls,
+    time_file_created,
+    time_process_started,
+)
 
-MONGO_COMMON_DIR = "/var/snap/charmed-mongodb/common"
-EXTERNAL_CERT_PATH = f"{MONGO_COMMON_DIR}/external-ca.crt"
 TLS_CERTIFICATES_APP_NAME = "tls-certificates-operator"
 DATABASE_APP_NAME = "mongodb"
 TLS_TEST_DATA = "tests/integration/tls_tests/data"
-INTERNAL_CERT_PATH = f"{MONGO_COMMON_DIR}/internal-ca.crt"
 DB_SERVICE = "snap.charmed-mongodb.mongod.service"
 
 

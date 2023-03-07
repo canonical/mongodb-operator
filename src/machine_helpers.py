@@ -21,8 +21,18 @@ ENV_VAR_PATH = "/etc/environment"
 DB_PROCESS = "/usr/bin/mongod"
 ROOT_USER_GID = 0
 MONGO_USER = "snap_daemon"
-MONGO_COMMON_DIR = "/var/snap/charmed-mongodb/common"
-MONGO_DATA_DIR = f"{MONGO_COMMON_DIR}/db"
+
+# TODO: Update this when a new revision is available. In a future PR we should handle automatic
+# installs and updates to the charm
+MONGODB_SNAP_REVISION = "19"
+MONGODB_COMMON_DIR = "/var/snap/charmed-mongodb/common"
+MONGODB_SNAP_DATA_DIR = f"/var/snap/charmed-mongodb/{MONGODB_SNAP_REVISION}"
+
+MONGOD_CONF_DIR = f"{MONGODB_SNAP_DATA_DIR}/etc/mongod"
+MONGOD_CONF_FILE_PATH = f"{MONGOD_CONF_DIR}/mongod.conf"
+
+MONGOD_DATA_DIR = f"{MONGODB_COMMON_DIR}/var/lib/mongod"
+MONGODB_DB_DIR = f"{MONGOD_DATA_DIR}/db"
 
 
 def update_mongod_service(auth: bool, machine_ip: str, config: MongoDBConfiguration) -> None:
@@ -61,7 +71,7 @@ def generate_service_args(auth: bool, machine_ip: str, config: MongoDBConfigurat
         # part of replicaset
         f"--replSet={config.replset}",
         # db must be located within the snap common directory since the snap is strictly confined
-        f"--dbpath={MONGO_DATA_DIR}",
+        f"--dbpath={MONGODB_DB_DIR}",
     ]
 
     if auth:
@@ -70,8 +80,8 @@ def generate_service_args(auth: bool, machine_ip: str, config: MongoDBConfigurat
         if config.tls_external:
             mongod_start_args.extend(
                 [
-                    f"--tlsCAFile={MONGO_COMMON_DIR}/{TLS_EXT_CA_FILE}",
-                    f"--tlsCertificateKeyFile={MONGO_COMMON_DIR}/{TLS_EXT_PEM_FILE}",
+                    f"--tlsCAFile={MONGOD_CONF_DIR}/{TLS_EXT_CA_FILE}",
+                    f"--tlsCertificateKeyFile={MONGOD_CONF_DIR}/{TLS_EXT_PEM_FILE}",
                     # allow non-TLS connections
                     "--tlsMode=preferTLS",
                 ]
@@ -83,8 +93,8 @@ def generate_service_args(auth: bool, machine_ip: str, config: MongoDBConfigurat
                 [
                     "--clusterAuthMode=x509",
                     "--tlsAllowInvalidCertificates",
-                    f"--tlsClusterCAFile={MONGO_COMMON_DIR}/{TLS_INT_CA_FILE}",
-                    f"--tlsClusterFile={MONGO_COMMON_DIR}/{TLS_INT_PEM_FILE}",
+                    f"--tlsClusterCAFile={MONGOD_CONF_DIR}/{TLS_INT_CA_FILE}",
+                    f"--tlsClusterFile={MONGOD_CONF_DIR}/{TLS_INT_PEM_FILE}",
                 ]
             )
         else:
@@ -92,7 +102,7 @@ def generate_service_args(auth: bool, machine_ip: str, config: MongoDBConfigurat
             mongod_start_args.extend(
                 [
                     "--clusterAuthMode=keyFile",
-                    f"--keyFile={MONGO_COMMON_DIR}/{KEY_FILE}",
+                    f"--keyFile={MONGOD_CONF_DIR}/{KEY_FILE}",
                 ]
             )
 

@@ -30,10 +30,10 @@ PORT = 27017
 APP_NAME = METADATA["name"]
 MONGO_COMMON_DIR = "/var/snap/charmed-mongodb/common"
 DB_PROCESS = "/usr/bin/mongod"
-MONGODB_LOG_PATH = f"{MONGO_COMMON_DIR}/db/mongodb.log"
+MONGODB_LOG_PATH = f"{MONGO_COMMON_DIR}/var/log/mongod/mongodb.log"
 MONGOD_SERVICE_DEFAULT_PATH = "/etc/systemd/system/snap.charmed-mongodb.mongod.service"
 TMP_SERVICE_PATH = "tests/integration/ha_tests/tmp.service"
-LOGGING_OPTIONS = f"--logpath={MONGO_COMMON_DIR}/db/mongodb.log --logappend"
+LOGGING_OPTIONS = f"--logpath={MONGO_COMMON_DIR}/var/log/mongod/mongodb.log --logappend"
 
 
 class ProcessError(Exception):
