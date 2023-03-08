@@ -67,7 +67,7 @@ MONITOR_PRIVILEGES = {
 MONGODB_PORT = 27017
 SNAP_PACKAGES = [
     ("percona-backup-mongodb", "edge"),
-    ("charmed-mongodb", "5/edge/update-file-paths"),
+    ("charmed-mongodb", "5/edge"),
 ]
 REL_NAME = "database"
 
