@@ -12,7 +12,7 @@ class TestCharm(unittest.TestCase):
             [
                 "--bind_ip_all",
                 "--replSet=my_repl_set",
-                "--dbpath=/var/snap/charmed-mongodb/common/var/lib/mongod/db",
+                "--dbpath=/var/snap/charmed-mongodb/common/var/lib/mongod",
                 "--auth",
                 "--clusterAuthMode=keyFile",
                 f"--keyFile={machine_helpers.MONGOD_CONF_DIR}/{machine_helpers.KEY_FILE}",
@@ -35,7 +35,7 @@ class TestCharm(unittest.TestCase):
                 "--bind_ip_all",
                 # part of replicaset
                 "--replSet=my_repl_set",
-                "--dbpath=/var/snap/charmed-mongodb/common/var/lib/mongod/db",
+                "--dbpath=/var/snap/charmed-mongodb/common/var/lib/mongod",
                 "\n",
             ]
         )

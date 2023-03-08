@@ -305,8 +305,12 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         # clear the default config file - user provided config files will be added in the config
         # changed hook
-        with open(MONGOD_CONF_FILE_PATH, "r+") as file:
-            file.truncate(0)
+        try:
+            with open(MONGOD_CONF_FILE_PATH, "r+") as f:
+                f.truncate(0)
+        except IOError:
+            self.unit.status = BlockedStatus("Could not install MongoDB")
+            return
 
         # Construct the mongod startup commandline args for systemd and reload the daemon.
         update_mongod_service(
