@@ -11,6 +11,13 @@ from ..ha_tests.helpers import app_name
 from ..helpers import get_password
 
 PORT = 27017
+MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
+
+MONGOD_CONF_DIR = f"{MONGODB_SNAP_DATA_DIR}/etc/mongod"
+MONGO_COMMON_DIR = "/var/snap/charmed-mongodb/common"
+EXTERNAL_CERT_PATH = f"{MONGOD_CONF_DIR}/external-ca.crt"
+INTERNAL_CERT_PATH = f"{MONGOD_CONF_DIR}/internal-ca.crt"
+EXTERNAL_PEM_PATH = f"{MONGOD_CONF_DIR}/external-cert.pem"
 
 
 class ProcessError(Exception):
@@ -26,9 +33,9 @@ async def mongo_tls_command(ops_test: OpsTest) -> str:
     replica_set_uri = f"mongodb://operator:" f"{password}@" f"{hosts}/admin?replicaSet={app}"
 
     return (
-        f"mongo '{replica_set_uri}'  --eval 'rs.status()'"
-        f" --tls --tlsCAFile /etc/mongodb/external-ca.crt"
-        f" --tlsCertificateKeyFile /etc/mongodb/external-cert.pem"
+        f"charmed-mongodb.mongo '{replica_set_uri}'  --eval 'rs.status()'"
+        f" --tls --tlsCAFile {EXTERNAL_CERT_PATH}"
+        f" --tlsCertificateKeyFile {EXTERNAL_PEM_PATH}"
     )
 
 

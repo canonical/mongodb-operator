@@ -9,7 +9,7 @@ the expected relation data for legacy relations.
 import logging
 from typing import Optional
 
-from charms.operator_libs_linux.v1 import systemd
+from charms.operator_libs_linux.v1 import snap, systemd
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
 
@@ -21,7 +21,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 2
+LIBPATCH = 3
 logger = logging.getLogger(__name__)
 REL_NAME = "database"
 
@@ -74,7 +74,8 @@ class MongoDBLegacyProvider(Object):
                 self.charm.unit.status = MaintenanceStatus("disabling authentication")
                 self.charm.restart_mongod_service(auth=False)
                 self.charm.unit.status = ActiveStatus()
-            except systemd.SystemdError:
+            except (systemd.SystemdError, snap.SnapError) as e:
+                logger.debug("Error disabling authentication %s", e)
                 self.charm.unit.status = BlockedStatus("couldn't restart MongoDB")
                 return
 
