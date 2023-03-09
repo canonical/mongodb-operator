@@ -28,7 +28,7 @@ MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
 MONGOD_CONF_DIR = f"{MONGODB_SNAP_DATA_DIR}/etc/mongod"
 MONGOD_CONF_FILE_PATH = f"{MONGOD_CONF_DIR}/mongod.conf"
 
-MONGOD_DATA_DIR = f"{MONGODB_COMMON_DIR}/var/lib/mongod"
+MONGODB_DATA_DIR = f"{MONGODB_COMMON_DIR}/var/lib/mongodb"
 
 
 def update_mongod_service(auth: bool, machine_ip: str, config: MongoDBConfiguration) -> None:
@@ -67,7 +67,7 @@ def generate_service_args(auth: bool, machine_ip: str, config: MongoDBConfigurat
         # part of replicaset
         f"--replSet={config.replset}",
         # db must be located within the snap common directory since the snap is strictly confined
-        f"--dbpath={MONGOD_DATA_DIR}",
+        f"--dbpath={MONGODB_DATA_DIR}",
     ]
 
     if auth:
@@ -115,9 +115,8 @@ def push_file_to_unit(parent_dir, file_name, file_contents) -> None:
     with open(file_name, "w") as write_file:
         write_file.write(file_contents)
 
-    # 400 rights for keyfile and we need 440 rights on tls certs
+    # MongoDB limitation; it is needed 400 rights for keyfile and we need 440 rights on tls certs
     # to be able to connect via MongoDB shell
-    # This is due to a limitation of MongoDB
     if "keyFile" in file_name:
         os.chmod(file_name, 0o400)
     else:
