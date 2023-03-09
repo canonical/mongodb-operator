@@ -554,7 +554,10 @@ class TestMongoBackups(unittest.TestCase):
         divider = formatted_output[1]
         self.assertEqual(divider, "-" * len(header))
         eariest_backup = formatted_output[2]
-        self.assertEqual(eariest_backup, "1900-02-14T13:59:14Z  | physical     | failed")
+        self.assertEqual(
+            eariest_backup,
+            "1900-02-14T13:59:14Z  | physical     | failed: internet not invented yet",
+        )
         failed_backup = formatted_output[3]
         self.assertEqual(failed_backup, "2000-02-14T14:09:43Z  | logical      | finished")
         inprogress_backup = formatted_output[4]
@@ -575,7 +578,10 @@ class TestMongoBackups(unittest.TestCase):
             divider, "-" * len("backup-id             | backup-type  | backup-status")
         )
         eariest_backup = formatted_output[2]
-        self.assertEqual(eariest_backup, "1900-02-14T13:59:14Z  | physical     | failed")
+        self.assertEqual(
+            eariest_backup,
+            "1900-02-14T13:59:14Z  | physical     | failed: internet not invented yet",
+        )
         failed_backup = formatted_output[3]
         self.assertEqual(failed_backup, "2000-02-14T14:09:43Z  | logical      | finished")
         inprogress_backup = formatted_output[4]
@@ -662,3 +668,50 @@ class TestMongoBackups(unittest.TestCase):
         self.harness.charm.backups._on_restore_action(action_event)
 
         action_event.fail.assert_called()
+
+    @patch("charm.subprocess.check_output")
+    def test_remap_replicaset_no_backup(self, check_output):
+        """Test verifies that no remapping is given if the backup_id doesn't exist."""
+        with open("tests/unit/data/pbm_status.txt") as f:
+            output_contents = f.readlines()
+            output_contents = "".join(output_contents)
+
+        check_output.return_value = output_contents.encode("utf-8")
+        remap = self.harness.charm.backups._remap_replicaset("this-id-doesnt-exist")
+        self.assertEqual(remap, "")
+
+    @patch("charm.subprocess.check_output")
+    def test_remap_replicaset_no_remap_necessary(self, check_output):
+        """Test verifies that no remapping is given if no remapping is necessary."""
+        with open("tests/unit/data/pbm_status_error_remap.txt") as f:
+            output_contents = f.readlines()
+            output_contents = "".join(output_contents)
+
+        check_output.return_value = output_contents.encode("utf-8")
+
+        # first case is that the backup is not in the error state
+        remap = self.harness.charm.backups._remap_replicaset("2000-02-14T14:09:43Z")
+        self.assertEqual(remap, "")
+
+        # second case is that the backup has an error not related to remapping
+        remap = self.harness.charm.backups._remap_replicaset("1900-02-14T13:59:14Z")
+        self.assertEqual(remap, "")
+
+        # third case is that the backup has two errors one related to remapping and another
+        # related to something else
+        remap = self.harness.charm.backups._remap_replicaset("2001-02-14T13:59:14Z")
+        self.assertEqual(remap, "")
+
+    @patch("charm.subprocess.check_output")
+    def test_remap_replicaset_remap_necessary(self, check_output):
+        """Test verifies that remapping is provided and correct when necessary."""
+        with open("tests/unit/data/pbm_status_error_remap.txt") as f:
+            output_contents = f.readlines()
+            output_contents = "".join(output_contents)
+
+        check_output.return_value = output_contents.encode("utf-8")
+        self.harness.charm.app.name = "current-app-name"
+
+        # first case is that the backup is not in the error state
+        remap = self.harness.charm.backups._remap_replicaset("2002-02-14T13:59:14Z")
+        self.assertEqual(remap, "--replset-remapping current-app-name=old-cluster-name")

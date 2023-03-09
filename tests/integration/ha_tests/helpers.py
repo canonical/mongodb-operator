@@ -30,10 +30,10 @@ PORT = 27017
 APP_NAME = METADATA["name"]
 MONGO_COMMON_DIR = "/var/snap/charmed-mongodb/common"
 DB_PROCESS = "/usr/bin/mongod"
-MONGODB_LOG_PATH = f"{MONGO_COMMON_DIR}/db/mongodb.log"
+MONGODB_LOG_PATH = f"{MONGO_COMMON_DIR}/var/log/mongod/mongodb.log"
 MONGOD_SERVICE_DEFAULT_PATH = "/etc/systemd/system/snap.charmed-mongodb.mongod.service"
 TMP_SERVICE_PATH = "tests/integration/ha_tests/tmp.service"
-LOGGING_OPTIONS = f"--logpath={MONGO_COMMON_DIR}/db/mongodb.log --logappend"
+LOGGING_OPTIONS = f"--logpath={MONGO_COMMON_DIR}/var/log/mongod/mongodb.log --logappend"
 
 
 class ProcessError(Exception):
@@ -553,7 +553,7 @@ async def all_db_processes_down(ops_test: OpsTest) -> bool:
     app = await app_name(ops_test)
 
     try:
-        for attempt in Retrying(stop=stop_after_delay(60), wait=wait_fixed(3)):
+        for attempt in Retrying(stop=stop_after_attempt(50), wait=wait_fixed(3)):
             with attempt:
                 for unit in ops_test.model.applications[app].units:
                     search_db_process = f"run --unit {unit.name} ps aux | grep {DB_PROCESS}"
@@ -624,7 +624,7 @@ async def update_service_logging(ops_test: OpsTest, unit, logging: bool):
 
         if logging:
             if LOGGING_OPTIONS not in line:
-                mongodb_service[index] = line + LOGGING_OPTIONS + "\n"
+                mongodb_service[index] = line + " " + LOGGING_OPTIONS + "\n"
         else:
             if LOGGING_OPTIONS in line:
                 mongodb_service[index] = line.replace(LOGGING_OPTIONS, "") + "\n"
@@ -649,6 +649,18 @@ async def update_service_logging(ops_test: OpsTest, unit, logging: bool):
     return_code, _, _ = await ops_test.juju(*reload_cmd.split())
     if return_code != 0:
         raise ProcessError(f"Command: {reload_cmd} failed on unit: {unit.name}.")
+
+
+async def stop_mongod(ops_test: OpsTest, unit) -> None:
+    """Safely stops the mongod process."""
+    stop_db_process = f"run --unit {unit.name} snap stop charmed-mongodb.mongod"
+    await ops_test.juju(*stop_db_process.split())
+
+
+async def start_mongod(ops_test: OpsTest, unit) -> None:
+    """Safely starts the mongod process."""
+    start_db_process = f"run --unit {unit.name} snap start charmed-mongodb.mongod"
+    await ops_test.juju(*start_db_process.split())
 
 
 @retry(stop=stop_after_attempt(8), wait=wait_fixed(15))

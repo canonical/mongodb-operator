@@ -10,12 +10,12 @@ class TestCharm(unittest.TestCase):
     def test_generate_service_args(self):
         service_args_auth = " ".join(
             [
-                "ExecStart=/usr/bin/snap run charmed-mongodb.mongod",
                 "--bind_ip_all",
                 "--replSet=my_repl_set",
+                "--dbpath=/var/snap/charmed-mongodb/common/var/lib/mongodb",
                 "--auth",
                 "--clusterAuthMode=keyFile",
-                f"--keyFile={machine_helpers.MONGO_COMMON_DIR}/{machine_helpers.KEY_FILE}",
+                f"--keyFile={machine_helpers.MONGOD_CONF_DIR}/{machine_helpers.KEY_FILE}",
                 "\n",
             ]
         )
@@ -31,11 +31,11 @@ class TestCharm(unittest.TestCase):
 
         service_args = " ".join(
             [
-                "ExecStart=/usr/bin/snap run charmed-mongodb.mongod",
                 # bind to localhost and external interfaces
                 "--bind_ip_all",
                 # part of replicaset
                 "--replSet=my_repl_set",
+                "--dbpath=/var/snap/charmed-mongodb/common/var/lib/mongodb",
                 "\n",
             ]
         )

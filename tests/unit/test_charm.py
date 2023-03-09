@@ -497,17 +497,15 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    @patch("charm.MongodbOperatorCharm.restart_mongod_service")
-    @patch("charm.MongodbOperatorCharm._open_port_tcp")
-    def test_update_status_not_ready(self, tcp, restart, connection):
+    def test_update_status_not_ready(self, connection):
         """Tests that if mongod is not running on this unit it restarts it."""
         connection.return_value.__enter__.return_value.is_ready = False
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
 
         self.harness.charm.on.update_status.emit()
         self.assertEqual(
             self.harness.charm.unit.status, WaitingStatus("Waiting for MongoDB to start")
         )
-        restart.assert_called()
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
@@ -668,15 +666,10 @@ class TestCharm(unittest.TestCase):
             self.assertEqual(current_password, original_password)
             action_event.fail.assert_called()
 
-    @patch("charm.MONGOD_SERVICE_UPSTREAM_PATH", "/tmp/missing_file")
-    def test_auth_enabled_file_does_not_exist(self):
+    @patch("charm.ENV_VAR_PATH", "tests/unit/data/env.txt")
+    def test_auth_not_enabled(self):
         self.assertEqual(self.harness.charm.auth_enabled(), False)
 
-    @patch("charm.MONGOD_SERVICE_UPSTREAM_PATH", "tests/unit/data/mongodb_auth.service")
-    @patch("charm.MONGOD_SERVICE_DEFAULT_PATH", "tests/unit/data/mongodb.service")
-    def test_auth_disabled(self):
-        self.assertEqual(self.harness.charm.auth_enabled(), False)
-
-    @patch("charm.MONGOD_SERVICE_DEFAULT_PATH", "tests/unit/data/mongodb_auth.service")
+    @patch("charm.ENV_VAR_PATH", "tests/unit/data/env_auth.txt")
     def test_auth_enabled(self):
         self.assertEqual(self.harness.charm.auth_enabled(), True)

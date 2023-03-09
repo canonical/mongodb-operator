@@ -50,19 +50,22 @@ async def change_logging(ops_test: OpsTest):
             continue
 
         # must restart unit to ensure that changes to logging are made
+        await helpers.stop_mongod(ops_test, unit)
         await helpers.update_service_logging(ops_test, unit, logging=True)
-        await helpers.kill_unit_process(ops_test, unit.name, kill_code="SIGTERM")
+        await helpers.start_mongod(ops_test, unit)
 
-        # sleep long enough for the mongod to start
+        # sleep long enough for the mongod to start up correctly
         time.sleep(15)
     yield
 
     app = await helpers.app_name(ops_test)
     for unit in ops_test.model.applications[app].units:
         # must restart unit to ensure that changes to logging are made
+        await helpers.stop_mongod(ops_test, unit)
         await helpers.update_service_logging(ops_test, unit, logging=False)
-        await helpers.kill_unit_process(ops_test, unit.name, kill_code="SIGTERM")
-        # sleep for long enough to allow unit to restart
+        await helpers.start_mongod(ops_test, unit)
+
+        # sleep long enough for the mongod to start up correctly
         time.sleep(15)
 
         # remove the log file as to not clog up space on the replicas.

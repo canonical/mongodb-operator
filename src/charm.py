@@ -4,7 +4,6 @@
 # See LICENSE file for licensing details.
 import json
 import logging
-import os
 import subprocess
 from subprocess import check_call
 from typing import Dict, List, Optional
@@ -44,10 +43,10 @@ from ops.model import (
 from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
 from machine_helpers import (
-    MONGOD_SERVICE_DEFAULT_PATH,
-    MONGOD_SERVICE_UPSTREAM_PATH,
+    ENV_VAR_PATH,
+    MONGOD_CONF_DIR,
+    MONGOD_CONF_FILE_PATH,
     push_file_to_unit,
-    start_with_auth,
     update_mongod_service,
 )
 
@@ -56,9 +55,8 @@ logger = logging.getLogger(__name__)
 PEER = "database-peers"
 GPG_URL = "https://www.mongodb.org/static/pgp/server-5.0.asc"
 MONGO_EXEC_LINE = 10
-MONGO_USER = "snap_daemon"
-MONGO_COMMON_DIR = "/var/snap/charmed-mongodb/common"
-MONGO_DATA_DIR = f"{MONGO_COMMON_DIR}/db"
+
+
 PBM_PRIVILEGES = {"resource": {"anyResource": True}, "actions": ["anyAction"]}
 MONITOR_PRIVILEGES = {
     "resource": {"db": "", "collection": ""},
@@ -68,7 +66,7 @@ MONITOR_PRIVILEGES = {
 # We expect the MongoDB container to use the default ports
 MONGODB_PORT = 27017
 SNAP_PACKAGES = [
-    ("charmed-mongodb", "5.0/edge"),
+    ("charmed-mongodb", "5/edge"),
 ]
 REL_NAME = "database"
 
@@ -299,15 +297,19 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self._install_snap_packages(packages=SNAP_PACKAGES)
         except snap.SnapError:
             self.unit.status = BlockedStatus("couldn't install MongoDB")
+            return
 
         # if a new unit is joining a cluster with a legacy relation it should start without auth
         auth = not self.client_relations._get_users_from_relations(None, rel="obsolete")
 
-        # save the original systemd file to be referenced by the charm later on. The upstream path
-        # will hold the original file while the default path will be the one loaded by systemd
-        # since systemd gives files in /etc/systemd/system/ precedence over those in
-        # /lib/systemd/system/
-        check_call(["cp", MONGOD_SERVICE_DEFAULT_PATH, MONGOD_SERVICE_UPSTREAM_PATH])
+        # clear the default config file - user provided config files will be added in the config
+        # changed hook
+        try:
+            with open(MONGOD_CONF_FILE_PATH, "r+") as f:
+                f.truncate(0)
+        except IOError:
+            self.unit.status = BlockedStatus("Could not install MongoDB")
+            return
 
         # Construct the mongod startup commandline args for systemd and reload the daemon.
         update_mongod_service(
@@ -367,28 +369,15 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self.unit.status = BlockedStatus("cannot have both legacy and new relations")
             return
 
-        # Occasionally mongod.service will try to restart too quickly leading to systemd not
-        # being able to start the process at all. If this is the case we need to restart the
-        # process ourselves. We defer to give it time to get started before reporting its
-        # status.
-        try:
-            with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
-                if not direct_mongo.is_ready:
-                    logger.debug("mongodb service is not ready yet, restarting.")
-                    self.restart_mongod_service()
-                    # ensure that the correct port is open for the service
-                    self._open_port_tcp(self._port)
-                    self.unit.status = WaitingStatus("Waiting for MongoDB to start")
-                    event.defer()
-                    return
-        except snap.SnapError as e:
-            logger.error("An exception occurred when starting mongod agent, error: %s.", str(e))
-            self.unit.status = BlockedStatus("couldn't start MongoDB")
-            return
-
         # no need to report on replica set status until initialised
         if "db_initialised" not in self.app_peer_data:
             return
+
+        # Cannot check more advanced MongoDB statuses if mongod hasn't started.
+        with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
+            if not direct_mongo.is_ready:
+                self.unit.status = WaitingStatus("Waiting for MongoDB to start")
+                return
 
         # leader should periodically handle configuring the replica set. Incidents such as network
         # cuts can lead to new IP addresses and therefore will require a reconfigure. Especially
@@ -528,7 +517,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         # put keyfile on the machine with appropriate permissions
         push_file_to_unit(
-            parent_dir=MONGO_COMMON_DIR,
+            parent_dir=MONGOD_CONF_DIR,
             file_name=KEY_FILE,
             file_contents=self.get_secret("app", "keyfile"),
         )
@@ -538,23 +527,23 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         external_ca, external_pem = self.tls.get_tls_files("unit")
         if external_ca is not None:
             push_file_to_unit(
-                parent_dir=MONGO_COMMON_DIR, file_name=TLS_EXT_CA_FILE, file_contents=external_ca
+                parent_dir=MONGOD_CONF_DIR, file_name=TLS_EXT_CA_FILE, file_contents=external_ca
             )
 
         if external_pem is not None:
             push_file_to_unit(
-                parent_dir=MONGO_COMMON_DIR, file_name=TLS_EXT_PEM_FILE, file_contents=external_pem
+                parent_dir=MONGOD_CONF_DIR, file_name=TLS_EXT_PEM_FILE, file_contents=external_pem
             )
 
         internal_ca, internal_pem = self.tls.get_tls_files("app")
         if internal_ca is not None:
             push_file_to_unit(
-                parent_dir=MONGO_COMMON_DIR, file_name=TLS_INT_CA_FILE, file_contents=internal_ca
+                parent_dir=MONGOD_CONF_DIR, file_name=TLS_INT_CA_FILE, file_contents=internal_ca
             )
 
         if internal_pem is not None:
             push_file_to_unit(
-                parent_dir=MONGO_COMMON_DIR, file_name=TLS_INT_PEM_FILE, file_contents=internal_pem
+                parent_dir=MONGOD_CONF_DIR, file_name=TLS_INT_PEM_FILE, file_contents=internal_pem
             )
 
     def _initialise_replica_set(self, event: ops.charm.StartEvent) -> None:
@@ -830,19 +819,16 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             return
 
     def auth_enabled(self) -> bool:
-        """Checks if mongod service is has auth enabled for the current unit."""
-        # if there are no service files then auth is not enabled
-        if not os.path.exists(MONGOD_SERVICE_UPSTREAM_PATH) and not os.path.exists(
-            MONGOD_SERVICE_DEFAULT_PATH
-        ):
-            return False
+        """Returns true is a mongod service has the auth configuration."""
+        with open(ENV_VAR_PATH, "r") as env_vars_file:
+            env_vars = env_vars_file.readlines()
 
-        # The default file has previority over the upstream, but when the default file doesn't
-        # exist then the upstream configurations are used which do not have auth.
-        if not os.path.exists(MONGOD_SERVICE_DEFAULT_PATH):
-            return False
+        for _, line in enumerate(env_vars):
+            # ExecStart contains the line with the arguments to start mongod service.
+            if "MONGOD_ARGS" in line and "--auth" in line:
+                return True
 
-        return start_with_auth(MONGOD_SERVICE_DEFAULT_PATH)
+        return False
 
 
 class AdminUserCreationError(Exception):

@@ -6,14 +6,18 @@ import time
 import pytest
 from pytest_operator.plugin import OpsTest
 
-from .helpers import check_tls, time_file_created, time_process_started
+from .helpers import (
+    EXTERNAL_CERT_PATH,
+    INTERNAL_CERT_PATH,
+    check_tls,
+    time_file_created,
+    time_process_started,
+)
 
 MONGO_COMMON_DIR = "/var/snap/charmed-mongodb/common"
-EXTERNAL_CERT_PATH = f"{MONGO_COMMON_DIR}/external-ca.crt"
 TLS_CERTIFICATES_APP_NAME = "tls-certificates-operator"
 DATABASE_APP_NAME = "mongodb"
 TLS_TEST_DATA = "tests/integration/tls_tests/data"
-INTERNAL_CERT_PATH = f"{MONGO_COMMON_DIR}/internal-ca.crt"
 DB_SERVICE = "snap.charmed-mongodb.mongod.service"
 
 
@@ -184,8 +188,8 @@ async def test_disable_tls(ops_test: OpsTest) -> None:
     await ops_test.model.applications[DATABASE_APP_NAME].remove_relation(
         f"{DATABASE_APP_NAME}:certificates", f"{TLS_CERTIFICATES_APP_NAME}:certificates"
     )
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(apps=[DATABASE_APP_NAME], status="active", timeout=1000)
+
+    await ops_test.model.wait_for_idle(apps=[DATABASE_APP_NAME], status="active", timeout=1000)
 
     # Wait for all units disabling TLS.
     for unit in ops_test.model.applications[DATABASE_APP_NAME].units:

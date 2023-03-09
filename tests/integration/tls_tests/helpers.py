@@ -11,9 +11,13 @@ from ..ha_tests.helpers import app_name
 from ..helpers import get_password
 
 PORT = 27017
+MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
+
+MONGOD_CONF_DIR = f"{MONGODB_SNAP_DATA_DIR}/etc/mongod"
 MONGO_COMMON_DIR = "/var/snap/charmed-mongodb/common"
-EXTERNAL_CERT_PATH = f"{MONGO_COMMON_DIR}/external-ca.crt"
-EXTERNAL_PEM_PATH = f"{MONGO_COMMON_DIR}/external-cert.pem"
+EXTERNAL_CERT_PATH = f"{MONGOD_CONF_DIR}/external-ca.crt"
+INTERNAL_CERT_PATH = f"{MONGOD_CONF_DIR}/internal-ca.crt"
+EXTERNAL_PEM_PATH = f"{MONGOD_CONF_DIR}/external-cert.pem"
 
 
 class ProcessError(Exception):

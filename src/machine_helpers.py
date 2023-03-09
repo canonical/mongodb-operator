@@ -14,78 +14,44 @@ from charms.mongodb.v0.helpers import (
     TLS_INT_PEM_FILE,
 )
 from charms.mongodb.v0.mongodb import MongoDBConfiguration
-from charms.operator_libs_linux.v1 import systemd
 
 logger = logging.getLogger(__name__)
 
-# systemd gives files in /etc/systemd/system/ precedence over those in /lib/systemd/system/ hence
-# our changed file in /etc will be read while maintaining the original one in /lib.
-MONGOD_SERVICE_UPSTREAM_PATH = "/lib/systemd/system/snap.charmed-mongodb.mongod.service"
-MONGOD_SERVICE_DEFAULT_PATH = "/etc/systemd/system/snap.charmed-mongodb.mongod.service"
-
-# restart options specify that systemd should attempt to restart the service on failure.
-RESTART_OPTIONS = ["Restart=always\n", "RestartSec=20\n"]
-# limits ensure that the process will not continuously retry to restart if it continuously fails to
-# restart.
-RESTARTING_LIMITS = ["StartLimitIntervalSec=500\n", "StartLimitBurst=5\n"]
-
+ENV_VAR_PATH = "/etc/environment"
+DB_PROCESS = "/usr/bin/mongod"
 ROOT_USER_GID = 0
 MONGO_USER = "snap_daemon"
-MONGO_COMMON_DIR = "/var/snap/charmed-mongodb/common"
-MONGO_DATA_DIR = f"{MONGO_COMMON_DIR}/db"
 
+MONGODB_COMMON_DIR = "/var/snap/charmed-mongodb/common"
+MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
 
-def start_with_auth(path):
-    """Returns true is a mongod service file has the auth configuration."""
-    with open(path, "r") as mongodb_service_file:
-        mongodb_service = mongodb_service_file.readlines()
+MONGOD_CONF_DIR = f"{MONGODB_SNAP_DATA_DIR}/etc/mongod"
+MONGOD_CONF_FILE_PATH = f"{MONGOD_CONF_DIR}/mongod.conf"
 
-    for _, line in enumerate(mongodb_service):
-        # ExecStart contains the line with the arguments to start mongod service.
-        if "ExecStart" in line and "--auth" in line:
-            return True
-
-    return False
+MONGODB_DATA_DIR = f"{MONGODB_COMMON_DIR}/var/lib/mongodb"
 
 
 def update_mongod_service(auth: bool, machine_ip: str, config: MongoDBConfiguration) -> None:
     """Updates the mongod service file with the new options for starting."""
-    with open(MONGOD_SERVICE_UPSTREAM_PATH, "r") as mongodb_service_file:
-        mongodb_service = mongodb_service_file.readlines()
+    with open(ENV_VAR_PATH, "r") as env_var_file:
+        env_vars = env_var_file.readlines()
 
-    # replace start command with our parameterized one
+    # write our arguments and write them to /etc/environment - the environment variable here is
+    # read in in the charmed-mongob.mongod.service file.
     mongod_start_args = generate_service_args(auth, machine_ip, config)
-    for index, line in enumerate(mongodb_service):
-        if "ExecStart" in line:
-            mongodb_service[index] = mongod_start_args
+    args_added = False
+    for index, line in enumerate(env_vars):
+        if "MONGOD_ARGS" in line:
+            args_added = True
+            env_vars[index] = f"MONGOD_ARGS={mongod_start_args}"
 
-    # self healing is implemented via systemd
-    add_self_healing(mongodb_service)
+    # if it is the first time adding these args to the file - will will need to append them to the
+    # file
+    if not args_added:
+        env_vars.append(f"MONGOD_ARGS={mongod_start_args}")
 
-    with open(MONGOD_SERVICE_DEFAULT_PATH, "w") as service_file:
-        service_file.writelines(mongodb_service)
-
-    # mongod requires permissions to /data/db
-    mongodb_user = pwd.getpwnam(MONGO_USER)
-    os.chown(MONGO_DATA_DIR, mongodb_user.pw_uid, mongodb_user.pw_gid)
-
-    # changes to service files are only applied after reloading, this is needed even for snaps
-    systemd.daemon_reload()
-
-
-def add_self_healing(service_lines):
-    """Updates the service file to auto-restart the DB service on service failure.
-
-    Options for restarting allow for auto-restart on crashed services, i.e. DB killed, DB frozen,
-    DB terminated.
-    """
-    for index, line in enumerate(service_lines):
-        if "[Unit]" in line:
-            service_lines.insert(index + 1, RESTARTING_LIMITS[0])
-            service_lines.insert(index + 1, RESTARTING_LIMITS[1])
-        if "[Service]" in line:
-            service_lines.insert(index + 1, RESTART_OPTIONS[0])
-            service_lines.insert(index + 1, RESTART_OPTIONS[1])
+    with open(ENV_VAR_PATH, "w") as service_file:
+        service_file.writelines(env_vars)
 
 
 def generate_service_args(auth: bool, machine_ip: str, config: MongoDBConfiguration) -> str:
@@ -96,11 +62,12 @@ def generate_service_args(auth: bool, machine_ip: str, config: MongoDBConfigurat
     options.
     """
     mongod_start_args = [
-        "ExecStart=/usr/bin/snap run charmed-mongodb.mongod",
         # bind to localhost and external interfaces
         "--bind_ip_all",
         # part of replicaset
         f"--replSet={config.replset}",
+        # db must be located within the snap common directory since the snap is strictly confined
+        f"--dbpath={MONGODB_DATA_DIR}",
     ]
 
     if auth:
@@ -109,8 +76,8 @@ def generate_service_args(auth: bool, machine_ip: str, config: MongoDBConfigurat
         if config.tls_external:
             mongod_start_args.extend(
                 [
-                    f"--tlsCAFile={MONGO_COMMON_DIR}/{TLS_EXT_CA_FILE}",
-                    f"--tlsCertificateKeyFile={MONGO_COMMON_DIR}/{TLS_EXT_PEM_FILE}",
+                    f"--tlsCAFile={MONGOD_CONF_DIR}/{TLS_EXT_CA_FILE}",
+                    f"--tlsCertificateKeyFile={MONGOD_CONF_DIR}/{TLS_EXT_PEM_FILE}",
                     # allow non-TLS connections
                     "--tlsMode=preferTLS",
                 ]
@@ -122,8 +89,8 @@ def generate_service_args(auth: bool, machine_ip: str, config: MongoDBConfigurat
                 [
                     "--clusterAuthMode=x509",
                     "--tlsAllowInvalidCertificates",
-                    f"--tlsClusterCAFile={MONGO_COMMON_DIR}/{TLS_INT_CA_FILE}",
-                    f"--tlsClusterFile={MONGO_COMMON_DIR}/{TLS_INT_PEM_FILE}",
+                    f"--tlsClusterCAFile={MONGOD_CONF_DIR}/{TLS_INT_CA_FILE}",
+                    f"--tlsClusterFile={MONGOD_CONF_DIR}/{TLS_INT_PEM_FILE}",
                 ]
             )
         else:
@@ -131,7 +98,7 @@ def generate_service_args(auth: bool, machine_ip: str, config: MongoDBConfigurat
             mongod_start_args.extend(
                 [
                     "--clusterAuthMode=keyFile",
-                    f"--keyFile={MONGO_COMMON_DIR}/{KEY_FILE}",
+                    f"--keyFile={MONGOD_CONF_DIR}/{KEY_FILE}",
                 ]
             )
 
@@ -148,6 +115,8 @@ def push_file_to_unit(parent_dir, file_name, file_contents) -> None:
     with open(file_name, "w") as write_file:
         write_file.write(file_contents)
 
+    # MongoDB limitation; it is needed 400 rights for keyfile and we need 440 rights on tls certs
+    # to be able to connect via MongoDB shell
     if "keyFile" in file_name:
         os.chmod(file_name, 0o400)
     else:

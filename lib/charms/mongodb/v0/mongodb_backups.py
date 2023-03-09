@@ -9,6 +9,7 @@ start phase. This user is named "backup".
 """
 import json
 import logging
+import re
 import subprocess
 import time
 from typing import Dict
@@ -42,7 +43,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 3
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,7 @@ S3_PBM_OPTION_MAP = {
     "storage-class": "storage.s3.storageClass",
 }
 S3_RELATION = "s3-credentials"
+REMAPPING_PATTERN = r"\ABackup doesn't match current cluster topology - it has different replica set names. Extra shards in the backup will cause this, for a simple example. The extra/unknown replica set names found in the backup are: ([^,\s]+)([.] Backup has no data for the config server or sole replicaset)?\Z"
 
 
 class ResyncError(Exception):
@@ -361,8 +363,11 @@ class MongoDBBackups(Object):
             return
 
         try:
+            remapping_args = self._remap_replicaset(backup_id)
             subprocess.check_output(
-                f"charmed-mongodb.pbm restore {backup_id}", shell=True, stderr=subprocess.STDOUT
+                f"charmed-mongodb.pbm restore {backup_id}  {remapping_args}",
+                shell=True,
+                stderr=subprocess.STDOUT,
             )
             event.set_results({"restore-status": "restore started"})
             self.charm.unit.status = MaintenanceStatus("restore started/running")
@@ -376,6 +381,47 @@ class MongoDBBackups(Object):
 
             event.fail(f"Failed to restore MongoDB with error: {str(e)}")
             return
+
+    def _backup_from_different_cluster(self, backup_status: str) -> bool:
+        """Returns if a given backup was made on a different cluster."""
+        return re.search(REMAPPING_PATTERN, backup_status) is not None
+
+    def _remap_replicaset(self, backup_id: str) -> str:
+        """Returns options for remapping a replica set during a cluster migration restore.
+
+        Args:
+            backup_id: str of the backup to check for remapping
+
+        Raises: CalledProcessError
+        """
+        pbm_status = subprocess.check_output(
+            "charmed-mongodb.pbm status --out=json", shell=True, stderr=subprocess.STDOUT
+        )
+        pbm_status = json.loads(pbm_status.decode("utf-8"))
+
+        # grab the error status from the backup if present
+        backups = pbm_status["backups"]["snapshot"] or []
+        backup_status = ""
+        for backup in backups:
+            if not backup_id == backup["name"]:
+                continue
+
+            backup_status = backup.get("error", "")
+            break
+
+        if not self._backup_from_different_cluster(backup_status):
+            return ""
+
+        # TODO in the future when we support conf servers and shards this will need to be more
+        # comprehensive.
+        old_cluster_name = re.search(REMAPPING_PATTERN, backup_status).group(1)
+        current_cluster_name = self.charm.app.name
+        logger.debug(
+            "Replica set remapping is necessary for restore, old cluster name: %s ; new cluster name: %s",
+            old_cluster_name,
+            current_cluster_name,
+        )
+        return f"--replset-remapping {current_cluster_name}={old_cluster_name}"
 
     def _generate_backup_list_output(self) -> str:
         """Generates a list of backups in a formatted table.
@@ -394,7 +440,13 @@ class MongoDBBackups(Object):
         for backup in backups:
             backup_status = "finished"
             if backup["status"] == "error":
-                backup_status = "failed"
+                # backups from a different cluster have an error status, but they should show as
+                # finished
+                if self._backup_from_different_cluster(backup.get("error", "")):
+                    backup_status = "finished"
+                else:
+                    # display reason for failure if available
+                    backup_status = "failed: " + backup.get("error", "N/A")
             if backup["status"] != "error" and backup["status"] != "done":
                 backup_status = "in progress"
             backup_list.append((backup["name"], backup["type"], backup_status))
