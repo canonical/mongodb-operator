@@ -1,8 +1,8 @@
-import unittest
-from unittest import mock
-
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
+
+import unittest
+from unittest import mock
 
 from charms.mongodb.v0.helpers import get_mongod_args
 
