@@ -55,6 +55,14 @@ async def test_build_deploy_charms(ops_test: OpsTest):
         apps=[GRAYLOG_APP_NAME], raise_on_error=False, status="blocked", timeout=2000
     )
 
+    # TODO: remove. testing purposes only
+    config = {"generate-self-signed-certificates": "true", "ca-common-name": "Test CA"}
+    await ops_test.model.deploy("tls-certificates-operator", channel="edge", config=config)
+    await ops_test.model.wait_for_idle(
+        apps=["tls-certificates-operator"], status="active", timeout=1000
+    )
+    await ops_test.model.relate(DATABASE_APP_NAME, "tls-certificates-operator")
+
     await ops_test.model.add_relation(GRAYLOG_APP_NAME, ELASTIC_APP_NAME)
     await ops_test.model.add_relation(GRAYLOG_APP_NAME, DATABASE_APP_NAME)
 
