@@ -99,7 +99,7 @@ Unit        Workload  Agent  Machine  Public address  Ports      Message
 mongodb/0*  active    idle   0        10.23.62.156    27017/tcp
 
 Machine  State    Address       Inst id        Series  AZ  Message
-0        started  10.23.62.156  juju-d35d30-0  focal       Running
+0        started  10.23.62.156  juju-d35d30-0  jammy       Running
 ```
 To exit the screen with `juju status --watch 1s`, enter `Ctrl+c`.
 
@@ -155,7 +155,7 @@ Unit        Workload  Agent  Machine  Public address  Ports      Message
 mongodb/0*  active    idle   0        <host IP>    27017/tcp  Replica set primary
 
 Machine  State    Address       Inst id        Series  AZ  Message
-0        started  10.23.62.156  juju-d35d30-0  focal       Running
+0        started  10.23.62.156  juju-d35d30-0  jammy       Running
 
 ```
 Set the variable `HOST_IP` to the IP address for `mongodb/0`:
@@ -291,9 +291,9 @@ mongodb/1   active    idle   1        10.23.62.55     27017/tcp  Replica set sec
 mongodb/2   active    idle   2        10.23.62.243    27017/tcp  Replica set secondary
 
 Machine  State    Address       Inst id        Series  AZ  Message
-0        started  10.23.62.156  juju-d35d30-0  focal       Running
-1        started  10.23.62.55   juju-d35d30-1  focal       Running
-2        started  10.23.62.243  juju-d35d30-2  focal       Running
+0        started  10.23.62.156  juju-d35d30-0  jammy       Running
+1        started  10.23.62.55   juju-d35d30-1  jammy       Running
+2        started  10.23.62.243  juju-d35d30-2  jammy       Running
 ```
 
 You can trust that Charmed MongoDB added these replicas correctly. But if you wanted to verify the replicas got added correctly you could connect to MongoDB via `charmed-mongodb.mongo`. Since your replica set has 2 additional hosts you will need to update the hosts in your URI. You can retrieve these host IPs with:
@@ -468,8 +468,8 @@ mongodb/0*  active    idle   0        10.23.62.156    27017/tcp  Replica set pri
 mongodb/1   active    idle   1        10.23.62.55     27017/tcp  Replica set secondary
 
 Machine  State    Address       Inst id        Series  AZ  Message
-0        started  10.23.62.156  juju-d35d30-0  focal       Running
-1        started  10.23.62.55   juju-d35d30-1  focal       Running
+0        started  10.23.62.156  juju-d35d30-0  jammy       Running
+1        started  10.23.62.55   juju-d35d30-1  jammy       Running
 
 ```
 
@@ -589,8 +589,8 @@ mongodb/0*              active    idle   0        10.23.62.156    27017/tcp
 mongodb/1               active    idle   1        10.23.62.55     27017/tcp  Replica set primary
 
 Machine  State    Address       Inst id        Series  AZ  Message
-0        started  10.23.62.156  juju-d35d30-0  focal       Running
-1        started  10.23.62.55   juju-d35d30-1  focal       Running
+0        started  10.23.62.156  juju-d35d30-0  jammy       Running
+1        started  10.23.62.55   juju-d35d30-1  jammy       Running
 5        started  10.23.62.216  juju-d35d30-5  jammy       Running
 ```
 To retrieve information such as the username, password, and database. Enter:
@@ -740,9 +740,9 @@ mongodb/1                     active    idle   1        10.23.62.55     27017/tc
 tls-certificates-operator/0*  blocked   idle   3        10.23.62.8                 Configuration options missing: ['certificate', 'ca-certificate']
 
 Machine  State    Address       Inst id        Series  AZ  Message
-0        started  10.23.62.156  juju-d35d30-0  focal       Running
-1        started  10.23.62.55   juju-d35d30-1  focal       Running
-3        started  10.23.62.8    juju-d35d30-3  focal       Running
+0        started  10.23.62.156  juju-d35d30-0  jammy       Running
+1        started  10.23.62.55   juju-d35d30-1  jammy       Running
+3        started  10.23.62.8    juju-d35d30-3  jammy       Running
 ```
 
 Now we can configure the TLS certificates. Configure the  `tls-certificates-operator` to use self signed certificates:
