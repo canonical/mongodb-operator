@@ -14,6 +14,7 @@ from .helpers import (
     time_process_started,
 )
 
+MONGO_COMMON_DIR = "/var/snap/charmed-mongodb/common"
 TLS_CERTIFICATES_APP_NAME = "tls-certificates-operator"
 DATABASE_APP_NAME = "mongodb"
 TLS_TEST_DATA = "tests/integration/tls_tests/data"

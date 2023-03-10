@@ -43,7 +43,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 2
+LIBPATCH = 3
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +100,7 @@ class MongoDBBackups(Object):
             return
 
         snap_cache = snap.SnapCache()
-        pbm_snap = snap_cache["percona-backup-mongodb"]
+        pbm_snap = snap_cache["charmed-mongodb"]
         if not pbm_snap.present:
             logger.debug("Cannot set PBM configurations, PBM snap is not yet installed.")
             event.defer()
@@ -184,20 +184,20 @@ class MongoDBBackups(Object):
 
         # wait for re-sync and update charm status based on pbm syncing status. Need to wait for
         # 2 seconds for pbm_agent to receive the resync command before verifying.
-        subprocess.check_output("percona-backup-mongodb config --force-resync", shell=True)
+        subprocess.check_output("charmed-mongodb.pbm config --force-resync", shell=True)
         time.sleep(2)
         self._wait_pbm_status()
 
     def _get_pbm_status(self) -> StatusBase:
         """Retrieve pbm status."""
         snap_cache = snap.SnapCache()
-        pbm_snap = snap_cache["percona-backup-mongodb"]
+        pbm_snap = snap_cache["charmed-mongodb"]
         if not pbm_snap.present:
             return BlockedStatus("pbm not installed.")
 
         try:
             pbm_status = subprocess.check_output(
-                "percona-backup-mongodb status", shell=True, stderr=subprocess.STDOUT
+                "charmed-mongodb.pbm status", shell=True, stderr=subprocess.STDOUT
             )
             # pbm is running resync operation
             if "Resync" in self._current_pbm_op(pbm_status.decode("utf-8")):
@@ -249,7 +249,7 @@ class MongoDBBackups(Object):
             reraise=True,
         ):
             with attempt:
-                pbm_status = subprocess.check_output("percona-backup-mongodb status", shell=True)
+                pbm_status = subprocess.check_output("charmed-mongodb.pbm status", shell=True)
                 if "Resync" in self._current_pbm_op(pbm_status.decode("utf-8")):
                     # since this process takes several minutes we should let the user know
                     # immediately.
@@ -269,8 +269,8 @@ class MongoDBBackups(Object):
         return ""
 
     def _pbm_set_config(self, key: str, value: str) -> None:
-        """Runs the percona-backup-mongodb config command for the provided key and value."""
-        config_cmd = f'percona-backup-mongodb config --set {key}="{value}"'
+        """Runs the charmed-mongodb.pbm config command for the provided key and value."""
+        config_cmd = f'charmed-mongodb.pbm config --set {key}="{value}"'
         subprocess.check_output(config_cmd, shell=True)
 
     def _on_create_backup_action(self, event) -> None:
@@ -304,7 +304,7 @@ class MongoDBBackups(Object):
             return
 
         try:
-            subprocess.check_output("percona-backup-mongodb backup", shell=True)
+            subprocess.check_output("charmed-mongodb.pbm backup", shell=True)
             event.set_results({"backup-status": "backup started"})
             self.charm.unit.status = MaintenanceStatus("backup started/running")
         except subprocess.CalledProcessError as e:
@@ -365,7 +365,7 @@ class MongoDBBackups(Object):
         try:
             remapping_args = self._remap_replicaset(backup_id)
             subprocess.check_output(
-                f"percona-backup-mongodb restore {backup_id} {remapping_args}",
+                f"charmed-mongodb.pbm restore {backup_id}  {remapping_args}",
                 shell=True,
                 stderr=subprocess.STDOUT,
             )
@@ -395,7 +395,7 @@ class MongoDBBackups(Object):
         Raises: CalledProcessError
         """
         pbm_status = subprocess.check_output(
-            "percona-backup-mongodb status --out=json", shell=True, stderr=subprocess.STDOUT
+            "charmed-mongodb.pbm status --out=json", shell=True, stderr=subprocess.STDOUT
         )
         pbm_status = json.loads(pbm_status.decode("utf-8"))
 
@@ -432,7 +432,7 @@ class MongoDBBackups(Object):
         """
         backup_list = []
         pbm_status = subprocess.check_output(
-            "percona-backup-mongodb status --out=json", shell=True, stderr=subprocess.STDOUT
+            "charmed-mongodb.pbm status --out=json", shell=True, stderr=subprocess.STDOUT
         )
         # processes finished and failed backups
         pbm_status = json.loads(pbm_status.decode("utf-8"))

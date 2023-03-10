@@ -54,16 +54,6 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 
 
 @pytest.mark.abort_on_fail
-async def test_install_pbm(ops_test: OpsTest) -> None:
-    """Verifies that pbm snap was installed."""
-    app = await helpers.app_name(ops_test)
-    unit = ops_test.model.applications[app].units[0]
-    pbm_cmd = f"run --unit {unit.name} percona-backup-mongodb"
-    return_code, _, _ = await ops_test.juju(*pbm_cmd.split())
-    assert return_code == 0, "percona-backup-mongodb not installed"
-
-
-@pytest.mark.abort_on_fail
 async def test_blocked_incorrect_creds(ops_test: OpsTest) -> None:
     """Verifies that the charm goes into blocked status when s3 creds are incorrect."""
     db_app_name = await helpers.app_name(ops_test)

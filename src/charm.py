@@ -66,7 +66,6 @@ MONITOR_PRIVILEGES = {
 # We expect the MongoDB container to use the default ports
 MONGODB_PORT = 27017
 SNAP_PACKAGES = [
-    ("percona-backup-mongodb", "edge"),
     ("charmed-mongodb", "5/edge"),
 ]
 REL_NAME = "database"
