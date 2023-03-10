@@ -3,11 +3,12 @@ from unittest import mock
 
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
-from src import machine_helpers
+
+from charms.mongodb.v0.helpers import get_mongod_args
 
 
-class TestCharm(unittest.TestCase):
-    def test_generate_service_args(self):
+class TestMongoDBHelpers(unittest.TestCase):
+    def test_get_mongod_args(self):
         service_args_auth = " ".join(
             [
                 "--bind_ip_all",
@@ -15,7 +16,7 @@ class TestCharm(unittest.TestCase):
                 "--dbpath=/var/snap/charmed-mongodb/common/var/lib/mongodb",
                 "--auth",
                 "--clusterAuthMode=keyFile",
-                f"--keyFile={machine_helpers.MONGOD_CONF_DIR}/{machine_helpers.KEY_FILE}",
+                "--keyFile=/var/snap/charmed-mongodb/current/etc/mongod/keyFile",
                 "\n",
             ]
         )
@@ -24,8 +25,9 @@ class TestCharm(unittest.TestCase):
         config.replset = "my_repl_set"
         config.tls_external = False
         config.tls_internal = False
+
         self.assertEqual(
-            machine_helpers.generate_service_args(True, "1.1.1.1", config),
+            get_mongod_args(config, auth=True, snap_install=True),
             service_args_auth,
         )
 
@@ -36,10 +38,13 @@ class TestCharm(unittest.TestCase):
                 # part of replicaset
                 "--replSet=my_repl_set",
                 "--dbpath=/var/snap/charmed-mongodb/common/var/lib/mongodb",
+                "--clusterAuthMode=keyFile",
+                "--keyFile=/var/snap/charmed-mongodb/current/etc/mongod/keyFile",
                 "\n",
             ]
         )
+
         self.assertEqual(
-            machine_helpers.generate_service_args(False, "1.1.1.1", config),
+            get_mongod_args(config, auth=False, snap_install=True),
             service_args,
         )

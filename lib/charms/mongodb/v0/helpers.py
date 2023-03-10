@@ -82,8 +82,8 @@ def get_mongod_args(
         A string representing the command used to start MongoDB.
     """
     #
-    full_data_dir = f"{MONGODB_SNAP_DATA_DIR}{DATA_DIR}" if snap_install else DATA_DIR
-    full_conf_dir = f"{MONGODB_COMMON_DIR}{CONF_DIR}" if snap_install else CONF_DIR
+    full_data_dir = f"{MONGODB_COMMON_DIR}{DATA_DIR}" if snap_install else DATA_DIR
+    full_conf_dir = f"{MONGODB_SNAP_DATA_DIR}{CONF_DIR}" if snap_install else CONF_DIR
     cmd = [
         # bind to localhost and external interfaces
         "--bind_ip_all",
