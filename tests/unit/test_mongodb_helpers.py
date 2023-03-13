@@ -38,8 +38,6 @@ class TestMongoDBHelpers(unittest.TestCase):
                 # part of replicaset
                 "--replSet=my_repl_set",
                 "--dbpath=/var/snap/charmed-mongodb/common/var/lib/mongodb",
-                "--clusterAuthMode=keyFile",
-                "--keyFile=/var/snap/charmed-mongodb/current/etc/mongod/keyFile",
                 "\n",
             ]
         )

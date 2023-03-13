@@ -95,6 +95,15 @@ def get_mongod_args(
     if auth:
         cmd.extend(["--auth"])
 
+    if auth and not config.tls_internal:
+        # keyFile cannot be used without auth and cannot be used in tandem with internal TLS
+        cmd.extend(
+            [
+                "--clusterAuthMode=keyFile",
+                f"--keyFile={full_conf_dir}/{KEY_FILE}",
+            ]
+        )
+
     if config.tls_external:
         cmd.extend(
             [
@@ -113,14 +122,6 @@ def get_mongod_args(
                 "--tlsAllowInvalidCertificates",
                 f"--tlsClusterCAFile={full_conf_dir}/{TLS_INT_CA_FILE}",
                 f"--tlsClusterFile={full_conf_dir}/{TLS_INT_PEM_FILE}",
-            ]
-        )
-    else:
-        # keyFile used for authentication replica set peers if no internal tls configured.
-        cmd.extend(
-            [
-                "--clusterAuthMode=keyFile",
-                f"--keyFile={full_conf_dir}/{KEY_FILE}",
             ]
         )
 
