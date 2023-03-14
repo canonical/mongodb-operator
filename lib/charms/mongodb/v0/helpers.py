@@ -29,7 +29,12 @@ TLS_EXT_CA_FILE = "external-ca.crt"
 TLS_INT_PEM_FILE = "internal-cert.pem"
 TLS_INT_CA_FILE = "internal-ca.crt"
 
+MONGODB_COMMON_DIR = "/var/snap/charmed-mongodb/common"
+MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
 
+
+DATA_DIR = "/var/lib/mongodb"
+CONF_DIR = "/etc/mongod"
 logger = logging.getLogger(__name__)
 
 
@@ -66,26 +71,44 @@ def get_create_user_cmd(
     ]
 
 
-def get_mongod_cmd(config: MongoDBConfiguration, mongo_files_dir="/etc/mongodb") -> str:
+def get_mongod_args(
+    config: MongoDBConfiguration,
+    auth: bool = True,
+    snap_install: bool = False,
+) -> str:
     """Construct the MongoDB startup command line.
 
     Returns:
         A string representing the command used to start MongoDB.
     """
+    #
+    full_data_dir = f"{MONGODB_COMMON_DIR}{DATA_DIR}" if snap_install else DATA_DIR
+    full_conf_dir = f"{MONGODB_SNAP_DATA_DIR}{CONF_DIR}" if snap_install else CONF_DIR
     cmd = [
-        "mongod",
         # bind to localhost and external interfaces
         "--bind_ip_all",
-        # enable auth
-        "--auth",
         # part of replicaset
         f"--replSet={config.replset}",
+        # db must be located within the snap common directory since the snap is strictly confined
+        f"--dbpath={full_data_dir}",
     ]
+    if auth:
+        cmd.extend(["--auth"])
+
+    if auth and not config.tls_internal:
+        # keyFile cannot be used without auth and cannot be used in tandem with internal TLS
+        cmd.extend(
+            [
+                "--clusterAuthMode=keyFile",
+                f"--keyFile={full_conf_dir}/{KEY_FILE}",
+            ]
+        )
+
     if config.tls_external:
         cmd.extend(
             [
-                f"--tlsCAFile={mongo_files_dir}/{TLS_EXT_CA_FILE}",
-                f"--tlsCertificateKeyFile={mongo_files_dir}/{TLS_EXT_PEM_FILE}",
+                f"--tlsCAFile={full_conf_dir}/{TLS_EXT_CA_FILE}",
+                f"--tlsCertificateKeyFile={full_conf_dir}/{TLS_EXT_PEM_FILE}",
                 # allow non-TLS connections
                 "--tlsMode=preferTLS",
             ]
@@ -97,18 +120,12 @@ def get_mongod_cmd(config: MongoDBConfiguration, mongo_files_dir="/etc/mongodb")
             [
                 "--clusterAuthMode=x509",
                 "--tlsAllowInvalidCertificates",
-                f"--tlsClusterCAFile={mongo_files_dir}/{TLS_INT_CA_FILE}",
-                f"--tlsClusterFile={mongo_files_dir}/{TLS_INT_PEM_FILE}",
+                f"--tlsClusterCAFile={full_conf_dir}/{TLS_INT_CA_FILE}",
+                f"--tlsClusterFile={full_conf_dir}/{TLS_INT_PEM_FILE}",
             ]
         )
-    else:
-        # keyFile used for authentication replica set peers if no internal tls configured.
-        cmd.extend(
-            [
-                "--clusterAuthMode=keyFile",
-                f"--keyFile={mongo_files_dir}/{KEY_FILE}",
-            ]
-        )
+
+    cmd.append("\n")
     return " ".join(cmd)
 
 

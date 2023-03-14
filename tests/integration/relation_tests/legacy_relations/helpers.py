@@ -4,11 +4,19 @@
 import logging
 from typing import Optional
 
+import ops
 import yaml
 from pymongo import MongoClient
 from pymongo.errors import OperationFailure
 from pytest_operator.plugin import OpsTest
-from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
+from tenacity import (
+    RetryError,
+    Retrying,
+    stop_after_attempt,
+    stop_after_delay,
+    wait_exponential,
+    wait_fixed,
+)
 
 from .api import GraylogApi
 
@@ -16,6 +24,14 @@ logger = logging.getLogger(__name__)
 DEFAULT_REST_API_TIMEOUT = 120
 GRAYLOG_PORT = 9000
 GRAYLOG_APP_NAME = "graylog"
+
+MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
+
+MONGOD_CONF_DIR = f"{MONGODB_SNAP_DATA_DIR}/etc/mongod"
+MONGO_COMMON_DIR = "/var/snap/charmed-mongodb/common"
+EXTERNAL_CERT_PATH = f"{MONGOD_CONF_DIR}/external-ca.crt"
+INTERNAL_CERT_PATH = f"{MONGOD_CONF_DIR}/internal-ca.crt"
+EXTERNAL_PEM_PATH = f"{MONGOD_CONF_DIR}/external-cert.pem"
 
 
 async def get_application_relation_data(
@@ -110,3 +126,46 @@ class ApiTimeoutError(Exception):
     """Unable to access Graylog in a timely manner."""
 
     pass
+
+
+async def mongo_tls_command(ops_test: OpsTest) -> str:
+    """Generates a command which verifies TLS status."""
+    app = "mongodb"
+    replica_set_hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
+    hosts = ",".join(replica_set_hosts)
+    replica_set_uri = f"mongodb://{hosts}/admin?replicaSet={app}"
+
+    return (
+        f"charmed-mongodb.mongo '{replica_set_uri}'  --eval 'rs.status()'"
+        f" --tls --tlsCAFile {EXTERNAL_CERT_PATH}"
+        f" --tlsCertificateKeyFile {EXTERNAL_PEM_PATH}"
+    )
+
+
+async def check_tls(ops_test: OpsTest, unit: ops.model.Unit, enabled: bool) -> bool:
+    """Returns whether TLS is enabled on the specific PostgreSQL instance.
+
+    Args:
+        ops_test: The ops test framework instance.
+        unit: The unit to be checked.
+        enabled: check if TLS is enabled/disabled
+
+    Returns:
+        Whether TLS is enabled/disabled.
+    """
+    try:
+        for attempt in Retrying(
+            stop=stop_after_attempt(10), wait=wait_exponential(multiplier=1, min=2, max=30)
+        ):
+            with attempt:
+                mongod_tls_check = await mongo_tls_command(ops_test)
+                check_tls_cmd = f"run --unit {unit.name} -- {mongod_tls_check}"
+                return_code, _, _ = await ops_test.juju(*check_tls_cmd.split())
+                tls_enabled = return_code == 0
+                if enabled != tls_enabled:
+                    raise ValueError(
+                        f"TLS is{' not' if not tls_enabled else ''} enabled on {unit.name}"
+                    )
+                return True
+    except RetryError:
+        return False
