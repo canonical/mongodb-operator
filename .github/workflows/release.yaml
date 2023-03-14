@@ -19,7 +19,7 @@ jobs:
     name: Release to CharmHub
     needs:
       - ci-tests
-    runs-on: ubuntu-20.04 # todo update to latest after changing to snap install
+    runs-on: ubuntu-22.04
     timeout-minutes: 60
     steps:
       - name: Checkout
