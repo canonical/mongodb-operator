@@ -480,6 +480,11 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         if "password" in event.params:
             new_password = event.params["password"]
 
+        # TODO do not reset pbm password if pbm is performing a necessary operation
+        if username == "backup" and self.backups._get_pbm_status() != ActiveStatus:
+            event.fail("Cannot update backup password while the backup tool is busy")
+            return
+
         with MongoDBConnection(self.mongodb_config) as mongo:
             try:
                 mongo.set_user_password(username, new_password)
@@ -493,6 +498,11 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 return
 
         self.set_secret("app", f"{username}-password", new_password)
+
+        # PBM will lose connection to MongoDB if we change its password without updating the URI
+        if username == "backup":
+            self.backups.update_pbm_uri()
+
         event.set_results({"password": new_password})
 
     def _open_port_tcp(self, port: int) -> None:

@@ -101,7 +101,7 @@ class MongoDBBackups(Object):
             logger.debug("Cannot update pbm-uri, backup configurations do not exist.")
             return
 
-        if not self._get_pbm_status() == ActiveStatus:
+        if self._get_pbm_status() != ActiveStatus:
             logger.debug("Cannot update pbm-uri, pbm is busy.")
             raise PBMBusyError
 
