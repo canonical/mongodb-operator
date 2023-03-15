@@ -27,7 +27,7 @@ from charms.mongodb.v0.mongodb import (
     NotReadyError,
     PyMongoError,
 )
-from charms.mongodb.v0.mongodb_backups import S3_RELATION, MongoDBBackups
+from charms.mongodb.v0.mongodb_backups import PBMBusyError, S3_RELATION, MongoDBBackups
 from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
@@ -121,11 +121,16 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         self._update_hosts(event)
 
-        # app relations should be made aware of the new set of hosts
+        # app relations and backup configurations should be made aware of the new set of hosts
         try:
             self.update_app_relation_data()
+            self.backups.update_pbm_uri()
         except PyMongoError as e:
             logger.error("Deferring on updating app relation data since: error: %r", e)
+            event.defer()
+            return
+        except PBMBusyError as e:
+            logger.error("Deferring on updating pbm uri since: error: %r", e)
             event.defer()
             return
 
@@ -203,11 +208,16 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         self._update_hosts(event)
 
-        # app relations should be made aware of the new set of hosts
+        # app relations and backup configurations should be made aware of the new set of hosts
         try:
             self.update_app_relation_data()
+            self.backups.update_pbm_uri()
         except PyMongoError as e:
             logger.error("Deferring on updating app relation data since: error: %r", e)
+            event.defer()
+            return
+        except PBMBusyError as e:
+            logger.error("Deferring on updating pbm uri since: error: %r", e)
             event.defer()
             return
 
@@ -237,11 +247,16 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         self._on_mongodb_relation_handler(event)
 
-        # app relations should be made aware of the new set of hosts
+        # app relations and backup configurations should be made aware of the new set of hosts
         try:
             self.update_app_relation_data()
+            self.backups.update_pbm_uri()
         except PyMongoError as e:
             logger.error("Deferring on updating app relation data since: error: %r", e)
+            event.defer()
+            return
+        except PBMBusyError as e:
+            logger.error("Deferring on updating pbm uri since: error: %r", e)
             event.defer()
             return
 
@@ -418,11 +433,16 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         event.unit = self.unit
         self._on_mongodb_relation_handler(event)
 
-        # app relations should be made aware of the new set of hosts
+        # app relations and backup configurations should be made aware of the new set of hosts
         try:
             self.update_app_relation_data()
+            self.backups.update_pbm_uri()
         except PyMongoError as e:
             logger.error("Deferring on updating app relation data since: error: %r", e)
+            event.defer()
+            return
+        except PBMBusyError as e:
+            logger.error("Deferring on updating pbm uri since: error: %r", e)
             event.defer()
             return
 

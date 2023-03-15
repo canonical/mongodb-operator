@@ -90,6 +90,24 @@ class MongoDBBackups(Object):
         self.framework.observe(self.charm.on.list_backups_action, self._on_list_backups_action)
         self.framework.observe(self.charm.on.restore_action, self._on_restore_action)
 
+    def update_pbm_uri(self) -> None:
+        snap_cache = snap.SnapCache()
+        pbm_snap = snap_cache["charmed-mongodb"]
+        if not pbm_snap.present:
+            logger.debug("Cannot update pbm-uri, PBM snap is not yet installed.")
+            return
+
+        if not self.charm.model.get_relation(S3_RELATION):
+            logger.debug("Cannot update pbm-uri, backup configurations do not exist.")
+            return
+
+        if not self._get_pbm_status() == ActiveStatus:
+            logger.debug("Cannot update pbm-uri, pbm is busy.")
+            raise PBMBusyError
+
+        pbm_snap.set({"pbm-uri": self._backup_config.uri})
+        pbm_snap.start(services=["pbm-agent"])
+
     def _on_s3_credential_changed(self, event: CredentialsChangedEvent):
         """Sets pbm credentials, resyncs if necessary and reports config errors."""
         # handling PBM configurations requires that MongoDB is running and the pbm snap is
@@ -107,7 +125,7 @@ class MongoDBBackups(Object):
             return
 
         # pbm requires that the URI is set before adding configs
-        pbm_snap.set({"uri": self._backup_config.uri})
+        pbm_snap.set({"pbm-uri": self._backup_config.uri})
 
         # Add and sync configuration options while handling errors related to configuring options
         # and re-syncing PBM.
