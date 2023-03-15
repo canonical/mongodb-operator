@@ -603,7 +603,8 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConfiguration")
     @patch("charm.subprocess.run")
-    def test_start_init_user_after_second_call(self, run, config):
+    @patch("charm.MongoDBBackups.update_pbm_uri")
+    def test_start_init_user_after_second_call(self, update_uri, run, config):
         """Tests that the creation of the admin user is only performed once.
 
         Verifies that if the user is already set up, that no attempts to set it up again are

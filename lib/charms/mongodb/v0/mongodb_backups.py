@@ -91,20 +91,22 @@ class MongoDBBackups(Object):
         self.framework.observe(self.charm.on.restore_action, self._on_restore_action)
 
     def update_pbm_uri(self) -> None:
+        """Updates the URI used by the pbm tool if possible."""
+        if S3_RELATION not in self.charm.model.relations:
+            logger.debug("Cannot update pbm-uri, backup configurations do not exist.")
+            return
+
         snap_cache = snap.SnapCache()
         pbm_snap = snap_cache["charmed-mongodb"]
         if not pbm_snap.present:
             logger.debug("Cannot update pbm-uri, PBM snap is not yet installed.")
             return
 
-        if not self.charm.model.get_relation(S3_RELATION):
-            logger.debug("Cannot update pbm-uri, backup configurations do not exist.")
-            return
-
         if self._get_pbm_status() != ActiveStatus:
             logger.debug("Cannot update pbm-uri, pbm is busy.")
             raise PBMBusyError
 
+        pbm_snap.stop(services=["pbm-agent"])
         pbm_snap.set({"pbm-uri": self._backup_config.uri})
         pbm_snap.start(services=["pbm-agent"])
 

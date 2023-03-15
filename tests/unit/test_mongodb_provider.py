@@ -35,7 +35,8 @@ class TestMongoProvider(unittest.TestCase):
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider.oversee_users")
-    def test_relation_event_db_not_initialised(self, oversee_users, defer):
+    @patch("charm.MongoDBBackups.update_pbm_uri")
+    def test_relation_event_db_not_initialised(self, update_uri, oversee_users, defer):
         """Tests no database relations are handled until the database is initialised.
 
         Users should not be "overseen" until the database has been initialised, no matter the
