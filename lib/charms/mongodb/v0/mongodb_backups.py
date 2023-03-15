@@ -92,7 +92,7 @@ class MongoDBBackups(Object):
 
     def update_pbm_uri(self) -> None:
         """Updates the URI used by the pbm tool if possible."""
-        if self.charm.model.get_relation(S3_RELATION) is None:
+        if self.charm.model.relations.get(S3_RELATION) == []:
             logger.debug("Cannot update pbm-uri, backup configurations do not exist.")
             return
 
