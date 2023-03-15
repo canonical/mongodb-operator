@@ -27,7 +27,7 @@ from charms.mongodb.v0.mongodb import (
     NotReadyError,
     PyMongoError,
 )
-from charms.mongodb.v0.mongodb_backups import PBMBusyError, S3_RELATION, MongoDBBackups
+from charms.mongodb.v0.mongodb_backups import S3_RELATION, MongoDBBackups, PBMBusyError
 from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
