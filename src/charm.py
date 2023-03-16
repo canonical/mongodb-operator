@@ -9,6 +9,8 @@ from subprocess import check_call
 from typing import Dict, List, Optional
 
 import ops.charm
+from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
+
 from charms.mongodb.v0.helpers import (
     KEY_FILE,
     TLS_EXT_CA_FILE,
@@ -64,10 +66,9 @@ MONITOR_PRIVILEGES = {
 }
 
 # We expect the MongoDB container to use the default ports
+NODE_EXPORTER_PORT = 9100
 MONGODB_PORT = 27017
-SNAP_PACKAGES = [
-    ("charmed-mongodb", "5/edge"),
-]
+SNAP_PACKAGES = [("charmed-mongodb", "5/edge"), ("node-exporter", "edge")]
 REL_NAME = "database"
 
 
@@ -101,6 +102,14 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.legacy_client_relations = MongoDBLegacyProvider(self)
         self.tls = MongoDBTLS(self, PEER, substrate="vm")
         self.backups = MongoDBBackups(self)
+
+        # relation events for promethese metrics are handled in the MetricsEndpointProvider
+        self.metrics_endpoint = MetricsEndpointProvider(
+            self,
+            jobs=[
+                {"static_configs": [{"targets": [f"*:{NODE_EXPORTER_PORT}", f"*:{MONGODB_PORT}"]}]}
+            ],
+        )
 
     def _generate_passwords(self) -> None:
         """Generate passwords and put them into peer relation.
@@ -295,6 +304,18 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.unit.status = MaintenanceStatus("installing MongoDB")
         try:
             self._install_snap_packages(packages=SNAP_PACKAGES)
+            # provide node exporter snap (used for metrics) the necessary plugs
+            snap_cache = snap.SnapCache()
+            node_exporter = snap_cache["node-exporter"]
+            node_exporter_plugs = [
+                "hardware-observe",
+                "network-observe",
+                "mount-observe",
+                "system-observe",
+            ]
+            for plug in node_exporter_plugs:
+                node_exporter.connect(plug=plug)
+
         except snap.SnapError:
             self.unit.status = BlockedStatus("couldn't install MongoDB")
             return
@@ -340,6 +361,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         try:
             self._open_port_tcp(self._port)
+            self._open_port_tcp(NODE_EXPORTER_PORT)
         except subprocess.CalledProcessError:
             self.unit.status = BlockedStatus("failed to open TCP port for MongoDB")
             return
@@ -351,6 +373,15 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 self.unit.status = WaitingStatus("waiting for MongoDB to start")
                 event.defer()
                 return
+
+        try:
+            self._connect_mongodb_exporter()
+        except snap.SnapError as e:
+            logger.error(
+                "An exception occurred when starting mongodb exporter, error: %s.", str(e)
+            )
+            self.charm.unit.status = BlockedStatus("couldn't start mongodb exporter")
+            return
 
         # mongod is now active
         self.unit.status = ActiveStatus()
@@ -545,6 +576,13 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             push_file_to_unit(
                 parent_dir=MONGOD_CONF_DIR, file_name=TLS_INT_PEM_FILE, file_contents=internal_pem
             )
+
+    def _connect_mongodb_exporter(self) -> None:
+        """Exposes the endpoint to mongodb_exporter"""
+        snap_cache = snap.SnapCache()
+        mongodb_snap = snap_cache["charmed-mongodb"]
+        mongodb_snap.set({"monitor-uri": self.charm._monitor_config.uri})
+        mongodb_snap.start(services=["mongodb-exporter"])
 
     def _initialise_replica_set(self, event: ops.charm.StartEvent) -> None:
         if "db_initialised" in self.app_peer_data:
