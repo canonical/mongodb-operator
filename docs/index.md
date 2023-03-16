@@ -17,28 +17,28 @@ Charmed MongoDB is an official distribution of MongoDB. It’s an open-source pr
 
 | Level | Path     | Navlink                         |
 | ----- | -------- | ------------------------------- |
-| 1 | tutorials | [Tutorial](/t/charmed-mongodb-tutorial/8061?channel=dpe/edge) |
-| 2 | setup-environment | [Set up the environment](/t/charmed-mongodb-tutorial-environment-setup/8622?channel=dpe/edge) |
-| 2 | deploy-mongodb | [Deploy MongoDB](/t/charmed-mongodb-tutorial-deploy-mongodb/8621?channel=dpe/edge) |
-| 2 | managing-units | [Managing your units](/t/charmed-mongodb-tutorial-managing-units/8620?channel=dpe/edge) |
-| 2 | mange-passwords | [Manage passwords](/t/charmed-mongodb-tutorial-manage-passwords/8630?channel=dpe/edge) |
-| 2 | relate-mongodb | [Relate your MongoDB to other applications](/t/charmed-mongodb-tutorial-relate-your-mongodb-deployment/8629?channel=dpe/edge) |
-| 2 | enable-security | [Enable security](/t/charmed-mongodb-tutorial-enable-security/8628?channel=dpe/edge) |
-| 2 | cleanup-environment | [Cleanup your environment](/t/charmed-mongodb-tutorial-environment-cleanup/8627?channel=dpe/edge) |
+| 1 | tutorials | [Tutorial]() |
+| 2 | tutorial-overview | [1. Introduction](/t/charmed-mongodb-tutorial/8061) |
+| 2 | tutorial-setup-environment | [2. Set up the environment](/t/charmed-mongodb-tutorial-environment-setup/8622) |
+| 2 | tutorial-deploy-mongodb | [3. Deploy MongoDB](/t/charmed-mongodb-tutorial-deploy-mongodb/8621) |
+| 2 | tutorial-managing-units | [4. Manage your units](/t/charmed-mongodb-tutorial-managing-units/8620) |
+| 2 | tutorial-mange-passwords | [5. Manage passwords](/t/charmed-mongodb-tutorial-manage-passwords/8630) |
+| 2 | tutorial-relate-mongodb | [6. Relate your MongoDB to other applications](/t/charmed-mongodb-tutorial-relate-your-mongodb-deployment/8629) |
+| 2 | tutorial-enable-security | [7. Enable security](/t/charmed-mongodb-tutorial-enable-security/8628) |
+| 2 | tutorial-cleanup-environment | [8. Cleanup your environment](/t/charmed-mongodb-tutorial-environment-cleanup/8627) |
 | 1 | how-tos | [How To]() |
 | 2 | how-to-manage-units | [Manage units](/t/mongodb-how-to-manage-units/8637) |
 | 2 | how-to-enable-encryption | [Enable encryption](/t/mongodb-how-to-enable-encryption/8636) |
 | 2 | how-to-manage-app | [Manage applications](/t/mongodb-how-to-manage-related-applications/8634) |
-| 2 | configuring-settings-for-s3 | [Configure S3](/t/configuring-settings-for-s3/8834) |
+| 2 | how-to-configure-s3 | [Configure S3](/t/configuring-settings-for-s3/8834) |
 | 2 | how-to-create-and-list-backups | [Create and List Backups](/t/how-to-create-and-list-backups/8788) |
-| 2 | restoring-a-backup | [Restore a Backup](/t/restoring-a-backup/8836) |
-| 2 | cluster-migration-via-restore | [Cluster Migration with Restore](/t/cluster-migration-via-restore/8835) |
+| 2 | how-to-restore-backup | [Restore a Backup](/t/restoring-a-backup/8836) |
+| 2 | how-to-migrate-cluster-via-restore | [Cluster Migration with Restore](/t/cluster-migration-via-restore/8835) |
 | 1 | reference | [Reference]() |
-| 2 | Requirements | [Requirements](/t/mongodb-requirements/8635) |
-| 2 | Actions | [Actions](https://charmhub.io/mongodb/actions) |
-| 2 | Configurations | [Configurations](https://charmhub.io/mongodb/configure) |
-| 2 | Libraries | [Libraries](https://charmhub.io/mongodb/libraries/helpers) |
-| 1 | explanation | [Explanation]() |
+| 2 | refs-requirements | [Requirements](/t/mongodb-requirements/8635) |
+| 2 | refs-actions | [Actions](https://charmhub.io/mongodb/actions) |
+| 2 | refs-configurations | [Configurations](https://charmhub.io/mongodb/configure) |
+| 2 | refs-libraries | [Libraries](https://charmhub.io/mongodb/libraries/helpers) |
 
 # Redirects
 
