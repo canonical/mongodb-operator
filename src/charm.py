@@ -27,7 +27,12 @@ from charms.mongodb.v0.mongodb import (
     NotReadyError,
     PyMongoError,
 )
-from charms.mongodb.v0.mongodb_backups import S3_RELATION, MongoDBBackups, PBMBusyError
+from charms.mongodb.v0.mongodb_backups import (
+    S3_RELATION,
+    MongoDBBackups,
+    PBMBusyError,
+    SetPBMConfigError,
+)
 from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
@@ -129,7 +134,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             logger.error("Deferring on updating app relation data since: error: %r", e)
             event.defer()
             return
-        except PBMBusyError as e:
+        except (PBMBusyError, SetPBMConfigError) as e:
             logger.error("Deferring on updating pbm uri since: error: %r", e)
             event.defer()
             return
@@ -216,7 +221,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             logger.error("Deferring on updating app relation data since: error: %r", e)
             event.defer()
             return
-        except PBMBusyError as e:
+        except (PBMBusyError, SetPBMConfigError) as e:
             logger.error("Deferring on updating pbm uri since: error: %r", e)
             event.defer()
             return
@@ -255,7 +260,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             logger.error("Deferring on updating app relation data since: error: %r", e)
             event.defer()
             return
-        except PBMBusyError as e:
+        except (PBMBusyError, SetPBMConfigError) as e:
             logger.error("Deferring on updating pbm uri since: error: %r", e)
             event.defer()
             return
@@ -441,7 +446,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             logger.error("Deferring on updating app relation data since: error: %r", e)
             event.defer()
             return
-        except PBMBusyError as e:
+        except (PBMBusyError, SetPBMConfigError) as e:
             logger.error("Deferring on updating pbm uri since: error: %r", e)
             event.defer()
             return

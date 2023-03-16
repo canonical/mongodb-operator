@@ -102,13 +102,16 @@ class MongoDBBackups(Object):
             logger.debug("Cannot update pbm-uri, PBM snap is not yet installed.")
             return
 
-        if self._get_pbm_status() != ActiveStatus:
+        if not isinstance(self._get_pbm_status(), ActiveStatus):
             logger.debug("Cannot update pbm-uri, pbm is busy.")
             raise PBMBusyError
 
         pbm_snap.stop(services=["pbm-agent"])
         pbm_snap.set({"pbm-uri": self._backup_config.uri})
-        pbm_snap.start(services=["pbm-agent"])
+
+        # updating the URI erases all the config options
+        self._set_config_options(self._get_pbm_configs())
+        self._resync_config_options(pbm_snap)
 
     def _on_s3_credential_changed(self, event: CredentialsChangedEvent):
         """Sets pbm credentials, resyncs if necessary and reports config errors."""
