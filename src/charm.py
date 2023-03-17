@@ -103,7 +103,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.tls = MongoDBTLS(self, PEER, substrate="vm")
         self.backups = MongoDBBackups(self)
 
-        # relation events for promethese metrics are handled in the MetricsEndpointProvider
+        # relation events for Prometheus metrics are handled in the MetricsEndpointProvider
         self.metrics_endpoint = MetricsEndpointProvider(
             self,
             jobs=[
@@ -129,6 +129,15 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self._generate_passwords()
 
         self._update_hosts(event)
+
+        try:
+            self._connect_mongodb_exporter()
+        except snap.SnapError as e:
+            logger.error(
+                "An exception occurred when starting mongodb exporter, error: %s.", str(e)
+            )
+            self.charm.unit.status = BlockedStatus("couldn't start mongodb exporter")
+            return
 
         # app relations should be made aware of the new set of hosts
         try:
@@ -374,15 +383,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 event.defer()
                 return
 
-        try:
-            self._connect_mongodb_exporter()
-        except snap.SnapError as e:
-            logger.error(
-                "An exception occurred when starting mongodb exporter, error: %s.", str(e)
-            )
-            self.charm.unit.status = BlockedStatus("couldn't start mongodb exporter")
-            return
-
         # mongod is now active
         self.unit.status = ActiveStatus()
 
@@ -391,6 +391,16 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             return
 
         self._initialise_replica_set(event)
+
+        # connecting to the exporter requires that the monitor user was already created
+        try:
+            self._connect_mongodb_exporter()
+        except snap.SnapError as e:
+            logger.error(
+                "An exception occurred when starting mongodb exporter, error: %s.", str(e)
+            )
+            self.charm.unit.status = BlockedStatus("couldn't start mongodb exporter")
+            return
 
     def _on_update_status(self, event):
         # cannot have both legacy and new relations since they have different auth requirements
@@ -581,8 +591,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         """Exposes the endpoint to mongodb_exporter"""
         snap_cache = snap.SnapCache()
         mongodb_snap = snap_cache["charmed-mongodb"]
-        mongodb_snap.set({"monitor-uri": self.charm._monitor_config.uri})
-        mongodb_snap.start(services=["mongodb-exporter"])
+        mongodb_snap.set({"monitor-uri": self.monitor_config.uri})
+        mongodb_snap.restart(services=["mongodb-exporter"])
 
     def _initialise_replica_set(self, event: ops.charm.StartEvent) -> None:
         if "db_initialised" in self.app_peer_data:
