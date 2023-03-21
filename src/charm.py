@@ -68,6 +68,7 @@ MONITOR_PRIVILEGES = {
 # We expect the MongoDB container to use the default ports
 NODE_EXPORTER_PORT = 9100
 MONGODB_PORT = 27017
+MONGODB_EXPORTER_PORT = 9216
 SNAP_PACKAGES = [("charmed-mongodb", "5/edge"), ("node-exporter", "edge")]
 REL_NAME = "database"
 
@@ -107,7 +108,11 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.metrics_endpoint = MetricsEndpointProvider(
             self,
             jobs=[
-                {"static_configs": [{"targets": [f"*:{NODE_EXPORTER_PORT}", f"*:{MONGODB_PORT}"]}]}
+                {
+                    "static_configs": [
+                        {"targets": [f"*:{NODE_EXPORTER_PORT}", f"*:{MONGODB_EXPORTER_PORT}"]}
+                    ]
+                }
             ],
         )
 
@@ -370,7 +375,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         try:
             self._open_port_tcp(self._port)
-            self._open_port_tcp(NODE_EXPORTER_PORT)
         except subprocess.CalledProcessError:
             self.unit.status = BlockedStatus("failed to open TCP port for MongoDB")
             return
