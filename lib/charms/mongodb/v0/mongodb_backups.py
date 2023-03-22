@@ -177,9 +177,7 @@ class MongoDBBackups(Object):
         ):
             with attempt:
                 pbm_status = self._get_pbm_status()
-                if isinstance(pbm_status, MaintenanceStatus) or isinstance(
-                    pbm_status, WaitingStatus
-                ):
+                if isinstance(pbm_status, (MaintenanceStatus, WaitingStatus)):
                     raise PBMBusyError
 
         # wait for re-sync and update charm status based on pbm syncing status. Need to wait for
@@ -447,7 +445,7 @@ class MongoDBBackups(Object):
                 else:
                     # display reason for failure if available
                     backup_status = "failed: " + backup.get("error", "N/A")
-            if backup["status"] != "error" and backup["status"] != "done":
+            if backup["status"] not in ["error", "done"]:
                 backup_status = "in progress"
             backup_list.append((backup["name"], backup["type"], backup_status))
 
