@@ -106,9 +106,10 @@ async def test_ready_correct_conf(ops_test: OpsTest) -> None:
     choices = string.ascii_letters + string.digits
     unique_path = "".join([secrets.choice(choices) for _ in range(4)])
     configuration_parameters = {
-        "bucket": "pbm-test-bucket-1",
+        "bucket": "data-charms-testing",
         "path": f"mongodb-vm/test-{unique_path}",
-        "region": "us-west-2",
+        "endpoint": "https://s3.amazonaws.com",
+        "region": "us-east-1",
     }
 
     # apply new configuration options
@@ -218,9 +219,9 @@ async def test_multi_backup(ops_test: OpsTest, continuous_writes_to_db) -> None:
     # set AWS credentials, set configs for s3 storage, and wait to resync
     await helpers.set_credentials(ops_test, cloud="AWS")
     configuration_parameters = {
-        "bucket": "pbm-test-bucket-1",
-        "region": "us-west-2",
-        "endpoint": "",
+        "bucket": "data-charms-testing",
+        "region": "us-east-1",
+        "endpoint": "https://s3.amazonaws.com",
     }
     await ops_test.model.applications[S3_APP_NAME].set_config(configuration_parameters)
     await asyncio.gather(
@@ -299,9 +300,9 @@ async def test_restore_new_cluster(ops_test: OpsTest, add_writes_to_db, cloud_pr
     await helpers.set_credentials(ops_test, cloud=cloud_provider)
     if cloud_provider == "AWS":
         configuration_parameters = {
-            "bucket": "pbm-test-bucket-1",
-            "region": "us-west-2",
-            "endpoint": "",
+            "bucket": "data-charms-testing",
+            "region": "us-east-1",
+            "endpoint": "https://s3.amazonaws.com",
         }
     else:
         configuration_parameters = {
