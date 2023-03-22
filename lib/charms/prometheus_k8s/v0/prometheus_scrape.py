@@ -368,7 +368,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 30
+LIBPATCH = 32
 
 logger = logging.getLogger(__name__)
 
@@ -1125,6 +1125,7 @@ class MetricsEndpointConsumer(Object):
 
         return scrape_jobs
 
+    @property
     def alerts(self) -> dict:
         """Fetch alerts for all relations.
 
@@ -1175,37 +1176,40 @@ class MetricsEndpointConsumer(Object):
             if not alert_rules:
                 continue
 
-            try:
-                scrape_metadata = json.loads(relation.data[relation.app]["scrape_metadata"])
-                identifier = JujuTopology.from_dict(scrape_metadata).identifier
-                alerts[identifier] = self._tool.apply_label_matchers(alert_rules)
+            alert_rules = self._inject_alert_expr_labels(alert_rules)
 
-            except KeyError as e:
-                logger.debug(
-                    "Relation %s has no 'scrape_metadata': %s",
-                    relation.id,
-                    e,
-                )
-                identifier = self._get_identifier_by_alert_rules(alert_rules)
+            identifier, topology = self._get_identifier_by_alert_rules(alert_rules)
+            if not topology:
+                try:
+                    scrape_metadata = json.loads(relation.data[relation.app]["scrape_metadata"])
+                    identifier = JujuTopology.from_dict(scrape_metadata).identifier
+                    alerts[identifier] = self._tool.apply_label_matchers(alert_rules)  # type: ignore
+
+                except KeyError as e:
+                    logger.debug(
+                        "Relation %s has no 'scrape_metadata': %s",
+                        relation.id,
+                        e,
+                    )
 
             if not identifier:
                 logger.error(
-                    "Alert rules were found but no usable group or identifier was present"
+                    "Alert rules were found but no usable group or identifier was present."
                 )
+                continue
+
+            _, errmsg = self._tool.validate_alert_rules(alert_rules)
+            if errmsg:
+                relation.data[self._charm.app]["event"] = json.dumps({"errors": errmsg})
                 continue
 
             alerts[identifier] = alert_rules
 
-            _, errmsg = self._tool.validate_alert_rules(alert_rules)
-            if errmsg:
-                if alerts[identifier]:
-                    del alerts[identifier]
-                relation.data[self._charm.app]["event"] = json.dumps({"errors": errmsg})
-                continue
-
         return alerts
 
-    def _get_identifier_by_alert_rules(self, rules: dict) -> Union[str, None]:
+    def _get_identifier_by_alert_rules(
+        self, rules: dict
+    ) -> Tuple[Union[str, None], Union[JujuTopology, None]]:
         """Determine an appropriate dict key for alert rules.
 
         The key is used as the filename when writing alerts to disk, so the structure
@@ -1213,21 +1217,28 @@ class MetricsEndpointConsumer(Object):
 
         Args:
             rules: a dict of alert rules
+        Returns:
+            A tuple containing an identifier, if found, and a JujuTopology, if it could
+            be constructed.
         """
         if "groups" not in rules:
             logger.debug("No alert groups were found in relation data")
-            return None
+            return None, None
 
         # Construct an ID based on what's in the alert rules if they have labels
         for group in rules["groups"]:
             try:
                 labels = group["rules"][0]["labels"]
-                identifier = "{}_{}_{}".format(
-                    labels["juju_model"],
-                    labels["juju_model_uuid"],
-                    labels["juju_application"],
+                topology = JujuTopology(
+                    # Don't try to safely get required constructor fields. There's already
+                    # a handler for KeyErrors
+                    model_uuid=labels["juju_model_uuid"],
+                    model=labels["juju_model"],
+                    application=labels["juju_application"],
+                    unit=labels.get("juju_unit", ""),
+                    charm_name=labels.get("juju_charm", ""),
                 )
-                return identifier
+                return topology.identifier, topology
             except KeyError:
                 logger.debug("Alert rules were found but no usable labels were present")
                 continue
@@ -1238,11 +1249,55 @@ class MetricsEndpointConsumer(Object):
         )
         try:
             for group in rules["groups"]:
-                return group["name"]
+                return group["name"], None
         except KeyError:
             logger.debug("No group name was found to use as identifier")
 
-        return None
+        return None, None
+
+    def _inject_alert_expr_labels(self, rules: Dict[str, Any]) -> Dict[str, Any]:
+        """Iterate through alert rules and inject topology into expressions.
+
+        Args:
+            rules: a dict of alert rules
+        """
+        if "groups" not in rules:
+            return rules
+
+        modified_groups = []
+        for group in rules["groups"]:
+            # Copy off rules, so we don't modify an object we're iterating over
+            rules_copy = group["rules"]
+            for idx, rule in enumerate(rules_copy):
+                labels = rule.get("labels")
+
+                if labels:
+                    try:
+                        topology = JujuTopology(
+                            # Don't try to safely get required constructor fields. There's already
+                            # a handler for KeyErrors
+                            model_uuid=labels["juju_model_uuid"],
+                            model=labels["juju_model"],
+                            application=labels["juju_application"],
+                            unit=labels.get("juju_unit", ""),
+                            charm_name=labels.get("juju_charm", ""),
+                        )
+
+                        # Inject topology and put it back in the list
+                        rule["expr"] = self._tool.inject_label_matchers(
+                            re.sub(r"%%juju_topology%%,?", "", rule["expr"]),
+                            topology.label_matcher_dict,
+                        )
+                    except KeyError:
+                        # Some required JujuTopology key is missing. Just move on.
+                        pass
+
+                    group["rules"][idx] = rule
+
+            modified_groups.append(group)
+
+        rules["groups"] = modified_groups
+        return rules
 
     def _static_scrape_config(self, relation) -> list:
         """Generate the static scrape configuration for a single relation.
@@ -1936,6 +1991,9 @@ class MetricsEndpointAggregator(Object):
         `MetricsEndpointAggregator`, that Prometheus unit is provided
         with the complete set of existing scrape jobs and alert rules.
         """
+        if not self._charm.unit.is_leader():
+            return
+
         jobs = [] + _type_convert_stored(
             self._stored.jobs
         )  # list of scrape jobs, one per relation
@@ -1982,6 +2040,9 @@ class MetricsEndpointAggregator(Object):
             targets: a `dict` containing target information
             app_name: a `str` identifying the application
         """
+        if not self._charm.unit.is_leader():
+            return
+
         # new scrape job for the relation that has changed
         updated_job = self._static_scrape_job(targets, app_name, **kwargs)
 
@@ -2015,6 +2076,9 @@ class MetricsEndpointAggregator(Object):
         For NRPE, the job name is calculated from an ID sent via the NRPE relation, and is
         sufficient to uniquely identify the target.
         """
+        if not self._charm.unit.is_leader():
+            return
+
         for relation in self.model.relations[self._prometheus_relation]:
             jobs = json.loads(relation.data[self._charm.app].get("scrape_jobs", "[]"))
             if not jobs:
@@ -2195,6 +2259,9 @@ class MetricsEndpointAggregator(Object):
         The unit rules should be a dict, which is has additional Juju topology labels added. For
         rules generated by the NRPE exporter, they are pre-labeled so lookups can be performed.
         """
+        if not self._charm.unit.is_leader():
+            return
+
         if label_rules:
             rules = self._label_alert_rules(unit_rules, name)
         else:
@@ -2229,6 +2296,9 @@ class MetricsEndpointAggregator(Object):
 
     def remove_alert_rules(self, group_name: str, unit_name: str) -> None:
         """Remove an alert rule group from relation data."""
+        if not self._charm.unit.is_leader():
+            return
+
         for relation in self.model.relations[self._prometheus_relation]:
             alert_rules = json.loads(relation.data[self._charm.app].get("alert_rules", "{}"))
             if not alert_rules:
