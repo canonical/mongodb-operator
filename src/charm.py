@@ -9,8 +9,6 @@ from subprocess import check_call
 from typing import Dict, List, Optional
 
 import ops.charm
-from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
-
 from charms.mongodb.v0.helpers import (
     KEY_FILE,
     TLS_EXT_CA_FILE,
@@ -34,6 +32,7 @@ from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
 from charms.operator_libs_linux.v1 import snap
+from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from ops.main import main
 from ops.model import (
     ActiveStatus,
@@ -141,7 +140,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             logger.error(
                 "An exception occurred when starting mongodb exporter, error: %s.", str(e)
             )
-            self.charm.unit.status = BlockedStatus("couldn't start mongodb exporter")
+            self.unit.status = BlockedStatus("couldn't start mongodb exporter")
             return
 
         # app relations should be made aware of the new set of hosts
@@ -403,7 +402,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             logger.error(
                 "An exception occurred when starting mongodb exporter, error: %s.", str(e)
             )
-            self.charm.unit.status = BlockedStatus("couldn't start mongodb exporter")
+            self.unit.status = BlockedStatus("couldn't start mongodb exporter")
             return
 
     def _on_update_status(self, event):
@@ -592,7 +591,10 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             )
 
     def _connect_mongodb_exporter(self) -> None:
-        """Exposes the endpoint to mongodb_exporter"""
+        """Exposes the endpoint to mongodb_exporter."""
+        if "monitor_user_created" not in self.app_peer_data:
+            return
+
         snap_cache = snap.SnapCache()
         mongodb_snap = snap_cache["charmed-mongodb"]
         mongodb_snap.set({"monitor-uri": self.monitor_config.uri})
