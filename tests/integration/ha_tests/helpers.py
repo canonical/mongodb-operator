@@ -34,6 +34,8 @@ MONGODB_LOG_PATH = f"{MONGO_COMMON_DIR}/var/log/mongod/mongodb.log"
 MONGOD_SERVICE_DEFAULT_PATH = "/etc/systemd/system/snap.charmed-mongodb.mongod.service"
 TMP_SERVICE_PATH = "tests/integration/ha_tests/tmp.service"
 LOGGING_OPTIONS = f"--logpath={MONGO_COMMON_DIR}/var/log/mongod/mongodb.log --logappend"
+EXPORTER_PROC = "/usr/bin/mongodb_exporter"
+GREP_PROC = "grep"
 
 
 class ProcessError(Exception):
@@ -566,7 +568,10 @@ async def all_db_processes_down(ops_test: OpsTest) -> bool:
                     # need to process these lines accordingly.
                     processes = [proc for proc in processes.split("\n") if len(proc) > 0]
 
-                    if len(processes) > 1:
+                    # filter out processes that are not related to the mongo daemon process.
+                    processes = [proc for proc in processes if EXPORTER_PROC not in proc]
+                    processes = [proc for proc in processes if GREP_PROC not in proc]
+                    if len(processes) > 0:
                         raise ProcessRunningError
     except RetryError:
         return False
