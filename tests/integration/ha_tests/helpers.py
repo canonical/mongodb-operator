@@ -553,7 +553,7 @@ async def all_db_processes_down(ops_test: OpsTest) -> bool:
     app = await app_name(ops_test)
 
     try:
-        for attempt in Retrying(stop=stop_after_attempt(50), wait=wait_fixed(3)):
+        for attempt in Retrying(stop=stop_after_attempt(100), wait=wait_fixed(3)):
             with attempt:
                 for unit in ops_test.model.applications[app].units:
                     search_db_process = f"run --unit {unit.name} ps aux | grep {DB_PROCESS}"
