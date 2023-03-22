@@ -555,22 +555,14 @@ async def all_db_processes_down(ops_test: OpsTest) -> bool:
     app = await app_name(ops_test)
 
     try:
-        for attempt in Retrying(stop=stop_after_attempt(100), wait=wait_fixed(3)):
+        for attempt in Retrying(stop=stop_after_attempt(60), wait=wait_fixed(3)):
             with attempt:
                 for unit in ops_test.model.applications[app].units:
-                    search_db_process = f"run --unit {unit.name} ps aux | grep {DB_PROCESS}"
+                    search_db_process = f"run --unit {unit.name} pgrep -x mongod"
                     _, processes, _ = await ops_test.juju(*search_db_process.split())
-
-                    # `ps aux | grep {DB_PROCESS}` is a process on it's own and will be shown in
-                    # the output of ps aux, hence it it is important that we check if there is
-                    # more than one process containing the name `DB_PROCESS`
                     # splitting processes by "\n" results in one or more empty lines, hence we
                     # need to process these lines accordingly.
                     processes = [proc for proc in processes.split("\n") if len(proc) > 0]
-
-                    # filter out processes that are not related to the mongo daemon process.
-                    processes = [proc for proc in processes if EXPORTER_PROC not in proc]
-                    processes = [proc for proc in processes if GREP_PROC not in proc]
                     if len(processes) > 0:
                         raise ProcessRunningError
     except RetryError:
