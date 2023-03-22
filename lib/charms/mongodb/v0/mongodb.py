@@ -414,10 +414,7 @@ class MongoDBConnection:
             rs_status: current state of replica set as reported by mongod.
         """
         return any(
-            member["stateStr"] == "STARTUP"
-            or member["stateStr"] == "STARTUP2"
-            or member["stateStr"] == "ROLLBACK"
-            or member["stateStr"] == "RECOVERING"
+            member["stateStr"] in ["STARTUP", "STARTUP2", "ROLLBACK", "RECOVERING"]
             for member in rs_status["members"]
         )
 
