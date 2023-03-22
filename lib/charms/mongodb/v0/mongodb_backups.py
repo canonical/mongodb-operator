@@ -107,7 +107,7 @@ class MongoDBBackups(Object):
             return
 
         # pbm requires that the URI is set before adding configs
-        pbm_snap.set({"uri": self._backup_config.uri})
+        pbm_snap.set({"pbm-uri": self._backup_config.uri})
 
         # Add and sync configuration options while handling errors related to configuring options
         # and re-syncing PBM.
