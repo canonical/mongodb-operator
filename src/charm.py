@@ -124,6 +124,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         if not self.get_secret("app", "operator-password"):
             self.set_secret("app", "operator-password", generate_password())
 
+        if not self.get_secret("app", "monitor-password"):
+            self.set_secret("app", "monitor-password", generate_password())
+
         if not self.get_secret("app", "keyfile"):
             self.set_secret("app", "keyfile", generate_keyfile())
 
@@ -133,15 +136,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             self._generate_passwords()
 
         self._update_hosts(event)
-
-        try:
-            self._connect_mongodb_exporter()
-        except snap.SnapError as e:
-            logger.error(
-                "An exception occurred when starting mongodb exporter, error: %s.", str(e)
-            )
-            self.unit.status = BlockedStatus("couldn't start mongodb exporter")
-            return
 
         # app relations should be made aware of the new set of hosts
         try:
@@ -389,13 +383,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # mongod is now active
         self.unit.status = ActiveStatus()
 
-        # only leader should initialise the replica set
-        if not self.unit.is_leader():
-            return
-
-        self._initialise_replica_set(event)
-
-        # connecting to the exporter requires that the monitor user was already created
         try:
             self._connect_mongodb_exporter()
         except snap.SnapError as e:
@@ -404,6 +391,12 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             )
             self.unit.status = BlockedStatus("couldn't start mongodb exporter")
             return
+
+        # only leader should initialise the replica set
+        if not self.unit.is_leader():
+            return
+
+        self._initialise_replica_set(event)
 
     def _on_update_status(self, event):
         # cannot have both legacy and new relations since they have different auth requirements
@@ -592,9 +585,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def _connect_mongodb_exporter(self) -> None:
         """Exposes the endpoint to mongodb_exporter."""
-        if "monitor_user_created" not in self.app_peer_data:
-            return
-
         snap_cache = snap.SnapCache()
         mongodb_snap = snap_cache["charmed-mongodb"]
         mongodb_snap.set({"monitor-uri": self.monitor_config.uri})
@@ -744,9 +734,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
     @property
     def monitor_config(self) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for this deployment of MongoDB."""
-        if not self.get_secret("app", "monitor-password"):
-            self.set_secret("app", "monitor-password", generate_password())
-
         return MongoDBConfiguration(
             replset=self.app.name,
             database="",
