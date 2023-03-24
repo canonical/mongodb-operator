@@ -277,6 +277,11 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         ):
             return
 
+        # changing the monitor password will lead to non-leader units receiving a relation changed
+        # event. We must update the monitor URI if the password changes so that COS can continue to
+        # work
+        self._connect_mongodb_exporter()
+
         with MongoDBConnection(self.mongodb_config) as mongo:
             try:
                 replset_members = mongo.get_replset_members()
@@ -422,6 +427,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         if self.unit.is_leader():
             self._handle_reconfigure(event)
 
+        # in case of a network cut and a new IP address is used we must update mongodb exporter
+        self._connect_mongodb_exporter()
+
         # update the units status based on it's replica set config and backup status. An error in
         # the status of MongoDB takes precedence over pbm status.
         mongodb_status = build_unit_status(self.mongodb_config, self._unit_ip(self.unit))
@@ -510,6 +518,10 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 return
 
         self.set_secret("app", f"{username}-password", new_password)
+
+        if username == "monitor":
+            self._connect_mongodb_exporter()
+
         event.set_results({"password": new_password})
 
     def _open_port_tcp(self, port: int) -> None:
@@ -585,8 +597,22 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def _connect_mongodb_exporter(self) -> None:
         """Exposes the endpoint to mongodb_exporter."""
+        # must wait for leader to set URI before connecting
+        if not self.get_secret("app", "monitor-password"):
+            return
+
+        # avoid unnecessary restarts if the URI mongodb exporter is using is up to date.
         snap_cache = snap.SnapCache()
         mongodb_snap = snap_cache["charmed-mongodb"]
+        try:
+            if mongodb_snap.get("monitor-uri") == self.monitor_config.uri:
+                return
+        except snap.SnapError:
+            # TODO remove try/except when issue is resolved:
+            # https://github.com/canonical/operator-libs-linux/issues/87
+            # SnapError occurs when the config option `monitor-uri` is not set.
+            pass
+
         mongodb_snap.set({"monitor-uri": self.monitor_config.uri})
         mongodb_snap.restart(services=["mongodb-exporter"])
 
@@ -739,7 +765,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             database="",
             username="monitor",
             password=self.get_secret("app", "monitor-password"),
-            hosts=set(self._unit_ips),
+            # MongoDB Exporter can only connect to one replica - not the entire set.
+            hosts=["127.0.0.1"],
             roles={"monitor"},
             tls_external=self.tls.get_tls_files("unit") is not None,
             tls_internal=self.tls.get_tls_files("app") is not None,
