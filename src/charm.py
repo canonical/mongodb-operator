@@ -277,8 +277,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         ):
             return
 
-        # changing the monitor password will lead to non-leader units recieving a relation changed
-        # event. We must update the monitor URI if the password changes so that COS can contiue to
+        # changing the monitor password will lead to non-leader units receiving a relation changed
+        # event. We must update the monitor URI if the password changes so that COS can continue to
         # work
         self._connect_mongodb_exporter()
 

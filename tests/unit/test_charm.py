@@ -192,7 +192,8 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    def test_mongodb_relation_joined_all_replicas_not_ready(self, connection):
+    @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
+    def test_mongodb_relation_joined_all_replicas_not_ready(self, _, connection):
         """Tests that we go into waiting when current ReplicaSet hosts are not ready.
 
         Tests the scenario that if current replica set hosts are not ready, the leader goes into
@@ -219,7 +220,8 @@ class TestCharm(unittest.TestCase):
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBConnection")
     @patch("charms.mongodb.v0.mongodb.MongoClient")
-    def test_relation_joined_get_members_failure(self, client, connection, defer):
+    @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
+    def test_relation_joined_get_members_failure(self, _, client, connection, defer):
         """Tests reconfigure does not execute when unable to get the replica set members.
 
         Verifies in case of relation_joined and relation departed, that when the the database
@@ -253,7 +255,8 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBConnection")
-    def test_reconfigure_add_member_failure(self, connection, defer):
+    @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
+    def test_reconfigure_add_member_failure(self, _, connection, defer):
         """Tests reconfigure does not proceed when unable to add a member.
 
         Verifies in relation joined events, that when the database cannot add a member that the
@@ -320,8 +323,9 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBBackups._get_pbm_status")
     @patch("charm.build_unit_status")
+    @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
     def test_update_status_mongodb_error(
-        self, get_mongodb_status, get_pbm_status, connection, status_connection
+        self, _, get_mongodb_status, get_pbm_status, connection, status_connection
     ):
         """Tests that when MongoDB is not active, that is reported instead of pbm."""
         # assume leader has already initialised the replica set
@@ -354,8 +358,9 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBBackups._get_pbm_status")
     @patch("charm.build_unit_status")
+    @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
     def test_update_status_pbm_error(
-        self, get_mongodb_status, get_pbm_status, connection, status_connection
+        self, _, get_mongodb_status, get_pbm_status, connection, status_connection
     ):
         """Tests when MongoDB is active and pbm is in the error state, pbm status is reported."""
         # assume leader has already initialised the replica set
@@ -383,8 +388,9 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBBackups._get_pbm_status")
     @patch("charm.build_unit_status")
+    @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
     def test_update_status_pbm_and_mongodb_ready(
-        self, get_mongodb_status, get_pbm_status, connection, status_connection
+        self, _, get_mongodb_status, get_pbm_status, connection, status_connection
     ):
         """Tests when both Mongodb and pbm are ready that MongoDB status is reported."""
         # assume leader has already initialised the replica set
@@ -404,8 +410,9 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBBackups._get_pbm_status")
     @patch("charm.build_unit_status")
+    @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
     def test_update_status_no_s3(
-        self, get_mongodb_status, get_pbm_status, connection, status_connection
+        self, _, get_mongodb_status, get_pbm_status, connection, status_connection
     ):
         """Tests when the s3 relation isn't present that the MongoDB status is reported."""
         # assume leader has already initialised the replica set
@@ -422,7 +429,8 @@ class TestCharm(unittest.TestCase):
     @patch("charms.mongodb.v0.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBBackups._get_pbm_status")
-    def test_update_status_primary(self, pbm_status, connection, status_connection):
+    @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
+    def test_update_status_primary(self, _, pbm_status, connection, status_connection):
         """Tests that update status identifies the primary unit and updates status."""
         # assume leader has already initialised the replica set
         self.harness.set_leader(True)
@@ -441,7 +449,8 @@ class TestCharm(unittest.TestCase):
     @patch("charms.mongodb.v0.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBBackups._get_pbm_status")
-    def test_update_status_secondary(self, pbm_status, connection, status_connection):
+    @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
+    def test_update_status_secondary(self, _, pbm_status, connection, status_connection):
         """Tests that update status identifies secondary units and doesn't update status."""
         # assume leader has already initialised the replica set
         self.harness.set_leader(True)
@@ -460,7 +469,8 @@ class TestCharm(unittest.TestCase):
     @patch("charms.mongodb.v0.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBBackups._get_pbm_status")
-    def test_update_status_additional_messages(self, pbm_status, connection, status_connection):
+    @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
+    def test_update_status_additional_messages(self, _, pbm_status, connection, status_connection):
         """Tests status updates are correct for non-primary and non-secondary cases."""
         # assume leader has already initialised the replica set
         self.harness.set_leader(True)
