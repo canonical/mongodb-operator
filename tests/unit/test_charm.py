@@ -55,7 +55,6 @@ class TestCharm(unittest.TestCase):
         mock_mongodb_snap.present = True
         mock_mongodb_snap.start = mock.Mock()
         snap.return_value = {"charmed-mongodb": mock_mongodb_snap}
-        self.harness.charm.app_peer_data["monitor-password"] = "pass123"
 
         self.harness.set_leader(False)
         self.harness.charm.on.start.emit()
