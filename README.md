@@ -160,10 +160,10 @@ Please see the [Juju SDK docs](https://juju.is/docs/sdk) for guidelines on enhan
 
 ## License
 
-The Charmed MongoDB Operator is free software, [distributed](https://github.com/canonical/mongodb-operator/blob/main/LICENSE) under the Apache Software License, version 2.0. It [installs/operates/depends on] [Percona Server for MongoDB](https://github.com/percona/percona-server-mongodb/tree/release-5.0.14-12), [Percona Backup For MongoDB](https://github.com/percona/percona-backup-mongodb/tree/release-2.0.4), and [MongoDB Exporter](https://github.com/percona/mongodb_exporter/tree/release-0.37.0) which are licensed under:
-- Server Side Public [License for Percona Server for MongoDB](https://github.com/percona/percona-server-mongodb/blob/release-5.0.14-12/LICENSE-Community.txt)
-- Apache [License for Percona Backup For MongoDB](https://github.com/percona/percona-backup-mongodb/blob/release-2.0.4/LICENSE)
-- Apache [License for MongoDB Exporter](https://github.com/percona/mongodb_exporter/blob/release-0.37.0/LICENSE)
+The Charmed MongoDB Operator is free software, [distributed](https://github.com/canonical/mongodb-operator/blob/main/licenses/LICENSE) under the Apache Software License, version 2.0. It [installs/operates/depends on] [Percona Server for MongoDB](https://github.com/percona/percona-server-mongodb/tree/release-5.0.14-12), [Percona Backup For MongoDB](https://github.com/percona/percona-backup-mongodb/tree/release-2.0.4), and [MongoDB Exporter](https://github.com/percona/mongodb_exporter/tree/release-0.37.0) which are licensed under:
+- Server Side Public [License for Percona Server for MongoDB](https://github.com/canonical/mongodb-operator/blob/main/licenses/LICENSE-percona-server-mongodb)
+- Apache [License for Percona Backup For MongoDB](https://github.com/canonical/mongodb-operator/blob/main/licenses/LICENSE-percona-backup-mongodb)
+- Apache [License for MongoDB Exporter](https://github.com/canonical/mongodb-operator/blob/main/licenses/LICENSE-mongodb-exporter)
 
 ## Trademark notice
 MongoDB' is a trademark or registered trademark of MongoDB Inc. Other trademarks are property of their respective owners.
