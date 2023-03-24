@@ -864,12 +864,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         with open(ENV_VAR_PATH, "r") as env_vars_file:
             env_vars = env_vars_file.readlines()
 
-        for _, line in enumerate(env_vars):
-            # ExecStart contains the line with the arguments to start mongod service.
-            if "MONGOD_ARGS" in line and "--auth" in line:
-                return True
-
-        return False
+        return any("MONGOD_ARGS" in line and "--auth" in line for line in env_vars)
 
 
 class AdminUserCreationError(Exception):
