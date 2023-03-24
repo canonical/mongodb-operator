@@ -517,10 +517,11 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 event.fail(f"Failed changing the password: {e}")
                 return
 
+        self.set_secret("app", f"{username}-password", new_password)
+
         if username == "monitor":
             self._connect_mongodb_exporter()
 
-        self.set_secret("app", f"{username}-password", new_password)
         event.set_results({"password": new_password})
 
     def _open_port_tcp(self, port: int) -> None:
@@ -765,7 +766,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             username="monitor",
             password=self.get_secret("app", "monitor-password"),
             # MongoDB Exporter can only connect to one replica - not the entire set.
-            hosts=[self._unit_ip(self.unit)],
+            hosts=["127.0.0.1"],
             roles={"monitor"},
             tls_external=self.tls.get_tls_files("unit") is not None,
             tls_internal=self.tls.get_tls_files("app") is not None,
