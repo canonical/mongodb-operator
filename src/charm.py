@@ -267,6 +267,11 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         Args:
             event: The triggering relation joined/changed event.
         """
+        # changing the monitor password will lead to non-leader units receiving a relation changed
+        # event. We must update the monitor URI if the password changes so that COS can continue to
+        # work
+        self._connect_mongodb_exporter()
+
         # only leader should configure replica set and app-changed-events can trigger the relation
         # changed hook resulting in no JUJU_REMOTE_UNIT if this is the case we should return
         # further reconfiguration can be successful only if a replica set is initialised.
@@ -276,11 +281,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             or "db_initialised" not in self.app_peer_data
         ):
             return
-
-        # changing the monitor password will lead to non-leader units receiving a relation changed
-        # event. We must update the monitor URI if the password changes so that COS can continue to
-        # work
-        self._connect_mongodb_exporter()
 
         with MongoDBConnection(self.mongodb_config) as mongo:
             try:
