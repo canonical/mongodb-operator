@@ -3,25 +3,24 @@
 # See LICENSE file for licensing details.
 import time
 
+import ops
 import pytest
-from pytest_operator.plugin import OpsTest
-
-from ..ha_tests import helpers as ha_helpers
-from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
-
-from ..helpers import find_unit
 import urllib3
+
+from pytest_operator.plugin import OpsTest
+from ..ha_tests import helpers as ha_helpers
+from ..helpers import find_unit
 
 NODE_EXPORTER_PORT = 9100
 MONGODB_EXPORTER_PORT = 9216
 MEDIAN_REELECTION_TIME = 12
 
 
-async def verify_endpoints(unit) -> str:
+async def verify_endpoints(ops_test: OpsTest, unit: ops.model.Unit) -> str:
     """Verifies node exporter and mongodb endpoints are functional on a given unit."""
     http = urllib3.PoolManager()
 
-    unit_address = await unit.get_public_address()
+    unit_address = await ha_helpers.get_unit_ip(ops_test, unit.name)
     node_exporter_url = f"http://{unit_address}:{NODE_EXPORTER_PORT}/metrics"
     mongodb_exporter_url = f"http://{unit_address}:{MONGODB_EXPORTER_PORT}/metrics"
 
@@ -32,7 +31,6 @@ async def verify_endpoints(unit) -> str:
     assert mongo_resp.status == 200
 
     # if configured correctly there should be more than one mongodb metric present
-    print(unit.name)
     mongodb_metrics = mongo_resp._body.decode("utf8")
     assert mongodb_metrics.count("mongo") > 1
 
@@ -54,7 +52,7 @@ async def test_endpoints(ops_test: OpsTest):
     application = ops_test.model.applications[app]
 
     for unit in application.units:
-        await verify_endpoints(unit)
+        await verify_endpoints(ops_test, unit)
 
 
 async def test_endpoints_new_password(ops_test: OpsTest):
@@ -64,22 +62,25 @@ async def test_endpoints_new_password(ops_test: OpsTest):
     leader_unit = await find_unit(ops_test, leader=True)
     action = await leader_unit.run_action("set-password", **{"username": "monitor"})
     action = await action.wait()
-    # wait for non-leader units to recieve relation changed event.
+    # wait for non-leader units to receive relation changed event.
     time.sleep(3)
     await ops_test.model.wait_for_idle()
     for unit in application.units:
-        await verify_endpoints(unit)
+        await verify_endpoints(ops_test, unit)
 
 
-# async def test_endpoints_network_cut(ops_test: OpsTest):
-#     """Verify that endpoint still function correctly after a network cut."""
-#     app = await ha_helpers.app_name(ops_test)
-#     unit = ops_test.model.applications[app].units[0]
-#     hostname = await ha_helpers.unit_hostname(ops_test, unit.name)
+async def test_endpoints_network_cut(ops_test: OpsTest):
+    """Verify that endpoint still function correctly after a network cut."""
+    app = await ha_helpers.app_name(ops_test)
+    unit = ops_test.model.applications[app].units[0]
+    hostname = await ha_helpers.unit_hostname(ops_test, unit.name)
+    unit_ip = await ha_helpers.get_unit_ip(ops_test, unit.name)
 
-#     ha_helpers.cut_network_from_unit(hostname)
-#     # sleep for twice the median election time
-#     time.sleep(MEDIAN_REELECTION_TIME * 2)
+    ha_helpers.cut_network_from_unit(hostname)
+    # sleep for twice the median election time
+    time.sleep(MEDIAN_REELECTION_TIME * 2)
 
-#     ha_helpers.restore_network_for_unit(hostname)
-#     await verify_endpoints(unit)
+    # wait until network is reestablished for the unit
+    ha_helpers.restore_network_for_unit(hostname)
+    ha_helpers.wait_network_restore(ops_test.model.info.name, hostname, unit_ip)
+    await verify_endpoints(ops_test, unit)
