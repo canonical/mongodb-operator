@@ -6,8 +6,8 @@ import time
 import ops
 import pytest
 import urllib3
-
 from pytest_operator.plugin import OpsTest
+
 from ..ha_tests import helpers as ha_helpers
 from ..helpers import find_unit
 
