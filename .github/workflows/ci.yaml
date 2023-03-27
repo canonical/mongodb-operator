@@ -81,6 +81,7 @@ jobs:
           - legacy-integration
           - tls-integration
           - backup-integration
+          - metric-integration
     name: ${{ matrix.tox-environments }}
     needs:
       - lint
