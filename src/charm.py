@@ -9,6 +9,7 @@ from subprocess import check_call
 from typing import Dict, List, Optional
 
 import ops.charm
+from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from charms.mongodb.v0.helpers import (
     KEY_FILE,
     TLS_EXT_CA_FILE,
@@ -32,7 +33,6 @@ from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
 from charms.operator_libs_linux.v1 import snap
-from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from ops.main import main
 from ops.model import (
     ActiveStatus,
