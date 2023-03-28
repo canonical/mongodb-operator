@@ -32,7 +32,7 @@ from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
 from charms.operator_libs_linux.v1 import snap
-from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
+from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from ops.main import main
 from ops.model import (
     ActiveStatus,
@@ -103,9 +103,14 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.backups = MongoDBBackups(self)
 
         # relation events for Prometheus metrics are handled in the MetricsEndpointProvider
-        self.metrics_endpoint = MetricsEndpointProvider(
+        self._grafana_agent = COSAgentProvider(
             self,
-            jobs=[{"static_configs": [{"targets": [f"*:{MONGODB_EXPORTER_PORT}"]}]}],
+            metrics_endpoints=[
+                {"path": "/metrics", "port": f"{MONGODB_EXPORTER_PORT}"},
+            ],
+            metrics_rules_dir="./src/alert_rules/prometheus",
+            logs_rules_dir="./src/alert_rules/loki",
+            log_slots=["charmed-mongodb:logs"],
         )
 
     def _generate_passwords(self) -> None:
