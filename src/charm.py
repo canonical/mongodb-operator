@@ -65,10 +65,9 @@ MONITOR_PRIVILEGES = {
 }
 
 # We expect the MongoDB container to use the default ports
-NODE_EXPORTER_PORT = 9100
 MONGODB_PORT = 27017
 MONGODB_EXPORTER_PORT = 9216
-SNAP_PACKAGES = [("charmed-mongodb", "5/edge"), ("node-exporter", "edge")]
+SNAP_PACKAGES = [("charmed-mongodb", "5/edge")]
 REL_NAME = "database"
 
 
@@ -106,13 +105,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # relation events for Prometheus metrics are handled in the MetricsEndpointProvider
         self.metrics_endpoint = MetricsEndpointProvider(
             self,
-            jobs=[
-                {
-                    "static_configs": [
-                        {"targets": [f"*:{NODE_EXPORTER_PORT}", f"*:{MONGODB_EXPORTER_PORT}"]}
-                    ]
-                }
-            ],
+            jobs=[{"static_configs": [{"targets": [f"*:{MONGODB_EXPORTER_PORT}"]}]}],
         )
 
     def _generate_passwords(self) -> None:
@@ -316,17 +309,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.unit.status = MaintenanceStatus("installing MongoDB")
         try:
             self._install_snap_packages(packages=SNAP_PACKAGES)
-            # provide node exporter snap (used for metrics) the necessary plugs
-            snap_cache = snap.SnapCache()
-            node_exporter = snap_cache["node-exporter"]
-            node_exporter_plugs = [
-                "hardware-observe",
-                "network-observe",
-                "mount-observe",
-                "system-observe",
-            ]
-            for plug in node_exporter_plugs:
-                node_exporter.connect(plug=plug)
 
         except snap.SnapError:
             self.unit.status = BlockedStatus("couldn't install MongoDB")
