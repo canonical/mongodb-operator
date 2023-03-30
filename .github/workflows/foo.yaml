@@ -1,0 +1,16 @@
+on:
+  push:
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Restore cache of `charmcraft pack` LXC instance
+        id: restore-cache
+        uses: actions/cache/restore@v3
+        with:
+          path: ~/ga-charmcraft-cache/**
+          key: charmcraft-pack-.-0-2.2-fd27f887f5db4933f43180e8ca461d35b3519a5a7a17db53c055a3dd87c91611
+      - name: Setup upterm session
+        if: success() || failure()
+        uses: lhotari/action-upterm@v1
