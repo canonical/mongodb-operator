@@ -2239,7 +2239,7 @@
             },
             "targets": [
                 {
-                    "datasource": "Metrics",
+                    "datasource": "-- Grafana --",
                     "exemplar": false,
                     "expr": "avg by (db,shard) (mongodb_mongos_db_index_size_bytes{cluster=\"$cluster\",db!~\"admin|config\"})",
                     "format": "time_series",
@@ -4059,7 +4059,7 @@
                     "text": "auto",
                     "value": "$__auto_interval_interval"
                 },
-                "datasource": "Metrics",
+                "datasource": "-- Grafana --",
                 "hide": 0,
                 "includeAll": false,
                 "label": "Interval",
@@ -4120,7 +4120,7 @@
                     "text": "mongodb_cluster",
                     "value": "mongodb_cluster"
                 },
-                "datasource": "Metrics",
+                "datasource": "-- Grafana --",
                 "definition": "label_values(mongodb_up,cluster)",
                 "hide": 0,
                 "includeAll": false,
@@ -4146,7 +4146,7 @@
                     "text": "All",
                     "value": "$__all"
                 },
-                "datasource": "Metrics",
+                "datasource": "-- Grafana --",
                 "definition": "label_values(mongodb_up{cluster=\"$cluster\"},service_name)",
                 "hide": 2,
                 "includeAll": true,
@@ -4173,7 +4173,7 @@
                     "text": "All",
                     "value": "$__all"
                 },
-                "datasource": "Metrics",
+                "datasource": "-- Grafana --",
                 "definition": "label_values(mongodb_mongos_db_collections_total{cluster=\"$cluster\"},shard)",
                 "hide": 2,
                 "includeAll": true,
@@ -4200,7 +4200,7 @@
                     "text": "All",
                     "value": "$__all"
                 },
-                "datasource": "Metrics",
+                "datasource": "-- Grafana --",
                 "definition": "label_values({__name__=~\"pg_up|mysql_up|mongodb_up|proxysql_mysql_status_active_transactions\"}, node_name)",
                 "hide": 2,
                 "includeAll": true,
@@ -4227,7 +4227,7 @@
                     "text": "All",
                     "value": "$__all"
                 },
-                "datasource": "Metrics",
+                "datasource": "-- Grafana --",
                 "definition": "label_values({__name__=~\"pg_up|mysql_up|mongodb_up|proxysql_mysql_status_active_transactions\"}, environment)",
                 "hide": 2,
                 "includeAll": true,
@@ -4254,7 +4254,7 @@
                     "text": "All",
                     "value": "$__all"
                 },
-                "datasource": "Metrics",
+                "datasource": "-- Grafana --",
                 "definition": "label_values({__name__=~\"pg_up|mysql_up|mongodb_up|proxysql_mysql_status_active_transactions\"}, replication_set)",
                 "hide": 2,
                 "includeAll": true,
@@ -4281,7 +4281,7 @@
                     "text": "All",
                     "value": "$__all"
                 },
-                "datasource": "Metrics",
+                "datasource": "-- Grafana --",
                 "definition": "label_values(pg_stat_database_tup_fetched{service_name=~\"$service_name\",datname!~\"template.*|postgres\"},datname)",
                 "hide": 2,
                 "includeAll": true,
@@ -4308,7 +4308,7 @@
                     "text": "All",
                     "value": "$__all"
                 },
-                "datasource": "Metrics",
+                "datasource": "-- Grafana --",
                 "definition": "label_values({__name__=~\"pg_up|mysql_up|mongodb_up|proxysql_mysql_status_active_transactions\"}, node_type)",
                 "hide": 2,
                 "includeAll": true,
@@ -4335,7 +4335,7 @@
                     "text": "All",
                     "value": "$__all"
                 },
-                "datasource": "Metrics",
+                "datasource": "-- Grafana --",
                 "definition": "label_values({__name__=~\"pg_up|mysql_up|mongodb_up|proxysql_mysql_status_active_transactions\"}, service_type)",
                 "hide": 2,
                 "includeAll": true,
@@ -4362,7 +4362,7 @@
                     "text": "All",
                     "value": "$__all"
                 },
-                "datasource": "Metrics",
+                "datasource": "-- Grafana --",
                 "definition": "label_values(mysql_info_schema_user_statistics_connected_time_seconds_total{service_name=\"$service_name\"},user)",
                 "hide": 2,
                 "includeAll": true,
