@@ -68,7 +68,7 @@ MONITOR_PRIVILEGES = {
 NODE_EXPORTER_PORT = 9100
 MONGODB_PORT = 27017
 MONGODB_EXPORTER_PORT = 9216
-SNAP_PACKAGES = [("charmed-mongodb", "5/edge"), ("node-exporter", "edge")]
+SNAP_PACKAGES = [("charmed-mongodb", "5/edge/snap-dir"), ("node-exporter", "edge")]
 REL_NAME = "database"
 
 
