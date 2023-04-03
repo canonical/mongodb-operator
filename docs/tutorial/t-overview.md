@@ -23,9 +23,3 @@ Here’s an overview of the steps required with links to our separate tutorials 
 * [Relate your MongoDB to other applications](/t/charmed-mongodb-tutorial-relate-your-mongodb-deployment/8629?channel=dpe/edge)
 * [Enable security](/t/charmed-mongodb-tutorial-enable-security/8628?channel=dpe/edge)
 * [Cleanup your environment](/t/charmed-mongodb-tutorial-environment-cleanup/8627?channel=dpe/edge)
-
-## License
-The Charmed MongoDB Operator is distributed under the Apache Software License, version 2.0. It [installs/operates/depends on] [MongoDB Community Edition](https://github.com/mongodb/mongo), which is licensed under the Server Side Public License (SSPL).
-
-## Trademark Notice
-MongoDB™ is a trademark or registered trademark of MongoDB Inc. Other trademarks are property of their respective owners.
