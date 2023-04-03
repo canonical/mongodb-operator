@@ -414,9 +414,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         if self.unit.is_leader():
             self._handle_reconfigure(event)
 
-        # in case of a network cut and a new IP address is used we must update mongodb exporter
-        self._connect_mongodb_exporter()
-
         # update the units status based on it's replica set config and backup status. An error in
         # the status of MongoDB takes precedence over pbm status.
         mongodb_status = build_unit_status(self.mongodb_config, self._unit_ip(self.unit))
