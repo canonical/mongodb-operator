@@ -67,7 +67,7 @@ MONITOR_PRIVILEGES = {
 # We expect the MongoDB container to use the default ports
 MONGODB_PORT = 27017
 MONGODB_EXPORTER_PORT = 9216
-SNAP_PACKAGES = [("charmed-mongodb", "5/edge")]
+SNAP_PACKAGES = [("charmed-mongodb", "5/edge/all-metrics")]
 REL_NAME = "database"
 
 
@@ -588,18 +588,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         if not self.get_secret("app", "monitor-password"):
             return
 
-        # avoid unnecessary restarts if the URI mongodb exporter is using is up to date.
         snap_cache = snap.SnapCache()
         mongodb_snap = snap_cache["charmed-mongodb"]
-        try:
-            if mongodb_snap.get("monitor-uri") == self.monitor_config.uri:
-                return
-        except snap.SnapError:
-            # TODO remove try/except when issue is resolved:
-            # https://github.com/canonical/operator-libs-linux/issues/87
-            # SnapError occurs when the config option `monitor-uri` is not set.
-            pass
-
         mongodb_snap.set({"monitor-uri": self.monitor_config.uri})
         mongodb_snap.restart(services=["mongodb-exporter"])
 
@@ -833,6 +823,11 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             logger.debug("creating the monitor user...")
             mongo.create_user(self.monitor_config)
             self.app_peer_data["monitor_user_created"] = "True"
+
+        # leader should reconnect to exporter after creating the monitor user - since the snap
+        # will have an authorisation error until the the user has been created and the daemon
+        # has been restarted
+        self._connect_mongodb_exporter()
 
     @retry(
         stop=stop_after_attempt(3),
