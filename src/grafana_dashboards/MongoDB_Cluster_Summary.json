@@ -8,32 +8,6 @@
                     "uid": "${prometheusds}"
                 },
                 "enable": true,
-                "hide": false,
-                "iconColor": "#e0752d",
-                "limit": 100,
-                "matchAny": true,
-                "name": "PMM Annotations",
-                "showIn": 0,
-                "tags": [
-                    "pmm_annotation"
-                ],
-                "target": {
-                    "limit": 100,
-                    "matchAny": true,
-                    "tags": [
-                        "pmm_annotation"
-                    ],
-                    "type": "tags"
-                },
-                "type": "tags"
-            },
-            {
-                "builtIn": 1,
-                "datasource": {
-                    "type": "datasource",
-                    "uid": "${prometheusds}"
-                },
-                "enable": true,
                 "hide": true,
                 "iconColor": "#6ed0e0",
                 "limit": 100,
@@ -53,89 +27,7 @@
     "editable": true,
     "fiscalYearStartMonth": 0,
     "graphTooltip": 1,
-    "id": 7,
-    "links": [
-        {
-            "icon": "doc",
-            "includeVars": true,
-            "keepTime": true,
-            "tags": [
-                "Home"
-            ],
-            "targetBlank": false,
-            "title": "Home",
-            "type": "link",
-            "url": "/graph/d/pmm-home/home-dashboard"
-        },
-        {
-            "icon": "dashboard",
-            "includeVars": true,
-            "keepTime": true,
-            "tags": [
-                "Query Analytics"
-            ],
-            "targetBlank": false,
-            "title": "Query Analytics",
-            "type": "link",
-            "url": "/graph/d/pmm-qan/pmm-query-analytics"
-        },
-        {
-            "icon": "bolt",
-            "includeVars": true,
-            "keepTime": true,
-            "tags": [
-                "Compare"
-            ],
-            "targetBlank": false,
-            "title": "Compare",
-            "type": "link",
-            "url": "/graph/d/mongodb-instance-compare/mongodb-instances-compare"
-        },
-        {
-            "asDropdown": true,
-            "includeVars": true,
-            "keepTime": true,
-            "tags": [
-                "MongoDB"
-            ],
-            "targetBlank": false,
-            "title": "MongoDB",
-            "type": "dashboards"
-        },
-        {
-            "asDropdown": true,
-            "includeVars": true,
-            "keepTime": true,
-            "tags": [
-                "MongoDB_HA"
-            ],
-            "targetBlank": false,
-            "title": "HA",
-            "type": "dashboards"
-        },
-        {
-            "asDropdown": true,
-            "includeVars": false,
-            "keepTime": true,
-            "tags": [
-                "Services"
-            ],
-            "targetBlank": false,
-            "title": "Services",
-            "type": "dashboards"
-        },
-        {
-            "asDropdown": true,
-            "includeVars": false,
-            "keepTime": true,
-            "tags": [
-                "PMM"
-            ],
-            "targetBlank": false,
-            "title": "PMM",
-            "type": "dashboards"
-        }
-    ],
+    "id": 6,
     "liveNow": false,
     "panels": [
         {
@@ -186,7 +78,7 @@
             "fillGradient": 0,
             "grid": {},
             "gridPos": {
-                "h": 10,
+                "h": 11,
                 "w": 24,
                 "x": 0,
                 "y": 1
@@ -280,7 +172,6 @@
                 "uid": "${prometheusds}"
             },
             "decimals": 2,
-            "description": "",
             "editable": true,
             "error": false,
             "fieldConfig": {
@@ -296,116 +187,7 @@
                 "h": 8,
                 "w": 12,
                 "x": 0,
-                "y": 11
-            },
-            "hiddenSeries": false,
-            "id": 1177,
-            "legend": {
-                "alignAsTable": true,
-                "avg": true,
-                "current": false,
-                "max": true,
-                "min": true,
-                "show": true,
-                "sort": "avg",
-                "sortDesc": true,
-                "total": false,
-                "values": true
-            },
-            "lines": true,
-            "linewidth": 2,
-            "links": [],
-            "maxPerRow": 2,
-            "nullPointMode": "null",
-            "options": {
-                "alertThreshold": true
-            },
-            "percentage": false,
-            "pluginVersion": "9.2.1",
-            "pointradius": 5,
-            "points": false,
-            "renderer": "flot",
-            "repeatDirection": "h",
-            "seriesOverrides": [],
-            "spaceLength": 10,
-            "stack": true,
-            "steppedLine": false,
-            "targets": [
-                {
-                    "datasource": {
-                        "type": "datasource",
-                        "uid": "${prometheusds}"
-                    },
-                    "expr": "sum by(service_name) (max_over_time(mongodb_connections{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",state=\"available\"}[$interval]) or max_over_time(mongodb_connections{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",state=\"available\"}[5m]))",
-                    "format": "time_series",
-                    "hide": false,
-                    "interval": "$interval",
-                    "intervalFactor": 1,
-                    "legendFormat": "",
-                    "refId": "J",
-                    "step": 300
-                }
-            ],
-            "thresholds": [],
-            "timeRegions": [],
-            "title": "Available Connections",
-            "tooltip": {
-                "msResolution": false,
-                "shared": true,
-                "sort": 5,
-                "value_type": "individual"
-            },
-            "type": "graph",
-            "xaxis": {
-                "mode": "time",
-                "show": true,
-                "values": []
-            },
-            "yaxes": [
-                {
-                    "decimals": 2,
-                    "format": "short",
-                    "label": "",
-                    "logBase": 1,
-                    "min": 0,
-                    "show": true
-                },
-                {
-                    "format": "short",
-                    "logBase": 1,
-                    "show": false
-                }
-            ],
-            "yaxis": {
-                "align": false
-            }
-        },
-        {
-            "aliasColors": {},
-            "bars": false,
-            "dashLength": 10,
-            "dashes": false,
-            "datasource": {
-                "type": "datasource",
-                "uid": "${prometheusds}"
-            },
-            "decimals": 2,
-            "editable": true,
-            "error": false,
-            "fieldConfig": {
-                "defaults": {
-                    "links": []
-                },
-                "overrides": []
-            },
-            "fill": 6,
-            "fillGradient": 0,
-            "grid": {},
-            "gridPos": {
-                "h": 8,
-                "w": 12,
-                "x": 12,
-                "y": 11
+                "y": 12
             },
             "hiddenSeries": false,
             "id": 1178,
@@ -490,6 +272,116 @@
             }
         },
         {
+            "aliasColors": {},
+            "bars": false,
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": {
+                "type": "datasource",
+                "uid": "${prometheusds}"
+            },
+            "decimals": 2,
+            "description": "",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "links": []
+                },
+                "overrides": []
+            },
+            "fill": 6,
+            "fillGradient": 0,
+            "grid": {},
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 12,
+                "y": 12
+            },
+            "hiddenSeries": false,
+            "id": 1177,
+            "legend": {
+                "alignAsTable": true,
+                "avg": true,
+                "current": false,
+                "max": true,
+                "min": true,
+                "show": true,
+                "sort": "avg",
+                "sortDesc": true,
+                "total": false,
+                "values": true
+            },
+            "lines": true,
+            "linewidth": 2,
+            "links": [],
+            "maxPerRow": 2,
+            "nullPointMode": "null",
+            "options": {
+                "alertThreshold": true
+            },
+            "percentage": false,
+            "pluginVersion": "9.2.1",
+            "pointradius": 5,
+            "points": false,
+            "renderer": "flot",
+            "repeatDirection": "h",
+            "seriesOverrides": [],
+            "spaceLength": 10,
+            "stack": true,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "datasource",
+                        "uid": "${prometheusds}"
+                    },
+                    "expr": "sum by(service_name) (max_over_time(mongodb_connections{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",state=\"available\"}[$interval]) or max_over_time(mongodb_connections{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",state=\"available\"}[5m]))",
+                    "format": "time_series",
+                    "hide": false,
+                    "interval": "$interval",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "refId": "J",
+                    "step": 300
+                }
+            ],
+            "thresholds": [],
+            "timeRegions": [],
+            "title": "Available Connections",
+            "tooltip": {
+                "msResolution": false,
+                "shared": true,
+                "sort": 5,
+                "value_type": "individual"
+            },
+            "type": "graph",
+            "xaxis": {
+                "mode": "time",
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "decimals": 2,
+                    "format": "short",
+                    "label": "",
+                    "logBase": 1,
+                    "min": 0,
+                    "show": true
+                },
+                {
+                    "format": "short",
+                    "logBase": 1,
+                    "show": false
+                }
+            ],
+            "yaxis": {
+                "align": false
+            }
+        },
+        {
             "collapsed": false,
             "datasource": {
                 "type": "datasource",
@@ -499,7 +391,7 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 19
+                "y": 20
             },
             "id": 52,
             "panels": [],
@@ -541,7 +433,7 @@
                 "h": 7,
                 "w": 24,
                 "x": 0,
-                "y": 20
+                "y": 21
             },
             "hiddenSeries": false,
             "id": 53,
@@ -639,7 +531,7 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 27
+                "y": 28
             },
             "id": 97,
             "panels": [],
@@ -654,6 +546,119 @@
             ],
             "title": "Other",
             "type": "row"
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": {
+                "type": "datasource",
+                "uid": "${prometheusds}"
+            },
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "links": [
+                        {
+                            "targetBlank": true,
+                            "title": "MongoDB ReplSet Summary - ${__series.name}",
+                            "url": "/graph/d/mongodb-replicaset-summary/mongodb-replset-summary?var-replset=${__series.name}&$__url_time_range"
+                        }
+                    ]
+                },
+                "overrides": []
+            },
+            "fill": 2,
+            "fillGradient": 0,
+            "grid": {},
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 0,
+                "y": 29
+            },
+            "hiddenSeries": false,
+            "id": 14,
+            "legend": {
+                "alignAsTable": true,
+                "avg": true,
+                "current": false,
+                "hideZero": false,
+                "max": true,
+                "min": true,
+                "rightSide": false,
+                "show": true,
+                "sort": "avg",
+                "sortDesc": true,
+                "total": false,
+                "values": true
+            },
+            "lines": true,
+            "linewidth": 2,
+            "links": [],
+            "nullPointMode": "null",
+            "options": {
+                "alertThreshold": true
+            },
+            "percentage": false,
+            "pluginVersion": "9.2.1",
+            "pointradius": 5,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "spaceLength": 10,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "datasource",
+                        "uid": "${prometheusds}"
+                    },
+                    "expr": "max by(set) (max by(service_name, set) (max_over_time(mongodb_mongod_replset_member_replication_lag{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\"}[$interval]) > 0) or max by(service_name, set) (max_over_time(mongodb_mongod_replset_member_replication_lag{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\"}[5m]) > 0))",
+                    "format": "time_series",
+                    "hide": false,
+                    "interval": "$interval",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "refId": "B",
+                    "step": 300
+                }
+            ],
+            "thresholds": [],
+            "timeRegions": [],
+            "title": "Replication Lag by Set",
+            "tooltip": {
+                "msResolution": false,
+                "shared": true,
+                "sort": 5,
+                "value_type": "cumulative"
+            },
+            "type": "graph",
+            "xaxis": {
+                "mode": "time",
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "format": "s",
+                    "label": "",
+                    "logBase": 1,
+                    "min": 0,
+                    "show": true
+                },
+                {
+                    "format": "short",
+                    "logBase": 1,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false
+            }
         },
         {
             "aliasColors": {},
@@ -685,8 +690,8 @@
             "gridPos": {
                 "h": 8,
                 "w": 12,
-                "x": 6,
-                "y": 28
+                "x": 12,
+                "y": 29
             },
             "hiddenSeries": false,
             "id": 27,
@@ -782,8 +787,8 @@
             {
                 "current": {
                     "selected": false,
-                    "text": "juju_cos_94624d18-ea03-4e51-8654-da57de675778_loki_0",
-                    "value": "juju_cos_94624d18-ea03-4e51-8654-da57de675778_loki_0"
+                    "text": "juju_cos_2b034727-00b5-473f-803e-b8eec63bb071_loki_0",
+                    "value": "juju_cos_2b034727-00b5-473f-803e-b8eec63bb071_loki_0"
                 },
                 "hide": 0,
                 "includeAll": false,
@@ -799,8 +804,8 @@
             {
                 "current": {
                     "selected": false,
-                    "text": "juju_cos_94624d18-ea03-4e51-8654-da57de675778_prometheus_0",
-                    "value": "juju_cos_94624d18-ea03-4e51-8654-da57de675778_prometheus_0"
+                    "text": "juju_cos_2b034727-00b5-473f-803e-b8eec63bb071_prometheus_0",
+                    "value": "juju_cos_2b034727-00b5-473f-803e-b8eec63bb071_prometheus_0"
                 },
                 "hide": 0,
                 "includeAll": false,
@@ -876,8 +881,8 @@
             {
                 "current": {
                     "selected": false,
-                    "text": "9554cafb-38b4-4689-8565-ccc12949edf9",
-                    "value": "9554cafb-38b4-4689-8565-ccc12949edf9"
+                    "text": "6b51736a-8177-457e-838e-8ab5050b1568",
+                    "value": "6b51736a-8177-457e-838e-8ab5050b1568"
                 },
                 "datasource": {
                     "uid": "${prometheusds}"
