@@ -8,32 +8,6 @@
                     "uid": "${prometheusds}"
                 },
                 "enable": true,
-                "hide": false,
-                "iconColor": "#e0752d",
-                "limit": 100,
-                "matchAny": true,
-                "name": "PMM Annotations",
-                "showIn": 0,
-                "tags": [
-                    "pmm_annotation"
-                ],
-                "target": {
-                    "limit": 100,
-                    "matchAny": true,
-                    "tags": [
-                        "pmm_annotation"
-                    ],
-                    "type": "tags"
-                },
-                "type": "tags"
-            },
-            {
-                "builtIn": 1,
-                "datasource": {
-                    "type": "datasource",
-                    "uid": "${prometheusds}"
-                },
-                "enable": true,
                 "hide": true,
                 "iconColor": "#6ed0e0",
                 "limit": 100,
@@ -53,89 +27,7 @@
     "editable": true,
     "fiscalYearStartMonth": 0,
     "graphTooltip": 1,
-    "id": 7,
-    "links": [
-        {
-            "icon": "doc",
-            "includeVars": true,
-            "keepTime": true,
-            "tags": [
-                "Home"
-            ],
-            "targetBlank": false,
-            "title": "Home",
-            "type": "link",
-            "url": "/graph/d/pmm-home/home-dashboard"
-        },
-        {
-            "icon": "dashboard",
-            "includeVars": true,
-            "keepTime": true,
-            "tags": [
-                "Query Analytics"
-            ],
-            "targetBlank": false,
-            "title": "Query Analytics",
-            "type": "link",
-            "url": "/graph/d/pmm-qan/pmm-query-analytics"
-        },
-        {
-            "icon": "bolt",
-            "includeVars": true,
-            "keepTime": true,
-            "tags": [
-                "Compare"
-            ],
-            "targetBlank": false,
-            "title": "Compare",
-            "type": "link",
-            "url": "/graph/d/mongodb-instance-compare/mongodb-instances-compare"
-        },
-        {
-            "asDropdown": true,
-            "includeVars": true,
-            "keepTime": true,
-            "tags": [
-                "MongoDB"
-            ],
-            "targetBlank": false,
-            "title": "MongoDB",
-            "type": "dashboards"
-        },
-        {
-            "asDropdown": true,
-            "includeVars": true,
-            "keepTime": true,
-            "tags": [
-                "MongoDB_HA"
-            ],
-            "targetBlank": false,
-            "title": "HA",
-            "type": "dashboards"
-        },
-        {
-            "asDropdown": true,
-            "includeVars": false,
-            "keepTime": true,
-            "tags": [
-                "Services"
-            ],
-            "targetBlank": false,
-            "title": "Services",
-            "type": "dashboards"
-        },
-        {
-            "asDropdown": true,
-            "includeVars": false,
-            "keepTime": true,
-            "tags": [
-                "PMM"
-            ],
-            "targetBlank": false,
-            "title": "PMM",
-            "type": "dashboards"
-        }
-    ],
+    "id": 6,
     "liveNow": false,
     "panels": [
         {
@@ -150,7 +42,7 @@
                 "x": 0,
                 "y": 0
             },
-            "id": 81,
+            "id": 50,
             "panels": [],
             "targets": [
                 {
@@ -161,7 +53,7 @@
                     "refId": "A"
                 }
             ],
-            "title": "Connections",
+            "title": "Connections Details",
             "type": "row"
         },
         {
@@ -186,9 +78,9 @@
             "fillGradient": 0,
             "grid": {},
             "gridPos": {
-                "h": 8,
-                "w": 12,
-                "x": 12,
+                "h": 11,
+                "w": 24,
+                "x": 0,
                 "y": 1
             },
             "hiddenSeries": false,
@@ -227,7 +119,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "sum by (state) (max_over_time(mongodb_connections{cluster=\"$cluster\"}[$interval]) or max_over_time(mongodb_connections{cluster=\"$cluster\"}[5m]))",
+                    "expr": "sum by(state) (max_over_time(mongodb_connections{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\"}[$interval]) or max_over_time(mongodb_connections{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\"}[5m]))",
                     "format": "time_series",
                     "hide": false,
                     "interval": "$interval",
@@ -271,32 +163,6 @@
             }
         },
         {
-            "collapsed": false,
-            "datasource": {
-                "type": "datasource",
-                "uid": "${prometheusds}"
-            },
-            "gridPos": {
-                "h": 1,
-                "w": 24,
-                "x": 0,
-                "y": 9
-            },
-            "id": 50,
-            "panels": [],
-            "targets": [
-                {
-                    "datasource": {
-                        "type": "datasource",
-                        "uid": "${prometheusds}"
-                    },
-                    "refId": "A"
-                }
-            ],
-            "title": "Connections Details",
-            "type": "row"
-        },
-        {
             "aliasColors": {},
             "bars": false,
             "dashLength": 10,
@@ -318,10 +184,10 @@
             "fillGradient": 0,
             "grid": {},
             "gridPos": {
-                "h": 7,
-                "w": 24,
+                "h": 8,
+                "w": 12,
                 "x": 0,
-                "y": 10
+                "y": 12
             },
             "hiddenSeries": false,
             "id": 1178,
@@ -331,7 +197,6 @@
                 "current": false,
                 "max": true,
                 "min": true,
-                "rightSide": true,
                 "show": true,
                 "sort": "avg",
                 "sortDesc": true,
@@ -362,7 +227,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "sum by (service_name) (max_over_time(mongodb_connections{cluster=\"$cluster\",service_name=~\"$service_name\",state=\"current\"}[$interval]) or \nmax_over_time(mongodb_connections{cluster=\"$cluster\",service_name=~\"$service_name\",state=\"current\"}[5m]))",
+                    "expr": "sum by(service_name) (max_over_time(mongodb_connections{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",state=\"current\"}[$interval]) or max_over_time(mongodb_connections{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",state=\"current\"}[5m]))",
                     "format": "time_series",
                     "hide": false,
                     "interval": "$interval",
@@ -429,10 +294,10 @@
             "fillGradient": 0,
             "grid": {},
             "gridPos": {
-                "h": 7,
-                "w": 24,
-                "x": 0,
-                "y": 17
+                "h": 8,
+                "w": 12,
+                "x": 12,
+                "y": 12
             },
             "hiddenSeries": false,
             "id": 1177,
@@ -442,7 +307,6 @@
                 "current": false,
                 "max": true,
                 "min": true,
-                "rightSide": true,
                 "show": true,
                 "sort": "avg",
                 "sortDesc": true,
@@ -473,7 +337,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "sum by (service_name) (max_over_time(mongodb_connections{cluster=\"$cluster\",service_name=~\"$service_name\",state=\"available\"}[$interval]) or \nmax_over_time(mongodb_connections{cluster=\"$cluster\",service_name=~\"$service_name\",state=\"available\"}[5m]))",
+                    "expr": "sum by(service_name) (max_over_time(mongodb_connections{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",state=\"available\"}[$interval]) or max_over_time(mongodb_connections{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",state=\"available\"}[5m]))",
                     "format": "time_series",
                     "hide": false,
                     "interval": "$interval",
@@ -527,7 +391,7 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 24
+                "y": 20
             },
             "id": 52,
             "panels": [],
@@ -569,7 +433,7 @@
                 "h": 7,
                 "w": 24,
                 "x": 0,
-                "y": 25
+                "y": 21
             },
             "hiddenSeries": false,
             "id": 53,
@@ -613,7 +477,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "sum by (type) (rate(mongodb_op_counters_total{cluster=\"$cluster\", type!=\"command\",service_name=~\"$service_name\"}[$interval]) or \nirate(mongodb_op_counters_total{cluster=\"$cluster\", type!=\"command\",service_name=~\"$service_name\"}[5m]))",
+                    "expr": "sum by(type) (rate(mongodb_op_counters_total{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",type!=\"command\"}[$interval]) or irate(mongodb_op_counters_total{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",type!=\"command\"}[5m]))",
                     "format": "time_series",
                     "hide": false,
                     "interval": "$interval",
@@ -667,7 +531,7 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 32
+                "y": 28
             },
             "id": 97,
             "panels": [],
@@ -713,7 +577,7 @@
                 "h": 8,
                 "w": 12,
                 "x": 0,
-                "y": 33
+                "y": 29
             },
             "hiddenSeries": false,
             "id": 14,
@@ -753,7 +617,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "max by (set) (max(max_over_time(mongodb_mongod_replset_member_replication_lag{cluster=\"$cluster\"}[$interval]) > 0) by (service_name,set) or max(max_over_time(mongodb_mongod_replset_member_replication_lag{cluster=\"$cluster\"}[5m]) > 0) by (service_name,set))",
+                    "expr": "max by(set) (max by(service_name, set) (max_over_time(mongodb_mongod_replset_member_replication_lag{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\"}[$interval]) > 0) or max by(service_name, set) (max_over_time(mongodb_mongod_replset_member_replication_lag{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\"}[5m]) > 0))",
                     "format": "time_series",
                     "hide": false,
                     "interval": "$interval",
@@ -827,7 +691,7 @@
                 "h": 8,
                 "w": 12,
                 "x": 12,
-                "y": 33
+                "y": 29
             },
             "hiddenSeries": false,
             "id": 27,
@@ -867,7 +731,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "max(max(mongodb_mongod_replset_oplog_head_timestamp{cluster=\"$cluster\"}-mongodb_mongod_replset_oplog_tail_timestamp{cluster=\"$cluster\"}) by (service_name) * on (service_name) group_right mongodb_mongod_replset_my_state{cluster=\"$cluster\"} / mongodb_mongod_replset_my_state{cluster=\"$cluster\"}) by (set)",
+                    "expr": "max by(set) (max by(service_name) (mongodb_mongod_replset_oplog_head_timestamp{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\"} - mongodb_mongod_replset_oplog_tail_timestamp{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\"}) * on(service_name) group_right() mongodb_mongod_replset_my_state{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\"} / mongodb_mongod_replset_my_state{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\"})",
                     "format": "time_series",
                     "hide": false,
                     "interval": "$interval",
@@ -909,105 +773,6 @@
             "yaxis": {
                 "align": false
             }
-        },
-        {
-            "aliasColors": {},
-            "bars": true,
-            "dashLength": 10,
-            "dashes": false,
-            "datasource": {
-                "type": "datasource",
-                "uid": "${prometheusds}"
-            },
-            "decimals": 2,
-            "description": "Count, over last 10 minutes, of all types of config db changelog events.",
-            "fieldConfig": {
-                "defaults": {
-                    "links": []
-                },
-                "overrides": []
-            },
-            "fill": 2,
-            "fillGradient": 0,
-            "gridPos": {
-                "h": 8,
-                "w": 12,
-                "x": 0,
-                "y": 41
-            },
-            "hiddenSeries": false,
-            "id": 1213,
-            "legend": {
-                "alignAsTable": true,
-                "avg": true,
-                "current": false,
-                "max": true,
-                "min": true,
-                "rightSide": false,
-                "show": true,
-                "sort": "avg",
-                "sortDesc": true,
-                "total": false,
-                "values": true
-            },
-            "lines": false,
-            "linewidth": 2,
-            "nullPointMode": "null",
-            "options": {
-                "alertThreshold": true
-            },
-            "percentage": false,
-            "pluginVersion": "9.2.1",
-            "pointradius": 2,
-            "points": false,
-            "renderer": "flot",
-            "seriesOverrides": [],
-            "spaceLength": 10,
-            "stack": false,
-            "steppedLine": false,
-            "targets": [
-                {
-                    "datasource": {
-                        "type": "datasource",
-                        "uid": "${prometheusds}"
-                    },
-                    "expr": "rate(mongodb_mongos_sharding_changelog_10min_total{cluster=\"$cluster\", event=~\".*(shard|Shard).*\"}[$interval]) or\nirate(mongodb_mongos_sharding_changelog_10min_total{cluster=\"$cluster\", event=~\".*(shard|Shard).*\"}[5m])",
-                    "interval": "$interval",
-                    "legendFormat": "",
-                    "refId": "A"
-                }
-            ],
-            "thresholds": [],
-            "timeRegions": [],
-            "title": "Change Log Events",
-            "tooltip": {
-                "shared": true,
-                "sort": 5,
-                "value_type": "individual"
-            },
-            "type": "graph",
-            "xaxis": {
-                "mode": "time",
-                "show": true,
-                "values": []
-            },
-            "yaxes": [
-                {
-                    "decimals": 2,
-                    "format": "short",
-                    "logBase": 1,
-                    "min": "0",
-                    "show": true
-                },
-                {
-                    "format": "short",
-                    "logBase": 1,
-                    "show": false
-                }
-            ],
-            "yaxis": {
-                "align": false
-            }
         }
     ],
     "refresh": "1m",
@@ -1022,8 +787,8 @@
             {
                 "current": {
                     "selected": false,
-                    "text": "juju_cos_d953a95f-7e9e-42b4-8661-ecb050cb7949_loki_0",
-                    "value": "juju_cos_d953a95f-7e9e-42b4-8661-ecb050cb7949_loki_0"
+                    "text": "juju_cos_2b034727-00b5-473f-803e-b8eec63bb071_loki_0",
+                    "value": "juju_cos_2b034727-00b5-473f-803e-b8eec63bb071_loki_0"
                 },
                 "hide": 0,
                 "includeAll": false,
@@ -1039,8 +804,8 @@
             {
                 "current": {
                     "selected": false,
-                    "text": "juju_cos_d953a95f-7e9e-42b4-8661-ecb050cb7949_prometheus_0",
-                    "value": "juju_cos_d953a95f-7e9e-42b4-8661-ecb050cb7949_prometheus_0"
+                    "text": "juju_cos_2b034727-00b5-473f-803e-b8eec63bb071_prometheus_0",
+                    "value": "juju_cos_2b034727-00b5-473f-803e-b8eec63bb071_prometheus_0"
                 },
                 "hide": 0,
                 "includeAll": false,
@@ -1116,8 +881,8 @@
             {
                 "current": {
                     "selected": false,
-                    "text": "f228d0df-1fa0-408d-8ed8-9abba34822b2",
-                    "value": "f228d0df-1fa0-408d-8ed8-9abba34822b2"
+                    "text": "6b51736a-8177-457e-838e-8ab5050b1568",
+                    "value": "6b51736a-8177-457e-838e-8ab5050b1568"
                 },
                 "datasource": {
                     "uid": "${prometheusds}"
