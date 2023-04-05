@@ -27,7 +27,8 @@
     "editable": true,
     "fiscalYearStartMonth": 0,
     "graphTooltip": 1,
-    "id": 6,
+    "id": 7,
+    "links": [],
     "liveNow": false,
     "panels": [
         {
@@ -556,119 +557,6 @@
                 "type": "datasource",
                 "uid": "${prometheusds}"
             },
-            "editable": true,
-            "error": false,
-            "fieldConfig": {
-                "defaults": {
-                    "links": [
-                        {
-                            "targetBlank": true,
-                            "title": "MongoDB ReplSet Summary - ${__series.name}",
-                            "url": "/graph/d/mongodb-replicaset-summary/mongodb-replset-summary?var-replset=${__series.name}&$__url_time_range"
-                        }
-                    ]
-                },
-                "overrides": []
-            },
-            "fill": 2,
-            "fillGradient": 0,
-            "grid": {},
-            "gridPos": {
-                "h": 8,
-                "w": 12,
-                "x": 0,
-                "y": 29
-            },
-            "hiddenSeries": false,
-            "id": 14,
-            "legend": {
-                "alignAsTable": true,
-                "avg": true,
-                "current": false,
-                "hideZero": false,
-                "max": true,
-                "min": true,
-                "rightSide": false,
-                "show": true,
-                "sort": "avg",
-                "sortDesc": true,
-                "total": false,
-                "values": true
-            },
-            "lines": true,
-            "linewidth": 2,
-            "links": [],
-            "nullPointMode": "null",
-            "options": {
-                "alertThreshold": true
-            },
-            "percentage": false,
-            "pluginVersion": "9.2.1",
-            "pointradius": 5,
-            "points": false,
-            "renderer": "flot",
-            "seriesOverrides": [],
-            "spaceLength": 10,
-            "stack": false,
-            "steppedLine": false,
-            "targets": [
-                {
-                    "datasource": {
-                        "type": "datasource",
-                        "uid": "${prometheusds}"
-                    },
-                    "expr": "max by(set) (max by(service_name, set) (max_over_time(mongodb_mongod_replset_member_replication_lag{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\"}[$interval]) > 0) or max by(service_name, set) (max_over_time(mongodb_mongod_replset_member_replication_lag{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\"}[5m]) > 0))",
-                    "format": "time_series",
-                    "hide": false,
-                    "interval": "$interval",
-                    "intervalFactor": 1,
-                    "legendFormat": "",
-                    "refId": "B",
-                    "step": 300
-                }
-            ],
-            "thresholds": [],
-            "timeRegions": [],
-            "title": "Replication Lag by Set",
-            "tooltip": {
-                "msResolution": false,
-                "shared": true,
-                "sort": 5,
-                "value_type": "cumulative"
-            },
-            "type": "graph",
-            "xaxis": {
-                "mode": "time",
-                "show": true,
-                "values": []
-            },
-            "yaxes": [
-                {
-                    "format": "s",
-                    "label": "",
-                    "logBase": 1,
-                    "min": 0,
-                    "show": true
-                },
-                {
-                    "format": "short",
-                    "logBase": 1,
-                    "show": true
-                }
-            ],
-            "yaxis": {
-                "align": false
-            }
-        },
-        {
-            "aliasColors": {},
-            "bars": false,
-            "dashLength": 10,
-            "dashes": false,
-            "datasource": {
-                "type": "datasource",
-                "uid": "${prometheusds}"
-            },
             "description": "Timespan 'window' between oldest and newest ops in the Oplog collection.",
             "editable": true,
             "error": false,
@@ -688,9 +576,9 @@
             "fillGradient": 0,
             "grid": {},
             "gridPos": {
-                "h": 8,
-                "w": 12,
-                "x": 12,
+                "h": 9,
+                "w": 24,
+                "x": 0,
                 "y": 29
             },
             "hiddenSeries": false,
@@ -787,8 +675,8 @@
             {
                 "current": {
                     "selected": false,
-                    "text": "juju_cos_2b034727-00b5-473f-803e-b8eec63bb071_loki_0",
-                    "value": "juju_cos_2b034727-00b5-473f-803e-b8eec63bb071_loki_0"
+                    "text": "juju_cos_19cc1e23-1056-404d-84fc-5fa5ce7223cb_loki_0",
+                    "value": "juju_cos_19cc1e23-1056-404d-84fc-5fa5ce7223cb_loki_0"
                 },
                 "hide": 0,
                 "includeAll": false,
@@ -804,8 +692,8 @@
             {
                 "current": {
                     "selected": false,
-                    "text": "juju_cos_2b034727-00b5-473f-803e-b8eec63bb071_prometheus_0",
-                    "value": "juju_cos_2b034727-00b5-473f-803e-b8eec63bb071_prometheus_0"
+                    "text": "juju_cos_19cc1e23-1056-404d-84fc-5fa5ce7223cb_prometheus_0",
+                    "value": "juju_cos_19cc1e23-1056-404d-84fc-5fa5ce7223cb_prometheus_0"
                 },
                 "hide": 0,
                 "includeAll": false,
@@ -881,8 +769,8 @@
             {
                 "current": {
                     "selected": false,
-                    "text": "6b51736a-8177-457e-838e-8ab5050b1568",
-                    "value": "6b51736a-8177-457e-838e-8ab5050b1568"
+                    "text": "dfa571f5-bce4-4d91-8b8a-9c595fc435ae",
+                    "value": "dfa571f5-bce4-4d91-8b8a-9c595fc435ae"
                 },
                 "datasource": {
                     "uid": "${prometheusds}"
