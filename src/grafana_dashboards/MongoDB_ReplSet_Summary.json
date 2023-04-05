@@ -2211,32 +2211,6 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "avg by (service_name) (rate(mongodb_mongod_metrics_repl_preload_docs_num_total{service_name=~\"$service_name\"}[$interval]) or irate(mongodb_mongod_metrics_repl_preload_docs_num_total{service_name=~\"$service_name\"}[5m]))",
-                    "interval": "$interval",
-                    "intervalFactor": 1,
-                    "legendFormat": "Document Preload",
-                    "metric": "mongodb_mongod_metrics_repl_preload_indexes_num_total",
-                    "refId": "A",
-                    "step": 300
-                },
-                {
-                    "datasource": {
-                        "type": "datasource",
-                        "uid": "${prometheusds}"
-                    },
-                    "expr": "avg by (service_name) (rate(mongodb_mongod_metrics_repl_preload_indexes_num_total{service_name=~\"$service_name\"}[$interval]) or irate(mongodb_mongod_metrics_repl_preload_indexes_num_total{service_name=~\"$service_name\"}[5m]))",
-                    "interval": "$interval",
-                    "intervalFactor": 1,
-                    "legendFormat": "Index Preload",
-                    "metric": "mongodb_mongod_metrics_repl_preload_indexes_num_total",
-                    "refId": "B",
-                    "step": 300
-                },
-                {
-                    "datasource": {
-                        "type": "datasource",
-                        "uid": "${prometheusds}"
-                    },
                     "expr": "avg by (service_name) (rate(mongodb_mongod_metrics_repl_apply_ops_total{service_name=~\"$service_name\"}[$interval]) or irate(mongodb_mongod_metrics_repl_apply_ops_total{service_name=~\"$service_name\"}[5m]))",
                     "interval": "$interval",
                     "intervalFactor": 2,
