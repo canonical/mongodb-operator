@@ -9,6 +9,7 @@ from subprocess import check_call
 from typing import Dict, List, Optional
 
 import ops.charm
+from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from charms.mongodb.v0.helpers import (
     KEY_FILE,
     TLS_EXT_CA_FILE,
@@ -32,7 +33,6 @@ from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
 from charms.operator_libs_linux.v1 import snap
-from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from ops.main import main
 from ops.model import (
     ActiveStatus,
@@ -65,10 +65,9 @@ MONITOR_PRIVILEGES = {
 }
 
 # We expect the MongoDB container to use the default ports
-NODE_EXPORTER_PORT = 9100
 MONGODB_PORT = 27017
 MONGODB_EXPORTER_PORT = 9216
-SNAP_PACKAGES = [("charmed-mongodb", "5/edge"), ("node-exporter", "edge")]
+SNAP_PACKAGES = [("charmed-mongodb", "5/edge")]
 REL_NAME = "database"
 
 
@@ -104,15 +103,14 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.backups = MongoDBBackups(self)
 
         # relation events for Prometheus metrics are handled in the MetricsEndpointProvider
-        self.metrics_endpoint = MetricsEndpointProvider(
+        self._grafana_agent = COSAgentProvider(
             self,
-            jobs=[
-                {
-                    "static_configs": [
-                        {"targets": [f"*:{NODE_EXPORTER_PORT}", f"*:{MONGODB_EXPORTER_PORT}"]}
-                    ]
-                }
+            metrics_endpoints=[
+                {"path": "/metrics", "port": f"{MONGODB_EXPORTER_PORT}"},
             ],
+            metrics_rules_dir="./src/alert_rules/prometheus",
+            logs_rules_dir="./src/alert_rules/loki",
+            log_slots=["charmed-mongodb:logs"],
         )
 
     def _generate_passwords(self) -> None:
@@ -316,17 +314,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.unit.status = MaintenanceStatus("installing MongoDB")
         try:
             self._install_snap_packages(packages=SNAP_PACKAGES)
-            # provide node exporter snap (used for metrics) the necessary plugs
-            snap_cache = snap.SnapCache()
-            node_exporter = snap_cache["node-exporter"]
-            node_exporter_plugs = [
-                "hardware-observe",
-                "network-observe",
-                "mount-observe",
-                "system-observe",
-            ]
-            for plug in node_exporter_plugs:
-                node_exporter.connect(plug=plug)
 
         except snap.SnapError:
             self.unit.status = BlockedStatus("couldn't install MongoDB")
@@ -598,18 +585,8 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         if not self.get_secret("app", "monitor-password"):
             return
 
-        # avoid unnecessary restarts if the URI mongodb exporter is using is up to date.
         snap_cache = snap.SnapCache()
         mongodb_snap = snap_cache["charmed-mongodb"]
-        try:
-            if mongodb_snap.get("monitor-uri") == self.monitor_config.uri:
-                return
-        except snap.SnapError:
-            # TODO remove try/except when issue is resolved:
-            # https://github.com/canonical/operator-libs-linux/issues/87
-            # SnapError occurs when the config option `monitor-uri` is not set.
-            pass
-
         mongodb_snap.set({"monitor-uri": self.monitor_config.uri})
         mongodb_snap.restart(services=["mongodb-exporter"])
 
@@ -843,6 +820,11 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             logger.debug("creating the monitor user...")
             mongo.create_user(self.monitor_config)
             self.app_peer_data["monitor_user_created"] = "True"
+
+        # leader should reconnect to exporter after creating the monitor user - since the snap
+        # will have an authorisation error until the the user has been created and the daemon
+        # has been restarted
+        self._connect_mongodb_exporter()
 
     @retry(
         stop=stop_after_attempt(3),

@@ -698,21 +698,3 @@ class TestCharm(unittest.TestCase):
 
         self.harness.charm._connect_mongodb_exporter()
         mock_mongodb_snap.restart.assert_not_called()
-
-    @patch("charm.snap.SnapCache")
-    def test_connect_mongodb_exporter_same_uri(
-        self,
-        snap_cache,
-    ):
-        """Verifies that mongodb exporter does not restart if not necessary."""
-        mock_mongodb_snap = mock.Mock()
-        mock_mongodb_snap.present = True
-        mock_mongodb_snap.start = mock.Mock()
-        mock_mongodb_snap.get.return_value = (
-            "mongodb://monitor:pass123@127.0.0.1/?replicaSet=mongodb&authSource=admin"
-        )
-        snap_cache.return_value = {"charmed-mongodb": mock_mongodb_snap}
-        self.harness.charm.app_peer_data["monitor-password"] = "pass123"
-
-        self.harness.charm._connect_mongodb_exporter()
-        mock_mongodb_snap.restart.assert_not_called()
