@@ -17,7 +17,12 @@ Aside from a VM operator, Canonical also developed another operator called [Char
 
 Charmed MongoDB (VM Operator) is an enhanced, open source and fully-compatible drop-in replacement for the MongoDB Community Edition with advanced MongoDB enterprise features. This operator uses the [Charmed MongoDB snap package](https://snapcraft.io/charmed-mongodb), which offers more features than the MongoDB Community version, such as backup and restores, monitoring and security features.
 
-To see the Charmed MongoDB features and releases, visit our [Release Notes page](https://github.com/canonical/mongodb-operator/releases).
+To see the Charmed MongoDB features and releases, visit our [Release Notes page](https://github.com/canonical/mongodb-operator/releases). Currently the charm supports:
+- Replication
+- Password Rotation
+- User management
+- TLS
+- Backup & Restore
 
 ## Charm version, environment and OS
 
