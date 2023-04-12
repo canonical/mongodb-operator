@@ -1,164 +1,54 @@
 # Charmed MongoDB Operator
 
-
 ## Overview
 
-The Charmed MongoDB Operator delivers automated operations management from day 0 to day 2 on the [MongoDB Community Edition](https://github.com/mongodb/mongo) document database. It is an open source, end-to-end, production ready data platform on top of cloud native technologies.
+[MongoDB](https://github.com/mongodb/mongo) is a popular NoSQL database application. It stores its data with JSON-like documents creating a flexible user experience with easy-to-use data aggregation for data analytics. In addition, it is a distributed database, so vertical and horizontal scaling come naturally.
 
-MongoDB is a popular NoSQL database application. It stores its data with JSON-like documents creating a flexible experience for users; with easy to use data aggregation for data analytics. It is a distributed database, so vertical and horizontal scaling come naturally.
+Applications like MongoDB must be managed and operated in the production environment. This means that MongoDB application administrators and analysts who run workloads in various infrastructures should be able to automate tasks for repeatable operational work. Technologies such as software operators encapsulate the knowledge, wisdom and expertise of a real-world operations team and codify it into a computer program that helps to operate complex server applications like MongoDB and other databases.
 
-This operator charm deploys and operates MongoDB on physical or virtual machines. It offers features such as replication, TLS, password rotation, and easy to use integration with applications. The Charmed MongoDB Operator meets the need of deploying MongoDB in a structured and consistent manner while allowing the user flexibility in configuration. It simplifies deployment, scaling, configuration and management of MongoDB in production at scale in a reliable way.
+Canonical has developed an open-source operator called  Charmed MongoDB, making it easier to operate MongoDB. The Charmed MongoDB Virtual Machine (VM) operator deploys and operates MongoDB on physical,  Virtual Machines (VM) and other wide range of cloud and cloud-like environments, including AWS, Azure, OpenStack and VMWare.
 
-## Requirements 
-- 2GB of RAM.
-- 2 CPU threads per host.
-- For production deployment: at least 60GB of available storage on each host.
-- Access to the internet for downloading the charm.
-- Machine is running Ubuntu 20.04(focal) or later.
+Charmed MongoDB (VM Operator) is an enhanced, open source and fully-compatible drop-in replacement for the MongoDB Community Edition with advanced MongoDB enterprise features. It simplifies the deployment, scaling, design and management of MongoDB in production in a reliable way. In addition, you can use the operator to manage your MongoDB clusters with automation capabilities. It also offers replication, TLS, password rotation, easy-to-use application integration, backup, restore, and monitoring.  
 
-## Config options
-auto-delete - `boolean`; When a relation is removed, auto-delete ensures that any relevant databases
-associated with the relation are also removed. Set with `juju config mongodb auto-delete=<bool>`.
-
-operator password - `string`; The password for the database admin (named "operator"). Set with `juju run-action mongodb/leader set-password --wait`
-
-tls external key - `string`; TLS external key for encryption outside the cluster. Set with `juju run-action mongodb/0 set-tls-private-key "external-key=$(base64 -w0 external-key-0.pem)" --wait`
-
-tls internal key - `string`;  TLS external key for encryption inside the cluster. Set with `juju run-action mongodb/0 set-tls-private-key "internal-key=$(base64 -w0 internal-key.pem)"  --wait`
-
-## Usage
-
-### Basic Usage
-To deploy a single unit of MongoDB using its default configuration
-```shell
-juju deploy mongodb --channel 5/edge
-```
-
-It is customary to use MongoDB with replication. Hence usually more than one unit (preferably an odd number to prohibit a "split-brain" scenario) is deployed. To deploy MongoDB with multiple replicas, specify the number of desired units with the `-n` option.
-```shell
-juju deploy mongodb --channel 5/edge -n <number_of_replicas>
-```
-
-To retrieve primary replica one can use the action `get-primary` on any of the units running MongoDB
-```shell
-juju run-action mongodb/<unit_number> get-primary --wait
-```
-
-Similarly, the primary replica is displayed as a status message in `juju status`, however one should note that this hook gets called on regular time intervals and the primary may be outdated if the status hook has not been called recently. 
-
-Further we highly suggest configuring the status hook to run frequently. In addition to reporting the primary, secondaries, and other statuses, the status hook performs self healing in the case of a network cut. To change the frequency of the update status hook do:
-```shell
-juju model-config update-status-hook-interval=<time(s/m/h)>
-```
-Note that this hook executes a read query to MongoDB. On a production level server this should be configured to occur at a frequency that doesn't overload the server with read requests. Similarly the hook should not be configured at too quick of a frequency as this can delay other hooks from running. You can read more about status hooks [here](https://juju.is/docs/sdk/update-status-event).
-
-### Replication
-#### Adding Replicas
-To add more replicas one can use the `juju add-unit` functionality i.e.
-```shell
-juju add-unit mongodb -n <num_of_replicas_to_add>
-```
-The implementation of `add-unit` allows the operator to add more than one unit, but functions internally by adding one replica at a time, as specified by the [constraints](https://www.mongodb.com/docs/manual/reference/command/replSetReconfig/#reconfiguration-can-add-or-remove-no-more-than-one-voting-member-at-a-time) of MongoDB.
+Aside from a VM operator, Canonical also developed another operator called [Charmed MongoDB (K8s operator)](https://charmhub.io/mongodb-k8s?channel=5/edge) that operates in the Kubernetes environment, and you can see the documentation [here](https://charmhub.io/mongodb-k8s?channel=5/edge).
 
 
-#### Removing Replicas 
-Similarly to scale down the number of replicas the `juju remove-unit` functionality may be used i.e.
-```shell
-juju remove-unit <name_of_unit1> <name_of_unit2>
-```
-The implementation of `remove-unit` allows the operator to remove more than one replica so long has the operator **does not remove a majority of the replicas**. The functionality of `remove-unit` functions by removing one replica at a time, as specified by the [constraints](https://www.mongodb.com/docs/manual/reference/command/replSetReconfig/#reconfiguration-can-add-or-remove-no-more-than-one-voting-member-at-a-time) of MongoDB.
+## Software and releases
+
+Charmed MongoDB (VM Operator) is an enhanced, open source and fully-compatible drop-in replacement for the MongoDB Community Edition with advanced MongoDB enterprise features. This operator uses the [Charmed MongoDB snap package](https://snapcraft.io/charmed-mongodb), which offers more features than the MongoDB Community version, such as backup and restores, monitoring and security features.
+
+To see the Charmed MongoDB features and releases, visit our [Release Notes page](https://github.com/canonical/mongodb-operator/releases). Currently the charm supports:
+- Replication
+- Password Rotation
+- User management
+- TLS
+- Backup & Restore
+
+## Charm version, environment and OS
+
+A charm version is a combination of both the application version and / (slash) the channel, e.g. 5/stable, 5/candidate, 5/edge. The channels are ordered from the most stable to the least stable, candidate, and edge. More risky channels like edge are always implicitly available. So, if the candidate is listed, you can pull the candidate and edge. When stable is listed, all three are available. 
+
+You can deploy the charm a stand-alone machine or cloud and cloud-like environments, including AWS, Azure, OpenStack and VMWare.
+
+The upper portion of this page describes the Operating System (OS) where the charm can run e.g. 5/stable is compatible and should run in a machine with Ubuntu 22.04 OS.
 
 
-## Relations
+## Security, Bugs and feature request
 
-Supported [relations](https://juju.is/docs/olm/relations):
+If you find a bug in this snap or want to request a specific feature, here are the useful links:
 
-#### New `mongodb_client` interface:
+* Raise issues or feature requests in [Github](https://github.com/canonical/mongodb-operator/issues)
 
-Relations to new applications are supported via the `mongodb_client` interface. To create a relation: 
+* Security issues in the Charmed MongoDB Operator can be reported through [LaunchPad](https://wiki.ubuntu.com/DebuggingSecurity#How%20to%20File). Please do not file GitHub issues about security issues.
 
-```shell
-juju relate mongodb application
-```
-
-To remove a relation:
-```shell
-juju remove-relation mongodb application
-```
-
-#### Legacy `mongodb` interface:
-We have also added support for the database legacy relation from the [original version](https://launchpad.net/charm-mongodb) of the charm via the `mongodb` interface. Currently legacy relations operate without authentication and hence cannot be used with pre-existing new relations. Please note that these relations will be deprecated.
- ```shell
-juju relate mongodb graylog
-```
-
-#### `tls` interface:
-
-We have also supported TLS for the MongoDB k8s charm. To enable TLS:
-
-```shell
-# deploy the TLS charm 
-juju deploy tls-certificates-operator --channel=edge
-# add the necessary configurations for TLS
-juju config tls-certificates-operator generate-self-signed-certificates="true" ca-common-name="Test CA" 
-# to enable TLS relate the two applications 
-juju relate tls-certificates-operator mongodb
-```
-
-Updates to private keys for certificate signing requests (CSR) can be made via the `set-tls-private-key` action. Note passing keys to external/internal keys should *only be done with* `base64 -w0` *not* `cat`. With three replicas this schema should be followed:
-```shell
-# generate shared internal key
-openssl genrsa -out internal-key.pem 3072
-# generate external keys for each unit
-openssl genrsa -out external-key-0.pem 3072
-openssl genrsa -out external-key-1.pem 3072
-openssl genrsa -out external-key-2.pem 3072
-# apply both private keys on each unit, shared internal key will be allied only on juju leader
-juju run-action mongodb/0 set-tls-private-key "external-key=$(base64 -w0 external-key-0.pem)"  "internal-key=$(base64 -w0 internal-key.pem)"  --wait
-juju run-action mongodb/1 set-tls-private-key "external-key=$(base64 -w0 external-key-1.pem)"  "internal-key=$(base64 -w0 internal-key.pem)"  --wait
-juju run-action mongodb/2 set-tls-private-key "external-key=$(base64 -w0 external-key-2.pem)"  "internal-key=$(base64 -w0 internal-key.pem)"  --wait
-
-# updates can also be done with auto-generated keys with
-juju run-action mongodb/0 set-tls-private-key --wait
-juju run-action mongodb/1 set-tls-private-key --wait
-juju run-action mongodb/2 set-tls-private-key --wait
-```
-
-To disable TLS remove the relation
-```shell
-juju remove-relation mongodb tls-certificates-operator
-```
-
-Note: The TLS settings here are for self-signed-certificates which are not recommended for production clusters, the `tls-certificates-operator` charm offers a variety of configurations, read more on the TLS charm [here](https://charmhub.io/tls-certificates-operator)
-
-### Password rotation
-#### Internal operator user
-The operator user is used internally by the Charmed MongoDB Operator, the `set-password` action can be used to rotate its password.
-```shell
-# to set a specific password for the operator user
-juju run-action mongodb/leader set-password password=<password> --wait
-
-# to randomly generate a password for the operator user
-juju run-action mongodb/leader set-password --wait
-```
-
-#### Related applications users
-To rotate the passwords of users created for related applications, the relation should be removed and related again. That process will generate a new user and password for the application.
-```shell
-juju remove-relation application mongodb
-juju add-relation application mongodb
-```
-
-## Security
-Security issues in the Charmed MongoDB Operator can be reported through [LaunchPad](https://wiki.ubuntu.com/DebuggingSecurity#How%20to%20File). Please do not file GitHub issues about security issues.
-
+* Meet the community and chat with us if there are issues and feature requests in our [Mattermost Channel](https://chat.charmhub.io/charmhub/channels/data-platform)
 
 ## Contributing
 
 Please see the [Juju SDK docs](https://juju.is/docs/sdk) for guidelines on enhancements to this charm following best practice guidelines, and [CONTRIBUTING.md](https://github.com/canonical/mongodb-operator/blob/main/CONTRIBUTING.md) for developer guidance.
 
-
 ## License
+
 The Charmed MongoDB Operator is free software, distributed under the Apache Software License, version 2.0. See [LICENSE](https://github.com/canonical/mongodb-operator/blob/main/LICENSE) for more information.
 
 The Charmed MongoDB Operator is free software, distributed under the Apache Software License, version 2.0. It [installs/operates/depends on] [MongoDB Community Version](https://github.com/mongodb/mongo), which is licensed under the Server Side Public License (SSPL)
