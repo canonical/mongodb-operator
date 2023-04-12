@@ -67,7 +67,7 @@ MONITOR_PRIVILEGES = {
 # We expect the MongoDB container to use the default ports
 MONGODB_PORT = 27017
 MONGODB_EXPORTER_PORT = 9216
-SNAP_PACKAGES = [("charmed-mongodb", "5/edge")]
+SNAP_PACKAGES = [("charmed-mongodb", "5/edge/fix-configure")]
 REL_NAME = "database"
 
 
