@@ -22,8 +22,7 @@ provides:
 storage:
   mongodb:
     type: filesystem
-    # mongod is strictly confined in the charmed-mongodb snap
-    location: /var/snap/charmed-mongodb/common/var/lib/mongodb
+    location: /var/snap/charmed-mongodb/common
 
 peers:
   database-peers:
