@@ -98,6 +98,7 @@ jobs:
         uses: charmed-kubernetes/actions-operator@main
         with:
           provider: lxd
+          bootstrap-options: "--model-default 'logging-config=<root>=INFO;unit=DEBUG' --agent-version 2.9.42"
       - name: Download packed charm(s)
         uses: actions/download-artifact@v3
         with:
@@ -121,3 +122,9 @@ jobs:
           AWS_SECRET_KEY: ${{ matrix.tox-environments != 'backup-integration' || secrets.AWS_SECRET_KEY }}
           GCP_ACCESS_KEY: ${{ matrix.tox-environments != 'backup-integration' || secrets.GCP_ACCESS_KEY }}
           GCP_SECRET_KEY: ${{ matrix.tox-environments != 'backup-integration' || secrets.GCP_SECRET_KEY }}
+      - name: Setup upterm session
+        if: success() || failure()
+        uses: lhotari/action-upterm@v1
+        with:
+          limit-access-to-actor: true
+          limit-access-to-users: MiaAltieri

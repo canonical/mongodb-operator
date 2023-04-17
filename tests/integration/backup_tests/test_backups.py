@@ -117,8 +117,8 @@ async def test_ready_correct_conf(ops_test: OpsTest) -> None:
 
     # after applying correct config options and creds the applications should both be active
     await asyncio.gather(
-        ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active", timeout=TIMEOUT),
-        ops_test.model.wait_for_idle(apps=[db_app_name], status="active", timeout=TIMEOUT),
+        ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active"),
+        ops_test.model.wait_for_idle(apps=[db_app_name], status="active"),
     )
 
 
@@ -184,7 +184,7 @@ async def test_multi_backup(ops_test: OpsTest, continuous_writes_to_db) -> None:
     await ops_test.model.applications[S3_APP_NAME].set_config(configuration_parameters)
 
     await asyncio.gather(
-        ops_test.model.wait_for_idle(apps=[db_app_name], status="active", timeout=TIMEOUT),
+        ops_test.model.wait_for_idle(apps=[db_app_name], status="active"),
     )
 
     # create a backup as soon as possible. might not be immediately possible since only one backup
@@ -225,7 +225,7 @@ async def test_multi_backup(ops_test: OpsTest, continuous_writes_to_db) -> None:
     }
     await ops_test.model.applications[S3_APP_NAME].set_config(configuration_parameters)
     await asyncio.gather(
-        ops_test.model.wait_for_idle(apps=[db_app_name], status="active", timeout=TIMEOUT),
+        ops_test.model.wait_for_idle(apps=[db_app_name], status="active"),
     )
 
     # verify that backups was made on the AWS bucket
@@ -314,7 +314,7 @@ async def test_restore_new_cluster(ops_test: OpsTest, add_writes_to_db, cloud_pr
     await ops_test.model.applications[S3_APP_NAME].set_config(configuration_parameters)
     await asyncio.gather(
         ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active"),
-        ops_test.model.wait_for_idle(apps=[db_app_name], status="active", timeout=TIMEOUT),
+        ops_test.model.wait_for_idle(apps=[db_app_name], status="active"),
     )
 
     # create a backup
@@ -346,7 +346,7 @@ async def test_restore_new_cluster(ops_test: OpsTest, add_writes_to_db, cloud_pr
 
     # wait for new cluster to sync
     await asyncio.gather(
-        ops_test.model.wait_for_idle(apps=[NEW_CLUSTER], status="active", timeout=TIMEOUT),
+        ops_test.model.wait_for_idle(apps=[NEW_CLUSTER], status="active"),
     )
 
     # verify that the listed backups from the old cluster are not listed as failed.
