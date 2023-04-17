@@ -14,8 +14,8 @@ juju deploy data-integrator --channel edge --config database-name=test-database
 ```
 The expected output:
 ```
-Located charm "data-integrator" in charm-hub, revision 3
-Deploying "data-integrator" from charm-hub charm "data-integrator", revision 3 in channel edge on jammy
+Located charm "data-integrator" in charm-hub...
+Deploying "data-integrator" from charm-hub charm "data-integrator"...
 ```
 
 ### Relate to MongoDB
@@ -31,7 +31,7 @@ tutorial  overlord    localhost/localhost  2.9.37   unsupported  10:32:09Z
 
 App                  Version  Status  Scale  Charm                Channel   Rev  Exposed  Message
 data-integrator               active      1  data-integrator      edge       3   no
-mongodb                       active      2  mongodb              dpe/edge   96  no
+mongodb                       active      2  mongodb              5/edge   96  no
 
 Unit                    Workload  Agent  Machine  Public address  Ports      Message
 data-integrator/0*  active    idle   5        10.23.62.216               received mongodb credentials
@@ -39,8 +39,8 @@ mongodb/0*              active    idle   0        10.23.62.156    27017/tcp
 mongodb/1               active    idle   1        10.23.62.55     27017/tcp  Replica set primary
 
 Machine  State    Address       Inst id        Series  AZ  Message
-0        started  10.23.62.156  juju-d35d30-0  focal       Running
-1        started  10.23.62.55   juju-d35d30-1  focal       Running
+0        started  10.23.62.156  juju-d35d30-0  jammy       Running
+1        started  10.23.62.55   juju-d35d30-1  jammy       Running
 5        started  10.23.62.216  juju-d35d30-5  jammy       Running
 ```
 To retrieve information such as the username, password, and database. Enter:
@@ -74,12 +74,12 @@ Notice that in the previous step when you typed `juju run-action data-integrator
 ```shell
 juju ssh mongodb/0
 ```
-Then access `mongosh` with the URI that you copied above:
+Then access `mongo` with the URI that you copied above:
 
 ```shell
-mongosh "<uri copied from juju run-action data-integrator/leader get-credentials --wait>"
+charmed-mongodb.mongo "<uri copied from juju run-action data-integrator/leader get-credentials --wait>"
 ```
-*Note: be sure you wrap the URI in `"` with no trailing whitespace*.
+***Note: be sure you wrap the URI in `"` with no trailing whitespace*.**
 
 You will now be in the mongo shell as the user created for this relation. When you relate two applications Charmed MongoDB automatically sets up a user and database for you. Enter `db.getName()` into the MongoDB shell, this will output:
 ```shell
@@ -122,9 +122,9 @@ juju remove-relation mongodb data-integrator
 Now try again to connect to the same URI you just used in [Access the related database](#access-the-related-database):
 ```shell
 juju ssh mongodb/0
-mongosh "<uri copied from juju run-action data-integrator/leader get-credentials --wait>"
+charmed-mongodb.mongo "<uri copied from juju run-action data-integrator/leader get-credentials --wait>"
 ```
-*Note: be sure you wrap the URI in `"` with no trailing whitespace*.
+***Note: be sure you wrap the URI in `"` with no trailing whitespace*.**
 
 This will output an error message:
 ```
@@ -157,7 +157,7 @@ Save the result listed with `uris:`.
 You can connect to the database with this new URI:
 ```shell
 juju ssh mongodb/0
-mongosh "<uri copied from juju run-action data-integrator/leader get-credentials --wait>"
+charmed-mongodb.mongo "<uri copied from juju run-action data-integrator/leader get-credentials --wait>"
 ```
 *Note: be sure you wrap the URI in `"` with no trailing whitespace*.
 

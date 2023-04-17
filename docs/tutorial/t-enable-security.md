@@ -14,13 +14,13 @@ Before enabling TLS on Charmed MongoDB we must first deploy the `TLS-certificate
 juju deploy tls-certificates-operator --channel=edge
 ```
 
-Wait until the `tls-certificates-operator` is ready to be configured. When it is ready to be configured `watch -c juju status --color`. Will show:
+Wait until the `tls-certificates-operator` is ready to be configured. When it is ready to be configured `juju status --watch 1s`. Will show:
 ```
 Model     Controller  Cloud/Region         Version  SLA          Timestamp
 tutorial  overlord    localhost/localhost  2.9.37   unsupported  09:24:12Z
 
 App                        Version  Status   Scale  Charm                      Channel   Rev  Exposed  Message
-mongodb                             active       2  mongodb                    dpe/edge   96  no       Replica set primary
+mongodb                             active       2  mongodb                    5/edge   96  no       Replica set primary
 tls-certificates-operator           blocked      1  tls-certificates-operator  edge       16  no       Configuration options missing: ['certificate', 'ca-certificate']
 
 Unit                          Workload  Agent  Machine  Public address  Ports      Message
@@ -29,9 +29,9 @@ mongodb/1                     active    idle   1        10.23.62.55     27017/tc
 tls-certificates-operator/0*  blocked   idle   3        10.23.62.8                 Configuration options missing: ['certificate', 'ca-certificate']
 
 Machine  State    Address       Inst id        Series  AZ  Message
-0        started  10.23.62.156  juju-d35d30-0  focal       Running
-1        started  10.23.62.55   juju-d35d30-1  focal       Running
-3        started  10.23.62.8    juju-d35d30-3  focal       Running
+0        started  10.23.62.156  juju-d35d30-0  jammy       Running
+1        started  10.23.62.55   juju-d35d30-1  jammy       Running
+3        started  10.23.62.8    juju-d35d30-3  jammy       Running
 ```
 
 Now we can configure the TLS certificates. Configure the  `tls-certificates-operator` to use self signed certificates:
@@ -41,7 +41,7 @@ juju config tls-certificates-operator generate-self-signed-certificates="true" c
 *Note: this tutorial uses [self-signed certificates](https://en.wikipedia.org/wiki/Self-signed_certificate); self-signed certificates should not be used in a production cluster.*
 
 ### Enable TLS
-After configuring the certificates `watch -c juju status --color` will show the status of `tls-certificates-operator` as active. To enable TLS on Charmed MongoDB, relate the two applications:
+After configuring the certificates `juju status --watch 1s` will show the status of `tls-certificates-operator` as active. To enable TLS on Charmed MongoDB, relate the two applications:
 ```shell
 juju relate tls-certificates-operator mongodb
 ```
@@ -56,14 +56,14 @@ Now ssh into `mongodb/0`:
 ```
 juju ssh mongodb/0
 ```
-After `ssh`ing into `mongodb/0`, we are now in the unit that is hosting Charmed MongoDB. Once TLS has been enabled we will need to change how we connect to MongoDB. Specifically we will need to specify the TLS CA file along with the TLS Certificate file. These are on the units hosting the Charmed MongoDB application in the folder `/etc/mongodb/`. If you enter: `ls /etc/mongodb/external*` you should see the external certificate file and the external CA file:
+After `ssh`ing into `mongodb/0`, we are now in the unit that is hosting Charmed MongoDB. Once TLS has been enabled we will need to change how we connect to MongoDB. Specifically we will need to specify the TLS CA file along with the TLS Certificate file. These are on the units hosting the Charmed MongoDB application in the folder `/var/snap/charmed-mongodb/common/etc/mongod`. If you enter: `ls /var/snap/charmed-mongodb/common/etc/mongod/external*` you should see the external certificate file and the external CA file:
 ```shell
-/etc/mongodb/external-ca.crt  /etc/mongodb/external-cert.pem
+/var/snap/charmed-mongodb/common/etc/mongod/external-ca.crt /var/snap/charmed-mongodb/common/etc/mongod/external-cert.pem
 ```
 
 As before, we will connect to MongoDB via the saved MongoDB URI. Connect using the saved URI and the following TLS options:
 ```shell
-mongosh mongodb://$DB_USERNAME:$DB_PASSWORD@$HOST_IP/$DB_NAME?replicaSet=$REPL_SET_NAME --tls --tlsCAFile /etc/mongodb/external-ca.crt --tlsCertificateKeyFile /etc/mongodb/external-cert.pem
+charmed-mongodb.mongo mongodb://$DB_USERNAME:$DB_PASSWORD@$HOST_IP/$DB_NAME?replicaSet=$REPL_SET_NAME --tls --tlsCAFile /var/snap/charmed-mongodb/common/etc/mongod/external-ca.crt --tlsCertificateKeyFile /var/snap/charmed-mongodb/common/etc/mongod/external-cert.pem
 ```
 
 Congratulations, you've now connected to MongoDB with TLS. Now exit the MongoDB shell by typing:
