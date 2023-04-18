@@ -266,19 +266,14 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             event: The triggering relation joined/changed event.
         """
         # changing the monitor password will lead to non-leader units receiving a relation changed
-        # event. We must update the monitor URI if the password changes so that COS can continue to
-        # work
+        # event. We must update the monitor and pbm URI if the password changes so that COS/pbm
+        # can continue to work
         self._connect_mongodb_exporter()
-
-        # if the leader changes the password for backup we will be notified and need to update pbm.
-        snap_cache = snap.SnapCache()
-        pbm_snap = snap_cache["charmed-mongodb"]
-        pbm_snap.set({"pbm-uri": self.backups._backup_config.uri})
+        self._connect_pbm_agent()
 
         # only leader should configure replica set and app-changed-events can trigger the relation
         # changed hook resulting in no JUJU_REMOTE_UNIT if this is the case we should return
         # further reconfiguration can be successful only if a replica set is initialised.
-
         if (
             not (self.unit.is_leader() and event.unit)
             or "db_initialised" not in self.app_peer_data
@@ -517,9 +512,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.set_secret("app", f"{username}-password", new_password)
 
         if username == "backup":
-            snap_cache = snap.SnapCache()
-            pbm_snap = snap_cache["charmed-mongodb"]
-            pbm_snap.set({"pbm-uri": self.backups._backup_config.uri})
+            self._connect_pbm_agent()
 
         if username == "monitor":
             self._connect_mongodb_exporter()
@@ -607,6 +600,17 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         mongodb_snap = snap_cache["charmed-mongodb"]
         mongodb_snap.set({"monitor-uri": self.monitor_config.uri})
         mongodb_snap.restart(services=["mongodb-exporter"])
+
+    def _connect_pbm_agent(self) -> None:
+        """Updates URI for pbm-agent."""
+        # must wait for leader to set URI before any attempts to update are made
+        if not self.get_secret("app", "backup-password"):
+            return
+
+        snap_cache = snap.SnapCache()
+        pbm_snap = snap_cache["charmed-mongodb"]
+        pbm_snap.set({"pbm-uri": self.backups._backup_config.uri})
+        pbm_snap.restart(services=["pbm-agent"])
 
     def _initialise_replica_set(self, event: ops.charm.StartEvent) -> None:
         if "db_initialised" in self.app_peer_data:
