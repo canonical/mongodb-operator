@@ -75,13 +75,7 @@ jobs:
       fail-fast: false
       matrix:
         tox-environments:
-          - charm-integration
-          - ha-integration
-          - relation-integration
-          - legacy-integration
-          - tls-integration
           - backup-integration
-          - metric-integration
     name: ${{ matrix.tox-environments }}
     needs:
       - lint

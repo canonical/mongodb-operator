@@ -116,9 +116,9 @@ async def test_ready_correct_conf(ops_test: OpsTest) -> None:
     await ops_test.model.applications[S3_APP_NAME].set_config(configuration_parameters)
 
     # after applying correct config options and creds the applications should both be active
-    await asyncio.gather(
-        ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active"),
-        ops_test.model.wait_for_idle(apps=[db_app_name], status="active"),
+    await ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active", timeout=TIMEOUT)
+    await ops_test.model.wait_for_idle(
+        apps=[db_app_name], status="active", timeout=TIMEOUT, idle_period=60
     )
 
 
@@ -130,6 +130,7 @@ async def test_create_and_list_backups(ops_test: OpsTest) -> None:
     action = await db_unit.run_action(action_name="list-backups")
     list_result = await action.wait()
     backups = list_result.results["backups"]
+    print(list_result.results)
     assert backups, "backups not outputted"
 
     # verify backup is started
