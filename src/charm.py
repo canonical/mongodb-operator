@@ -489,6 +489,14 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         if "password" in event.params:
             new_password = event.params["password"]
 
+        # changing the backup password while a backup/restore is in progress can be disastrous
+        pbm_status = self.backups._get_pbm_status()
+        if username == "backup" and isinstance(pbm_status, ActiveStatus):
+            event.fail(
+                "Cannot change backup password while a backup/restore/resync is in progress."
+            )
+            return
+
         with MongoDBConnection(self.mongodb_config) as mongo:
             try:
                 mongo.set_user_password(username, new_password)
