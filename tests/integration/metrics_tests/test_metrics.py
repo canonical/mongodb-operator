@@ -7,6 +7,7 @@ import ops
 import pytest
 import urllib3
 from pytest_operator.plugin import OpsTest
+import subprocess
 
 from ..ha_tests import helpers as ha_helpers
 from ..helpers import find_unit
@@ -33,6 +34,7 @@ async def verify_endpoints(ops_test: OpsTest, unit: ops.model.Unit) -> str:
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy one unit of MongoDB."""
+    subprocess.check_output("juju set-model-constraints cores=2 mem=1G")
     if await ha_helpers.app_name(ops_test):
         return
 

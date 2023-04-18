@@ -8,6 +8,7 @@ import time
 
 import pytest
 from pytest_operator.plugin import OpsTest
+import subprocess
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from ..ha_tests import helpers as ha_helpers
@@ -43,6 +44,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy one unit of MongoDB."""
     # it is possible for users to provide their own cluster for testing. Hence check if there
     # is a pre-existing cluster.
+    subprocess.check_output("juju set-model-constraints cores=2 mem=1G")
     if not await helpers.app_name(ops_test):
         db_charm = await ops_test.build_charm(".")
         await ops_test.model.deploy(db_charm, num_units=3)

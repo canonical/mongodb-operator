@@ -10,6 +10,7 @@ import yaml
 from pymongo import MongoClient
 from pymongo.errors import OperationFailure
 from pytest_operator.plugin import OpsTest
+import subprocess
 from tenacity import RetryError
 
 from ...ha_tests.helpers import replica_set_primary
@@ -33,6 +34,7 @@ async def test_deploy_charms(ops_test: OpsTest, application_charm, database_char
     """Deploy both charms (application and database) to use in the tests."""
     # Deploy both charms (2 units for each application to test that later they correctly
     # set data in the relation application databag using only the leader unit).
+    subprocess.check_output("juju set-model-constraints cores=2 mem=1G")
     await asyncio.gather(
         ops_test.model.deploy(
             application_charm,

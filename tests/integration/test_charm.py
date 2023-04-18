@@ -10,6 +10,7 @@ import pytest
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError, ServerSelectionTimeoutError
 from pytest_operator.plugin import OpsTest
+import subprocess
 from tenacity import RetryError
 
 from .ha_tests.helpers import app_name, kill_unit_process
@@ -37,6 +38,7 @@ MEDIAN_REELECTION_TIME = 12
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy one unit of MongoDB."""
+    subprocess.check_output("juju set-model-constraints cores=2 mem=1G")
     my_charm = await ops_test.build_charm(".")
     await ops_test.model.deploy(my_charm, num_units=len(UNIT_IDS))
     await ops_test.model.wait_for_idle()

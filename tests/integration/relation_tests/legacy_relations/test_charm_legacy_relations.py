@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 import yaml
 from pytest_operator.plugin import OpsTest
+import subprocess
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from .helpers import (
@@ -35,6 +36,7 @@ APP_NAMES = [GRAYLOG_APP_NAME, ELASTIC_APP_NAME, DATABASE_APP_NAME]
 @pytest.mark.abort_on_fail
 async def test_build_deploy_charms(ops_test: OpsTest):
     """Deploy both charms (application and database) to use in the tests."""
+    subprocess.check_output("juju set-model-constraints cores=2 mem=1G")
     # Deploy both charms (2 units for each application to test that later they correctly
     # set data in the relation application databag using only the leader unit).
     db_charm = await ops_test.build_charm(".")
