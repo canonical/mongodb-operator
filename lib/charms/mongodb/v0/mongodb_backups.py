@@ -44,6 +44,7 @@ LIBAPI = 0
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
 LIBPATCH = 3
+MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
 
 logger = logging.getLogger(__name__)
 
@@ -151,6 +152,13 @@ class MongoDBBackups(Object):
 
     def _set_config_options(self, pbm_configs):
         """Applying given configurations with pbm."""
+        # clearing out configurations options before resetting them leads to a quicker reysnc
+        # process
+        subprocess.check_output(
+            f"charmed-mongodb.pbm config --file {MONGODB_SNAP_DATA_DIR}/etc/pbm/pbm_config.yaml",
+            shell=True,
+        )
+
         # the pbm tool can only set one configuration at a time.
         for pbm_key, pbm_value in pbm_configs.items():
             try:

@@ -165,11 +165,14 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.subprocess.check_output")
     def test_set_config_options(self, check_output):
         """Verifies _set_config_options failure raises SetPBMConfigError."""
-        check_output.side_effect = (
+        # the first check_output should succesd
+        check_output.side_effect = [
+            None,
             CalledProcessError(
                 cmd="charmed-mongodb.pbm config --set this_key=doesnt_exist", returncode=42
             ),
-        )
+        ]
+
         with self.assertRaises(SetPBMConfigError):
             self.harness.charm.backups._set_config_options({"this_key": "doesnt_exist"})
 
