@@ -41,7 +41,7 @@ async def test_enable_tls(ops_test: OpsTest) -> None:
     # Relate it to the PostgreSQL to enable TLS.
     await ops_test.model.relate(DATABASE_APP_NAME, TLS_CERTIFICATES_APP_NAME)
     async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(status="active", timeout=1000, idle_period=60)
+        await ops_test.model.wait_for_idle(status="active", timeout=1000)
 
     # Wait for all units enabling TLS.
     for unit in ops_test.model.applications[DATABASE_APP_NAME].units:
@@ -76,10 +76,8 @@ async def test_rotate_tls_key(ops_test: OpsTest) -> None:
         assert action.status == "completed", "setting external and internal key failed."
 
     # wait for certificate to be available and processed. Can get receive two certificate
-    # available events and restart twice so we want to ensure we are idle for atleast 1 minute
-    await ops_test.model.wait_for_idle(
-        apps=[DATABASE_APP_NAME], status="active", timeout=1000, idle_period=60
-    )
+    # available events and restart twice so we do not wait for idle here
+    time.sleep(60)
 
     # After updating both the external key and the internal key a new certificate request will be
     # made; then the certificates should be available and updated.
@@ -154,10 +152,8 @@ async def test_set_tls_key(ops_test: OpsTest) -> None:
         assert action.status == "completed", "setting external and internal key failed."
 
     # wait for certificate to be available and processed. Can get receive two certificate
-    # available events and restart twice so we want to ensure we are idle for atleast 1 minute
-    await ops_test.model.wait_for_idle(
-        apps=[DATABASE_APP_NAME], status="active", timeout=1000, idle_period=60
-    )
+    # available events and restart twice so we do not wait for idle here
+    time.sleep(60)
 
     # After updating both the external key and the internal key a new certificate request will be
     # made; then the certificates should be available and updated.
@@ -193,9 +189,7 @@ async def test_disable_tls(ops_test: OpsTest) -> None:
         f"{DATABASE_APP_NAME}:certificates", f"{TLS_CERTIFICATES_APP_NAME}:certificates"
     )
 
-    await ops_test.model.wait_for_idle(
-        apps=[DATABASE_APP_NAME], status="active", timeout=1000, idle_period=60
-    )
+    await ops_test.model.wait_for_idle(apps=[DATABASE_APP_NAME], status="active", timeout=1000)
 
     # Wait for all units disabling TLS.
     for unit in ops_test.model.applications[DATABASE_APP_NAME].units:
