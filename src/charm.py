@@ -270,6 +270,11 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # work
         self._connect_mongodb_exporter()
 
+        # if the leader changes the password for backup we will be notified and need to update pbm.
+        snap_cache = snap.SnapCache()
+        pbm_snap = snap_cache["charmed-mongodb"]
+        pbm_snap.set({"pbm-uri": self.backups._backup_config.uri})
+
         # only leader should configure replica set and app-changed-events can trigger the relation
         # changed hook resulting in no JUJU_REMOTE_UNIT if this is the case we should return
         # further reconfiguration can be successful only if a replica set is initialised.
@@ -491,7 +496,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         # changing the backup password while a backup/restore is in progress can be disastrous
         pbm_status = self.backups._get_pbm_status()
-        if username == "backup" and isinstance(pbm_status, ActiveStatus):
+        if username == "backup" and not isinstance(pbm_status, ActiveStatus):
             event.fail(
                 "Cannot change backup password while a backup/restore/resync is in progress."
             )
@@ -510,6 +515,11 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 return
 
         self.set_secret("app", f"{username}-password", new_password)
+
+        if username == "backup":
+            snap_cache = snap.SnapCache()
+            pbm_snap = snap_cache["charmed-mongodb"]
+            pbm_snap.set({"pbm-uri": self.backups._backup_config.uri})
 
         if username == "monitor":
             self._connect_mongodb_exporter()
