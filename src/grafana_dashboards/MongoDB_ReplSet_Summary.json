@@ -27,7 +27,7 @@
     "editable": true,
     "fiscalYearStartMonth": 0,
     "graphTooltip": 1,
-    "id": 9,
+    "id": 19,
     "links": [],
     "liveNow": false,
     "panels": [
@@ -89,8 +89,8 @@
                 "overrides": []
             },
             "gridPos": {
-                "h": 3,
-                "w": 6,
+                "h": 7,
+                "w": 9,
                 "x": 0,
                 "y": 1
             },
@@ -166,9 +166,9 @@
                 "overrides": []
             },
             "gridPos": {
-                "h": 3,
-                "w": 6,
-                "x": 6,
+                "h": 7,
+                "w": 7,
+                "x": 9,
                 "y": 1
             },
             "hideTimeOverride": false,
@@ -222,7 +222,7 @@
             "gridPos": {
                 "h": 11,
                 "w": 7,
-                "x": 17,
+                "x": 16,
                 "y": 1
             },
             "hideTimeOverride": true,
@@ -326,180 +326,6 @@
             "title": "MongoDB Versions",
             "transform": "table",
             "type": "table-old"
-        },
-        {
-            "backgroundColor": "rgba(128,128,128,0.1)",
-            "colorMaps": [
-                {
-                    "color": "rgb(107, 152, 102)",
-                    "text": "PRIMARY"
-                },
-                {
-                    "color": "rgb(193, 159, 20)",
-                    "text": "SECONDARY"
-                },
-                {
-                    "color": "#FF7383",
-                    "text": "Exporter is not connected"
-                }
-            ],
-            "crosshairColor": "#8F070C",
-            "datasource": {
-                "type": "datasource",
-                "uid": "${prometheusds}"
-            },
-            "description": "ReplSet statuses during the select time range.",
-            "display": "timeline",
-            "expandFromQueryS": 0,
-            "extendLastValue": true,
-            "gridPos": {
-                "h": 8,
-                "w": 17,
-                "x": 0,
-                "y": 4
-            },
-            "highlightOnMouseover": true,
-            "id": 1015,
-            "legendSortBy": "count",
-            "lineColor": "rgba(0,0,0,0.1)",
-            "metricNameColor": "#000000",
-            "pluginVersion": "6.5.1",
-            "rangeMaps": [
-                {
-                    "from": "null",
-                    "text": "N/A",
-                    "to": "null"
-                }
-            ],
-            "rowHeight": 50,
-            "showDistinctCount": false,
-            "showLegend": true,
-            "showLegendCounts": false,
-            "showLegendNames": true,
-            "showLegendPercent": true,
-            "showLegendTime": true,
-            "showLegendValues": true,
-            "showTimeAxis": true,
-            "showTransitionCount": false,
-            "targets": [
-                {
-                    "datasource": {
-                        "type": "datasource",
-                        "uid": "${prometheusds}"
-                    },
-                    "expr": "max by(service_name) (mongodb_mongod_replset_my_state{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",set=~\"$replset\"})",
-                    "interval": "$interval",
-                    "legendFormat": "",
-                    "refId": "A"
-                }
-            ],
-            "textSize": 24,
-            "textSizeTime": 12,
-            "timeOptions": [
-                {
-                    "name": "Years",
-                    "value": "years"
-                },
-                {
-                    "name": "Months",
-                    "value": "months"
-                },
-                {
-                    "name": "Weeks",
-                    "value": "weeks"
-                },
-                {
-                    "name": "Days",
-                    "value": "days"
-                },
-                {
-                    "name": "Hours",
-                    "value": "hours"
-                },
-                {
-                    "name": "Minutes",
-                    "value": "minutes"
-                },
-                {
-                    "name": "Seconds",
-                    "value": "seconds"
-                },
-                {
-                    "name": "Milliseconds",
-                    "value": "milliseconds"
-                }
-            ],
-            "timePrecision": {
-                "name": "Minutes",
-                "value": "minutes"
-            },
-            "timeTextColor": "#d8d9da",
-            "title": "ReplSet States",
-            "type": "natel-discrete-panel",
-            "units": "short",
-            "use12HourClock": false,
-            "useTimePrecision": false,
-            "valueMaps": [
-                {
-                    "op": "=",
-                    "text": "Exporter is not connected",
-                    "value": "null"
-                },
-                {
-                    "op": "=",
-                    "text": "PRIMARY",
-                    "value": "1"
-                },
-                {
-                    "op": "=",
-                    "text": "SECONDARY",
-                    "value": "2"
-                },
-                {
-                    "op": "=",
-                    "text": "STARTUP",
-                    "value": "0"
-                },
-                {
-                    "op": "=",
-                    "text": "RECOVERING",
-                    "value": "3"
-                },
-                {
-                    "op": "=",
-                    "text": "STARTUP2",
-                    "value": "5"
-                },
-                {
-                    "op": "=",
-                    "text": "UNKNOWN",
-                    "value": "6"
-                },
-                {
-                    "op": "=",
-                    "text": "ARBITER",
-                    "value": "7"
-                },
-                {
-                    "op": "=",
-                    "text": "DOWN",
-                    "value": "8"
-                },
-                {
-                    "op": "=",
-                    "text": "ROLLBACK",
-                    "value": "9"
-                },
-                {
-                    "op": "=",
-                    "text": "REMOVED",
-                    "value": "10"
-                }
-            ],
-            "valueTextColor": "#000000",
-            "writeAllValues": false,
-            "writeLastValue": true,
-            "writeMetricNames": true
         },
         {
             "collapsed": false,
@@ -1882,302 +1708,6 @@
             "type": "row"
         },
         {
-            "activePatternIndex": 0,
-            "datasource": {
-                "type": "datasource",
-                "uid": "${prometheusds}"
-            },
-            "defaultPattern": {
-                "bgColors": "green|orange|red",
-                "bgColors_overrides": "0->green|2->red|1->yellow",
-                "clickable_cells_link": "",
-                "col_name": "Value",
-                "decimals": 2,
-                "defaultBGColor": "",
-                "defaultTextColor": "",
-                "delimiter": "|",
-                "displayTemplate": "_value_",
-                "enable_bgColor": false,
-                "enable_bgColor_overrides": false,
-                "enable_clickable_cells": false,
-                "enable_textColor": false,
-                "enable_textColor_overrides": false,
-                "enable_time_based_thresholds": false,
-                "enable_transform": false,
-                "enable_transform_overrides": false,
-                "filter": {
-                    "value_above": "",
-                    "value_below": ""
-                },
-                "format": "none",
-                "name": "Default Pattern",
-                "null_color": "darkred",
-                "null_textcolor": "black",
-                "null_value": "No data",
-                "pattern": "*",
-                "row_col_wrapper": "_",
-                "row_name": "Service Name",
-                "textColors": "red|orange|green",
-                "textColors_overrides": "0->red|2->green|1->yellow",
-                "thresholds": "70,90",
-                "time_based_thresholds": [],
-                "tooltipTemplate": "Series : _series_ <br/>Row Name : _row_name_ <br/>Col Name : _col_name_ <br/>Value : _value_",
-                "transform_values": "_value_|_value_|_value_",
-                "transform_values_overrides": "0->down|1->up",
-                "valueName": "current"
-            },
-            "default_title_for_rows": "Service Name",
-            "first_column_link": "/graph/d/mongodb-instance-summary/mongodb-instance-summary",
-            "gridPos": {
-                "h": 6,
-                "w": 24,
-                "x": 0,
-                "y": 73
-            },
-            "hide_headers": false,
-            "id": 1352,
-            "patterns": [
-                {
-                    "bgColors": "green|orange|red",
-                    "bgColors_overrides": "0->green|2->red|1->yellow",
-                    "clickable_cells_link": "",
-                    "col_name": "QPS",
-                    "decimals": 2,
-                    "defaultBGColor": "",
-                    "defaultTextColor": "",
-                    "delimiter": "|",
-                    "displayTemplate": "_value_",
-                    "enable_bgColor": false,
-                    "enable_bgColor_overrides": false,
-                    "enable_clickable_cells": false,
-                    "enable_textColor": false,
-                    "enable_textColor_overrides": false,
-                    "enable_time_based_thresholds": false,
-                    "enable_transform": false,
-                    "enable_transform_overrides": false,
-                    "filter": {
-                        "value_above": "",
-                        "value_below": ""
-                    },
-                    "format": "ops",
-                    "name": "QPS",
-                    "null_color": "darkred",
-                    "null_textcolor": "black",
-                    "null_value": "No data",
-                    "pattern": ".*QPS",
-                    "row_col_wrapper": "_",
-                    "row_name": "_0_",
-                    "textColors": "red|orange|green",
-                    "textColors_overrides": "0->red|2->green|1->yellow",
-                    "thresholds": "70,90",
-                    "time_based_thresholds": [],
-                    "tooltipTemplate": "Queries per Second (QPS)",
-                    "transform_values": "_value_|_value_|_value_",
-                    "transform_values_overrides": "0->down|1->up",
-                    "valueName": "current"
-                },
-                {
-                    "bgColors": "green|orange|red",
-                    "bgColors_overrides": "0->green|2->red|1->yellow",
-                    "clickable_cells_link": "",
-                    "col_name": "Average Latency",
-                    "decimals": 2,
-                    "defaultBGColor": "",
-                    "defaultTextColor": "",
-                    "delimiter": "|",
-                    "displayTemplate": "_value_",
-                    "enable_bgColor": false,
-                    "enable_bgColor_overrides": false,
-                    "enable_clickable_cells": false,
-                    "enable_textColor": false,
-                    "enable_textColor_overrides": false,
-                    "enable_time_based_thresholds": false,
-                    "enable_transform": false,
-                    "enable_transform_overrides": false,
-                    "filter": {
-                        "value_above": "",
-                        "value_below": ""
-                    },
-                    "format": "µs",
-                    "name": "Latency",
-                    "null_color": "darkred",
-                    "null_textcolor": "black",
-                    "null_value": "No data",
-                    "pattern": ".*Latency",
-                    "row_col_wrapper": "_",
-                    "row_name": "_0_",
-                    "textColors": "red|orange|green",
-                    "textColors_overrides": "0->red|2->green|1->yellow",
-                    "thresholds": "70,90",
-                    "time_based_thresholds": [],
-                    "tooltipTemplate": "Latency statistics for database commands.",
-                    "transform_values": "_value_|_value_|_value_",
-                    "transform_values_overrides": "0->down|1->up",
-                    "valueName": "current"
-                },
-                {
-                    "bgColors": "green|orange|red",
-                    "bgColors_overrides": "0->green|2->red|1->yellow",
-                    "clickable_cells_link": "",
-                    "col_name": "_1_",
-                    "decimals": 2,
-                    "defaultBGColor": "",
-                    "defaultTextColor": "",
-                    "delimiter": "|",
-                    "displayTemplate": "_value_",
-                    "enable_bgColor": false,
-                    "enable_bgColor_overrides": false,
-                    "enable_clickable_cells": false,
-                    "enable_textColor": false,
-                    "enable_textColor_overrides": false,
-                    "enable_time_based_thresholds": false,
-                    "enable_transform": false,
-                    "enable_transform_overrides": false,
-                    "filter": {
-                        "value_above": "",
-                        "value_below": ""
-                    },
-                    "format": "s",
-                    "name": "Uptime",
-                    "null_color": "darkred",
-                    "null_textcolor": "black",
-                    "null_value": "No data",
-                    "pattern": ".*Uptime",
-                    "row_col_wrapper": "_",
-                    "row_name": "_0_",
-                    "textColors": "red|orange|green",
-                    "textColors_overrides": "0->red|2->green|1->yellow",
-                    "thresholds": "70,90",
-                    "time_based_thresholds": [],
-                    "tooltipTemplate": "The parameter shows how long a service has been “up” and running without a shut down or restart.",
-                    "transform_values": "_value_|_value_|_value_",
-                    "transform_values_overrides": "0->down|1->up",
-                    "valueName": "current"
-                },
-                {
-                    "bgColors": "green|orange|red",
-                    "bgColors_overrides": "0->green|2->red|1->yellow",
-                    "clickable_cells_link": "",
-                    "col_name": "Open Connections",
-                    "decimals": "0",
-                    "defaultBGColor": "",
-                    "defaultTextColor": "",
-                    "delimiter": "|",
-                    "displayTemplate": "_value_",
-                    "enable_bgColor": false,
-                    "enable_bgColor_overrides": false,
-                    "enable_clickable_cells": false,
-                    "enable_textColor": false,
-                    "enable_textColor_overrides": false,
-                    "enable_time_based_thresholds": false,
-                    "enable_transform": false,
-                    "enable_transform_overrides": false,
-                    "filter": {
-                        "value_above": "",
-                        "value_below": ""
-                    },
-                    "format": "none",
-                    "name": "Open Connections",
-                    "null_color": "darkred",
-                    "null_textcolor": "black",
-                    "null_value": "No data",
-                    "pattern": ".*Connections",
-                    "row_col_wrapper": "_",
-                    "row_name": "_0_",
-                    "textColors": "red|orange|green",
-                    "textColors_overrides": "0->red|2->green|1->yellow",
-                    "thresholds": "70,90",
-                    "time_based_thresholds": [],
-                    "tooltipTemplate": "Connects to a MongoDB instance and to a specified database on that instance.",
-                    "transform_values": "_value_|_value_|_value_",
-                    "transform_values_overrides": "0->down|1->up",
-                    "valueName": "current"
-                },
-                {
-                    "bgColors": "green|orange|red",
-                    "bgColors_overrides": "0->green|2->red|1->yellow",
-                    "clickable_cells_link": "",
-                    "col_name": "_1_",
-                    "decimals": "0",
-                    "defaultBGColor": "",
-                    "defaultTextColor": "",
-                    "delimiter": "|",
-                    "displayTemplate": "_value_",
-                    "enable_bgColor": false,
-                    "enable_bgColor_overrides": false,
-                    "enable_clickable_cells": false,
-                    "enable_textColor": false,
-                    "enable_textColor_overrides": false,
-                    "enable_time_based_thresholds": false,
-                    "enable_transform": false,
-                    "enable_transform_overrides": false,
-                    "filter": {
-                        "value_above": "",
-                        "value_below": ""
-                    },
-                    "format": "none",
-                    "name": "Cursors",
-                    "null_color": "darkred",
-                    "null_textcolor": "black",
-                    "null_value": "No data",
-                    "pattern": ".* Cursors",
-                    "row_col_wrapper": "_",
-                    "row_name": "_0_",
-                    "textColors": "red|orange|green",
-                    "textColors_overrides": "0->red|2->green|1->yellow",
-                    "thresholds": "70,90",
-                    "time_based_thresholds": [],
-                    "tooltipTemplate": "When the db. collection. find () function is used to search for documents in the collection, the result returns a pointer to the collection of documents returned which is called a cursor.",
-                    "transform_values": "_value_|_value_|_value_",
-                    "transform_values_overrides": "0->down|1->up",
-                    "valueName": "current"
-                }
-            ],
-            "row_col_wrapper": "_",
-            "sorting_props": {
-                "col_index": -1,
-                "direction": "desc"
-            },
-            "targets": [
-                {
-                    "datasource": {
-                        "type": "datasource",
-                        "uid": "${prometheusds}"
-                    },
-                    "expr": "avg by(service_name) (mongodb_instance_uptime_seconds{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"})",
-                    "interval": "$interval",
-                    "legendFormat": " | Uptime",
-                    "refId": "C"
-                },
-                {
-                    "datasource": {
-                        "type": "datasource",
-                        "uid": "${prometheusds}"
-                    },
-                    "expr": "avg by(service_name) (rate(mongodb_mongod_op_latencies_latency_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",type=\"command\"}[$interval]) / (rate(mongodb_mongod_op_latencies_ops_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",type=\"command\"}[$interval]) > 0) or irate(mongodb_mongod_op_latencies_latency_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",type=\"command\"}[5m]) / (irate(mongodb_mongod_op_latencies_ops_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",type=\"command\"}[5m]) > 0))",
-                    "interval": "$interval",
-                    "legendFormat": " | Latency",
-                    "refId": "B"
-                },
-                {
-                    "datasource": {
-                        "type": "datasource",
-                        "uid": "${prometheusds}"
-                    },
-                    "exemplar": false,
-                    "expr": "avg by(service_name) (max_over_time(mongodb_mongod_metrics_cursor_open{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",state=\"total\"}[$interval]) or max_over_time(mongodb_mongod_metrics_cursor_open{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",state=\"total\"}[5m]) or max_over_time(mongodb_mongod_cursors{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",state=\"total\"}[$interval]) or max_over_time(mongodb_mongod_cursors{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",state=\"total\"}[5m]) or max_over_time(mongodb_mongos_metrics_cursor_open{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",state=\"total\"}[$interval]) or max_over_time(mongodb_mongos_metrics_cursor_open{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",state=\"total\"}[5m]) or max_over_time(mongodb_mongos_cursors{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",state=\"total\"}[$interval]) or max_over_time(mongodb_mongos_cursors{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",state=\"total\"}[5m]))",
-                    "instant": true,
-                    "interval": "$interval",
-                    "legendFormat": " | Cursors ",
-                    "refId": "E"
-                }
-            ],
-            "text_alignment_header": "center",
-            "text_alignment_values": "center",
-            "title": "Services Details",
-            "type": "yesoreyeram-boomtable-panel"
-        },
-        {
             "aliasColors": {},
             "bars": false,
             "dashLength": 10,
@@ -2207,7 +1737,7 @@
                 "h": 8,
                 "w": 24,
                 "x": 0,
-                "y": 79
+                "y": 73
             },
             "height": "250px",
             "hiddenSeries": false,
@@ -2330,7 +1860,7 @@
                 "h": 8,
                 "w": 24,
                 "x": 0,
-                "y": 87
+                "y": 81
             },
             "height": "250px",
             "hiddenSeries": false,
@@ -2453,7 +1983,7 @@
                 "h": 8,
                 "w": 24,
                 "x": 0,
-                "y": 95
+                "y": 89
             },
             "height": "250px",
             "hiddenSeries": false,
@@ -2586,7 +2116,7 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 103
+                "y": 97
             },
             "id": 1403,
             "panels": [],
@@ -2637,7 +2167,7 @@
                 "h": 8,
                 "w": 24,
                 "x": 0,
-                "y": 104
+                "y": 98
             },
             "height": "",
             "hiddenSeries": false,
@@ -2805,7 +2335,7 @@
                 "h": 8,
                 "w": 24,
                 "x": 0,
-                "y": 112
+                "y": 106
             },
             "hiddenSeries": false,
             "id": 339,
