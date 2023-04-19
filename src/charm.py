@@ -472,6 +472,12 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def _on_set_password(self, event: ops.charm.ActionEvent) -> None:
         """Set the password for the admin user."""
+        # changing the backup password while a backup/restore is in progress can be disastrous
+        pbm_status = self.backups._get_pbm_status()
+        if isinstance(pbm_status, MaintenanceStatus):
+            event.fail("Cannot change password while a backup/restore is in progress.")
+            return
+
         # only leader can write the new password into peer relation.
         if not self.unit.is_leader():
             event.fail("The action can be run only on leader unit.")
@@ -488,14 +494,6 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         new_password = generate_password()
         if "password" in event.params:
             new_password = event.params["password"]
-
-        # changing the backup password while a backup/restore is in progress can be disastrous
-        pbm_status = self.backups._get_pbm_status()
-        if username == "backup" and not isinstance(pbm_status, ActiveStatus):
-            event.fail(
-                "Cannot change backup password while a backup/restore/resync is in progress."
-            )
-            return
 
         with MongoDBConnection(self.mongodb_config) as mongo:
             try:
