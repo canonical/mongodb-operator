@@ -29,7 +29,7 @@ The constructor of `COSAgentProvider` has only one required and eight optional p
         self,
         charm: CharmType,
         relation_name: str = DEFAULT_RELATION_NAME,
-        metrics_endpoints: Optional[List[dict]] = None,
+        metrics_endpoints: Optional[List[_MetricsEndpointDict]] = None,
         metrics_rules_dir: str = "./src/prometheus_alert_rules",
         logs_rules_dir: str = "./src/loki_alert_rules",
         recurse_rules_dirs: bool = False,
@@ -164,23 +164,37 @@ import json
 import logging
 import lzma
 from collections import namedtuple
+from itertools import chain
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Set, Union
 
+import pydantic
 from cosl import JujuTopology
 from cosl.rules import AlertRules
-from ops.charm import RelationEvent
+from ops.charm import RelationChangedEvent, RelationEvent
 from ops.framework import EventBase, EventSource, Object, ObjectEvents
 from ops.model import Relation, Unit
 from ops.testing import CharmType
 
+if TYPE_CHECKING:
+    try:
+        from typing import TypedDict
+
+        class _MetricsEndpointDict(TypedDict):
+            path: str
+            port: int
+
+    except ModuleNotFoundError:
+        _MetricsEndpointDict = dict
+
 LIBID = "dc15fa84cef84ce58155fb84f6c6213a"
 LIBAPI = 0
-LIBPATCH = 2
+LIBPATCH = 3
 
-PYDEPS = ["cosl"]
+PYDEPS = ["cosl", "pydantic"]
 
 DEFAULT_RELATION_NAME = "cos-agent"
+DEFAULT_PEER_RELATION_NAME = "peers"
 DEFAULT_METRICS_ENDPOINT = {
     "path": "/metrics",
     "port": 80,
@@ -190,6 +204,79 @@ logger = logging.getLogger(__name__)
 SnapEndpoint = namedtuple("SnapEndpoint", "owner, name")
 
 
+class GrafanaDashboard(str):
+    """Grafana Dashboard encoded json; lzma-compressed."""
+
+    # TODO Replace this with a custom type when pydantic v2 released (end of 2023 Q1?)
+    # https://github.com/pydantic/pydantic/issues/4887
+    @staticmethod
+    def _serialize(raw_json: Union[str, bytes]) -> "GrafanaDashboard":
+        if not isinstance(raw_json, bytes):
+            raw_json = raw_json.encode("utf-8")
+        encoded = base64.b64encode(lzma.compress(raw_json)).decode("utf-8")
+        return GrafanaDashboard(encoded)
+
+    def _deserialize(self) -> Dict:
+        raw = lzma.decompress(base64.b64decode(self.encode("utf-8"))).decode()
+        return json.loads(raw)
+
+    def __repr__(self):
+        """Return string representation of self."""
+        return "<GrafanaDashboard>"
+
+
+class CosAgentProviderUnitData(pydantic.BaseModel):
+    """Unit databag model for `cos-agent` relation."""
+
+    # The following entries are the same for all units of the same principal.
+    # Note that the same grafana agent subordinate may be related to several apps.
+    # this needs to make its way to the gagent leader
+    metrics_alert_rules: dict
+    log_alert_rules: dict
+    dashboards: List[GrafanaDashboard]
+
+    # The following entries may vary across units of the same principal app.
+    # this data does not need to be forwarded to the gagent leader
+    metrics_scrape_jobs: List[Dict]
+    log_slots: List[str]
+
+    # when this whole datastructure is dumped into a databag, it will be nested under this key.
+    # while not strictly necessary (we could have it 'flattened out' into the databag),
+    # this simplifies working with the model.
+    KEY: ClassVar[str] = "config"
+
+
+class CosAgentPeersUnitData(pydantic.BaseModel):
+    """Unit databag model for `cluster` cos-agent machine charm peer relation."""
+
+    # We need the principal unit name and relation metadata to be able to render identifiers
+    # (e.g. topology) on the leader side, after all the data moves into peer data (the grafana
+    # agent leader can only see its own principal, because it is a subordinate charm).
+    principal_unit_name: str
+    principal_relation_id: str
+    principal_relation_name: str
+
+    # The only data that is forwarded to the leader is data that needs to go into the app databags
+    # of the outgoing o11y relations.
+    metrics_alert_rules: Optional[dict]
+    log_alert_rules: Optional[dict]
+    dashboards: Optional[List[GrafanaDashboard]]
+
+    # when this whole datastructure is dumped into a databag, it will be nested under this key.
+    # while not strictly necessary (we could have it 'flattened out' into the databag),
+    # this simplifies working with the model.
+    KEY: ClassVar[str] = "config"
+
+    @property
+    def app_name(self) -> str:
+        """Parse out the app name from the unit name.
+
+        TODO: Switch to using `model_post_init` when pydantic v2 is released?
+          https://github.com/pydantic/pydantic/issues/1729#issuecomment-1300576214
+        """
+        return self.principal_unit_name.split("/")[0]
+
+
 class COSAgentProvider(Object):
     """Integration endpoint wrapper for the provider side of the cos_agent interface."""
 
@@ -197,7 +284,7 @@ class COSAgentProvider(Object):
         self,
         charm: CharmType,
         relation_name: str = DEFAULT_RELATION_NAME,
-        metrics_endpoints: Optional[List[dict]] = None,
+        metrics_endpoints: Optional[List["_MetricsEndpointDict"]] = None,
         metrics_rules_dir: str = "./src/prometheus_alert_rules",
         logs_rules_dir: str = "./src/loki_alert_rules",
         recurse_rules_dirs: bool = False,
@@ -247,54 +334,19 @@ class COSAgentProvider(Object):
             relations = self._charm.model.relations[self._relation_name]
 
         for relation in relations:
-            if relation.data:
-                if self._charm.unit.is_leader():
-                    relation.data[self._charm.app].update(
-                        {"config": self._generate_application_databag_content()}
-                    )
-                relation.data[self._charm.unit].update(
-                    {"config": self._generate_unit_databag_content()}
+            # Before a principal is related to the grafana-agent subordinate, we'd get
+            # ModelError: ERROR cannot read relation settings: unit "zk/2": settings not found
+            # Add a guard to make sure it doesn't happen.
+            if relation.data and self._charm.unit in relation.data:
+                # Subordinate relations can communicate only over unit data.
+                data = CosAgentProviderUnitData(
+                    metrics_alert_rules=self._metrics_alert_rules,
+                    log_alert_rules=self._log_alert_rules,
+                    dashboards=self._dashboards,
+                    metrics_scrape_jobs=self._scrape_jobs,
+                    log_slots=self._log_slots,
                 )
-
-    def _generate_application_databag_content(self) -> str:
-        """Collate the data for each nested app databag and return it."""
-        # The application databag is divided in three chunks: alert rules (metrics and logs) and
-        # dashboards.
-        # Scrape jobs and log slots are unit-dependent and are therefore stored in unit databag.
-
-        data = {
-            # primary key
-            "metrics": {
-                # secondary key
-                "alert_rules": self._metrics_alert_rules,
-            },
-            "logs": {
-                "alert_rules": self._log_alert_rules,
-            },
-            "dashboards": {
-                "dashboards": self._dashboards,
-            },
-        }
-
-        return json.dumps(data)
-
-    def _generate_unit_databag_content(self) -> str:
-        """Collate the data for each nested unit databag and return it."""
-        # The unit databag is divided in two chunks: metrics (scrape jobs only) and logs.
-        # Alert rules and dashboards are unit-independent and are therefore stored in app databag.
-
-        data = {
-            # primary key
-            "metrics": {
-                # secondary key
-                "scrape_jobs": self._scrape_jobs,
-            },
-            "logs": {
-                "targets": self._log_slots,
-            },
-        }
-
-        return json.dumps(data)
+                relation.data[self._charm.unit][data.KEY] = data.json()
 
     @property
     def _scrape_jobs(self) -> List[Dict]:
@@ -322,20 +374,13 @@ class COSAgentProvider(Object):
         return alert_rules.as_dict()
 
     @property
-    def _dashboards(self) -> List[str]:
-        dashboards = []
+    def _dashboards(self) -> List[GrafanaDashboard]:
+        dashboards: List[GrafanaDashboard] = []
         for d in self._dashboard_dirs:
             for path in Path(d).glob("*"):
-                dashboards.append(self._encode_dashboard_content(path.read_bytes()))
-
+                dashboard = GrafanaDashboard._serialize(path.read_bytes())
+                dashboards.append(dashboard)
         return dashboards
-
-    @staticmethod
-    def _encode_dashboard_content(content: Union[str, bytes]) -> str:
-        if isinstance(content, str):
-            content = bytes(content, "utf-8")
-
-        return base64.b64encode(lzma.compress(content)).decode("utf-8")
 
 
 class COSAgentDataChanged(EventBase):
@@ -356,7 +401,9 @@ class COSAgentRequirer(Object):
     def __init__(
         self,
         charm: CharmType,
+        *,
         relation_name: str = DEFAULT_RELATION_NAME,
+        peer_relation_name: str = DEFAULT_PEER_RELATION_NAME,
         refresh_events: Optional[List[str]] = None,
     ):
         """Create a COSAgentRequirer instance.
@@ -364,20 +411,87 @@ class COSAgentRequirer(Object):
         Args:
             charm: The `CharmBase` instance that is instantiating this object.
             relation_name: The name of the relation to communicate over.
+            peer_relation_name: The name of the peer relation to communicate over.
             refresh_events: List of events on which to refresh relation data.
         """
         super().__init__(charm, relation_name)
         self._charm = charm
         self._relation_name = relation_name
+        self._peer_relation_name = peer_relation_name
         self._refresh_events = refresh_events or [self._charm.on.config_changed]
 
         events = self._charm.on[relation_name]
-        self.framework.observe(events.relation_joined, self._on_relation_data_changed)
+        self.framework.observe(
+            events.relation_joined, self._on_relation_data_changed
+        )  # TODO: do we need this?
         self.framework.observe(events.relation_changed, self._on_relation_data_changed)
         for event in self._refresh_events:
             self.framework.observe(event, self.trigger_refresh)
 
-    def _on_relation_data_changed(self, _):
+        # Peer relation events
+        # A peer relation is needed as it is the only mechanism for exchanging data across
+        # subordinate units.
+        # self.framework.observe(
+        #     self.on[self._peer_relation_name].relation_joined, self._on_peer_relation_joined
+        # )
+        peer_events = self._charm.on[peer_relation_name]
+        self.framework.observe(peer_events.relation_changed, self._on_peer_relation_changed)
+
+    @property
+    def peer_relation(self) -> Optional["Relation"]:
+        """Helper function for obtaining the peer relation object.
+
+        Returns: peer relation object
+        (NOTE: would return None if called too early, e.g. during install).
+        """
+        return self.model.get_relation(self._peer_relation_name)
+
+    def _on_peer_relation_changed(self, _):
+        # Peer data is used for forwarding data from principal units to the grafana agent
+        # subordinate leader, for updating the app data of the outgoing o11y relations.
+        if self._charm.unit.is_leader():
+            self.on.data_changed.emit()
+
+    def _on_relation_data_changed(self, event: RelationChangedEvent):
+        # Peer data is the only means of communication between subordinate units.
+        if not self.peer_relation:
+            event.defer()
+            return
+
+        cos_agent_relation = event.relation
+        if not event.unit or not cos_agent_relation.data.get(event.unit):
+            return
+        principal_unit = event.unit
+
+        # Coherence check
+        units = cos_agent_relation.units
+        if len(units) > 1:
+            # should never happen
+            raise ValueError(
+                f"unexpected error: subordinate relation {cos_agent_relation} "
+                f"should have exactly one unit"
+            )
+
+        if not (raw := cos_agent_relation.data[principal_unit].get(CosAgentProviderUnitData.KEY)):
+            return
+        provider_data = CosAgentProviderUnitData(**json.loads(raw))
+
+        # Copy data from the principal relation to the peer relation, so the leader could
+        # follow up.
+        # Save the originating unit name, so it could be used for topology later on by the leader.
+        data = CosAgentPeersUnitData(  # peer relation databag model
+            principal_unit_name=event.unit.name,
+            principal_relation_id=str(event.relation.id),
+            principal_relation_name=event.relation.name,
+            metrics_alert_rules=provider_data.metrics_alert_rules,
+            log_alert_rules=provider_data.log_alert_rules,
+            dashboards=provider_data.dashboards,
+        )
+        self.peer_relation.data[self._charm.unit][data.KEY] = data.json()
+
+        # We can't easily tell if the data that was changed is limited to only the data
+        # that goes into peer relation (in which case, if this is not a leader unit, we wouldn't
+        # need to emit `on.data_changed`), so we're emitting `on.data_changed` either way.
         self.on.data_changed.emit()
 
     def trigger_refresh(self, _):
@@ -385,60 +499,114 @@ class COSAgentRequirer(Object):
         # FIXME: Figure out what we should do here
         self.on.data_changed.emit()
 
-    @staticmethod
-    def _relation_unit(relation: Relation) -> Optional[Unit]:
-        """Return the principal unit for a relation."""
-        if relation and relation.units:
-            # With subordiante charms, relation.units is always either empty or has only the
-            # principal unit, so next(iter(...)) is fine.
-            return next(iter(relation.units))
+    @property
+    def _principal_unit(self) -> Optional[Unit]:
+        """Return the principal unit for a relation.
+
+        Assumes that the relation is of type subordinate.
+        Relies on the fact that, for subordinate relations, the only remote unit visible to
+        *this unit* is the principal unit that this unit is attached to.
+        """
+        if relations := self._principal_relations:
+            # Technically it's a list, but for subordinates there can only be one relation
+            principal_relation = next(iter(relations))
+            if units := principal_relation.units:
+                # Technically it's a list, but for subordinates there can only be one
+                return next(iter(units))
+
         return None
 
     @property
-    def _relations(self):
+    def _principal_relations(self):
+        # Technically it's a list, but for subordinates there can only be one.
         return self._charm.model.relations[self._relation_name]
 
-    @staticmethod
-    def _fetch_data_from_relation(relation: Relation, primary_key: str, secondary_key: str):
-        """Extract data by path from a relation's app data."""
-        # ensure that whatever context we're running this in, we take the necessary precautions:
-        if not relation.data or not relation.app:
-            return None
+    @property
+    def _principal_unit_data(self) -> Optional[CosAgentProviderUnitData]:
+        """Return the principal unit's data.
 
-        config = {}
-        if primary_key == "dashboards" or secondary_key == "alert_rules":
-            config = json.loads(relation.data[relation.app].get("config", "{}"))
-        else:
-            unit = COSAgentRequirer._relation_unit(relation)
-            if unit and relation.data[unit]:
-                config = json.loads(relation.data[unit].get("config", "{}"))
-        return config.get(primary_key, {}).get(secondary_key, None)
+        Assumes that the relation is of type subordinate.
+        Relies on the fact that, for subordinate relations, the only remote unit visible to
+        *this unit* is the principal unit that this unit is attached to.
+        """
+        if relations := self._principal_relations:
+            # Technically it's a list, but for subordinates there can only be one relation
+            principal_relation = next(iter(relations))
+            if units := principal_relation.units:
+                # Technically it's a list, but for subordinates there can only be one
+                unit = next(iter(units))
+                raw = principal_relation.data[unit].get(CosAgentProviderUnitData.KEY)
+                if raw:
+                    return CosAgentProviderUnitData(**json.loads(raw))
+
+        return None
+
+    def _gather_peer_data(self) -> List[CosAgentPeersUnitData]:
+        """Collect data from the peers.
+
+        Returns a trimmed-down list of CosAgentPeersUnitData.
+        """
+        relation = self.peer_relation
+
+        # Ensure that whatever context we're running this in, we take the necessary precautions:
+        if not relation or not relation.data or not relation.app:
+            return []
+
+        # Iterate over all peer unit data and only collect every principal once.
+        peer_data: List[CosAgentPeersUnitData] = []
+        app_names: Set[str] = set()
+
+        for unit in chain((self._charm.unit,), relation.units):
+            if not relation.data.get(unit) or not (
+                raw := relation.data[unit].get(CosAgentPeersUnitData.KEY)
+            ):
+                logger.info(f"peer {unit} has not set its primary data yet; skipping for now...")
+                continue
+
+            data = CosAgentPeersUnitData(**json.loads(raw))
+            app_name = data.app_name
+            # Have we already seen this principal app?
+            if app_name in app_names:
+                continue
+            peer_data.append(data)
+
+        return peer_data
 
     @property
     def metrics_alerts(self) -> Dict[str, Any]:
         """Fetch metrics alerts."""
         alert_rules = {}
-        for relation in self._relations:
-            unit = self._relation_unit(relation)
-            # This is only used for naming the file, so be as specific as we
-            # can be, but it's ok if the unit name isn't exactly correct, so
-            # long as we don't dedupe away the alerts, which will be
-            identifier = JujuTopology(
-                model=self._charm.model.name,
-                model_uuid=self._charm.model.uuid,
-                application=relation.app.name if relation.app else "unknown",
-                unit=unit.name if unit else "unknown",
-            ).identifier
-            if data := self._fetch_data_from_relation(relation, "metrics", "alert_rules"):
-                alert_rules.update({identifier: data})
+
+        seen_apps: List[str] = []
+        for data in self._gather_peer_data():  # type: CosAgentPeersUnitData
+            if rules := data.metrics_alert_rules:
+                app_name = data.app_name
+                if app_name in seen_apps:
+                    continue  # dedup!
+                seen_apps.append(app_name)
+                # This is only used for naming the file, so be as specific as we can be
+                identifier = JujuTopology(
+                    model=self._charm.model.name,
+                    model_uuid=self._charm.model.uuid,
+                    application=app_name,
+                    # For the topology unit, we could use `data.principal_unit_name`, but that unit
+                    # name may not be very stable: `_gather_peer_data` de-duplicates by app name so
+                    # the exact unit name that turns up first in the iterator may vary from time to
+                    # time. So using the grafana-agent unit name instead.
+                    unit=self._charm.unit.name,
+                ).identifier
+
+                alert_rules[identifier] = rules
+
         return alert_rules
 
     @property
     def metrics_jobs(self) -> List[Dict]:
         """Parse the relation data contents and extract the metrics jobs."""
         scrape_jobs = []
-        for relation in self._relations:
-            if jobs := self._fetch_data_from_relation(relation, "metrics", "scrape_jobs"):
+        if data := self._principal_unit_data:
+            jobs = data.metrics_scrape_jobs
+            if jobs:
                 for job in jobs:
                     job_config = {
                         "job_name": job["job_name"],
@@ -453,8 +621,9 @@ class COSAgentRequirer(Object):
     def snap_log_endpoints(self) -> List[SnapEndpoint]:
         """Fetch logging endpoints exposed by related snaps."""
         plugs = []
-        for relation in self._relations:
-            if targets := self._fetch_data_from_relation(relation, "logs", "targets"):
+        if data := self._principal_unit_data:
+            targets = data.log_slots
+            if targets:
                 for target in targets:
                     if target in plugs:
                         logger.warning(
@@ -478,42 +647,59 @@ class COSAgentRequirer(Object):
     def logs_alerts(self) -> Dict[str, Any]:
         """Fetch log alerts."""
         alert_rules = {}
-        for relation in self._relations:
-            # This is only used for naming the file, so be as specific as we
-            # can be, but it's ok if the unit name isn't exactly correct, so
-            # long as we don't dedupe away the alerts, which will be
-            identifier = JujuTopology(
-                model=self._charm.model.name,
-                model_uuid=self._charm.model.uuid,
-                application=relation.app.name if relation.app else "unknown",
-                unit=self._charm.unit.name,
-            ).identifier
-            if rules := self._fetch_data_from_relation(relation, "logs", "alert_rules"):
-                alert_rules.update({identifier: rules})
+        seen_apps: List[str] = []
+
+        for data in self._gather_peer_data():  # type: CosAgentPeersUnitData
+            if rules := data.log_alert_rules:
+                # This is only used for naming the file, so be as specific as we can be
+                app_name = data.app_name
+                if app_name in seen_apps:
+                    continue  # dedup!
+                seen_apps.append(app_name)
+
+                identifier = JujuTopology(
+                    model=self._charm.model.name,
+                    model_uuid=self._charm.model.uuid,
+                    application=app_name,
+                    # For the topology unit, we could use `data.principal_unit_name`, but that unit
+                    # name may not be very stable: `_gather_peer_data` de-duplicates by app name so
+                    # the exact unit name that turns up first in the iterator may vary from time to
+                    # time. So using the grafana-agent unit name instead.
+                    unit=self._charm.unit.name,
+                ).identifier
+
+                alert_rules[identifier] = rules
+
         return alert_rules
 
     @property
     def dashboards(self) -> List[Dict[str, str]]:
-        """Fetch dashboards as encoded content."""
-        dashboards = []  # type: List[Dict[str, str]]
-        for relation in self._relations:
-            if dashboard_data := self._fetch_data_from_relation(
-                relation, "dashboards", "dashboards"
-            ):
-                for dashboard in dashboard_data:
-                    content = self._decode_dashboard_content(dashboard)
-                    title = json.loads(content).get("title", "no_title")
-                    dashboards.append(
-                        {
-                            "relation_id": str(relation.id),
-                            # We don't have the remote charm name, but give us an identifier
-                            "charm": f"{relation.name}-{relation.app.name if relation.app else 'unknown'}",
-                            "content": content,
-                            "title": title,
-                        }
-                    )
-        return dashboards
+        """Fetch dashboards as encoded content.
 
-    @staticmethod
-    def _decode_dashboard_content(encoded_content: str) -> str:
-        return lzma.decompress(base64.b64decode(encoded_content.encode("utf-8"))).decode()
+        Dashboards are assumed not to vary across units of the same primary.
+        """
+        dashboards: List[Dict[str, str]] = []
+
+        seen_apps: List[str] = []
+        for data in self._gather_peer_data():  # type: CosAgentPeersUnitData
+            app_name = data.app_name
+            if app_name in seen_apps:
+                continue  # dedup!
+            seen_apps.append(app_name)
+
+            for encoded_dashboard in data.dashboards or ():
+                content = GrafanaDashboard(encoded_dashboard)._deserialize()
+
+                title = content.get("title", "no_title")
+
+                dashboards.append(
+                    {
+                        "relation_id": data.principal_relation_id,
+                        # We have the remote charm name - use it for the identifier
+                        "charm": f"{data.principal_relation_name}-{app_name}",
+                        "content": content,
+                        "title": title,
+                    }
+                )
+
+        return dashboards
