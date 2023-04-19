@@ -212,88 +212,140 @@
             "type": "stat"
         },
         {
-            "columns": [],
             "datasource": {
-                "type": "datasource",
+                "type": "prometheus",
                 "uid": "${prometheusds}"
             },
             "description": "",
-            "fontSize": "100%",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "custom": {
+                        "align": "auto",
+                        "displayMode": "auto",
+                        "inspect": false
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "red",
+                                "value": 80
+                            }
+                        ]
+                    }
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Time"
+                        },
+                        "properties": [
+                            {
+                                "id": "displayName",
+                                "value": "Time"
+                            },
+                            {
+                                "id": "unit",
+                                "value": "time: YYYY-MM-DD HH:mm:ss"
+                            },
+                            {
+                                "id": "custom.align"
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "service_name"
+                        },
+                        "properties": [
+                            {
+                                "id": "displayName",
+                                "value": "Service Name"
+                            },
+                            {
+                                "id": "unit",
+                                "value": "short"
+                            },
+                            {
+                                "id": "decimals",
+                                "value": 2
+                            },
+                            {
+                                "id": "links",
+                                "value": [
+                                    {
+                                        "targetBlank": true,
+                                        "title": "MongoDB Instance Summary - ${__cell}",
+                                        "url": "/graph/d/mongodb-instance-summary/mongodb-instance-summary?var-service_name=${__cell}"
+                                    }
+                                ]
+                            },
+                            {
+                                "id": "custom.align"
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "mongodb"
+                        },
+                        "properties": [
+                            {
+                                "id": "displayName",
+                                "value": "Version"
+                            },
+                            {
+                                "id": "unit",
+                                "value": "short"
+                            },
+                            {
+                                "id": "decimals",
+                                "value": 2
+                            },
+                            {
+                                "id": "custom.align"
+                            }
+                        ]
+                    }
+                ]
+            },
             "gridPos": {
                 "h": 11,
                 "w": 7,
-                "x": 16,
+                "x": 17,
                 "y": 1
             },
             "hideTimeOverride": true,
             "id": 78,
             "links": [],
-            "showHeader": true,
-            "sort": {
-                "col": 0,
-                "desc": true
+            "options": {
+                "footer": {
+                    "fields": "",
+                    "reducer": [
+                        "sum"
+                    ],
+                    "show": false
+                },
+                "showHeader": true,
+                "sortBy": [
+                    {
+                        "desc": true,
+                        "displayName": "Time"
+                    }
+                ]
             },
-            "styles": [
-                {
-                    "alias": "Time",
-                    "align": "auto",
-                    "dateFormat": "YYYY-MM-DD HH:mm:ss",
-                    "pattern": "Time",
-                    "type": "hidden"
-                },
-                {
-                    "alias": "Service Name",
-                    "align": "auto",
-                    "colors": [
-                        "rgba(245, 54, 54, 0.9)",
-                        "rgba(237, 129, 40, 0.89)",
-                        "rgba(50, 172, 45, 0.97)"
-                    ],
-                    "dateFormat": "YYYY-MM-DD HH:mm:ss",
-                    "decimals": 2,
-                    "link": true,
-                    "linkTargetBlank": true,
-                    "linkTooltip": "MongoDB Instance Summary - ${__cell}",
-                    "linkUrl": "/graph/d/mongodb-instance-summary/mongodb-instance-summary?var-service_name=${__cell}",
-                    "mappingType": 1,
-                    "pattern": "service_name",
-                    "thresholds": [],
-                    "type": "string",
-                    "unit": "short"
-                },
-                {
-                    "alias": "Version",
-                    "align": "auto",
-                    "colors": [
-                        "rgba(245, 54, 54, 0.9)",
-                        "rgba(237, 129, 40, 0.89)",
-                        "rgba(50, 172, 45, 0.97)"
-                    ],
-                    "dateFormat": "YYYY-MM-DD HH:mm:ss",
-                    "decimals": 2,
-                    "mappingType": 1,
-                    "pattern": "mongodb",
-                    "thresholds": [],
-                    "type": "string",
-                    "unit": "short"
-                },
-                {
-                    "alias": "",
-                    "align": "auto",
-                    "colors": [
-                        "rgba(245, 54, 54, 0.9)",
-                        "rgba(237, 129, 40, 0.89)",
-                        "rgba(50, 172, 45, 0.97)"
-                    ],
-                    "dateFormat": "YYYY-MM-DD HH:mm:ss",
-                    "decimals": 2,
-                    "mappingType": 1,
-                    "pattern": "Value",
-                    "thresholds": [],
-                    "type": "hidden",
-                    "unit": "short"
-                }
-            ],
+            "pluginVersion": "9.2.1",
             "targets": [
                 {
                     "datasource": {
@@ -315,6 +367,7 @@
                     },
                     "expr": "avg by(service_name, mongodb) (mongodb_version_info{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"})",
                     "format": "table",
+                    "hide": false,
                     "interval": "$interval",
                     "intervalFactor": 1,
                     "legendFormat": "",
@@ -324,8 +377,36 @@
             ],
             "timeFrom": "1m",
             "title": "MongoDB Versions",
-            "transform": "table",
-            "type": "table-old"
+            "transformations": [
+                {
+                    "id": "joinByField",
+                    "options": {
+                        "byField": "Time",
+                        "mode": "inner"
+                    }
+                },
+                {
+                    "id": "organize",
+                    "options": {
+                        "excludeByName": {
+                            "Value #A": true,
+                            "Value #B": true
+                        },
+                        "indexByName": {},
+                        "renameByName": {
+                            "Value #B": "",
+                            "mongodb": ""
+                        }
+                    }
+                },
+                {
+                    "id": "merge",
+                    "options": {
+                        "reducers": []
+                    }
+                }
+            ],
+            "type": "table"
         },
         {
             "collapsed": false,
