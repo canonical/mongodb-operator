@@ -117,7 +117,9 @@ async def test_ready_correct_conf(ops_test: OpsTest) -> None:
 
     # after applying correct config options and creds the applications should both be active
     await ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active", timeout=TIMEOUT)
-    await ops_test.model.wait_for_idle(apps=[db_app_name], status="active", timeout=TIMEOUT)
+    await ops_test.model.wait_for_idle(
+        apps=[db_app_name], status="active", timeout=TIMEOUT, idle_period=60
+    )
 
 
 @pytest.mark.abort_on_fail

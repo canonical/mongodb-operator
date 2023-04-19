@@ -43,7 +43,8 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 3
+LIBPATCH = 4
+MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
 
 logger = logging.getLogger(__name__)
 
@@ -151,6 +152,13 @@ class MongoDBBackups(Object):
 
     def _set_config_options(self, pbm_configs):
         """Applying given configurations with pbm."""
+        # clearing out configurations options before resetting them leads to a quicker reysnc
+        # process
+        subprocess.check_output(
+            f"charmed-mongodb.pbm config --file {MONGODB_SNAP_DATA_DIR}/etc/pbm/pbm_config.yaml",
+            shell=True,
+        )
+
         # the pbm tool can only set one configuration at a time.
         for pbm_key, pbm_value in pbm_configs.items():
             try:
@@ -177,8 +185,13 @@ class MongoDBBackups(Object):
         ):
             with attempt:
                 pbm_status = self._get_pbm_status()
-                if isinstance(pbm_status, (MaintenanceStatus, WaitingStatus)):
+                # wait for backup/restore to finish
+                if isinstance(pbm_status, (MaintenanceStatus)):
                     raise PBMBusyError
+
+                # if a resync is running restart the service
+                if isinstance(pbm_status, (WaitingStatus)):
+                    pbm_snap.restart(services=["pbm-agent"])
 
         # wait for re-sync and update charm status based on pbm syncing status. Need to wait for
         # 2 seconds for pbm_agent to receive the resync command before verifying.
