@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
-import subprocess
 
 import pytest
 from pytest_operator.plugin import OpsTest
@@ -24,7 +23,6 @@ DB_SERVICE = "snap.charmed-mongodb.mongod.service"
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy one unit of MongoDB and one unit of TLS."""
-    subprocess.check_output("juju set-model-constraints cores=2 mem=1G")
     async with ops_test.fast_forward():
         my_charm = await ops_test.build_charm(".")
         await ops_test.model.deploy(my_charm, num_units=3)

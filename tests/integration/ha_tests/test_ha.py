@@ -2,7 +2,6 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 import asyncio
-import subprocess
 import time
 
 import pytest
@@ -77,7 +76,6 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy one unit of MongoDB."""
     # it is possible for users to provide their own cluster for HA testing. Hence check if there
     # is a pre-existing cluster.
-    subprocess.check_output("juju set-model-constraints cores=2 mem=1G")
     if await helpers.app_name(ops_test):
         return
 

@@ -2,7 +2,6 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 import asyncio
-import subprocess
 import time
 from pathlib import Path
 
@@ -34,7 +33,6 @@ async def test_deploy_charms(ops_test: OpsTest, application_charm, database_char
     """Deploy both charms (application and database) to use in the tests."""
     # Deploy both charms (2 units for each application to test that later they correctly
     # set data in the relation application databag using only the leader unit).
-    subprocess.check_output("juju set-model-constraints cores=2 mem=1G")
     await asyncio.gather(
         ops_test.model.deploy(
             application_charm,
