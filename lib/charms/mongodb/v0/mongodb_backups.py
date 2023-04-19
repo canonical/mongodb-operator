@@ -500,9 +500,7 @@ class MongoDBBackups(Object):
             database="",
             username="backup",
             password=self.charm.get_secret("app", "backup-password"),
-            hosts=[
-                self.charm._unit_ip(self.charm.unit)
-            ],  # pbm cannot make a direct connection if multiple hosts are used
+            hosts=["127.0.0.1"],  # pbm cannot make a direct connection if multiple hosts are used
             roles=["backup"],
             tls_external=self.charm.tls.get_tls_files("unit") is not None,
             tls_internal=self.charm.tls.get_tls_files("app") is not None,
