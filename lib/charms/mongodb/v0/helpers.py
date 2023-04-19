@@ -4,6 +4,7 @@
 
 import logging
 import secrets
+import subprocess
 import string
 from typing import List
 
@@ -179,3 +180,10 @@ def build_unit_status(mongodb_config: MongoDBConfiguration, unit_ip: str) -> Sta
         # auto-reconnect will be made by pymongo.
         logger.debug("Got error: %s, while checking replica set status", str(e))
         return WaitingStatus("Waiting to reconnect to unit..")
+
+
+def copy_licenses_to_unit():
+    """Copies licenses packaged in the snap to the charm's licenses directory."""
+    subprocess.check_output(
+        "cp -r /snap/charmed-mongodb/current/licenses/* src/licenses", shell=True
+    )

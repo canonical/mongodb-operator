@@ -17,6 +17,7 @@ from charms.mongodb.v0.helpers import (
     TLS_INT_CA_FILE,
     TLS_INT_PEM_FILE,
     build_unit_status,
+    copy_licenses_to_unit,
     generate_keyfile,
     generate_password,
     get_create_user_cmd,
@@ -335,6 +336,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         update_mongod_service(
             auth=auth, machine_ip=self._unit_ip(self.unit), config=self.mongodb_config
         )
+
+        # add licenses
+        copy_licenses_to_unit()
 
     def _on_start(self, event: ops.charm.StartEvent) -> None:
         """Enables MongoDB service and initialises replica set.
