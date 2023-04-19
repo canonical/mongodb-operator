@@ -4,13 +4,13 @@
 
 import logging
 import os
+import subprocess
 import time
 
 import pytest
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError, ServerSelectionTimeoutError
 from pytest_operator.plugin import OpsTest
-import subprocess
 from tenacity import RetryError
 
 from .ha_tests.helpers import app_name, kill_unit_process

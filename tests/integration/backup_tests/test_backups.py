@@ -4,11 +4,11 @@
 import asyncio
 import secrets
 import string
+import subprocess
 import time
 
 import pytest
 from pytest_operator.plugin import OpsTest
-import subprocess
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from ..ha_tests import helpers as ha_helpers

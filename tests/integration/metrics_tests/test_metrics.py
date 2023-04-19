@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
+import subprocess
 import time
 
 import ops
 import pytest
 import urllib3
 from pytest_operator.plugin import OpsTest
-import subprocess
 
 from ..ha_tests import helpers as ha_helpers
 from ..helpers import find_unit

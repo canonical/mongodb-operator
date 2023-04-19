@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
-import time
+import subprocess
 
 import pytest
 from pytest_operator.plugin import OpsTest
-import subprocess
 
 from .helpers import (
     EXTERNAL_CERT_PATH,
@@ -78,7 +77,7 @@ async def test_rotate_tls_key(ops_test: OpsTest) -> None:
         assert action.status == "completed", "setting external and internal key failed."
 
     # wait for certificate to be available and processed. Can get receive two certificate
-    # available events and restart twice so we want to ensure we are idle for atleast 1 minute
+    # available events and restart twice so we want to ensure we are idle for at least 1 minute
     await ops_test.model.wait_for_idle(
         apps=[DATABASE_APP_NAME], status="active", timeout=1000, idle_period=60
     )
@@ -156,7 +155,7 @@ async def test_set_tls_key(ops_test: OpsTest) -> None:
         assert action.status == "completed", "setting external and internal key failed."
 
     # wait for certificate to be available and processed. Can get receive two certificate
-    # available events and restart twice so we want to ensure we are idle for atleast 1 minute
+    # available events and restart twice so we want to ensure we are idle for at least 1 minute
     await ops_test.model.wait_for_idle(
         apps=[DATABASE_APP_NAME], status="active", timeout=1000, idle_period=60
     )

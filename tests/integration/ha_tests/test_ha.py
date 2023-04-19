@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
-
-
 import asyncio
+import subprocess
 import time
 
 import pytest
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
-import subprocess
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from . import helpers

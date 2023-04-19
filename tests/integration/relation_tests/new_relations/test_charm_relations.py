@@ -2,6 +2,7 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 import asyncio
+import subprocess
 import time
 from pathlib import Path
 
@@ -10,7 +11,6 @@ import yaml
 from pymongo import MongoClient
 from pymongo.errors import OperationFailure
 from pytest_operator.plugin import OpsTest
-import subprocess
 from tenacity import RetryError
 
 from ...ha_tests.helpers import replica_set_primary

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
+import subprocess
 from pathlib import Path
 
 import pytest
 import yaml
 from pytest_operator.plugin import OpsTest
-import subprocess
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from .helpers import (
