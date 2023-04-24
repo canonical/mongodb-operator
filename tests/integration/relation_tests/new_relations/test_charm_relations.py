@@ -2,6 +2,7 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 import asyncio
+import subprocess
 import time
 from pathlib import Path
 
@@ -31,6 +32,11 @@ APP_NAMES = [APPLICATION_APP_NAME, DATABASE_APP_NAME, ANOTHER_DATABASE_APP_NAME]
 @pytest.mark.abort_on_fail
 async def test_deploy_charms(ops_test: OpsTest, application_charm, database_charm):
     """Deploy both charms (application and database) to use in the tests."""
+    model_name = ops_test.model.info.name
+    subprocess.check_output(
+        f"juju set-model-constraints --model={model_name} cores=2 mem=1G".split()
+    )
+
     # Deploy both charms (2 units for each application to test that later they correctly
     # set data in the relation application databag using only the leader unit).
     await asyncio.gather(
