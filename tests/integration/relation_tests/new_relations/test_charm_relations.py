@@ -34,7 +34,7 @@ async def test_deploy_charms(ops_test: OpsTest, application_charm, database_char
     """Deploy both charms (application and database) to use in the tests."""
     model_name = ops_test.model.info.name
     subprocess.check_output(
-        f"juju set-model-constraints --model={model_name} cores=2 mem=1G".split()
+        f"juju set-model-constraints --model={model_name} cores=2 mem=2G".split()
     )
 
     # Deploy both charms (2 units for each application to test that later they correctly
