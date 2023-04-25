@@ -4,7 +4,6 @@
 import asyncio
 import secrets
 import string
-import subprocess
 import time
 
 import pytest
@@ -42,11 +41,6 @@ async def add_writes_to_db(ops_test: OpsTest):
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy one unit of MongoDB."""
-    model_name = ops_test.model.info.name
-    subprocess.check_output(
-        f"juju set-model-constraints --model={model_name} cores=2 mem=2G".split()
-    )
-
     # it is possible for users to provide their own cluster for testing. Hence check if there
     # is a pre-existing cluster.
     if not await helpers.app_name(ops_test):
