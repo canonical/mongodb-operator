@@ -192,6 +192,7 @@ class MongoDBBackups(Object):
                 # if a resync is running restart the service
                 if isinstance(pbm_status, (WaitingStatus)):
                     pbm_snap.restart(services=["pbm-agent"])
+                    raise PBMBusyError
 
         # wait for re-sync and update charm status based on pbm syncing status. Need to wait for
         # 2 seconds for pbm_agent to receive the resync command before verifying.
