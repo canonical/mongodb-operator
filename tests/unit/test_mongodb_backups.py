@@ -165,7 +165,10 @@ class TestMongoBackups(unittest.TestCase):
         retry_stop.return_value = wait_fixed(1)
         pbm_status.return_value = WaitingStatus()
         mock_snap = mock.Mock()
-        self.harness.charm.backups._resync_config_options(mock_snap)
+
+        with self.assertRaises(PBMBusyError):
+            self.harness.charm.backups._resync_config_options(mock_snap)
+
         mock_snap.restart.assert_called()
 
     @patch("charm.subprocess.check_output")

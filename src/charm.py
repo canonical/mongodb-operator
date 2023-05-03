@@ -68,7 +68,7 @@ MONITOR_PRIVILEGES = {
 # We expect the MongoDB container to use the default ports
 MONGODB_PORT = 27017
 MONGODB_EXPORTER_PORT = 9216
-SNAP_PACKAGES = [("charmed-mongodb", "5/edge")]
+SNAP_PACKAGES = [("charmed-mongodb", "5/edge", 82)]
 REL_NAME = "database"
 
 
@@ -540,13 +540,15 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         Args:
             packages: list of packages to install.
         """
-        for snap_name, snap_channel in packages:
+        for snap_name, snap_channel, snap_revision in packages:
             try:
                 snap_cache = snap.SnapCache()
                 snap_package = snap_cache[snap_name]
 
                 if not snap_package.present:
-                    snap_package.ensure(snap.SnapState.Latest, channel=snap_channel)
+                    snap_package.ensure(
+                        snap.SnapState.Latest, channel=snap_channel, revision=snap_revision
+                    )
 
             except snap.SnapError as e:
                 logger.error(
@@ -594,6 +596,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def _connect_mongodb_exporter(self) -> None:
         """Exposes the endpoint to mongodb_exporter."""
+        if "db_initialised" not in self.app_peer_data:
+            return
+
         # must wait for leader to set URI before connecting
         if not self.get_secret("app", "monitor-password"):
             return
@@ -605,6 +610,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def _connect_pbm_agent(self) -> None:
         """Updates URI for pbm-agent."""
+        if "db_initialised" not in self.app_peer_data:
+            return
+
         # must wait for leader to set URI before any attempts to update are made
         if not self.get_secret("app", "backup-password"):
             return
