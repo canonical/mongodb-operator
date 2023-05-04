@@ -358,13 +358,13 @@ class MongoDBBackups(Object):
         if not backup_id:
             event.fail("Missing backup-id to restore")
             return
-        
+
         # only leader can restore backups. This prevents multiple restores from being attempted at
         # once.
         if not self.charm.unit.is_leader():
             event.fail("The action can be run only on leader unit.")
             return
-        
+
         # cannot restore backup if pbm is not ready. This could be due to: resyncing, incompatible,
         # options, incorrect credentials, creating a backup, or already performing a restore.
         pbm_status = self._get_pbm_status()
