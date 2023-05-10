@@ -43,7 +43,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 4
+LIBPATCH = 5
 MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
 
 logger = logging.getLogger(__name__)
@@ -359,6 +359,12 @@ class MongoDBBackups(Object):
             event.fail("Missing backup-id to restore")
             return
 
+        # only leader can restore backups. This prevents multiple restores from being attempted at
+        # once.
+        if not self.charm.unit.is_leader():
+            event.fail("The action can be run only on leader unit.")
+            return
+
         # cannot restore backup if pbm is not ready. This could be due to: resyncing, incompatible,
         # options, incorrect credentials, creating a backup, or already performing a restore.
         pbm_status = self._get_pbm_status()
@@ -371,7 +377,7 @@ class MongoDBBackups(Object):
             logger.debug("Sync-ing configurations needs more time, must wait before restoring.")
             return
         if isinstance(pbm_status, BlockedStatus):
-            event.fail(f"Cannot create backup {pbm_status.message}.")
+            event.fail(f"Cannot restore backup {pbm_status.message}.")
             return
 
         try:
