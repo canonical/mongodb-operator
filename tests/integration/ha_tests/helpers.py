@@ -1,4 +1,4 @@
-# Copyright 2022 Canonical Ltd.
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 import json
@@ -28,11 +28,14 @@ from tenacity import (
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 PORT = 27017
 APP_NAME = METADATA["name"]
+MONGO_COMMON_DIR = "/var/snap/charmed-mongodb/common"
 DB_PROCESS = "/usr/bin/mongod"
-MONGODB_LOG_PATH = "/data/db/mongodb.log"
-MONGOD_SERVICE_DEFAULT_PATH = "/etc/systemd/system/mongod.service"
+MONGODB_LOG_PATH = f"{MONGO_COMMON_DIR}/var/log/mongodb/mongodb.log"
+MONGOD_SERVICE_DEFAULT_PATH = "/etc/systemd/system/snap.charmed-mongodb.mongod.service"
 TMP_SERVICE_PATH = "tests/integration/ha_tests/tmp.service"
-LOGGING_OPTIONS = "--logpath=/data/db/mongodb.log --logappend"
+LOGGING_OPTIONS = f"--logpath={MONGO_COMMON_DIR}/var/log/mongodb/mongodb.log --logappend"
+EXPORTER_PROC = "/usr/bin/mongodb_exporter"
+GREP_PROC = "grep"
 
 
 class ProcessError(Exception):
@@ -54,7 +57,7 @@ def replica_set_client(replica_ips: List[str], password: str, app=APP_NAME) -> M
     hosts = ["{}:{}".format(replica_ip, PORT) for replica_ip in replica_ips]
     hosts = ",".join(hosts)
 
-    replica_set_uri = f"mongodb://admin:" f"{password}@" f"{hosts}/admin?replicaSet={app}"
+    replica_set_uri = f"mongodb://operator:" f"{password}@" f"{hosts}/admin?replicaSet={app}"
     return MongoClient(replica_set_uri)
 
 
@@ -91,7 +94,7 @@ def unit_uri(ip_address: str, password, app=APP_NAME) -> str:
         password: password of database.
         app: name of application which has the cluster.
     """
-    return f"mongodb://admin:" f"{password}@" f"{ip_address}:{PORT}/admin?replicaSet={app}"
+    return f"mongodb://operator:" f"{password}@" f"{ip_address}:{PORT}/admin?replicaSet={app}"
 
 
 async def get_password(ops_test: OpsTest, app, down_unit=None) -> str:
@@ -108,7 +111,7 @@ async def get_password(ops_test: OpsTest, app, down_unit=None) -> str:
 
     action = await ops_test.model.units.get(f"{app}/{unit_id}").run_action("get-password")
     action = await action.wait()
-    return action.results["admin-password"]
+    return action.results["password"]
 
 
 async def fetch_primary(
@@ -250,7 +253,7 @@ async def clear_db_writes(ops_test: OpsTest) -> bool:
     password = await get_password(ops_test, app)
     hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
     hosts = ",".join(hosts)
-    connection_string = f"mongodb://admin:{password}@{hosts}/admin?replicaSet={app}"
+    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app}"
 
     client = MongoClient(connection_string)
     db = client["new-db"]
@@ -275,7 +278,7 @@ async def start_continous_writes(ops_test: OpsTest, starting_number: int) -> Non
     password = await get_password(ops_test, app)
     hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
     hosts = ",".join(hosts)
-    connection_string = f"mongodb://admin:{password}@{hosts}/admin?replicaSet={app}"
+    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app}"
 
     # run continuous writes in the background.
     subprocess.Popen(
@@ -303,7 +306,7 @@ async def stop_continous_writes(ops_test: OpsTest, down_unit=None) -> int:
     password = await get_password(ops_test, app, down_unit)
     hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
     hosts = ",".join(hosts)
-    connection_string = f"mongodb://admin:{password}@{hosts}/admin?replicaSet={app}"
+    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app}"
 
     client = MongoClient(connection_string)
     db = client["new-db"]
@@ -321,7 +324,7 @@ async def count_writes(ops_test: OpsTest, down_unit=None) -> int:
     password = await get_password(ops_test, app, down_unit)
     hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
     hosts = ",".join(hosts)
-    connection_string = f"mongodb://admin:{password}@{hosts}/admin?replicaSet={app}"
+    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app}"
 
     client = MongoClient(connection_string)
     db = client["new-db"]
@@ -338,7 +341,7 @@ async def secondary_up_to_date(ops_test: OpsTest, unit_ip, expected_writes) -> b
     """
     app = await app_name(ops_test)
     password = await get_password(ops_test, app)
-    connection_string = f"mongodb://admin:{password}@{unit_ip}:{PORT}/admin?"
+    connection_string = f"mongodb://operator:{password}@{unit_ip}:{PORT}/admin?"
     client = MongoClient(connection_string, directConnection=True)
 
     try:
@@ -552,20 +555,15 @@ async def all_db_processes_down(ops_test: OpsTest) -> bool:
     app = await app_name(ops_test)
 
     try:
-        for attempt in Retrying(stop=stop_after_delay(60), wait=wait_fixed(3)):
+        for attempt in Retrying(stop=stop_after_attempt(60), wait=wait_fixed(3)):
             with attempt:
                 for unit in ops_test.model.applications[app].units:
-                    search_db_process = f"run --unit {unit.name} ps aux | grep {DB_PROCESS}"
+                    search_db_process = f"run --unit {unit.name} pgrep -x mongod"
                     _, processes, _ = await ops_test.juju(*search_db_process.split())
-
-                    # `ps aux | grep {DB_PROCESS}` is a process on it's own and will be shown in
-                    # the output of ps aux, hence it it is important that we check if there is
-                    # more than one process containing the name `DB_PROCESS`
                     # splitting processes by "\n" results in one or more empty lines, hence we
                     # need to process these lines accordingly.
                     processes = [proc for proc in processes.split("\n") if len(proc) > 0]
-
-                    if len(processes) > 1:
+                    if len(processes) > 0:
                         raise ProcessRunningError
     except RetryError:
         return False
@@ -576,7 +574,7 @@ async def all_db_processes_down(ops_test: OpsTest) -> bool:
 async def update_restart_delay(ops_test: OpsTest, unit, delay: int):
     """Updates the restart delay in the DB service file.
 
-    When the DB service fails it will now wait for `dalay` number of seconds.
+    When the DB service fails it will now wait for `delay` number of seconds.
     """
     # load the service file from the unit and update it with the new delay
     await unit.scp_from(source=MONGOD_SERVICE_DEFAULT_PATH, destination=TMP_SERVICE_PATH)
@@ -623,7 +621,7 @@ async def update_service_logging(ops_test: OpsTest, unit, logging: bool):
 
         if logging:
             if LOGGING_OPTIONS not in line:
-                mongodb_service[index] = line + LOGGING_OPTIONS + "\n"
+                mongodb_service[index] = line + " " + LOGGING_OPTIONS + "\n"
         else:
             if LOGGING_OPTIONS in line:
                 mongodb_service[index] = line.replace(LOGGING_OPTIONS, "") + "\n"
@@ -648,6 +646,18 @@ async def update_service_logging(ops_test: OpsTest, unit, logging: bool):
     return_code, _, _ = await ops_test.juju(*reload_cmd.split())
     if return_code != 0:
         raise ProcessError(f"Command: {reload_cmd} failed on unit: {unit.name}.")
+
+
+async def stop_mongod(ops_test: OpsTest, unit) -> None:
+    """Safely stops the mongod process."""
+    stop_db_process = f"run --unit {unit.name} snap stop charmed-mongodb.mongod"
+    await ops_test.juju(*stop_db_process.split())
+
+
+async def start_mongod(ops_test: OpsTest, unit) -> None:
+    """Safely starts the mongod process."""
+    start_db_process = f"run --unit {unit.name} snap start charmed-mongodb.mongod"
+    await ops_test.juju(*start_db_process.split())
 
 
 @retry(stop=stop_after_attempt(8), wait=wait_fixed(15))

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2022 Canonical Ltd.
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 from pathlib import Path
 
@@ -8,11 +8,12 @@ import yaml
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
-from tests.integration.relation_tests.legacy_relations.helpers import (
+from .helpers import (
     GRAYLOG_APP_NAME,
     ApiTimeoutError,
     _verify_rest_api_is_alive,
     auth_enabled,
+    check_tls,
     get_application_relation_data,
     get_graylog_client,
 )
@@ -131,7 +132,9 @@ async def test_legacy_db_ops(ops_test: OpsTest) -> None:
 async def test_add_unit_joins_without_auth(ops_test: OpsTest):
     """Verify scaling mongodb with legacy relations supports no auth."""
     await ops_test.model.applications[DATABASE_APP_NAME].add_unit(count=1)
-    await ops_test.model.wait_for_idle(apps=[DATABASE_APP_NAME], status="active", timeout=1000)
+    await ops_test.model.wait_for_idle(
+        apps=[DATABASE_APP_NAME], status="active", timeout=1000, wait_for_units=3
+    )
 
     # verify auth is still disabled
     unit = ops_test.model.applications[DATABASE_APP_NAME].units[2]
@@ -139,6 +142,31 @@ async def test_add_unit_joins_without_auth(ops_test: OpsTest):
     assert not await auth_enabled(
         connection
     ), "MongoDB requires disabled authentication to support legacy relations"
+
+
+async def test_enable_tls(ops_test: OpsTest) -> None:
+    """Verify each unit has TLS enabled after relating to the TLS application."""
+    config = {"generate-self-signed-certificates": "true", "ca-common-name": "Test CA"}
+    await ops_test.model.deploy("tls-certificates-operator", channel="edge", config=config)
+    await ops_test.model.wait_for_idle(
+        apps=["tls-certificates-operator"], status="active", timeout=1000
+    )
+    await ops_test.model.relate(DATABASE_APP_NAME, "tls-certificates-operator")
+
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=[DATABASE_APP_NAME, "tls-certificates-operator"], status="active", timeout=1000
+        )
+
+    # Wait for all units enabling TLS.
+    for unit in ops_test.model.applications[DATABASE_APP_NAME].units:
+        assert await check_tls(ops_test, unit, enabled=True)
+
+    # disable TLS by removing the relation.
+    await ops_test.model.applications[DATABASE_APP_NAME].remove_relation(
+        f"{DATABASE_APP_NAME}:certificates", "tls-certificates-operator:certificates"
+    )
+    await ops_test.model.wait_for_idle(apps=[DATABASE_APP_NAME], status="active", timeout=1000)
 
 
 async def test_new_relation_fails_with_legacy(ops_test: OpsTest) -> None:

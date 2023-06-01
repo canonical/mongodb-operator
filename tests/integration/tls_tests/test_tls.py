@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
-# Copyright 2022 Canonical Ltd.
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
-import time
 
 import pytest
 from pytest_operator.plugin import OpsTest
 
-from tests.integration.tls_tests.helpers import (
+from .helpers import (
+    EXTERNAL_CERT_PATH,
+    INTERNAL_CERT_PATH,
     check_tls,
     time_file_created,
     time_process_started,
 )
 
+MONGO_COMMON_DIR = "/var/snap/charmed-mongodb/common"
 TLS_CERTIFICATES_APP_NAME = "tls-certificates-operator"
 DATABASE_APP_NAME = "mongodb"
 TLS_TEST_DATA = "tests/integration/tls_tests/data"
-EXTERNAL_CERT_PATH = "/etc/mongodb/external-ca.crt"
-INTERNAL_CERT_PATH = "/etc/mongodb/internal-ca.crt"
-DB_SERVICE = "mongod.service"
+DB_SERVICE = "snap.charmed-mongodb.mongod.service"
 
 
 @pytest.mark.abort_on_fail
@@ -39,8 +39,8 @@ async def test_enable_tls(ops_test: OpsTest) -> None:
     """Verify each unit has TLS enabled after relating to the TLS application."""
     # Relate it to the PostgreSQL to enable TLS.
     await ops_test.model.relate(DATABASE_APP_NAME, TLS_CERTIFICATES_APP_NAME)
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(status="active", timeout=1000)
+
+    await ops_test.model.wait_for_idle(status="active", timeout=1000, idle_period=60)
 
     # Wait for all units enabling TLS.
     for unit in ops_test.model.applications[DATABASE_APP_NAME].units:
@@ -75,8 +75,10 @@ async def test_rotate_tls_key(ops_test: OpsTest) -> None:
         assert action.status == "completed", "setting external and internal key failed."
 
     # wait for certificate to be available and processed. Can get receive two certificate
-    # available events and restart twice so we do not wait for idle here
-    time.sleep(60)
+    # available events and restart twice so we want to ensure we are idle for at least 1 minute
+    await ops_test.model.wait_for_idle(
+        apps=[DATABASE_APP_NAME], status="active", timeout=1000, idle_period=60
+    )
 
     # After updating both the external key and the internal key a new certificate request will be
     # made; then the certificates should be available and updated.
@@ -151,8 +153,10 @@ async def test_set_tls_key(ops_test: OpsTest) -> None:
         assert action.status == "completed", "setting external and internal key failed."
 
     # wait for certificate to be available and processed. Can get receive two certificate
-    # available events and restart twice so we do not wait for idle here
-    time.sleep(60)
+    # available events and restart twice so we want to ensure we are idle for at least 1 minute
+    await ops_test.model.wait_for_idle(
+        apps=[DATABASE_APP_NAME], status="active", timeout=1000, idle_period=60
+    )
 
     # After updating both the external key and the internal key a new certificate request will be
     # made; then the certificates should be available and updated.
@@ -187,8 +191,10 @@ async def test_disable_tls(ops_test: OpsTest) -> None:
     await ops_test.model.applications[DATABASE_APP_NAME].remove_relation(
         f"{DATABASE_APP_NAME}:certificates", f"{TLS_CERTIFICATES_APP_NAME}:certificates"
     )
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(apps=[DATABASE_APP_NAME], status="active", timeout=1000)
+
+    await ops_test.model.wait_for_idle(
+        apps=[DATABASE_APP_NAME], status="active", timeout=1000, idle_period=60
+    )
 
     # Wait for all units disabling TLS.
     for unit in ops_test.model.applications[DATABASE_APP_NAME].units:

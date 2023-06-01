@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2022 Canonical Ltd.
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 from datetime import datetime
 
@@ -7,10 +7,17 @@ import ops
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_attempt, wait_exponential
 
-from tests.integration.ha_tests.helpers import app_name
-from tests.integration.helpers import get_password
+from ..ha_tests.helpers import app_name
+from ..helpers import get_password
 
 PORT = 27017
+MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
+
+MONGOD_CONF_DIR = f"{MONGODB_SNAP_DATA_DIR}/etc/mongod"
+MONGO_COMMON_DIR = "/var/snap/charmed-mongodb/common"
+EXTERNAL_CERT_PATH = f"{MONGOD_CONF_DIR}/external-ca.crt"
+INTERNAL_CERT_PATH = f"{MONGOD_CONF_DIR}/internal-ca.crt"
+EXTERNAL_PEM_PATH = f"{MONGOD_CONF_DIR}/external-cert.pem"
 
 
 class ProcessError(Exception):
@@ -23,12 +30,12 @@ async def mongo_tls_command(ops_test: OpsTest) -> str:
     replica_set_hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
     password = await get_password(ops_test, app)
     hosts = ",".join(replica_set_hosts)
-    replica_set_uri = f"mongodb://admin:" f"{password}@" f"{hosts}/admin?replicaSet={app}"
+    replica_set_uri = f"mongodb://operator:" f"{password}@" f"{hosts}/admin?replicaSet={app}"
 
     return (
-        f"mongo '{replica_set_uri}'  --eval 'rs.status()'"
-        f" --tls --tlsCAFile /etc/mongodb/external-ca.crt"
-        f" --tlsCertificateKeyFile /etc/mongodb/external-cert.pem"
+        f"charmed-mongodb.mongo '{replica_set_uri}'  --eval 'rs.status()'"
+        f" --tls --tlsCAFile {EXTERNAL_CERT_PATH}"
+        f" --tlsCertificateKeyFile {EXTERNAL_PEM_PATH}"
     )
 
 

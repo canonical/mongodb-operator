@@ -1,18 +1,19 @@
-# Copyright 2022 Canonical Ltd.
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 import unittest
 from unittest import mock
 from unittest.mock import call, patch
 
-import requests
-from charms.operator_libs_linux.v1 import snap, systemd
-from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
+from charms.operator_libs_linux.v1 import snap
+from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from ops.testing import Harness
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
+from tenacity import stop_after_attempt
 
-from charm import MongodbOperatorCharm, NotReadyError, URLError, apt, subprocess
-from tests.unit.helpers import patch_network_get
+from charm import MongodbOperatorCharm, NotReadyError, subprocess
+
+from .helpers import patch_network_get
 
 REPO_NAME = "deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"
 GPG_URL = "https://www.mongodb.org/static/pgp/server-5.0.asc"
@@ -28,6 +29,8 @@ PYMONGO_EXCEPTIONS = [
     OperationFailure("error message"),
 ]
 
+S3_RELATION_NAME = "s3-credentials"
+
 
 class TestCharm(unittest.TestCase):
     def setUp(self, *unused):
@@ -40,21 +43,24 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongoDBConnection")
     @patch("charm.MongodbOperatorCharm._init_admin_user")
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
-    @patch("charm.systemd.service_start")
+    @patch("charm.snap.SnapCache")
     @patch("charm.push_file_to_unit")
     @patch("builtins.open")
     def test_on_start_not_leader_doesnt_initialise_replica_set(
-        self, open, path, service_start, _open_port_tcp, init_admin, connection
+        self, open, path, snap, _open_port_tcp, init_admin, connection
     ):
         """Tests that a non leader unit does not initialise the replica set."""
-        # Only leader can set RelationData
-        self.harness.set_leader(True)
-        self.harness.charm.app_peer_data["keyfile"] = "/etc/mongodb/keyFile"
+        # set snap data
+        mock_mongodb_snap = mock.Mock()
+        mock_mongodb_snap.present = True
+        mock_mongodb_snap.start = mock.Mock()
+        snap.return_value = {"charmed-mongodb": mock_mongodb_snap}
+        self.harness.charm.app_peer_data["monitor-password"] = "pass123"
 
         self.harness.set_leader(False)
         self.harness.charm.on.start.emit()
 
-        service_start.assert_called()
+        mock_mongodb_snap.start.assert_called()
         _open_port_tcp.assert_called()
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus())
         connection.return_value.__enter__.return_value.init_replset.assert_not_called()
@@ -64,16 +70,12 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongoDBConnection")
     @patch("charm.MongodbOperatorCharm._init_admin_user")
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
-    @patch("charm.systemd.service_start", side_effect=systemd.SystemdError)
-    @patch("charm.systemd.service_running", return_value=False)
     @patch("charm.push_file_to_unit")
     @patch("builtins.open")
-    def test_on_start_systemd_failure_leads_to_blocked_status(
+    def test_on_start_snap_failure_leads_to_blocked_status(
         self,
         open,
         path,
-        service_running,
-        service_start,
         _open_port_tcp,
         init_admin,
         connection,
@@ -81,8 +83,6 @@ class TestCharm(unittest.TestCase):
         """Test failures on systemd result in blocked status."""
         self.harness.set_leader(True)
         self.harness.charm.on.start.emit()
-        service_start.assert_called()
-
         self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
         _open_port_tcp.assert_not_called()
 
@@ -90,35 +90,9 @@ class TestCharm(unittest.TestCase):
         init_admin.assert_not_called()
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.systemd._systemctl", side_effect=systemd.SystemdError)
-    @patch("charm.systemd.service_start")
-    @patch("charm.systemd.service_running", return_value=True)
-    @patch("charm.MongodbOperatorCharm._open_port_tcp")
-    @patch("charm.push_file_to_unit")
-    @patch("builtins.open")
-    @patch("charm.MongoDBConnection")
-    @patch("charm.MongodbOperatorCharm._init_admin_user")
-    def test_on_start_mongo_service_ready_doesnt_reenable(
-        self,
-        init_admin,
-        connection,
-        open,
-        path,
-        _open_port_tcp,
-        service_running,
-        service_start,
-        _systemctl,
-    ):
-        """Test verifies that is MongoDB service is available that we don't re-enable it."""
-        self.harness.set_leader(True)
-        self.harness.charm.on.start.emit()
-        service_running.assert_called()
-        service_start.assert_not_called()
-
-    @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
     @patch("charm.MongodbOperatorCharm._initialise_replica_set")
-    @patch("charm.systemd.service_running", return_value=True)
+    @patch("charm.snap.SnapCache")
     @patch("charm.push_file_to_unit")
     @patch("builtins.open")
     @patch("charm.MongoDBConnection")
@@ -129,11 +103,17 @@ class TestCharm(unittest.TestCase):
         connection,
         open,
         path,
-        service_running,
+        snap,
         initialise_replica_set,
         _open_port_tcp,
     ):
         """Test verifies that we wait to initialise replica set when mongod is not running."""
+        # set snap data
+        mock_mongodb_snap = mock.Mock()
+        mock_mongodb_snap.present = True
+        mock_mongodb_snap.start = mock.Mock()
+        snap.return_value = {"charmed-mongodb": mock_mongodb_snap}
+
         self.harness.set_leader(True)
         connection.return_value.__enter__.return_value.is_ready = False
 
@@ -144,13 +124,17 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
-    @patch("charm.systemd.service_running", return_value=True)
+    @patch("charm.snap.SnapCache")
     @patch("charm.push_file_to_unit")
     @patch("builtins.open")
-    def test_start_unable_to_open_tcp_moves_to_blocked(
-        self, open, path, service_running, _open_port_tcp
-    ):
+    def test_start_unable_to_open_tcp_moves_to_blocked(self, open, path, snap, _open_port_tcp):
         """Test verifies that if TCP port cannot be opened we go to the blocked state."""
+        # set snap data
+        mock_mongodb_snap = mock.Mock()
+        mock_mongodb_snap.present = True
+        mock_mongodb_snap.start = mock.Mock()
+        snap.return_value = {"charmed-mongodb": mock_mongodb_snap}
+
         self.harness.set_leader(True)
         _open_port_tcp.side_effect = subprocess.CalledProcessError(
             cmd="open-port 27017/TCP", returncode=1
@@ -180,121 +164,13 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.update_mongod_service")
-    @patch("charm.MongodbOperatorCharm._add_repository")
-    @patch("charm.MongodbOperatorCharm._install_apt_packages")
     @patch("charm.snap.SnapCache")
-    def test_install_snap_packages_failure(
-        self, snap_cache, _install_apt_packages, _add_repository, update_mongod_service
-    ):
+    @patch("charm.check_call")
+    def test_install_snap_packages_failure(self, _call, snap_cache, update_mongod_service):
         """Test verifies the correct functions get called when installing apt packages."""
         snap_cache.side_effect = snap.SnapError
         self.harness.charm.on.install.emit()
         self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
-
-    @patch("charm.apt.add_package")
-    @patch("charm.apt.update")
-    def test_install_apt_packages_sucess(self, update, add_package):
-        """Test verifies the correct functions get called when installing apt packages."""
-        self.harness.charm._install_apt_packages(["test-package"])
-        update.assert_called()
-        add_package.assert_called_with(["test-package"])
-
-    @patch("charm.apt.add_package")
-    @patch("charm.apt.update")
-    def test_install_apt_packages_update_failure(self, update, add_package):
-        """Test verifies handling of apt update failure."""
-        update.side_effect = subprocess.CalledProcessError(cmd="apt-get update", returncode=1)
-        with self.assertLogs("charm", "ERROR") as logs:
-            self.harness.charm._install_apt_packages(["test-package"])
-            self.assertIn("failed to update apt cache: ", "".join(logs.output))
-            self.assertEqual(
-                self.harness.charm.unit.status, BlockedStatus("couldn't install MongoDB")
-            )
-
-    @patch("charm.apt.add_package")
-    @patch("charm.apt.update")
-    def test_install_apt_packages_add_package_failure(self, update, add_package):
-        """Test verifies handling of apt add failure."""
-        exceptions = [apt.PackageNotFoundError(), TypeError("package format incorrect")]
-        log_messages = [
-            "ERROR:charm:a specified package not found in package cache or on system",
-            "ERROR:charm:could not add package(s) to install: package format incorrect",
-        ]
-
-        for exception, log_message in zip(exceptions, log_messages):
-            with self.assertLogs("charm", "ERROR") as logs:
-                add_package.side_effect = exception
-                self.harness.charm._install_apt_packages(["test-package"])
-                self.assertIn(log_message, logs.output)
-
-            self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
-
-    @patch("charm.apt.RepositoryMapping", return_value=set())
-    @patch("charm.apt.DebianRepository.from_repo_line")
-    @patch("charm.apt.DebianRepository.import_key")
-    def test_add_repository_success(self, import_key, from_repo_line, repo_map):
-        """Test operations of add repository though a full execution.
-
-        Tests the execution of add repository such that there are no exceptions through, ensuring
-        that the repository is properly added.
-        """
-        # preset values
-        req = requests.get(GPG_URL)
-        mongodb_public_key = req.text
-
-        # verify we add the MongoDB repository
-        repos = self.harness.charm._add_repository(REPO_NAME, GPG_URL, REPO_ENTRY)
-        from_repo_line.assert_called()
-        (from_repo_line.return_value.import_key).assert_called_with(mongodb_public_key)
-        self.assertEqual(repos, {from_repo_line.return_value})
-
-    @patch("charm.apt.RepositoryMapping", return_value=set())
-    @patch("charm.apt.DebianRepository.from_repo_line")
-    @patch("charm.urlopen")
-    def test_add_repository_gpg_fail_leads_to_blocked(self, urlopen, from_repo_line, repo_map):
-        """Test verifies that issues with GPG key lead to a blocked state."""
-        # preset values
-        urlopen.side_effect = URLError("urlopen error")
-        self.harness.charm._add_repository(REPO_NAME, GPG_URL, REPO_ENTRY)
-
-        # verify we don't add repo when an exception occurs and that we enter blocked state
-        self.assertEqual(repo_map.return_value, set())
-        self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
-
-    @patch("charm.apt.RepositoryMapping")
-    @patch("charm.apt.DebianRepository.from_repo_line")
-    def test_add_repository_cant_create_list_file_blocks(self, from_repo_line, repo_map):
-        """Test verifies that issues with creating list file lead to a blocked state."""
-        exceptions = [
-            apt.InvalidSourceError("invalid source message"),
-            ValueError("value message"),
-        ]
-        exceptions_types = [apt.InvalidSourceError, ValueError]
-
-        for exception_type, exception in zip(exceptions_types, exceptions):
-            # verify an exception is raised when repo line fails
-            with self.assertRaises(exception_type):
-                from_repo_line.side_effect = exception
-                self.harness.charm._add_repository(REPO_NAME, GPG_URL, REPO_ENTRY)
-
-    @patch("charm.apt.RepositoryMapping")
-    @patch("charm.apt.DebianRepository.from_repo_line")
-    def test_add_repository_cant_import_key_blocks(self, from_repo_line, repo_map):
-        """Test verifies that issues with importing GPG key lead to a blocked state."""
-        # verify an exception is raised when we cannot import GPG key
-        with self.assertRaises(apt.GPGKeyError):
-            (from_repo_line.return_value.import_key).side_effect = apt.GPGKeyError(
-                "import key error"
-            )
-            self.harness.charm._add_repository(REPO_NAME, GPG_URL, REPO_ENTRY)
-
-    @patch("charm.apt.RepositoryMapping", return_value=REPO_MAP)
-    @patch("charm.apt.DebianRepository.from_repo_line")
-    def test_add_repository_already_added(self, from_repo_line, repo_map):
-        """Test verifies that if a repo is already added that the installed repos don't change."""
-        # verify we don't change the repos if we already have the repo of interest
-        repos = self.harness.charm._add_repository(REPO_NAME, GPG_URL, REPO_ENTRY)
-        self.assertEqual(repos, REPO_MAP)
 
     @patch_network_get(private_address="1.1.1.1")
     def test_unit_ips(self):
@@ -316,7 +192,8 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    def test_mongodb_relation_joined_all_replicas_not_ready(self, connection):
+    @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
+    def test_mongodb_relation_joined_all_replicas_not_ready(self, _, connection):
         """Tests that we go into waiting when current ReplicaSet hosts are not ready.
 
         Tests the scenario that if current replica set hosts are not ready, the leader goes into
@@ -342,8 +219,9 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBConnection")
-    @patch("lib.charms.mongodb.v0.mongodb.MongoClient")
-    def test_relation_joined_get_members_failure(self, client, connection, defer):
+    @patch("charms.mongodb.v0.mongodb.MongoClient")
+    @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
+    def test_relation_joined_get_members_failure(self, _, client, connection, defer):
         """Tests reconfigure does not execute when unable to get the replica set members.
 
         Verifies in case of relation_joined and relation departed, that when the the database
@@ -377,7 +255,8 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBConnection")
-    def test_reconfigure_add_member_failure(self, connection, defer):
+    @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
+    def test_reconfigure_add_member_failure(self, _, connection, defer):
         """Tests reconfigure does not proceed when unable to add a member.
 
         Verifies in relation joined events, that when the database cannot add a member that the
@@ -407,7 +286,7 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
-    @patch("charm.systemd.service_start")
+    @patch("charm.snap.SnapCache")
     @patch("charm.push_file_to_unit")
     @patch("builtins.open")
     @patch("charm.MongoDBConnection")
@@ -418,10 +297,14 @@ class TestCharm(unittest.TestCase):
         connection,
         open,
         path,
-        service_start,
+        snap_cache,
         _,
     ):
         """Tests that failure to initialise replica set goes into Waiting Status."""
+        # set snap data
+        mock_mongodb_snap = mock.Mock()
+        snap.return_value = {"charmed-mongodb": mock_mongodb_snap}
+
         # set peer data so that leader doesn't reconfigure set on set_leader
 
         self.harness.set_leader(True)
@@ -438,11 +321,121 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charms.mongodb.v0.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
-    def test_update_status_primary(self, connection, status_connection):
+    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.build_unit_status")
+    @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
+    def test_update_status_mongodb_error(
+        self, _, get_mongodb_status, get_pbm_status, connection, status_connection
+    ):
+        """Tests that when MongoDB is not active, that is reported instead of pbm."""
+        # assume leader has already initialised the replica set
+        self.harness.set_leader(True)
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        connection.return_value.__enter__.return_value.is_ready = True
+
+        pbm_statuses = [
+            ActiveStatus("pbm"),
+            BlockedStatus("pbm"),
+            MaintenanceStatus("pbm"),
+            WaitingStatus("pbm"),
+        ]
+        mongodb_statuses = [
+            BlockedStatus("mongodb"),
+            MaintenanceStatus("mongodb"),
+            WaitingStatus("mongodb"),
+        ]
+        self.harness.add_relation(S3_RELATION_NAME, "s3-integrator")
+
+        for pbm_status in pbm_statuses:
+            for mongodb_status in mongodb_statuses:
+                get_pbm_status.return_value = pbm_status
+                get_mongodb_status.return_value = mongodb_status
+                self.harness.charm.on.update_status.emit()
+                self.assertEqual(self.harness.charm.unit.status, mongodb_status)
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charms.mongodb.v0.helpers.MongoDBConnection")
+    @patch("charm.MongoDBConnection")
+    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.build_unit_status")
+    @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
+    def test_update_status_pbm_error(
+        self, _, get_mongodb_status, get_pbm_status, connection, status_connection
+    ):
+        """Tests when MongoDB is active and pbm is in the error state, pbm status is reported."""
+        # assume leader has already initialised the replica set
+        self.harness.set_leader(True)
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        connection.return_value.__enter__.return_value.is_ready = True
+
+        pbm_statuses = [
+            BlockedStatus("pbm"),
+            MaintenanceStatus("pbm"),
+            WaitingStatus("pbm"),
+        ]
+        mongodb_statuses = [ActiveStatus("mongodb")]
+        self.harness.add_relation(S3_RELATION_NAME, "s3-integrator")
+
+        for pbm_status in pbm_statuses:
+            for mongodb_status in mongodb_statuses:
+                get_pbm_status.return_value = pbm_status
+                get_mongodb_status.return_value = mongodb_status
+                self.harness.charm.on.update_status.emit()
+                self.assertEqual(self.harness.charm.unit.status, pbm_status)
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charms.mongodb.v0.helpers.MongoDBConnection")
+    @patch("charm.MongoDBConnection")
+    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.build_unit_status")
+    @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
+    def test_update_status_pbm_and_mongodb_ready(
+        self, _, get_mongodb_status, get_pbm_status, connection, status_connection
+    ):
+        """Tests when both Mongodb and pbm are ready that MongoDB status is reported."""
+        # assume leader has already initialised the replica set
+        self.harness.set_leader(True)
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        connection.return_value.__enter__.return_value.is_ready = True
+
+        self.harness.add_relation(S3_RELATION_NAME, "s3-integrator")
+
+        get_pbm_status.return_value = ActiveStatus("pbm")
+        get_mongodb_status.return_value = ActiveStatus("mongodb")
+        self.harness.charm.on.update_status.emit()
+        self.assertEqual(self.harness.charm.unit.status, ActiveStatus("mongodb"))
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charms.mongodb.v0.helpers.MongoDBConnection")
+    @patch("charm.MongoDBConnection")
+    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.build_unit_status")
+    @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
+    def test_update_status_no_s3(
+        self, _, get_mongodb_status, get_pbm_status, connection, status_connection
+    ):
+        """Tests when the s3 relation isn't present that the MongoDB status is reported."""
+        # assume leader has already initialised the replica set
+        self.harness.set_leader(True)
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        connection.return_value.__enter__.return_value.is_ready = True
+
+        get_pbm_status.return_value = BlockedStatus("pbm")
+        get_mongodb_status.return_value = ActiveStatus("mongodb")
+        self.harness.charm.on.update_status.emit()
+        self.assertEqual(self.harness.charm.unit.status, ActiveStatus("mongodb"))
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charms.mongodb.v0.helpers.MongoDBConnection")
+    @patch("charm.MongoDBConnection")
+    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
+    def test_update_status_primary(self, _, pbm_status, connection, status_connection):
         """Tests that update status identifies the primary unit and updates status."""
         # assume leader has already initialised the replica set
         self.harness.set_leader(True)
         self.harness.charm.app_peer_data["db_initialised"] = "True"
+        pbm_status.return_value = ActiveStatus("")
 
         self.harness.set_leader(False)
         connection.return_value.__enter__.return_value.is_ready = True
@@ -455,11 +448,14 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charms.mongodb.v0.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
-    def test_update_status_secondary(self, connection, status_connection):
+    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
+    def test_update_status_secondary(self, _, pbm_status, connection, status_connection):
         """Tests that update status identifies secondary units and doesn't update status."""
         # assume leader has already initialised the replica set
         self.harness.set_leader(True)
         self.harness.charm.app_peer_data["db_initialised"] = "True"
+        pbm_status.return_value = ActiveStatus("")
 
         self.harness.set_leader(False)
         connection.return_value.__enter__.return_value.is_ready = True
@@ -472,11 +468,14 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charms.mongodb.v0.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
-    def test_update_status_additional_messages(self, connection, status_connection):
+    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
+    def test_update_status_additional_messages(self, _, pbm_status, connection, status_connection):
         """Tests status updates are correct for non-primary and non-secondary cases."""
         # assume leader has already initialised the replica set
         self.harness.set_leader(True)
         self.harness.charm.app_peer_data["db_initialised"] = "True"
+        pbm_status.return_value = ActiveStatus("")
 
         # Case 1: Unit has not been added to replica set yet
         self.harness.set_leader(False)
@@ -509,16 +508,15 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    @patch("charm.MongodbOperatorCharm.restart_mongod_service")
-    def test_update_status_not_ready(self, restart, connection):
+    def test_update_status_not_ready(self, connection):
         """Tests that if mongod is not running on this unit it restarts it."""
         connection.return_value.__enter__.return_value.is_ready = False
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
 
         self.harness.charm.on.update_status.emit()
         self.assertEqual(
             self.harness.charm.unit.status, WaitingStatus("Waiting for MongoDB to start")
         )
-        restart.assert_called()
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
@@ -576,14 +574,18 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    def test_storage_detaching_failure_does_not_defer(self, connection):
+    @patch("charm.stop_after_attempt")
+    def test_storage_detaching_failure_does_not_defer(self, retry_stop, connection):
         """Test that failure in removing replica does not defer the hook.
 
         Deferring Storage Detached hooks can result in un-predicable behavior and while it is
         technically possible to defer the event, it shouldn't be. This test verifies that no
         attempt to defer storage detached as made.
         """
-        for exception in [PYMONGO_EXCEPTIONS, NotReadyError]:
+        retry_stop.return_value = stop_after_attempt(1)
+        exceptions = PYMONGO_EXCEPTIONS
+        exceptions.append(NotReadyError)
+        for exception in exceptions:
             connection.return_value.__enter__.return_value.remove_replset_member.side_effect = (
                 exception
             )
@@ -628,39 +630,45 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    def test_set_password(self, connection):
+    @patch("charm.MongoDBBackups._get_pbm_status")
+    def test_set_password(self, pbm_status, connection):
         """Tests that a new admin password is generated and is returned to the user."""
         self.harness.set_leader(True)
-        original_password = self.harness.charm.app_peer_data["password"]
+        pbm_status.return_value = ActiveStatus("pbm")
+        original_password = self.harness.charm.app_peer_data["operator-password"]
         action_event = mock.Mock()
         action_event.params = {}
         self.harness.charm._on_set_password(action_event)
-        new_password = self.harness.charm.app_peer_data["password"]
+        new_password = self.harness.charm.app_peer_data["operator-password"]
 
         # verify app data is updated and results are reported to user
         self.assertNotEqual(original_password, new_password)
-        action_event.set_results.assert_called_with({"admin-password": new_password})
+        action_event.set_results.assert_called_with({"password": new_password})
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    def test_set_password_provided(self, connection):
+    @patch("charm.MongoDBBackups._get_pbm_status")
+    def test_set_password_provided(self, pbm_status, connection):
         """Tests that a given password is set as the new mongodb password."""
         self.harness.set_leader(True)
+        pbm_status.return_value = ActiveStatus("pbm")
         action_event = mock.Mock()
         action_event.params = {"password": "canonical123"}
         self.harness.charm._on_set_password(action_event)
-        new_password = self.harness.charm.app_peer_data["password"]
+        new_password = self.harness.charm.app_peer_data["operator-password"]
 
         # verify app data is updated and results are reported to user
         self.assertEqual("canonical123", new_password)
-        action_event.set_results.assert_called_with({"admin-password": "canonical123"})
+        action_event.set_results.assert_called_with({"password": "canonical123"})
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    def test_set_password_failure(self, connection):
+    @patch("charm.MongoDBBackups._get_pbm_status")
+    def test_set_password_failure(self, pbm_status, connection):
         """Tests failure to reset password does not update app data and failure is reported."""
         self.harness.set_leader(True)
-        original_password = self.harness.charm.app_peer_data["password"]
+        pbm_status.return_value = ActiveStatus("pbm")
+        original_password = self.harness.charm.app_peer_data["operator-password"]
         action_event = mock.Mock()
         action_event.params = {}
 
@@ -669,20 +677,47 @@ class TestCharm(unittest.TestCase):
                 exception
             )
             self.harness.charm._on_set_password(action_event)
-            current_password = self.harness.charm.app_peer_data["password"]
+            current_password = self.harness.charm.app_peer_data["operator-password"]
 
             # verify passwords are not updated.
             self.assertEqual(current_password, original_password)
             action_event.fail.assert_called()
 
-    @patch("charm.MONGOD_SERVICE_UPSTREAM_PATH", "/tmp/missing_file")
-    def test_auth_enabled_file_does_not_exist(self):
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongoDBBackups._get_pbm_status")
+    def test_set_backup_password_pbm_busy(self, pbm_status):
+        """Tests changes to passwords fail when pbm is restoring/backing up."""
+        self.harness.set_leader(True)
+        original_password = "pass123"
+        action_event = mock.Mock()
+
+        for username in ["backup", "monitor", "operator"]:
+            self.harness.charm.app_peer_data[f"{username}-password"] = original_password
+            action_event.params = {"username": username}
+            pbm_status.return_value = MaintenanceStatus("pbm")
+            self.harness.charm._on_set_password(action_event)
+            current_password = self.harness.charm.app_peer_data[f"{username}-password"]
+            action_event.fail.assert_called()
+            self.assertEqual(current_password, original_password)
+
+    @patch("charm.ENV_VAR_PATH", "tests/unit/data/env.txt")
+    def test_auth_not_enabled(self):
         self.assertEqual(self.harness.charm.auth_enabled(), False)
 
-    @patch("charm.MONGOD_SERVICE_UPSTREAM_PATH", "tests/unit/data/mongodb_auth.service")
-    def test_auth_dis_enabled(self):
+    @patch("charm.ENV_VAR_PATH", "tests/unit/data/env_auth.txt")
+    def test_auth_enabled(self):
         self.assertEqual(self.harness.charm.auth_enabled(), True)
 
-    @patch("charm.MONGOD_SERVICE_UPSTREAM_PATH", "tests/unit/data/mongodb.service")
-    def test_auth_enabled(self):
-        self.assertEqual(self.harness.charm.auth_enabled(), False)
+    @patch("charm.snap.SnapCache")
+    def test_connect_mongodb_exporter_no_pass(
+        self,
+        snap_cache,
+    ):
+        """Verifies that mongodb exporter is not started without password."""
+        mock_mongodb_snap = mock.Mock()
+        mock_mongodb_snap.present = True
+        mock_mongodb_snap.start = mock.Mock()
+        snap_cache.return_value = {"charmed-mongodb": mock_mongodb_snap}
+
+        self.harness.charm._connect_mongodb_exporter()
+        mock_mongodb_snap.restart.assert_not_called()

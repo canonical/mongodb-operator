@@ -1,4 +1,4 @@
-# Copyright 2022 Canonical Ltd.
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 name: mongodb
 display-name: MongoDB
@@ -6,9 +6,16 @@ description: |
   MongoDB is a general purpose distributed document database. This charm
   deploys and operates MongoDB.
 docs: https://discourse.charmhub.io/t/charmed-mongodb-docs/7663
+source: https://github.com/canonical/mongodb-operator
+issues: https://github.com/canonical/mongodb-operator/issues
+website:
+  - https://ubuntu.com/data/mongodb
+  - https://charmhub.io/mongodb
+  - https://github.com/canonical/mongodb-operator
+  - https://chat.charmhub.io/charmhub/channels/data-platform
 summary: A MongoDB operator charm
 series:
-  - focal
+  - jammy
 
 provides:
   database:
@@ -16,11 +23,13 @@ provides:
   obsolete:
     # Legacy Relation - these will be deprecated in a future release
     interface: mongodb
+  cos-agent:
+    interface: cos_agent
 
 storage:
   mongodb:
     type: filesystem
-    location: /data/db
+    location: /var/snap/charmed-mongodb/common
 
 peers:
   database-peers:
@@ -30,3 +39,6 @@ requires:
   certificates:
     interface: tls-certificates
     limit: 1
+
+  s3-credentials:
+    interface: s3

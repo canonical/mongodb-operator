@@ -1,4 +1,4 @@
-# Copyright 2022 Canonical Ltd.
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 import unittest
 from unittest import mock
@@ -7,7 +7,8 @@ from unittest.mock import patch
 from ops.testing import Harness
 
 from charm import MongodbOperatorCharm
-from tests.unit.helpers import patch_network_get
+
+from .helpers import patch_network_get
 
 RELATION_NAME = "certificates"
 

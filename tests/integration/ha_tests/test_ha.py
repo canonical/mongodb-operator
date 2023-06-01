@@ -1,19 +1,17 @@
 #!/usr/bin/env python3
-# Copyright 2022 Canonical Ltd.
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
-
-
 import asyncio
 import time
 
-import helpers
 import pytest
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
+from . import helpers
+
 ANOTHER_DATABASE_APP_NAME = "another-database-a"
-MONGOD_PROCESS = "/usr/bin/mongod"
 MEDIAN_REELECTION_TIME = 12
 RESTART_DELAY = 60 * 3
 ORIGINAL_RESTART_DELAY = 5
@@ -50,19 +48,22 @@ async def change_logging(ops_test: OpsTest):
             continue
 
         # must restart unit to ensure that changes to logging are made
+        await helpers.stop_mongod(ops_test, unit)
         await helpers.update_service_logging(ops_test, unit, logging=True)
-        await helpers.kill_unit_process(ops_test, unit.name, kill_code="SIGTERM")
+        await helpers.start_mongod(ops_test, unit)
 
-        # sleep long enough for the mongod to start
+        # sleep long enough for the mongod to start up correctly
         time.sleep(15)
     yield
 
     app = await helpers.app_name(ops_test)
     for unit in ops_test.model.applications[app].units:
         # must restart unit to ensure that changes to logging are made
+        await helpers.stop_mongod(ops_test, unit)
         await helpers.update_service_logging(ops_test, unit, logging=False)
-        await helpers.kill_unit_process(ops_test, unit.name, kill_code="SIGTERM")
-        # sleep for long enough to allow unit to restart
+        await helpers.start_mongod(ops_test, unit)
+
+        # sleep long enough for the mongod to start up correctly
         time.sleep(15)
 
         # remove the log file as to not clog up space on the replicas.
