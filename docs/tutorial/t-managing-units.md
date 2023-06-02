@@ -21,12 +21,12 @@ Model     Controller  Cloud/Region         Version  SLA          Timestamp
 tutorial  overlord    localhost/localhost  2.9.37   unsupported  14:42:04Z
 
 App      Version  Status  Scale  Charm    Channel   Rev  Exposed  Message
-mongodb           active      3  mongodb  dpe/edge   96  no       Replica set primary
+mongodb           active      3  mongodb  dpe/edge   96  no       Primary
 
 Unit        Workload  Agent  Machine  Public address  Ports      Message
-mongodb/0*  active    idle   0        10.23.62.156    27017/tcp  Replica set primary
-mongodb/1   active    idle   1        10.23.62.55     27017/tcp  Replica set secondary
-mongodb/2   active    idle   2        10.23.62.243    27017/tcp  Replica set secondary
+mongodb/0*  active    idle   0        10.23.62.156    27017/tcp  Primary
+mongodb/1   active    idle   1        10.23.62.55     27017/tcp
+mongodb/2   active    idle   2        10.23.62.243    27017/tcp
 
 Machine  State    Address       Inst id        Series  AZ  Message
 0        started  10.23.62.156  juju-d35d30-0  focal       Running
@@ -199,11 +199,11 @@ Model     Controller  Cloud/Region         Version  SLA          Timestamp
 tutorial  overlord    localhost/localhost  2.9.37   unsupported  14:44:25Z
 
 App      Version  Status  Scale  Charm    Channel   Rev  Exposed  Message
-mongodb           active      2  mongodb  dpe/edge   96  no       Replica set primary
+mongodb           active      2  mongodb  dpe/edge   96  no       Primary
 
 Unit        Workload  Agent  Machine  Public address  Ports      Message
-mongodb/0*  active    idle   0        10.23.62.156    27017/tcp  Replica set primary
-mongodb/1   active    idle   1        10.23.62.55     27017/tcp  Replica set secondary
+mongodb/0*  active    idle   0        10.23.62.156    27017/tcp  Primary
+mongodb/1   active    idle   1        10.23.62.55     27017/tcp
 
 Machine  State    Address       Inst id        Series  AZ  Message
 0        started  10.23.62.156  juju-d35d30-0  focal       Running

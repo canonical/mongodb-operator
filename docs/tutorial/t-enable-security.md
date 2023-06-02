@@ -20,12 +20,12 @@ Model     Controller  Cloud/Region         Version  SLA          Timestamp
 tutorial  overlord    localhost/localhost  2.9.37   unsupported  09:24:12Z
 
 App                        Version  Status   Scale  Charm                      Channel   Rev  Exposed  Message
-mongodb                             active       2  mongodb                    dpe/edge   96  no       Replica set primary
+mongodb                             active       2  mongodb                    dpe/edge   96  no       Primary
 tls-certificates-operator           blocked      1  tls-certificates-operator  edge       16  no       Configuration options missing: ['certificate', 'ca-certificate']
 
 Unit                          Workload  Agent  Machine  Public address  Ports      Message
-mongodb/0*                    active    idle   0        10.23.62.156    27017/tcp  Replica set primary
-mongodb/1                     active    idle   1        10.23.62.55     27017/tcp  Replica set secondary
+mongodb/0*                    active    idle   0        10.23.62.156    27017/tcp  Primary
+mongodb/1                     active    idle   1        10.23.62.55     27017/tcp
 tls-certificates-operator/0*  blocked   idle   3        10.23.62.8                 Configuration options missing: ['certificate', 'ca-certificate']
 
 Machine  State    Address       Inst id        Series  AZ  Message

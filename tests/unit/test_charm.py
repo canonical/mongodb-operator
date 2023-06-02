@@ -443,7 +443,7 @@ class TestCharm(unittest.TestCase):
             "1.1.1.1": "PRIMARY"
         }
         self.harness.charm.on.update_status.emit()
-        self.assertEqual(self.harness.charm.unit.status, ActiveStatus("Replica set primary"))
+        self.assertEqual(self.harness.charm.unit.status, ActiveStatus("Primary"))
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charms.mongodb.v0.helpers.MongoDBConnection")
@@ -463,7 +463,7 @@ class TestCharm(unittest.TestCase):
             "1.1.1.1": "SECONDARY"
         }
         self.harness.charm.on.update_status.emit()
-        self.assertEqual(self.harness.charm.unit.status, ActiveStatus("Replica set secondary"))
+        self.assertEqual(self.harness.charm.unit.status, ActiveStatus(""))
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charms.mongodb.v0.helpers.MongoDBConnection")
