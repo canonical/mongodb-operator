@@ -489,7 +489,7 @@ class TestCharm(unittest.TestCase):
             "1.1.1.1": "REMOVED"
         }
         self.harness.charm.on.update_status.emit()
-        self.assertEqual(self.harness.charm.unit.status, WaitingStatus("Member is removing.."))
+        self.assertEqual(self.harness.charm.unit.status, WaitingStatus("Member is removing..."))
 
         # Case 3: Member is syncing to replica set
         for syncing_status in ["STARTUP", "STARTUP2", "ROLLBACK", "RECOVERING"]:
@@ -497,7 +497,7 @@ class TestCharm(unittest.TestCase):
                 "1.1.1.1": syncing_status
             }
             self.harness.charm.on.update_status.emit()
-            self.assertEqual(self.harness.charm.unit.status, WaitingStatus("Member is syncing.."))
+            self.assertEqual(self.harness.charm.unit.status, WaitingStatus("Member is syncing..."))
 
         # Case 4: Unknown status
         status_connection.return_value.__enter__.return_value.get_replset_status.return_value = {
