@@ -8,7 +8,16 @@ import subprocess
 from subprocess import check_call
 from typing import Dict, List, Optional
 
-import ops.charm
+from ops.charm import (
+    CharmBase,
+    ActionEvent,
+    StartEvent,
+    StorageDetachingEvent,
+    RelationEvent,
+    RelationDepartedEvent,
+    RelationJoinedEvent,
+    
+)
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from charms.mongodb.v0.helpers import (
     KEY_FILE,
@@ -23,12 +32,19 @@ from charms.mongodb.v0.helpers import (
     get_create_user_cmd,
 )
 from charms.mongodb.v0.mongodb import (
-    CHARM_USERS,
     MongoDBConfiguration,
     MongoDBConnection,
     NotReadyError,
     PyMongoError,
 )
+from charms.mongodb.v0.users import (
+    CHARM_USERS,
+    MonitorUser,
+    OperatorUser,
+    BackupUser,
+    get_password_key_name_for_user,
+)
+
 from charms.mongodb.v0.mongodb_backups import S3_RELATION, MongoDBBackups
 from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
@@ -36,13 +52,20 @@ from charms.mongodb.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
 from charms.operator_libs_linux.v1 import snap
 from ops.main import main
 from ops.model import (
+    Unit,
     ActiveStatus,
     BlockedStatus,
     MaintenanceStatus,
     Relation,
     WaitingStatus,
 )
-from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
+from tenacity import (
+    Retrying, 
+    before_log, 
+    retry, 
+    stop_after_attempt, 
+    wait_fixed
+)
 
 from machine_helpers import (
     ENV_VAR_PATH,
@@ -52,41 +75,27 @@ from machine_helpers import (
     update_mongod_service,
 )
 
+from config import CharmConfig
+
 logger = logging.getLogger(__name__)
 
-PEER = "database-peers"
-GPG_URL = "https://www.mongodb.org/static/pgp/server-5.0.asc"
-MONGO_EXEC_LINE = 10
 
 
-PBM_PRIVILEGES = {"resource": {"anyResource": True}, "actions": ["anyAction"]}
-MONITOR_PRIVILEGES = {
-    "resource": {"db": "", "collection": ""},
-    "actions": ["listIndexes", "listCollections", "dbStats", "dbHash", "collStats", "find"],
-}
-
-# We expect the MongoDB container to use the default ports
-MONGODB_PORT = 27017
-MONGODB_EXPORTER_PORT = 9216
-SNAP_PACKAGES = [("charmed-mongodb", "5/edge", 82)]
-REL_NAME = "database"
-
-
-class MongodbOperatorCharm(ops.charm.CharmBase):
+class MongodbOperatorCharm(CharmBase):
     """Charm the service."""
 
     def __init__(self, *args):
         super().__init__(*args)
-        self._port = MONGODB_PORT
-
+        self._port = CharmConfig.MONGODB_PORT
+       
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.start, self._on_start)
-        self.framework.observe(self.on[PEER].relation_joined, self._on_mongodb_relation_joined)
-        self.framework.observe(self.on[PEER].relation_changed, self._on_mongodb_relation_handler)
+        self.framework.observe(self.on[CharmConfig.Relations.PEERS].relation_joined, self._on_mongodb_relation_joined)
+        self.framework.observe(self.on[CharmConfig.Relations.PEERS].relation_changed, self._on_mongodb_relation_handler)
 
         # if a new leader has been elected update hosts of MongoDB
         self.framework.observe(self.on.leader_elected, self._on_leader_elected)
-        self.framework.observe(self.on[PEER].relation_departed, self._relation_departed)
+        self.framework.observe(self.on[CharmConfig.Relations.PEERS].relation_departed, self._relation_departed)
         self.framework.observe(
             self.on.mongodb_storage_detaching, self._on_mongodb_storage_detaching
         )
@@ -98,41 +107,36 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         self.framework.observe(self.on.set_password_action, self._on_set_password)
 
         # handle provider side of relations
-        self.client_relations = MongoDBProvider(self, substrate="vm")
+        self.client_relations = MongoDBProvider(self, substrate=CharmConfig.SUBSTRATE)
         self.legacy_client_relations = MongoDBLegacyProvider(self)
-        self.tls = MongoDBTLS(self, PEER, substrate="vm")
+        self.tls = MongoDBTLS(self, CharmConfig.Relations.PEERS, substrate=CharmConfig.SUBSTRATE)
         self.backups = MongoDBBackups(self)
 
         # relation events for Prometheus metrics are handled in the MetricsEndpointProvider
         self._grafana_agent = COSAgentProvider(
             self,
-            metrics_endpoints=[
-                {"path": "/metrics", "port": f"{MONGODB_EXPORTER_PORT}"},
-            ],
-            metrics_rules_dir="./src/alert_rules/prometheus",
-            logs_rules_dir="./src/alert_rules/loki",
-            log_slots=["charmed-mongodb:logs"],
+            metrics_endpoints=CharmConfig.Monitor.ENDPOINTS,
+            metrics_rules_dir=CharmConfig.Monitor.RULES_DIR,
+            logs_rules_dir=CharmConfig.Monitor.LOGS_RULES_DIR,
+            log_slots=CharmConfig.Monitor.LOG_SLOTS,
         )
 
-    def _generate_passwords(self) -> None:
+    def _generate_app_secrets(self) -> None:
         """Generate passwords and put them into peer relation.
 
-        The same keyFile and admin password on all members needed, hence it is generated once and
-        share between members via the app data.
+        The same keyFile and operator password on all members are needed.
+        It means it is needed to generate them once and share between members.
+        NB: only leader should execute this function.
         """
-        if not self.get_secret("app", "operator-password"):
-            self.set_secret("app", "operator-password", generate_password())
+        self._generate_user_password_if_needed(OperatorUser.username)
+        self._generate_user_password_if_needed(MonitorUser.username)
+        self._create_keyfile_if_needed()
 
-        if not self.get_secret("app", "monitor-password"):
-            self.set_secret("app", "monitor-password", generate_password())
-
-        if not self.get_secret("app", "keyfile"):
-            self.set_secret("app", "keyfile", generate_keyfile())
 
     def _on_leader_elected(self, event) -> None:
         """Generates necessary keyfile and updates replica hosts."""
-        if not self.get_secret("app", "keyfile"):
-            self._generate_passwords()
+        if not self._get_keyfile():
+            self._generate_app_secrets()
 
         self._update_hosts(event)
 
@@ -146,13 +150,13 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def _update_hosts(self, event) -> None:
         """Update replica set hosts and remove any unremoved replicas from the config."""
-        if "db_initialised" not in self.app_peer_data:
+        if not self._is_db_initialised:
             return
 
-        self.process_unremoved_units(event)
-        self.app_peer_data["replica_set_hosts"] = json.dumps(self._unit_ips)
+        self._process_unremoved_units(event)
+        self.app_peer_data[CharmConfig.Relations.REPLICA_SET_HOSTS] = json.dumps(self._unit_ips)
 
-    def _on_mongodb_storage_detaching(self, event: ops.charm.StorageDetachingEvent) -> None:
+    def _on_mongodb_storage_detaching(self, event: StorageDetachingEvent) -> None:
         """Before storage detaches, allow removing unit to remove itself from the set.
 
         If the removing unit is primary also allow it to step down and elect another unit as
@@ -188,7 +192,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def update_app_relation_data(self) -> None:
         """Helper function to update application relation data."""
-        if "db_initialised" not in self.app_peer_data:
+        if not self._is_db_initialised:
             return
 
         database_users = set()
@@ -196,7 +200,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         with MongoDBConnection(self.mongodb_config) as mongo:
             database_users = mongo.get_users()
 
-        for relation in self.model.relations[REL_NAME]:
+        for relation in self.model.relations[CharmConfig.Relations.APP]:
             username = self.client_relations._get_username_from_relation_id(relation.id)
             password = relation.data[self.app]["password"]
             config = self.client_relations._get_config(username, password)
@@ -206,7 +210,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 data["uris"] = config.uri
                 relation.data[self.app].update(data)
 
-    def _relation_departed(self, event: ops.charm.RelationDepartedEvent) -> None:
+    def _relation_departed(self, event: RelationDepartedEvent) -> None:
         """Remove peer from replica set if it wasn't able to remove itself.
 
         Args:
@@ -226,7 +230,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             event.defer()
             return
 
-    def process_unremoved_units(self, event) -> None:
+    def _process_unremoved_units(self, event) -> None:
         """Removes replica set members that are no longer running as a juju hosts."""
         with MongoDBConnection(self.mongodb_config) as mongo:
             try:
@@ -241,7 +245,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 logger.error("Deferring process_unremoved_units: error=%r", e)
                 event.defer()
 
-    def _on_mongodb_relation_joined(self, event: ops.charm.RelationJoinedEvent) -> None:
+    def _on_mongodb_relation_joined(self, event: RelationJoinedEvent) -> None:
         """Add peer to replica set.
 
         Args:
@@ -260,7 +264,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             event.defer()
             return
 
-    def _on_mongodb_relation_handler(self, event: ops.charm.RelationEvent) -> None:
+    def _on_mongodb_relation_handler(self, event: RelationEvent) -> None:
         """Adds the unit as a replica to the MongoDB replica set.
 
         Args:
@@ -277,7 +281,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # further reconfiguration can be successful only if a replica set is initialised.
         if (
             not (self.unit.is_leader() and event.unit)
-            or "db_initialised" not in self.app_peer_data
+            or not self._is_db_initialised
         ):
             return
 
@@ -314,14 +318,14 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         """Handle the install event (fired on startup)."""
         self.unit.status = MaintenanceStatus("installing MongoDB")
         try:
-            self._install_snap_packages(packages=SNAP_PACKAGES)
+            self._install_snap_packages(packages=CharmConfig.Snap.PACKAGES)
 
         except snap.SnapError:
             self.unit.status = BlockedStatus("couldn't install MongoDB")
             return
 
         # if a new unit is joining a cluster with a legacy relation it should start without auth
-        auth = not self.client_relations._get_users_from_relations(None, rel="obsolete")
+        auth = not self.client_relations._get_users_from_relations(None, rel=CharmConfig.Relations.OBSOLETTE_RELATIONS)
 
         # clear the default config file - user provided config files will be added in the config
         # changed hook
@@ -340,7 +344,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         # add licenses
         copy_licenses_to_unit()
 
-    def _on_start(self, event: ops.charm.StartEvent) -> None:
+    def _on_start(self, event: StartEvent) -> None:
         """Enables MongoDB service and initialises replica set.
 
         Args:
@@ -354,7 +358,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             logger.debug("starting MongoDB.")
             self.unit.status = MaintenanceStatus("starting MongoDB")
             snap_cache = snap.SnapCache()
-            mongodb_snap = snap_cache["charmed-mongodb"]
+            mongodb_snap = snap_cache[CharmConfig.Snap.CACHE_KEY]
             mongodb_snap.start(services=["mongod"])
             self.unit.status = ActiveStatus()
         except snap.SnapError as e:
@@ -397,13 +401,13 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
     def _on_update_status(self, event):
         # cannot have both legacy and new relations since they have different auth requirements
         if self.client_relations._get_users_from_relations(
-            None, rel="obsolete"
+            None, rel=CharmConfig.Relations.OBSOLETTE_RELATIONS
         ) and self.client_relations._get_users_from_relations(None):
             self.unit.status = BlockedStatus("cannot have both legacy and new relations")
             return
 
         # no need to report on replica set status until initialised
-        if "db_initialised" not in self.app_peer_data:
+        if not self._is_db_initialised:
             return
 
         # Cannot check more advanced MongoDB statuses if mongod hasn't started.
@@ -459,22 +463,32 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             event.defer()
             return
 
-    def _on_get_primary_action(self, event: ops.charm.ActionEvent):
+    def _on_get_primary_action(self, event: ActionEvent):
         event.set_results({"replica-set-primary": self._primary})
 
-    def _on_get_password(self, event: ops.charm.ActionEvent) -> None:
-        """Returns the password for the user as an action response."""
-        username = event.params.get("username", "operator")
-        if username not in CHARM_USERS:
+    def _get_user_or_fail(
+        self, event: ActionEvent, valid_users=CHARM_USERS, default_username=OperatorUser.username
+    ) -> str:
+        username = event.params.get(CharmConfig.Events.USERNAME_PARAM, default_username)
+        if username not in valid_users:
             event.fail(
-                f"The action can be run only for users used by the charm:"
-                f" {', '.join(CHARM_USERS)} not {username}"
+                f"The action can be run only for users used by the charm: {valid_users} not {username}"
             )
+            return ""
+        return username
+    
+    def _on_get_password(self, event: ActionEvent) -> None:
+        """Returns the password for the user as an action response."""
+        username = self._get_user_or_fail(event)
+        if not username:
             return
+        password = self._get_app_secret(
+            get_password_key_name_for_user(username)
+        )
+        event.set_results({CharmConfig.Events.PASSWORD_PARAM: password})
 
-        event.set_results({"password": self.get_secret("app", f"{username}-password")})
 
-    def _on_set_password(self, event: ops.charm.ActionEvent) -> None:
+    def _on_set_password(self, event: ActionEvent) -> None:
         """Set the password for the admin user."""
         # changing the backup password while a backup/restore is in progress can be disastrous
         pbm_status = self.backups._get_pbm_status()
@@ -487,17 +501,17 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             event.fail("The action can be run only on leader unit.")
             return
 
-        username = event.params.get("username", "operator")
-        if username not in CHARM_USERS:
-            event.fail(
-                f"The action can be run only for users used by the charm:"
-                f" {', '.join(CHARM_USERS)} not {username}"
-            )
+        username = self._get_user_or_fail(event)
+        if not username:
             return
-
-        new_password = generate_password()
-        if "password" in event.params:
-            new_password = event.params["password"]
+        
+        new_password = event.params.get(CharmConfig.Events.PASSWORD_PARAM, generate_password())
+        old_password = self._get_app_secret(get_password_key_name_for_user(username))
+        
+        if new_password == old_password:
+            event.log("The old and new passwords are equal.")
+            event.set_results({CharmConfig.Events.PASSWORD_PARAM: new_password})
+            return
 
         with MongoDBConnection(self.mongodb_config) as mongo:
             try:
@@ -511,15 +525,15 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 event.fail(f"Failed changing the password: {e}")
                 return
 
-        self.set_secret("app", f"{username}-password", new_password)
+        self._set_app_secret(get_password_key_name_for_user(username), new_password)
 
-        if username == "backup":
+        if username == BackupUser.username:
             self._connect_pbm_agent()
 
-        if username == "monitor":
+        if username == MonitorUser.username:
             self._connect_mongodb_exporter()
 
-        event.set_results({"password": new_password})
+        event.set_results({CharmConfig.Events.PASSWORD_PARAM: new_password})
 
     def _open_port_tcp(self, port: int) -> None:
         """Open the given port.
@@ -556,9 +570,9 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 )
                 raise
 
-    def _instatiate_keyfile(self, event: ops.charm.StartEvent) -> None:
+    def _instatiate_keyfile(self, event: StartEvent) -> None:
         # wait for keyFile to be created by leader unit
-        if not self.get_secret("app", "keyfile"):
+        if not self._get_keyfile():
             logger.debug("waiting for leader unit to generate keyfile contents")
             event.defer()
             return
@@ -567,12 +581,12 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         push_file_to_unit(
             parent_dir=MONGOD_CONF_DIR,
             file_name=KEY_FILE,
-            file_contents=self.get_secret("app", "keyfile"),
+            file_contents=self._get_keyfile(),
         )
 
     def _push_tls_certificate_to_workload(self) -> None:
         """Uploads certificate to the workload container."""
-        external_ca, external_pem = self.tls.get_tls_files("unit")
+        external_ca, external_pem = self.tls.get_tls_files(CharmConfig.Secrets.UNIT_SCOPE)
         if external_ca is not None:
             push_file_to_unit(
                 parent_dir=MONGOD_CONF_DIR, file_name=TLS_EXT_CA_FILE, file_contents=external_ca
@@ -583,7 +597,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 parent_dir=MONGOD_CONF_DIR, file_name=TLS_EXT_PEM_FILE, file_contents=external_pem
             )
 
-        internal_ca, internal_pem = self.tls.get_tls_files("app")
+        internal_ca, internal_pem = self.tls.get_tls_files(CharmConfig.Secrets.APP_SCOPE)
         if internal_ca is not None:
             push_file_to_unit(
                 parent_dir=MONGOD_CONF_DIR, file_name=TLS_INT_CA_FILE, file_contents=internal_ca
@@ -596,34 +610,41 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
     def _connect_mongodb_exporter(self) -> None:
         """Exposes the endpoint to mongodb_exporter."""
-        if "db_initialised" not in self.app_peer_data:
+        if not self._is_db_initialised:
             return
 
         # must wait for leader to set URI before connecting
-        if not self.get_secret("app", "monitor-password"):
+        if not self._get_app_secret(MonitorUser.password_key):
             return
 
         snap_cache = snap.SnapCache()
-        mongodb_snap = snap_cache["charmed-mongodb"]
-        mongodb_snap.set({"monitor-uri": self.monitor_config.uri})
-        mongodb_snap.restart(services=["mongodb-exporter"])
+        mongodb_snap = snap_cache[CharmConfig.Snap.CACHE_KEY]
+        mongodb_snap.set({CharmConfig.Monitor.URI_KEY: self.monitor_config.uri})
+        mongodb_snap.restart(services=[CharmConfig.Monitor.SERVICE_NAME])
 
     def _connect_pbm_agent(self) -> None:
         """Updates URI for pbm-agent."""
-        if "db_initialised" not in self.app_peer_data:
+        if not self._is_db_initialised:
             return
 
         # must wait for leader to set URI before any attempts to update are made
-        if not self.get_secret("app", "backup-password"):
+        if not self._get_app_secret(BackupUser.password_key):
             return
 
         snap_cache = snap.SnapCache()
-        pbm_snap = snap_cache["charmed-mongodb"]
-        pbm_snap.set({"pbm-uri": self.backups._backup_config.uri})
-        pbm_snap.restart(services=["pbm-agent"])
+        pbm_snap = snap_cache[CharmConfig.Snap.CACHE_KEY]
+        pbm_snap.set({CharmConfig.Backup.URI_KEY: self.backups._backup_config.uri})
+        pbm_snap.restart(services=[CharmConfig.Backup.SERVICE_NAME])
 
-    def _initialise_replica_set(self, event: ops.charm.StartEvent) -> None:
-        if "db_initialised" in self.app_peer_data:
+    def _set_db_initialised(self) -> None:
+        self.app_peer_data[CharmConfig.DB_INITIALIZED] = "True"
+
+    @property
+    def _is_db_initialised(self) -> bool:
+        return CharmConfig.DB_INITIALIZED in self.app_peer_data
+
+    def _initialise_replica_set(self, event: StartEvent) -> None:
+        if self._is_db_initialised:
             # The replica set should be initialised only once. Check should be
             # external (e.g., check initialisation inside peer relation). We
             # shouldn't rely on MongoDB response because the data directory
@@ -634,11 +655,11 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             try:
                 logger.info("Replica Set initialization")
                 direct_mongo.init_replset()
-                self._peers.data[self.app]["replica_set_hosts"] = json.dumps(
+                self._peers.data[self.app][CharmConfig.Relations.REPLICA_SET_HOSTS] = json.dumps(
                     [self._unit_ip(self.unit)]
                 )
                 logger.info("User initialization")
-                self._init_admin_user()
+                self._init_operator_user()
                 self._init_backup_user()
                 self._init_monitor_user()
                 logger.info("Manage relations")
@@ -657,14 +678,14 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
                 return
 
             # replica set initialised properly and ready to go
-            self.app_peer_data["db_initialised"] = "True"
+            self._set_db_initialised()
             self.unit.status = ActiveStatus()
 
-    def _unit_ip(self, unit: ops.model.Unit) -> str:
+    def _unit_ip(self, unit: Unit) -> str:
         """Returns the ip address of a given unit."""
         # check if host is current host
         if unit == self.unit:
-            return str(self.model.get_binding(PEER).network.bind_address)
+            return str(self.model.get_binding(CharmConfig.Relations.PEERS).network.bind_address)
         # check if host is a peer
         elif unit in self._peers.data:
             return str(self._peers.data[unit].get("private-address"))
@@ -672,29 +693,51 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         else:
             raise ApplicationHostNotFoundError
 
+    def _get_keyfile(self) -> Optional[str]:
+        """Get keyfile from the secret storage."""
+        return self._get_app_secret(CharmConfig.Secrets.KEY_FILE)
+    
+    def _get_app_secret(self, key: str) -> Optional[str]:
+        """Get application secret from the secret storage."""
+        return self.get_secret(CharmConfig.Secrets.APP_SCOPE, key)
+    
     def get_secret(self, scope: str, key: str) -> Optional[str]:
         """Get secret from the secret storage."""
-        if scope == "unit":
+        if scope == CharmConfig.Secrets.UNIT_SCOPE:
             return self.unit_peer_data.get(key, None)
-        elif scope == "app":
+        elif scope == CharmConfig.Secrets.APP_SCOPE:
             return self.app_peer_data.get(key, None)
         else:
             raise RuntimeError("Unknown secret scope.")
-
+    
+    def _set_app_secret(self, key: str, value: Optional[str]) -> None:
+        """Set application secret in the secret storage."""
+        self.set_secret(CharmConfig.Secrets.APP_SCOPE, key, value)
+    
     def set_secret(self, scope: str, key: str, value: Optional[str]) -> None:
         """Set secret in the secret storage."""
-        if scope == "unit":
+        if scope == CharmConfig.Secrets.UNIT_SCOPE:
             if not value:
                 del self.unit_peer_data[key]
                 return
             self.unit_peer_data.update({key: str(value)})
-        elif scope == "app":
+        elif scope == CharmConfig.Secrets.APP_SCOPE:
             if not value:
                 del self.app_peer_data[key]
                 return
             self.app_peer_data.update({key: str(value)})
         else:
             raise RuntimeError("Unknown secret scope.")
+    
+    def _generate_user_password_if_needed(self, username: str) -> None:
+        if not self._get_app_secret(username):
+            self._set_app_secret(
+                get_password_key_name_for_user(username), generate_password()
+            )
+
+    def _create_keyfile_if_needed(self) -> None:
+        if not self._get_app_secret(KEY_FILE):
+            self._set_app_secret(KEY_FILE, generate_keyfile())
 
     @property
     def _primary(self) -> str:
@@ -744,21 +787,21 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         Returns:
             A list of hosts addresses (strings).
         """
-        return json.loads(self.app_peer_data.get("replica_set_hosts", "[]"))
+        return json.loads(self.app_peer_data.get(CharmConfig.Relations.REPLICA_SET_HOSTS, "[]"))
 
     @property
     def mongodb_config(self) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for this deployment of MongoDB."""
         external_ca, _ = self.tls.get_tls_files("unit")
-        internal_ca, _ = self.tls.get_tls_files("app")
+        internal_ca, _ = self.tls.get_tls_files(CharmConfig.Secrets.APP_SCOPE)
 
         return MongoDBConfiguration(
             replset=self.app.name,
-            database="admin",
-            username="operator",
-            password=self.get_secret("app", "operator-password"),
+            database=OperatorUser.database,
+            username=OperatorUser.username,
+            password=self._get_app_secret(OperatorUser.password_key),
             hosts=set(self._unit_ips),
-            roles={"default"},
+            roles={OperatorUser.role},
             tls_external=external_ca is not None,
             tls_internal=internal_ca is not None,
         )
@@ -768,20 +811,20 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         """Generates a MongoDBConfiguration object for this deployment of MongoDB."""
         return MongoDBConfiguration(
             replset=self.app.name,
-            database="",
-            username="monitor",
-            password=self.get_secret("app", "monitor-password"),
+            database=MonitorUser.database,
+            username=MonitorUser.username,
             # MongoDB Exporter can only connect to one replica - not the entire set.
+            password=self._get_app_secret(MonitorUser.password_key),
             hosts=["127.0.0.1"],
-            roles={"monitor"},
-            tls_external=self.tls.get_tls_files("unit") is not None,
-            tls_internal=self.tls.get_tls_files("app") is not None,
+            roles={MonitorUser.role},
+            tls_external=self.tls.get_tls_files(CharmConfig.Secrets.UNIT_SCOPE) is not None,
+            tls_internal=self.tls.get_tls_files(CharmConfig.Secrets.APP_SCOPE) is not None,
         )
 
     @property
     def unit_peer_data(self) -> Dict:
         """Peer relation data object."""
-        relation = self.model.get_relation(PEER)
+        relation = self.model.get_relation(CharmConfig.Relations.PEERS)
         if relation is None:
             return {}
 
@@ -790,7 +833,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
     @property
     def app_peer_data(self) -> Dict:
         """Peer relation data object."""
-        relation = self.model.get_relation(PEER)
+        relation = self.model.get_relation(CharmConfig.Relations.PEERS)
         if not relation:
             return {}
 
@@ -803,18 +846,36 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         Returns:
              An `ops.model.Relation` object representing the peer relation.
         """
-        return self.model.get_relation(PEER)
+        return self.model.get_relation(CharmConfig.Relations.PEERS)
 
+    def _user_created(self, username: str) -> None:
+        self.app_peer_data[f"{username}_user_created"] = "True"
+
+    def _is_user_created(self, username: str) -> bool:
+        return f"{username}_user_created" in self.app_peer_data
+
+    @property
+    def _is_operator_user_created(self) -> bool:
+        return self._is_user_created(OperatorUser.username)
+
+    @property
+    def _is_monitor_user_created(self) -> bool:
+        return self._is_user_created(MonitorUser.username)
+    
+    @property
+    def _is_backup_user_created(self) -> bool:
+        return self._is_user_created(BackupUser.username)
+    
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_fixed(5),
         reraise=True,
         before=before_log(logger, logging.DEBUG),
     )
-    def _init_admin_user(self) -> None:
-        """Creates initial admin user for MongoDB.
+    def _init_operator_user(self) -> None:
+        """Creates initial operator user for MongoDB.
 
-        Initial admin user can be created only through localhost connection.
+        Initial operator user can be created only through localhost connection.
         see https://www.mongodb.com/docs/manual/core/localhost-exception/
         unfortunately, pymongo unable to create connection that considered
         as local connection by MongoDB, even if socket connection used.
@@ -822,7 +883,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         It is needed to install mongodb-clients inside charm container to make
         this function work correctly.
         """
-        if "user_created" in self.app_peer_data or not self.unit.is_leader():
+        if self._is_operator_user_created or not self.unit.is_leader():
             return
 
         out = subprocess.run(
@@ -830,10 +891,10 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
             input=self.mongodb_config.password.encode(),
         )
         if out.returncode == 0:
-            raise AdminUserCreationError
+            raise OperatorUserCreationError
 
-        logger.debug("User created")
-        self.app_peer_data["user_created"] = "True"
+        logger.debug("Operator user created")
+        self._user_created(OperatorUser.username)
 
     @retry(
         stop=stop_after_attempt(3),
@@ -843,15 +904,15 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
     )
     def _init_monitor_user(self):
         """Creates the monitor user on the MongoDB database."""
-        if "monitor_user_created" in self.app_peer_data:
+        if self._is_monitor_user_created:
             return
 
         with MongoDBConnection(self.mongodb_config) as mongo:
             logger.debug("creating the monitor user roles...")
-            mongo.create_role(role_name="explainRole", privileges=MONITOR_PRIVILEGES)
+            mongo.create_role(role_name=MonitorUser.mongo_role_name, privileges=MonitorUser.privileges)
             logger.debug("creating the monitor user...")
             mongo.create_user(self.monitor_config)
-            self.app_peer_data["monitor_user_created"] = "True"
+            self._user_created(MonitorUser.username)
 
         # leader should reconnect to exporter after creating the monitor user - since the snap
         # will have an authorisation error until the the user has been created and the daemon
@@ -866,16 +927,17 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
     )
     def _init_backup_user(self):
         """Creates the backup user on the MongoDB database."""
-        if "backup_user_created" in self.app_peer_data:
+        if self._is_backup_user_created:
             return
 
         with MongoDBConnection(self.mongodb_config) as mongo:
             # first we must create the necessary roles for the PBM tool
             logger.debug("creating the backup user roles...")
-            mongo.create_role(role_name="pbmAnyAction", privileges=PBM_PRIVILEGES)
+            mongo.create_role(role_name=BackupUser.mongo_role_name, privileges=BackupUser.privileges)
             logger.debug("creating the backup user...")
             mongo.create_user(self.backups._backup_config)
-            self.app_peer_data["backup_user_created"] = "True"
+            self._user_created(BackupUser.username)
+            
 
     def restart_mongod_service(self, auth=None):
         """Restarts the mongod service with its associated configuration."""
@@ -884,14 +946,14 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
 
         try:
             snap_cache = snap.SnapCache()
-            mongodb_snap = snap_cache["charmed-mongodb"]
-            mongodb_snap.stop(services=["mongod"])
+            mongodb_snap = snap_cache[CharmConfig.Snap.CACHE_KEY]
+            mongodb_snap.stop(services=[CharmConfig.SERVICE_NAME])
             update_mongod_service(
                 auth,
                 self._unit_ip(self.unit),
                 config=self.mongodb_config,
             )
-            mongodb_snap.start(services=["mongod"])
+            mongodb_snap.start(services=[CharmConfig.SERVICE_NAME])
         except snap.SnapError as e:
             logger.error("An exception occurred when starting mongod agent, error: %s.", str(e))
             self.unit.status = BlockedStatus("couldn't start MongoDB")
@@ -905,7 +967,7 @@ class MongodbOperatorCharm(ops.charm.CharmBase):
         return any("MONGOD_ARGS" in line and "--auth" in line for line in env_vars)
 
 
-class AdminUserCreationError(Exception):
+class OperatorUserCreationError(Exception):
     """Raised when a commands to create an admin user on MongoDB fail."""
 
     pass

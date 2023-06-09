@@ -35,6 +35,8 @@ from tenacity import (
     wait_fixed,
 )
 
+from .users import BackupUser
+
 # The unique Charmhub library identifier, never change it
 LIBID = "18c461132b824ace91af0d7abe85f40e"
 
@@ -499,16 +501,16 @@ class MongoDBBackups(Object):
     @property
     def _backup_config(self) -> MongoDBConfiguration:
         """Construct the config object for backup user and creates user if necessary."""
-        if not self.charm.get_secret("app", "backup-password"):
-            self.charm.set_secret("app", "backup-password", generate_password())
+        if not self.charm.get_secret("app", BackupUser.password_key):
+            self.charm.set_secret("app", BackupUser.password_key, generate_password())
 
         return MongoDBConfiguration(
             replset=self.charm.app.name,
-            database="",
-            username="backup",
-            password=self.charm.get_secret("app", "backup-password"),
+            database=BackupUser.database,
+            username=BackupUser.username,
+            password=self.charm.get_secret("app", BackupUser.password_key),
             hosts=["127.0.0.1"],  # pbm cannot make a direct connection if multiple hosts are used
-            roles=["backup"],
+            roles=[BackupUser.role],
             tls_external=self.charm.tls.get_tls_files("unit") is not None,
             tls_internal=self.charm.tls.get_tls_files("app") is not None,
         )
