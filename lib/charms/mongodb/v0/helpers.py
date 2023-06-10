@@ -3,6 +3,7 @@
 # See LICENSE file for licensing details.
 
 import logging
+import os
 import secrets
 import string
 import subprocess
@@ -188,6 +189,7 @@ def build_unit_status(mongodb_config: MongoDBConfiguration, unit_ip: str) -> Sta
 
 def copy_licenses_to_unit():
     """Copies licenses packaged in the snap to the charm's licenses directory."""
+    os.makedirs("src/licenses", exist_ok=True)
     subprocess.check_output("cp LICENSE src/licenses/LICENSE-charm", shell=True)
     subprocess.check_output(
         "cp -r /snap/charmed-mongodb/current/licenses/* src/licenses", shell=True
