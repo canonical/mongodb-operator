@@ -5,7 +5,7 @@
 import json
 import logging
 import subprocess
-from subprocess import check_call
+import time
 from typing import Dict, List, Optional
 
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
@@ -737,7 +737,7 @@ class MongodbOperatorCharm(CharmBase):
         """
         try:
             logger.debug("opening tcp port")
-            check_call(["open-port", "{}/TCP".format(port)])
+            subprocess.check_call(["open-port", "{}/TCP".format(port)])
         except subprocess.CalledProcessError as e:
             logger.exception("failed opening port: %s", str(e))
             raise
@@ -828,7 +828,32 @@ class MongodbOperatorCharm(CharmBase):
         snap_cache = snap.SnapCache()
         pbm_snap = snap_cache["charmed-mongodb"]
         pbm_snap.set({"pbm-uri": self.backups._backup_config.uri})
-        pbm_snap.restart(services=["pbm-agent"])
+        try:
+            # Added to avoid systemd error:
+            # 'snap.charmed-mongodb.pbm-agent.service: Start request repeated too quickly'
+            time.sleep(1)
+            pbm_snap.start(services=["pbm-agent"])
+        except snap.SnapError as e:
+            logger.error("Failed to restart pbm-agent: %s", str(e))
+            self._get_service_status("pbm-agent")
+            raise e
+
+    def _get_service_status(self, service_name) -> None:
+        logger.error(f"Getting status of {service_name} service:")
+        self._run_diagnostic_command(
+            f"systemctl status snap.charmed-mongodb.{service_name}.service"
+        )
+        self._run_diagnostic_command(
+            f"journalctl -xeu snap.charmed-mongodb.{service_name}.service"
+        )
+
+    def _run_diagnostic_command(self, cmd) -> None:
+        logger.error("Running diagnostic command: %s", cmd)
+        try:
+            output = subprocess.check_output(cmd, shell=True, text=True)
+            logger.error(output)
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Exception occurred running '{cmd}'\n {e}")
 
     def _initialise_replica_set(self, event: StartEvent) -> None:
         if "db_initialised" in self.app_peer_data:

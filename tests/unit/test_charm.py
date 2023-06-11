@@ -145,14 +145,14 @@ class TestCharm(unittest.TestCase):
             self.harness.charm.unit.status, BlockedStatus("failed to open TCP port for MongoDB")
         )
 
-    @patch("charm.check_call")
+    @patch("subprocess.check_call")
     def test_set_port(self, _call):
         """Test verifies operation of set port."""
         self.harness.charm._open_port_tcp(27017)
         # Make sure the port is opened and the service is started
         self.assertEqual(_call.call_args_list, [call(["open-port", "27017/TCP"])])
 
-    @patch("charm.check_call")
+    @patch("subprocess.check_call")
     def test_set_port_failure(self, _call):
         """Test verifies that we raise the correct errors when we fail to open a port."""
         _call.side_effect = subprocess.CalledProcessError(cmd="open-port 27017/TCP", returncode=1)
@@ -165,7 +165,7 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.update_mongod_service")
     @patch("charm.snap.SnapCache")
-    @patch("charm.check_call")
+    @patch("subprocess.check_call")
     def test_install_snap_packages_failure(self, _call, snap_cache, update_mongod_service):
         """Test verifies the correct functions get called when installing apt packages."""
         snap_cache.side_effect = snap.SnapError
