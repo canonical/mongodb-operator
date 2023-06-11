@@ -2,6 +2,7 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 import asyncio
+import logging
 import time
 
 import pytest
@@ -15,6 +16,7 @@ ANOTHER_DATABASE_APP_NAME = "another-database-a"
 MEDIAN_REELECTION_TIME = 12
 RESTART_DELAY = 60 * 3
 ORIGINAL_RESTART_DELAY = 5
+logger = logging.getLogger(__name__)
 
 
 @pytest.fixture()
@@ -651,3 +653,65 @@ async def test_network_cut(ops_test, continuous_writes):
     assert await helpers.secondary_up_to_date(
         ops_test, new_ip, total_expected_writes["number"]
     ), "secondary not up to date with the cluster after restarting."
+
+
+@pytest.mark.abort_on_fail
+async def test_scale_up_down(ops_test: OpsTest, continuous_writes):
+    """Scale up and down the application and verify the replica set is healthy."""
+    scales = [3, -3, 4, -4, 5, -5, 6, -6, 7, -7]
+    for count in scales:
+        await scale_and_verify(ops_test, count=count)
+    _verify_writes(ops_test)
+
+
+@pytest.mark.abort_on_fail
+async def test_scale_up_down_removing_leader(ops_test: OpsTest):
+    """Scale up and down the application and verify the replica set is healthy."""
+    scales = [3, -3, 4, -4, 5, -5, 6, -6, 7, -7]
+    for count in scales:
+        await scale_and_verify(ops_test, count=count, remove_leader=True)
+    _verify_writes(ops_test)
+
+
+async def scale_and_verify(ops_test: OpsTest, count: int, remove_leader: bool = False):
+    if count == 0:
+        logger.warning("Skipping scale up/down by 0")
+        return
+
+    app = await helpers.app_name(ops_test)
+
+    if count > 0:
+        logger.info(f"Scaling up by {count} units")
+        await ops_test.model.applications[app].add_units(count)
+    else:
+        logger.info(f"Scaling down by {abs(count)} units")
+        # find leader unit
+        leader_unit = await helpers.find_unit(ops_test, leader=True)
+        units_to_remove = []
+        for unit in ops_test.model.applications[app].units:
+            if not remove_leader and unit.name == leader_unit.name:
+                continue
+            else:
+                if len(units_to_remove) < abs(count):
+                    units_to_remove.append(unit.name)
+
+        logger.info(f"Units to remove {units_to_remove}")
+        await ops_test.model.applications[app].destroy_units(*units_to_remove)
+    logger.info("Waiting for idle")
+    await ops_test.model.wait_for_idle(
+        apps=[app],
+        status="active",
+        timeout=1000,
+    )
+    logger.info("Walidating replica set has primary")
+    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
+    primary = await helpers.replica_set_primary(ip_addresses, ops_test, app=app)
+
+    assert primary is not None, "Replica set has no primary"
+
+
+async def _verify_writes(ops_test: OpsTest, continuous_writes):
+    # verify that no writes to the db were missed
+    total_expected_writes = await helpers.stop_continous_writes(ops_test)
+    actual_writes = await helpers.count_writes(ops_test)
+    assert total_expected_writes["number"] == actual_writes, "writes to the db were missed."

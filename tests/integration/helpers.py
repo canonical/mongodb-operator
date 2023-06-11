@@ -13,6 +13,7 @@ METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 PORT = 27017
 APP_NAME = METADATA["name"]
 UNIT_IDS = [0, 1, 2]
+SERIES = "jammy"
 
 
 def unit_uri(ip_address: str, password, app=APP_NAME) -> str:
