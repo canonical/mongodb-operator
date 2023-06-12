@@ -238,6 +238,17 @@ class MongodbOperatorCharm(CharmBase):
         """
         return self.model.get_relation(PEER)
 
+    @property
+    def _db_initialised(self) -> bool:
+        return "db_initialised" in self.app_peer_data
+
+    @_db_initialised.setter
+    def _db_initialised(self, value):
+        if isinstance(value, bool):
+            self.app_peer_data["db_initialised"] = str(value)
+        else:
+            raise ValueError("db_initialised must be a boolean value")
+
     # END: properties
 
     # BEGIN: charm event handlers
@@ -360,10 +371,7 @@ class MongodbOperatorCharm(CharmBase):
         # only leader should configure replica set and app-changed-events can trigger the relation
         # changed hook resulting in no JUJU_REMOTE_UNIT if this is the case we should return
         # further reconfiguration can be successful only if a replica set is initialised.
-        if (
-            not (self.unit.is_leader() and event.unit)
-            or "db_initialised" not in self.app_peer_data
-        ):
+        if not (self.unit.is_leader() and event.unit) or not self._db_initialised:
             return
 
         with MongoDBConnection(self.mongodb_config) as mongo:
@@ -473,7 +481,7 @@ class MongodbOperatorCharm(CharmBase):
             return
 
         # no need to report on replica set status until initialised
-        if "db_initialised" not in self.app_peer_data:
+        if not self._db_initialised:
             return
 
         # Cannot check more advanced MongoDB statuses if mongod hasn't started.
@@ -662,7 +670,7 @@ class MongodbOperatorCharm(CharmBase):
 
     def _update_hosts(self, event: LeaderElectedEvent) -> None:
         """Update replica set hosts and remove any unremoved replicas from the config."""
-        if "db_initialised" not in self.app_peer_data:
+        if not self._db_initialised:
             return
 
         self.process_unremoved_units(event)
@@ -670,7 +678,7 @@ class MongodbOperatorCharm(CharmBase):
 
     def update_app_relation_data(self) -> None:
         """Helper function to update application relation data."""
-        if "db_initialised" not in self.app_peer_data:
+        if not self._db_initialised:
             return
 
         database_users = set()
@@ -804,7 +812,7 @@ class MongodbOperatorCharm(CharmBase):
 
     def _connect_mongodb_exporter(self) -> None:
         """Exposes the endpoint to mongodb_exporter."""
-        if "db_initialised" not in self.app_peer_data:
+        if not self._db_initialised:
             return
 
         # must wait for leader to set URI before connecting
@@ -818,7 +826,7 @@ class MongodbOperatorCharm(CharmBase):
 
     def _connect_pbm_agent(self) -> None:
         """Updates URI for pbm-agent."""
-        if "db_initialised" not in self.app_peer_data:
+        if not self._db_initialised:
             return
 
         # must wait for leader to set URI before any attempts to update are made
@@ -856,7 +864,7 @@ class MongodbOperatorCharm(CharmBase):
             logger.error(f"Exception occurred running '{cmd}'\n {e}")
 
     def _initialise_replica_set(self, event: StartEvent) -> None:
-        if "db_initialised" in self.app_peer_data:
+        if self._db_initialised:
             # The replica set should be initialised only once. Check should be
             # external (e.g., check initialisation inside peer relation). We
             # shouldn't rely on MongoDB response because the data directory
@@ -890,7 +898,7 @@ class MongodbOperatorCharm(CharmBase):
                 return
 
             # replica set initialised properly and ready to go
-            self.app_peer_data["db_initialised"] = "True"
+            self._db_initialised = True
             self.unit.status = ActiveStatus()
 
     def _unit_ip(self, unit: Unit) -> str:
