@@ -59,7 +59,3 @@ def push_file_to_unit(parent_dir, file_name, file_contents) -> None:
         os.chmod(file_name, 0o440)
     mongodb_user = pwd.getpwnam(MONGO_USER)
     os.chown(file_name, mongodb_user.pw_uid, ROOT_USER_GID)
-
-
-class ApplicationHostNotFoundError(Exception):
-    """Raised when a queried host is not in the application peers or the current host."""
