@@ -94,19 +94,17 @@ class MongodbOperatorCharm(CharmBase):
 
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.start, self._on_start)
-        self.framework.observe(self.on[PEER].relation_joined, self._on_mongodb_relation_joined)
-        self.framework.observe(self.on[PEER].relation_changed, self._on_mongodb_relation_handler)
+        self.framework.observe(self.on.update_status, self._on_update_status)
+        self.framework.observe(self.on[PEER].relation_joined, self._on_relation_joined)
+        self.framework.observe(self.on[PEER].relation_changed, self._on_relation_handler)
+        self.framework.observe(self.on[PEER].relation_departed, self._on_relation_departed)
 
         # if a new leader has been elected update hosts of MongoDB
         self.framework.observe(self.on.leader_elected, self._on_leader_elected)
-        self.framework.observe(self.on[PEER].relation_departed, self._on_relation_departed)
-        self.framework.observe(
-            self.on.mongodb_storage_detaching, self._on_mongodb_storage_detaching
-        )
+        self.framework.observe(self.on.mongodb_storage_detaching, self._on_storage_detaching)
 
-        self.framework.observe(self.on.update_status, self._on_update_status)
+        # actions
         self.framework.observe(self.on.get_primary_action, self._on_get_primary_action)
-
         self.framework.observe(self.on.get_password_action, self._on_get_password)
         self.framework.observe(self.on.set_password_action, self._on_set_password)
 
@@ -337,7 +335,7 @@ class MongodbOperatorCharm(CharmBase):
 
         self._initialise_replica_set(event)
 
-    def _on_mongodb_relation_joined(self, event: RelationJoinedEvent) -> None:
+    def _on_relation_joined(self, event: RelationJoinedEvent) -> None:
         """Add peer to replica set.
 
         Args:
@@ -346,7 +344,7 @@ class MongodbOperatorCharm(CharmBase):
         if not self.unit.is_leader():
             return
 
-        self._on_mongodb_relation_handler(event)
+        self._on_relation_handler(event)
 
         # app relations should be made aware of the new set of hosts
         try:
@@ -356,7 +354,7 @@ class MongodbOperatorCharm(CharmBase):
             event.defer()
             return
 
-    def _on_mongodb_relation_handler(self, event: RelationEvent) -> None:
+    def _on_relation_handler(self, event: RelationEvent) -> None:
         """Adds the unit as a replica to the MongoDB replica set.
 
         Args:
@@ -438,7 +436,7 @@ class MongodbOperatorCharm(CharmBase):
             event.defer()
             return
 
-    def _on_mongodb_storage_detaching(self, event: StorageDetachingEvent) -> None:
+    def _on_storage_detaching(self, event: StorageDetachingEvent) -> None:
         """Before storage detaches, allow removing unit to remove itself from the set.
 
         If the removing unit is primary also allow it to step down and elect another unit as
@@ -727,7 +725,7 @@ class MongodbOperatorCharm(CharmBase):
         # Add in any new IPs to the replica set. Relation handlers require a reference to
         # a unit.
         event.unit = self.unit
-        self._on_mongodb_relation_handler(event)
+        self._on_relation_handler(event)
 
         # app relations should be made aware of the new set of hosts
         try:
@@ -835,6 +833,7 @@ class MongodbOperatorCharm(CharmBase):
 
         snap_cache = snap.SnapCache()
         pbm_snap = snap_cache["charmed-mongodb"]
+        pbm_snap.stop(services=["pbm-agent"])
         pbm_snap.set({"pbm-uri": self.backups._backup_config.uri})
         try:
             # Added to avoid systemd error:
