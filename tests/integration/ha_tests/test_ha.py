@@ -656,21 +656,23 @@ async def test_network_cut(ops_test, continuous_writes):
 
 
 @pytest.mark.abort_on_fail
+@pytest.mark.unstable
 async def test_scale_up_down(ops_test: OpsTest, continuous_writes):
     """Scale up and down the application and verify the replica set is healthy."""
     scales = [3, -3, 4, -4, 5, -5, 6, -6, 7, -7]
     for count in scales:
         await scale_and_verify(ops_test, count=count)
-    _verify_writes(ops_test)
+    await _verify_writes(ops_test)
 
 
 @pytest.mark.abort_on_fail
+@pytest.mark.unstable
 async def test_scale_up_down_removing_leader(ops_test: OpsTest):
     """Scale up and down the application and verify the replica set is healthy."""
     scales = [3, -3, 4, -4, 5, -5, 6, -6, 7, -7]
     for count in scales:
         await scale_and_verify(ops_test, count=count, remove_leader=True)
-    _verify_writes(ops_test)
+    await _verify_writes(ops_test)
 
 
 async def scale_and_verify(ops_test: OpsTest, count: int, remove_leader: bool = False):
@@ -703,7 +705,7 @@ async def scale_and_verify(ops_test: OpsTest, count: int, remove_leader: bool = 
         status="active",
         timeout=1000,
     )
-    logger.info("Walidating replica set has primary")
+    logger.info("Validating replica set has primary")
     ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
     primary = await helpers.replica_set_primary(ip_addresses, ops_test, app=app)
 
