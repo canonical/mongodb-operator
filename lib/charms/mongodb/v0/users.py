@@ -65,7 +65,6 @@ class MongoDBUser:
         else:
             raise ValueError(f"Unknown user: {username}")
 
-
 class _OperatorUser(MongoDBUser):
     """Operator user for MongoDB."""
 
@@ -103,7 +102,6 @@ class _BackupUser(MongoDBUser):
     _mongodb_role = "pbmAnyAction"
     _privileges = {"resource": {"anyResource": True}, "actions": ["anyAction"]}
     _hosts = ["127.0.0.1"]  # pbm cannot make a direct connection if multiple hosts are used
-
 
 OperatorUser = _OperatorUser()
 MonitorUser = _MonitorUser()

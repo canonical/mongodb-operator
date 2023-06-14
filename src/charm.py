@@ -6,7 +6,7 @@ import json
 import logging
 import subprocess
 import time
-from typing import Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from charms.mongodb.v0.helpers import (
@@ -231,7 +231,6 @@ class MongodbOperatorCharm(CharmBase):
             raise ValueError(
                 f"'db_initialised' must be a boolean value. Proivded: {value} is of type {type(value)}"
             )
-
     # END: properties
 
     # BEGIN: charm event handlers
@@ -634,9 +633,6 @@ class MongodbOperatorCharm(CharmBase):
     # BEGIN: helper functions
     def _is_user_created(self, user: MongoDBUser) -> bool:
         return f"{user.get_username()}_user_created" in self.app_peer_data
-
-    def _user_created(self, user: MongoDBUser) -> None:
-        self.app_peer_data[f"{user.get_username()}_user_created"] = "True"
 
     def _get_mongodb_config_for_user(
         self, user: MongoDBUser, hosts: Set[str]
