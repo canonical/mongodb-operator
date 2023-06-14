@@ -6,7 +6,7 @@ import json
 import logging
 import subprocess
 import time
-from typing import Any, Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set
 
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from charms.mongodb.v0.helpers import (
@@ -62,26 +62,11 @@ from ops.model import (
 )
 from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
+from config import Config
 from exceptions import AdminUserCreationError, ApplicationHostNotFoundError
-from machine_helpers import (
-    ENV_VAR_PATH,
-    MONGOD_CONF_DIR,
-    MONGOD_CONF_FILE_PATH,
-    push_file_to_unit,
-    update_mongod_service,
-)
+from machine_helpers import push_file_to_unit, update_mongod_service
 
 logger = logging.getLogger(__name__)
-
-PEER = "database-peers"
-GPG_URL = "https://www.mongodb.org/static/pgp/server-5.0.asc"
-MONGO_EXEC_LINE = 10
-
-# We expect the MongoDB container to use the default ports
-MONGODB_PORT = 27017
-MONGODB_EXPORTER_PORT = 9216
-SNAP_PACKAGES = [("charmed-mongodb", "5/edge", 82)]
-REL_NAME = "database"
 
 
 class MongodbOperatorCharm(CharmBase):
@@ -89,14 +74,20 @@ class MongodbOperatorCharm(CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
-        self._port = MONGODB_PORT
+        self._port = Config.MONGODB_PORT
 
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.start, self._on_start)
         self.framework.observe(self.on.update_status, self._on_update_status)
-        self.framework.observe(self.on[PEER].relation_joined, self._on_relation_joined)
-        self.framework.observe(self.on[PEER].relation_changed, self._on_relation_handler)
-        self.framework.observe(self.on[PEER].relation_departed, self._on_relation_departed)
+        self.framework.observe(
+            self.on[Config.Relations.PEERS].relation_joined, self._on_relation_joined
+        )
+        self.framework.observe(
+            self.on[Config.Relations.PEERS].relation_changed, self._on_relation_handler
+        )
+        self.framework.observe(
+            self.on[Config.Relations.PEERS].relation_departed, self._on_relation_departed
+        )
 
         # if a new leader has been elected update hosts of MongoDB
         self.framework.observe(self.on.leader_elected, self._on_leader_elected)
@@ -108,20 +99,18 @@ class MongodbOperatorCharm(CharmBase):
         self.framework.observe(self.on.set_password_action, self._on_set_password)
 
         # handle provider side of relations
-        self.client_relations = MongoDBProvider(self, substrate="vm")
+        self.client_relations = MongoDBProvider(self, substrate=Config.SUBSTRATE)
         self.legacy_client_relations = MongoDBLegacyProvider(self)
-        self.tls = MongoDBTLS(self, PEER, substrate="vm")
+        self.tls = MongoDBTLS(self, Config.Relations.PEERS, substrate=Config.SUBSTRATE)
         self.backups = MongoDBBackups(self)
 
         # relation events for Prometheus metrics are handled in the MetricsEndpointProvider
         self._grafana_agent = COSAgentProvider(
             self,
-            metrics_endpoints=[
-                {"path": "/metrics", "port": f"{MONGODB_EXPORTER_PORT}"},
-            ],
-            metrics_rules_dir="./src/alert_rules/prometheus",
-            logs_rules_dir="./src/alert_rules/loki",
-            log_slots=["charmed-mongodb:logs"],
+            metrics_endpoints=Config.Monitoring.METRICS_ENDPOINTS,
+            metrics_rules_dir=Config.Monitoring.METRICS_RULES_DIR,
+            logs_rules_dir=Config.Monitoring.LOGS_RULES_DIR,
+            log_slots=Config.Monitoring.LOG_SLOTS,
         )
 
     # BEGIN: properties
@@ -195,7 +184,7 @@ class MongodbOperatorCharm(CharmBase):
     @property
     def unit_peer_data(self) -> Dict:
         """Peer relation data object."""
-        relation = self.model.get_relation(PEER)
+        relation = self.model.get_relation(Config.Relations.PEERS)
         if relation is None:
             return {}
 
@@ -204,7 +193,7 @@ class MongodbOperatorCharm(CharmBase):
     @property
     def app_peer_data(self) -> Dict:
         """Peer relation data object."""
-        relation = self.model.get_relation(PEER)
+        relation = self.model.get_relation(Config.Relations.PEERS)
         if not relation:
             return {}
 
@@ -217,7 +206,7 @@ class MongodbOperatorCharm(CharmBase):
         Returns:
              An `ops.model.Relation` object representing the peer relation.
         """
-        return self.model.get_relation(PEER)
+        return self.model.get_relation(Config.Relations.PEERS)
 
     @property
     def _db_initialised(self) -> bool:
@@ -231,6 +220,7 @@ class MongodbOperatorCharm(CharmBase):
             raise ValueError(
                 f"'db_initialised' must be a boolean value. Proivded: {value} is of type {type(value)}"
             )
+
     # END: properties
 
     # BEGIN: charm event handlers
@@ -239,19 +229,21 @@ class MongodbOperatorCharm(CharmBase):
         """Handle the install event (fired on startup)."""
         self.unit.status = MaintenanceStatus("installing MongoDB")
         try:
-            self._install_snap_packages(packages=SNAP_PACKAGES)
+            self._install_snap_packages(packages=Config.SNAP_PACKAGES)
 
         except snap.SnapError:
             self.unit.status = BlockedStatus("couldn't install MongoDB")
             return
 
         # if a new unit is joining a cluster with a legacy relation it should start without auth
-        auth = not self.client_relations._get_users_from_relations(None, rel="obsolete")
+        auth = not self.client_relations._get_users_from_relations(
+            None, rel=Config.Relations.OBSOLETE_RELATIONS_NAME
+        )
 
         # clear the default config file - user provided config files will be added in the config
         # changed hook
         try:
-            with open(MONGOD_CONF_FILE_PATH, "r+") as f:
+            with open(Config.MONGOD_CONF_FILE_PATH, "r+") as f:
                 f.truncate(0)
         except IOError:
             self.unit.status = BlockedStatus("Could not install MongoDB")
@@ -504,7 +496,7 @@ class MongodbOperatorCharm(CharmBase):
         if not username:
             return
         key_name = MongoDBUser.get_password_key_name_for_user(username)
-        event.set_results({"password": self.get_secret("app", key_name)})
+        event.set_results({Config.Actions.PASSWORD_PARAM_NAME: self.get_secret("app", key_name)})
 
     def _on_set_password(self, event: ActionEvent) -> None:
         """Set the password for the admin user."""
@@ -525,7 +517,7 @@ class MongodbOperatorCharm(CharmBase):
         if not username:
             return
 
-        new_password = event.params.get("password", generate_password())
+        new_password = event.params.get(Config.Actions.PASSWORD_PARAM_NAME, generate_password())
         with MongoDBConnection(self.mongodb_config) as mongo:
             try:
                 mongo.set_user_password(username, new_password)
@@ -546,7 +538,7 @@ class MongodbOperatorCharm(CharmBase):
         if username == MonitorUser.get_username():
             self._connect_mongodb_exporter()
 
-        event.set_results({"password": new_password})
+        event.set_results({Config.Actions.PASSWORD_PARAM_NAME: new_password})
 
     # END: charm event handlers
 
@@ -634,9 +626,12 @@ class MongodbOperatorCharm(CharmBase):
     def _is_user_created(self, user: MongoDBUser) -> bool:
         return f"{user.get_username()}_user_created" in self.app_peer_data
 
+    def _user_created(self, user: MongoDBUser) -> None:
+        self.app_peer_data[f"{user.get_username()}_user_created"] = "True"
+
     def _get_mongodb_config_for_user(
         self, user: MongoDBUser, hosts: Set[str]
-        ) -> MongoDBConfiguration:
+    ) -> MongoDBConfiguration:
         external_ca, _ = self.tls.get_tls_files("unit")
         internal_ca, _ = self.tls.get_tls_files("app")
 
@@ -653,7 +648,7 @@ class MongodbOperatorCharm(CharmBase):
 
     def _get_user_or_fail_event(self, event: ActionEvent, default_username: str) -> Optional[str]:
         """Returns MongoDBUser object or raises ActionFail if user doesn't exist."""
-        username = event.params.get("username", default_username)
+        username = event.params.get(Config.Actions.USERNAME_PARAM_NAME, default_username)
         if username not in CHARM_USERS:
             event.fail(
                 f"The action can be run only for users used by the charm:"
@@ -697,7 +692,7 @@ class MongodbOperatorCharm(CharmBase):
         with MongoDBConnection(self.mongodb_config) as mongo:
             database_users = mongo.get_users()
 
-        for relation in self.model.relations[REL_NAME]:
+        for relation in self.model.relations[Config.Relations.NAME]:
             username = self.client_relations._get_username_from_relation_id(relation.id)
             password = relation.data[self.app]["password"]
             config = self.client_relations._get_config(username, password)
@@ -792,7 +787,7 @@ class MongodbOperatorCharm(CharmBase):
 
         # put keyfile on the machine with appropriate permissions
         push_file_to_unit(
-            parent_dir=MONGOD_CONF_DIR,
+            parent_dir=Config.MONGOD_CONF_DIR,
             file_name=KEY_FILE,
             file_contents=self.get_secret("app", "keyfile"),
         )
@@ -802,23 +797,31 @@ class MongodbOperatorCharm(CharmBase):
         external_ca, external_pem = self.tls.get_tls_files("unit")
         if external_ca is not None:
             push_file_to_unit(
-                parent_dir=MONGOD_CONF_DIR, file_name=TLS_EXT_CA_FILE, file_contents=external_ca
+                parent_dir=Config.MONGOD_CONF_DIR,
+                file_name=TLS_EXT_CA_FILE,
+                file_contents=external_ca,
             )
 
         if external_pem is not None:
             push_file_to_unit(
-                parent_dir=MONGOD_CONF_DIR, file_name=TLS_EXT_PEM_FILE, file_contents=external_pem
+                parent_dir=Config.MONGOD_CONF_DIR,
+                file_name=TLS_EXT_PEM_FILE,
+                file_contents=external_pem,
             )
 
         internal_ca, internal_pem = self.tls.get_tls_files("app")
         if internal_ca is not None:
             push_file_to_unit(
-                parent_dir=MONGOD_CONF_DIR, file_name=TLS_INT_CA_FILE, file_contents=internal_ca
+                parent_dir=Config.MONGOD_CONF_DIR,
+                file_name=TLS_INT_CA_FILE,
+                file_contents=internal_ca,
             )
 
         if internal_pem is not None:
             push_file_to_unit(
-                parent_dir=MONGOD_CONF_DIR, file_name=TLS_INT_PEM_FILE, file_contents=internal_pem
+                parent_dir=Config.MONGOD_CONF_DIR,
+                file_name=TLS_INT_PEM_FILE,
+                file_contents=internal_pem,
             )
 
     def _connect_mongodb_exporter(self) -> None:
@@ -832,8 +835,8 @@ class MongodbOperatorCharm(CharmBase):
 
         snap_cache = snap.SnapCache()
         mongodb_snap = snap_cache["charmed-mongodb"]
-        mongodb_snap.set({"monitor-uri": self.monitor_config.uri})
-        mongodb_snap.restart(services=["mongodb-exporter"])
+        mongodb_snap.set({Config.Monitoring.URI_PARAM_NAME: self.monitor_config.uri})
+        mongodb_snap.restart(services=[Config.Monitoring.SERVICE_NAME])
 
     def _connect_pbm_agent(self) -> None:
         """Updates URI for pbm-agent."""
@@ -846,16 +849,16 @@ class MongodbOperatorCharm(CharmBase):
 
         snap_cache = snap.SnapCache()
         pbm_snap = snap_cache["charmed-mongodb"]
-        pbm_snap.stop(services=["pbm-agent"])
-        pbm_snap.set({"pbm-uri": self.backup_config.uri})
+        pbm_snap.stop(services=[Config.Backup.SERVICE_NAME])
+        pbm_snap.set({Config.Backup.URI_PARAM_NAME: self.backup_config.uri})
         try:
             # Added to avoid systemd error:
             # 'snap.charmed-mongodb.pbm-agent.service: Start request repeated too quickly'
             time.sleep(1)
-            pbm_snap.start(services=["pbm-agent"])
+            pbm_snap.start(services=[Config.Backup.SERVICE_NAME])
         except snap.SnapError as e:
-            logger.error("Failed to restart pbm-agent: %s", str(e))
-            self._get_service_status("pbm-agent")
+            logger.error(f"Failed to restart {Config.Backup.SERVICE_NAME}: {str(e)}")
+            self._get_service_status(Config.Backup.SERVICE_NAME)
             raise e
 
     def _get_service_status(self, service_name) -> None:
@@ -917,7 +920,7 @@ class MongodbOperatorCharm(CharmBase):
         """Returns the ip address of a given unit."""
         # check if host is current host
         if unit == self.unit:
-            return str(self.model.get_binding(PEER).network.bind_address)
+            return str(self.model.get_binding(Config.Relations.PEERS).network.bind_address)
         # check if host is a peer
         elif unit in self._peers.data:
             return str(self._peers.data[unit].get("private-address"))
@@ -971,7 +974,7 @@ class MongodbOperatorCharm(CharmBase):
 
     def auth_enabled(self) -> bool:
         """Returns true is a mongod service has the auth configuration."""
-        with open(ENV_VAR_PATH, "r") as env_vars_file:
+        with open(Config.ENV_VAR_PATH, "r") as env_vars_file:
             env_vars = env_vars_file.readlines()
 
         return any("MONGOD_ARGS" in line and "--auth" in line for line in env_vars)

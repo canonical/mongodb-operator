@@ -16,7 +16,6 @@ from charm import MongodbOperatorCharm, NotReadyError, subprocess
 from .helpers import patch_network_get
 
 REPO_NAME = "deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"
-GPG_URL = "https://www.mongodb.org/static/pgp/server-5.0.asc"
 REPO_ENTRY = (
     "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/5.0 multiverse"
 )
@@ -700,11 +699,11 @@ class TestCharm(unittest.TestCase):
             action_event.fail.assert_called()
             self.assertEqual(current_password, original_password)
 
-    @patch("charm.ENV_VAR_PATH", "tests/unit/data/env.txt")
+    @patch("config.Config.ENV_VAR_PATH", "tests/unit/data/env.txt")
     def test_auth_not_enabled(self):
         self.assertEqual(self.harness.charm.auth_enabled(), False)
 
-    @patch("charm.ENV_VAR_PATH", "tests/unit/data/env_auth.txt")
+    @patch("config.Config.ENV_VAR_PATH", "tests/unit/data/env_auth.txt")
     def test_auth_enabled(self):
         self.assertEqual(self.harness.charm.auth_enabled(), True)
 
