@@ -40,7 +40,7 @@ async def test_build_deploy_charms(ops_test: OpsTest):
     db_charm = await ops_test.build_charm(".")
 
     await ops_test.model.deploy(GRAYLOG_APP_NAME, num_units=1)
-    await ops_test.model.deploy(ELASTIC_APP_NAME, num_units=1, constraints="mem=6G")
+    await ops_test.model.deploy(ELASTIC_APP_NAME, num_units=1, constraints="mem=4G")
     await ops_test.model.deploy(db_charm, num_units=2)
 
     # must be related before checking for active status (graylog will go into blocked without

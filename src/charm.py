@@ -640,7 +640,7 @@ class MongodbOperatorCharm(CharmBase):
 
     def _get_mongodb_config_for_user(
         self, user: MongoDBUser, hosts: Set[str]
-    ) -> MongoDBConfiguration:
+        ) -> MongoDBConfiguration:
         external_ca, _ = self.tls.get_tls_files("unit")
         internal_ca, _ = self.tls.get_tls_files("app")
 
