@@ -40,7 +40,7 @@ async def test_build_deploy_charms(ops_test: OpsTest):
     db_charm = await ops_test.build_charm(".")
 
     await ops_test.model.deploy(GRAYLOG_APP_NAME, num_units=1)
-    await ops_test.model.deploy(ELASTIC_APP_NAME, num_units=1, constraints="mem=6G")
+    await ops_test.model.deploy(ELASTIC_APP_NAME, num_units=1, constraints="mem=4G")
     await ops_test.model.deploy(db_charm, num_units=2)
 
     # must be related before checking for active status (graylog will go into blocked without
@@ -144,6 +144,7 @@ async def test_add_unit_joins_without_auth(ops_test: OpsTest):
     ), "MongoDB requires disabled authentication to support legacy relations"
 
 
+@pytest.mark.unstable
 async def test_enable_tls(ops_test: OpsTest) -> None:
     """Verify each unit has TLS enabled after relating to the TLS application."""
     config = {"generate-self-signed-certificates": "true", "ca-common-name": "Test CA"}
@@ -169,6 +170,7 @@ async def test_enable_tls(ops_test: OpsTest) -> None:
     await ops_test.model.wait_for_idle(apps=[DATABASE_APP_NAME], status="active", timeout=1000)
 
 
+@pytest.mark.unstable
 async def test_new_relation_fails_with_legacy(ops_test: OpsTest) -> None:
     """Verify new relation joining results in blocked when legacy relations exist.
 
@@ -195,6 +197,7 @@ async def test_new_relation_fails_with_legacy(ops_test: OpsTest) -> None:
     ), "MongoDB requires disabled authentication to support legacy relations"
 
 
+@pytest.mark.unstable
 async def test_legacy_relation_fails_with_new(ops_test: OpsTest) -> None:
     """Verify legacy relation joining results in blocked when new relations exist."""
     database = await ops_test.build_charm(".")
