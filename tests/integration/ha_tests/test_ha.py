@@ -693,9 +693,8 @@ async def scale_and_verify(ops_test: OpsTest, count: int, remove_leader: bool = 
         for unit in ops_test.model.applications[app].units:
             if not remove_leader and unit.name == leader_unit.name:
                 continue
-            else:
-                if len(units_to_remove) < abs(count):
-                    units_to_remove.append(unit.name)
+            if len(units_to_remove) < abs(count):
+                units_to_remove.append(unit.name)
 
         logger.info(f"Units to remove {units_to_remove}")
         await ops_test.model.applications[app].destroy_units(*units_to_remove)
