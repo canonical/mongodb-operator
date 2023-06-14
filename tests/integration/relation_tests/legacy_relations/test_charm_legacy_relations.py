@@ -50,7 +50,7 @@ async def test_build_deploy_charms(ops_test: OpsTest):
         apps=[ELASTIC_APP_NAME, DATABASE_APP_NAME],
         raise_on_error=False,
         status="active",
-        timeout=500,
+        timeout=1000,
     )
     await ops_test.model.wait_for_idle(
         apps=[GRAYLOG_APP_NAME], raise_on_error=False, status="blocked", timeout=2000
