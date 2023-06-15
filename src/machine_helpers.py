@@ -9,21 +9,18 @@ from pathlib import Path
 from charms.mongodb.v0.helpers import get_mongod_args
 from charms.mongodb.v0.mongodb import MongoDBConfiguration
 
+from config import Config
+
 logger = logging.getLogger(__name__)
 
-ENV_VAR_PATH = "/etc/environment"
 DB_PROCESS = "/usr/bin/mongod"
 ROOT_USER_GID = 0
 MONGO_USER = "snap_daemon"
 
-MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
-MONGOD_CONF_DIR = f"{MONGODB_SNAP_DATA_DIR}/etc/mongod"
-MONGOD_CONF_FILE_PATH = f"{MONGOD_CONF_DIR}/mongod.conf"
-
 
 def update_mongod_service(auth: bool, machine_ip: str, config: MongoDBConfiguration) -> None:
     """Updates the mongod service file with the new options for starting."""
-    with open(ENV_VAR_PATH, "r") as env_var_file:
+    with open(Config.ENV_VAR_PATH, "r") as env_var_file:
         env_vars = env_var_file.readlines()
 
     # write our arguments and write them to /etc/environment - the environment variable here is
@@ -40,7 +37,7 @@ def update_mongod_service(auth: bool, machine_ip: str, config: MongoDBConfigurat
     if not args_added:
         env_vars.append(f"MONGOD_ARGS={mongod_start_args}")
 
-    with open(ENV_VAR_PATH, "w") as service_file:
+    with open(Config.ENV_VAR_PATH, "w") as service_file:
         service_file.writelines(env_vars)
 
 
