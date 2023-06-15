@@ -41,7 +41,7 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    @patch("charm.MongodbOperatorCharm._init_admin_user")
+    @patch("charm.MongodbOperatorCharm._init_operator_user")
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
     @patch("charm.snap.SnapCache")
     @patch("charm.push_file_to_unit")
@@ -68,7 +68,7 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    @patch("charm.MongodbOperatorCharm._init_admin_user")
+    @patch("charm.MongodbOperatorCharm._init_operator_user")
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
     @patch("charm.push_file_to_unit")
     @patch("builtins.open")
@@ -96,7 +96,7 @@ class TestCharm(unittest.TestCase):
     @patch("charm.push_file_to_unit")
     @patch("builtins.open")
     @patch("charm.MongoDBConnection")
-    @patch("charm.MongodbOperatorCharm._init_admin_user")
+    @patch("charm.MongodbOperatorCharm._init_operator_user")
     def test_on_start_mongod_not_ready_defer(
         self,
         init_admin,
@@ -290,7 +290,7 @@ class TestCharm(unittest.TestCase):
     @patch("charm.push_file_to_unit")
     @patch("builtins.open")
     @patch("charm.MongoDBConnection")
-    @patch("charm.MongodbOperatorCharm._init_admin_user")
+    @patch("charm.MongodbOperatorCharm._init_operator_user")
     def test_initialise_replica_failure_leads_to_waiting_state(
         self,
         init_admin,
@@ -622,10 +622,10 @@ class TestCharm(unittest.TestCase):
         """
         self.harness.set_leader(True)
 
-        self.harness.charm._init_admin_user()
-        self.assertEqual("user_created" in self.harness.charm.app_peer_data, True)
+        self.harness.charm._init_operator_user()
+        self.assertEqual("operator_user_created" in self.harness.charm.app_peer_data, True)
 
-        self.harness.charm._init_admin_user()
+        self.harness.charm._init_operator_user()
         run.assert_called_once()
 
     @patch_network_get(private_address="1.1.1.1")
@@ -635,11 +635,11 @@ class TestCharm(unittest.TestCase):
         """Tests that a new admin password is generated and is returned to the user."""
         self.harness.set_leader(True)
         pbm_status.return_value = ActiveStatus("pbm")
-        original_password = self.harness.charm.app_peer_data["operator-password"]
+        original_password = self.harness.charm.app_peer_data["operator_password"]
         action_event = mock.Mock()
         action_event.params = {}
         self.harness.charm._on_set_password(action_event)
-        new_password = self.harness.charm.app_peer_data["operator-password"]
+        new_password = self.harness.charm.app_peer_data["operator_password"]
 
         # verify app data is updated and results are reported to user
         self.assertNotEqual(original_password, new_password)
@@ -655,7 +655,7 @@ class TestCharm(unittest.TestCase):
         action_event = mock.Mock()
         action_event.params = {"password": "canonical123"}
         self.harness.charm._on_set_password(action_event)
-        new_password = self.harness.charm.app_peer_data["operator-password"]
+        new_password = self.harness.charm.app_peer_data["operator_password"]
 
         # verify app data is updated and results are reported to user
         self.assertEqual("canonical123", new_password)
@@ -668,7 +668,7 @@ class TestCharm(unittest.TestCase):
         """Tests failure to reset password does not update app data and failure is reported."""
         self.harness.set_leader(True)
         pbm_status.return_value = ActiveStatus("pbm")
-        original_password = self.harness.charm.app_peer_data["operator-password"]
+        original_password = self.harness.charm.app_peer_data["operator_password"]
         action_event = mock.Mock()
         action_event.params = {}
 
@@ -677,7 +677,7 @@ class TestCharm(unittest.TestCase):
                 exception
             )
             self.harness.charm._on_set_password(action_event)
-            current_password = self.harness.charm.app_peer_data["operator-password"]
+            current_password = self.harness.charm.app_peer_data["operator_password"]
 
             # verify passwords are not updated.
             self.assertEqual(current_password, original_password)

@@ -15,8 +15,6 @@ import time
 from typing import Dict
 
 from charms.data_platform_libs.v0.s3 import CredentialsChangedEvent, S3Requirer
-from charms.mongodb.v0.helpers import generate_password
-from charms.mongodb.v0.mongodb import MongoDBConfiguration
 from charms.operator_libs_linux.v1 import snap
 from ops.framework import Object
 from ops.model import (
@@ -108,7 +106,7 @@ class MongoDBBackups(Object):
             return
 
         # pbm requires that the URI is set before adding configs
-        pbm_snap.set({"pbm-uri": self._backup_config.uri})
+        pbm_snap.set({"pbm-uri": self.charm.backup_config.uri})
 
         # Add and sync configuration options while handling errors related to configuring options
         # and re-syncing PBM.
@@ -495,20 +493,3 @@ class MongoDBBackups(Object):
             )
 
         return "\n".join(backups)
-
-    @property
-    def _backup_config(self) -> MongoDBConfiguration:
-        """Construct the config object for backup user and creates user if necessary."""
-        if not self.charm.get_secret("app", "backup-password"):
-            self.charm.set_secret("app", "backup-password", generate_password())
-
-        return MongoDBConfiguration(
-            replset=self.charm.app.name,
-            database="",
-            username="backup",
-            password=self.charm.get_secret("app", "backup-password"),
-            hosts=["127.0.0.1"],  # pbm cannot make a direct connection if multiple hosts are used
-            roles=["backup"],
-            tls_external=self.charm.tls.get_tls_files("unit") is not None,
-            tls_internal=self.charm.tls.get_tls_files("app") is not None,
-        )
