@@ -6,7 +6,7 @@ import json
 import logging
 import subprocess
 import time
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional
 
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from charms.mongodb.v0.helpers import (
@@ -64,7 +64,11 @@ from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
 from config import Config
 from exceptions import AdminUserCreationError, ApplicationHostNotFoundError
-from machine_helpers import push_file_to_unit, update_mongod_service
+from machine_helpers import (
+    delete_file_on_unit,
+    push_file_to_unit,
+    update_mongod_service,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -168,7 +172,7 @@ class MongodbOperatorCharm(CharmBase):
     @property
     def mongodb_config(self) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for this deployment of MongoDB."""
-        return self._get_mongodb_config_for_user(OperatorUser, set(self._unit_ips))
+        return self._get_mongodb_config_for_user(OperatorUser, self._unit_ips)
 
     @property
     def monitor_config(self) -> MongoDBConfiguration:
@@ -264,8 +268,8 @@ class MongodbOperatorCharm(CharmBase):
             event: The triggering start event.
         """
         # mongod requires keyFile and TLS certificates on the file system
-        self._instatiate_keyfile(event)
-        self._push_tls_certificate_to_workload()
+        self._push_keyfile_to_workload(event)
+        self.push_tls_certificate_to_workload()
 
         try:
             logger.debug("starting MongoDB.")
@@ -303,10 +307,6 @@ class MongodbOperatorCharm(CharmBase):
                 "An exception occurred when starting mongodb exporter, error: %s.", str(e)
             )
             self.unit.status = BlockedStatus("couldn't start mongodb exporter")
-            return
-
-        # only leader should initialise the replica set
-        if not self.unit.is_leader():
             return
 
         self._initialise_replica_set(event)
@@ -485,6 +485,9 @@ class MongodbOperatorCharm(CharmBase):
         else:
             self.unit.status = pbm_status
 
+    # END: charm event handlers
+
+    # BEGIN: actions
     def _on_get_primary_action(self, event: ActionEvent):
         event.set_results({"replica-set-primary": self._primary})
 
@@ -540,7 +543,7 @@ class MongodbOperatorCharm(CharmBase):
 
         event.set_results({Config.Actions.PASSWORD_PARAM_NAME: new_password})
 
-    # END: charm event handlers
+    # END: actions
 
     # BEGIN: users management
 
@@ -572,7 +575,7 @@ class MongodbOperatorCharm(CharmBase):
             raise AdminUserCreationError
 
         logger.debug(f"{OperatorUser.get_username()} user created")
-        self._user_created(OperatorUser)
+        self._set_user_created(OperatorUser)
 
     @retry(
         stop=stop_after_attempt(3),
@@ -582,7 +585,7 @@ class MongodbOperatorCharm(CharmBase):
     )
     def _init_monitor_user(self):
         """Creates the monitor user on the MongoDB database."""
-        if self._user_created(MonitorUser):
+        if self._is_user_created(MonitorUser):
             return
 
         with MongoDBConnection(self.mongodb_config) as mongo:
@@ -592,7 +595,7 @@ class MongodbOperatorCharm(CharmBase):
             )
             logger.debug("creating the monitor user...")
             mongo.create_user(self.monitor_config)
-            self._user_created(MonitorUser)
+            self._set_user_created(MonitorUser)
 
         # leader should reconnect to exporter after creating the monitor user - since the snap
         # will have an authorisation error until the the user has been created and the daemon
@@ -618,7 +621,7 @@ class MongodbOperatorCharm(CharmBase):
             )
             logger.debug("creating the backup user...")
             mongo.create_user(self.backup_config)
-            self._user_created(BackupUser)
+            self._set_user_created(BackupUser)
 
     # END: users management
 
@@ -626,11 +629,11 @@ class MongodbOperatorCharm(CharmBase):
     def _is_user_created(self, user: MongoDBUser) -> bool:
         return f"{user.get_username()}-user-created" in self.app_peer_data
 
-    def _user_created(self, user: MongoDBUser) -> None:
-        self.app_peer_data[f"{user.get_username()}-user-created"] = "True"
+    def _set_user_created(self, user: MongoDBUser) -> None:
+        self.app_peer_data[f"{user.get_username()}_user_created"] = "True"
 
     def _get_mongodb_config_for_user(
-        self, user: MongoDBUser, hosts: Set[str]
+        self, user: MongoDBUser, hosts: List[str]
     ) -> MongoDBConfiguration:
         external_ca, _ = self.tls.get_tls_files("unit")
         internal_ca, _ = self.tls.get_tls_files("app")
@@ -640,8 +643,8 @@ class MongodbOperatorCharm(CharmBase):
             database=user.get_database_name(),
             username=user.get_username(),
             password=self.get_secret("app", user.get_password_key_name()),
-            hosts=hosts,
-            roles=user.get_roles(),
+            hosts=set(hosts),
+            roles=set(user.get_roles()),
             tls_external=external_ca is not None,
             tls_internal=internal_ca is not None,
         )
@@ -674,12 +677,12 @@ class MongodbOperatorCharm(CharmBase):
         if not self.get_secret("app", "keyfile"):
             self.set_secret("app", "keyfile", generate_keyfile())
 
-    def _update_hosts(self, event: LeaderElectedEvent) -> None:
+    def _update_hosts(self, event) -> None:
         """Update replica set hosts and remove any unremoved replicas from the config."""
         if not self._db_initialised:
             return
 
-        self.process_unremoved_units(event)
+        self._process_unremoved_units(event)
         self.app_peer_data["replica_set_hosts"] = json.dumps(self._unit_ips)
 
     def update_app_relation_data(self) -> None:
@@ -702,7 +705,7 @@ class MongodbOperatorCharm(CharmBase):
                 data["uris"] = config.uri
                 relation.data[self.app].update(data)
 
-    def process_unremoved_units(self, event: LeaderElectedEvent) -> None:
+    def _process_unremoved_units(self, event) -> None:
         """Removes replica set members that are no longer running as a juju hosts."""
         with MongoDBConnection(self.mongodb_config) as mongo:
             try:
@@ -778,7 +781,7 @@ class MongodbOperatorCharm(CharmBase):
                 )
                 raise
 
-    def _instatiate_keyfile(self, event: StartEvent) -> None:
+    def _push_keyfile_to_workload(self, event: StartEvent) -> None:
         # wait for keyFile to be created by leader unit
         if not self.get_secret("app", "keyfile"):
             logger.debug("waiting for leader unit to generate keyfile contents")
@@ -786,13 +789,13 @@ class MongodbOperatorCharm(CharmBase):
             return
 
         # put keyfile on the machine with appropriate permissions
-        push_file_to_unit(
+        delete_file_on_unit(
             parent_dir=Config.MONGOD_CONF_DIR,
             file_name=KEY_FILE,
             file_contents=self.get_secret("app", "keyfile"),
         )
 
-    def _push_tls_certificate_to_workload(self) -> None:
+    def push_tls_certificate_to_workload(self) -> None:
         """Uploads certificate to the workload container."""
         external_ca, external_pem = self.tls.get_tls_files("unit")
         if external_ca is not None:
@@ -822,6 +825,34 @@ class MongodbOperatorCharm(CharmBase):
                 parent_dir=Config.MONGOD_CONF_DIR,
                 file_name=TLS_INT_PEM_FILE,
                 file_contents=internal_pem,
+            )
+
+    def delete_tls_certificate_from_workload(self) -> None:
+        """Deletes TLS certificates from unit."""
+        external_ca, external_pem = self.tls.get_tls_files("unit")
+        if external_ca is not None:
+            delete_file_on_unit(
+                parent_dir=Config.MONGOD_CONF_DIR,
+                file_name=TLS_EXT_CA_FILE,
+            )
+
+        if external_pem is not None:
+            delete_file_on_unit(
+                parent_dir=Config.MONGOD_CONF_DIR,
+                file_name=TLS_EXT_PEM_FILE,
+            )
+
+        internal_ca, internal_pem = self.tls.get_tls_files("app")
+        if internal_ca is not None:
+            delete_file_on_unit(
+                parent_dir=Config.MONGOD_CONF_DIR,
+                file_name=TLS_INT_CA_FILE,
+            )
+
+        if internal_pem is not None:
+            delete_file_on_unit(
+                parent_dir=Config.MONGOD_CONF_DIR,
+                file_name=TLS_INT_PEM_FILE,
             )
 
     def _connect_mongodb_exporter(self) -> None:
@@ -884,6 +915,10 @@ class MongodbOperatorCharm(CharmBase):
             # external (e.g., check initialisation inside peer relation). We
             # shouldn't rely on MongoDB response because the data directory
             # can be corrupted.
+            return
+
+        # only leader should initialise the replica set
+        if not self.unit.is_leader():
             return
 
         with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:

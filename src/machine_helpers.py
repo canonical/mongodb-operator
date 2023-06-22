@@ -56,3 +56,14 @@ def push_file_to_unit(parent_dir, file_name, file_contents) -> None:
         os.chmod(file_name, 0o440)
     mongodb_user = pwd.getpwnam(MONGO_USER)
     os.chown(file_name, mongodb_user.pw_uid, ROOT_USER_GID)
+
+
+def delete_file_on_unit(parent_dir, file_name) -> None:
+    """Removes a file from unit."""
+    file_path = os.path.join(parent_dir, file_name)
+
+    if os.path.isfile(file_path):
+        os.remove(file_path)
+        logger.debug(f"File {file_name} deleted from {parent_dir}.")
+    else:
+        logger.error(f"Errof delleting not existing file {file_path}")

@@ -1,7 +1,7 @@
 """Users configuration for MongoDB."""
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
-from typing import Set
+from typing import List
 
 # The unique Charmhub library identifier, never change it
 LIBID = "b74007eda21c453a89e4dcc6382aa2b3"
@@ -37,7 +37,7 @@ class MongoDBUser:
         """Returns the database of the user."""
         return self._database_name
 
-    def get_roles(self) -> Set[str]:
+    def get_roles(self) -> List[str]:
         """Returns the role of the user."""
         return self._roles
 
@@ -81,16 +81,14 @@ class _MonitorUser(MongoDBUser):
 
     _username = "monitor"
     _password_key_name = f"{_username}-password"
-    _database_name = "admin"
+    _database_name = ""
     _roles = ["monitor"]
     _privileges = {
         "resource": {"db": "", "collection": ""},
         "actions": ["listIndexes", "listCollections", "dbStats", "dbHash", "collStats", "find"],
     }
     _mongodb_role = "explainRole"
-    _hosts = [
-        "127.0.0.1"
-    ]  # MongoDB Exporter can only connect to one replica - not the entire set.
+    _hosts = []
 
 
 class _BackupUser(MongoDBUser):
