@@ -65,5 +65,3 @@ def delete_file_on_unit(parent_dir, file_name) -> None:
     if os.path.isfile(file_path):
         os.remove(file_path)
         logger.debug(f"File {file_name} deleted from {parent_dir}.")
-    else:
-        logger.error(f"Errof delleting not existing file {file_path}")
