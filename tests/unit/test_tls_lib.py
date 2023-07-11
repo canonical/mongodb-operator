@@ -204,9 +204,9 @@ class TestMongoTLS(unittest.TestCase):
         self.assertEqual(old_unit_csr, new_unit_csr)
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongodbOperatorCharm._push_tls_certificate_to_workload")
     @patch("charm.MongodbOperatorCharm.restart_mongod_service")
-    def test_external_certificate_available(self, restart_mongod_service, _):
+    @patch("charm.push_file_to_unit")
+    def test_external_certificate_available(self, path, restart_mongod_service):
         """Tests behavior when external certificate is made available."""
         # assume relation exists with a current certificate
         self.relate_to_tls_certificates_operator()
@@ -228,9 +228,9 @@ class TestMongoTLS(unittest.TestCase):
         restart_mongod_service.assert_called()
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongodbOperatorCharm._push_tls_certificate_to_workload")
     @patch("charm.MongodbOperatorCharm.restart_mongod_service")
-    def test_internal_certificate_available(self, restart_mongod_service, _):
+    @patch("charm.push_file_to_unit")
+    def test_internal_certificate_available(self, path, restart_mongod_service):
         """Tests behavior when internal certificate is made available."""
         # assume relation exists with a current certificate
         self.relate_to_tls_certificates_operator()
@@ -252,9 +252,8 @@ class TestMongoTLS(unittest.TestCase):
         restart_mongod_service.assert_called()
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongodbOperatorCharm._push_tls_certificate_to_workload")
     @patch("charm.MongodbOperatorCharm.restart_mongod_service")
-    def test_unknown_certificate_available(self, restart_mongod_service, _):
+    def test_unknown_certificate_available(self, restart_mongod_service):
         """Tests that when an unknown certificate is available, nothing is updated."""
         # assume relation exists with a current certificate
         self.relate_to_tls_certificates_operator()

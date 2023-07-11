@@ -627,7 +627,7 @@ class MongodbOperatorCharm(CharmBase):
 
     # BEGIN: helper functions
     def _is_user_created(self, user: MongoDBUser) -> bool:
-        return f"{user.get_username()}-user-created" in self.app_peer_data
+        return f"{user.get_username()}_user_created" in self.app_peer_data
 
     def _set_user_created(self, user: MongoDBUser) -> None:
         self.app_peer_data[f"{user.get_username()}_user_created"] = "True"
@@ -789,7 +789,7 @@ class MongodbOperatorCharm(CharmBase):
             return
 
         # put keyfile on the machine with appropriate permissions
-        delete_file_on_unit(
+        push_file_to_unit(
             parent_dir=Config.MONGOD_CONF_DIR,
             file_name=KEY_FILE,
             file_contents=self.get_secret("app", "keyfile"),
@@ -829,31 +829,10 @@ class MongodbOperatorCharm(CharmBase):
 
     def delete_tls_certificate_from_workload(self) -> None:
         """Deletes TLS certificates from unit."""
-        external_ca, external_pem = self.tls.get_tls_files("unit")
-        if external_ca is not None:
-            delete_file_on_unit(
-                parent_dir=Config.MONGOD_CONF_DIR,
-                file_name=TLS_EXT_CA_FILE,
-            )
-
-        if external_pem is not None:
-            delete_file_on_unit(
-                parent_dir=Config.MONGOD_CONF_DIR,
-                file_name=TLS_EXT_PEM_FILE,
-            )
-
-        internal_ca, internal_pem = self.tls.get_tls_files("app")
-        if internal_ca is not None:
-            delete_file_on_unit(
-                parent_dir=Config.MONGOD_CONF_DIR,
-                file_name=TLS_INT_CA_FILE,
-            )
-
-        if internal_pem is not None:
-            delete_file_on_unit(
-                parent_dir=Config.MONGOD_CONF_DIR,
-                file_name=TLS_INT_PEM_FILE,
-            )
+        delete_file_on_unit(parent_dir=Config.MONGOD_CONF_DIR, file_name=TLS_EXT_CA_FILE)
+        delete_file_on_unit(parent_dir=Config.MONGOD_CONF_DIR, file_name=TLS_EXT_PEM_FILE)
+        delete_file_on_unit(parent_dir=Config.MONGOD_CONF_DIR, file_name=TLS_INT_CA_FILE)
+        delete_file_on_unit(parent_dir=Config.MONGOD_CONF_DIR, file_name=TLS_INT_PEM_FILE)
 
     def _connect_mongodb_exporter(self) -> None:
         """Exposes the endpoint to mongodb_exporter."""

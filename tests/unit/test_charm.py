@@ -607,7 +607,7 @@ class TestCharm(unittest.TestCase):
             connection.return_value.__enter__.return_value.remove_replset_member.side_effect = (
                 exception
             )
-            self.harness.charm.process_unremoved_units(mock.Mock())
+            self.harness.charm._process_unremoved_units(mock.Mock())
             connection.return_value.__enter__.return_value.remove_replset_member.assert_called()
 
     @patch_network_get(private_address="1.1.1.1")
@@ -622,7 +622,7 @@ class TestCharm(unittest.TestCase):
         self.harness.set_leader(True)
 
         self.harness.charm._init_operator_user()
-        self.assertEqual("operator-user-created" in self.harness.charm.app_peer_data, True)
+        self.assertEqual("operator_user_created" in self.harness.charm.app_peer_data, True)
 
         self.harness.charm._init_operator_user()
         run.assert_called_once()

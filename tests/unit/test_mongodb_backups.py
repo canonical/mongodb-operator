@@ -121,9 +121,13 @@ class TestMongoBackups(unittest.TestCase):
             self.harness.charm.backups._resync_config_options(mock_snap)
 
     @patch("charm.subprocess.check_output")
-    def test_verify_resync_cred_error(self, check_output):
+    @patch("charm.snap.SnapCache")
+    def test_verify_resync_cred_error(self, snap, check_output):
         """Tests that when pbm cannot resync due to creds that it raises an error."""
         mock_snap = mock.Mock()
+        mock_pbm_snap = mock.Mock()
+        mock_pbm_snap.present = True
+        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
         check_output.side_effect = CalledProcessError(
             cmd="charmed-mongodb.pbm status", returncode=403, output=b"status code: 403"
         )
