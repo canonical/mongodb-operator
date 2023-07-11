@@ -203,7 +203,7 @@ async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
         """Confirms there is only one replica set primary unit reported by juju."""
         count = 0
         for value in unit_messages:
-            if unit_messages[value] == "Replica set primary":
+            if unit_messages[value] == "Primary":
                 count += 1
 
         assert count == 1, f"Juju is expected to report one primary not {count} primaries"
@@ -216,7 +216,7 @@ async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
 
     # kill the mongod process on the replica set primary unit to force a re-election
     for unit, message in unit_messages.items():
-        if message == "Replica set primary":
+        if message == "Primary":
             target_unit = unit
 
     await kill_unit_process(ops_test, target_unit, kill_code="SIGKILL")

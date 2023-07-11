@@ -21,7 +21,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 6
+LIBPATCH = 7
 
 
 # path to store mongodb ketFile
@@ -167,13 +167,13 @@ def build_unit_status(mongodb_config: MongoDBConfiguration, unit_ip: str) -> Sta
             replica_status = replset_status[unit_ip]
 
             if replica_status == "PRIMARY":
-                return ActiveStatus("Replica set primary")
+                return ActiveStatus("Primary")
             elif replica_status == "SECONDARY":
-                return ActiveStatus("Replica set secondary")
+                return ActiveStatus("")
             elif replica_status in ["STARTUP", "STARTUP2", "ROLLBACK", "RECOVERING"]:
-                return WaitingStatus("Member is syncing..")
+                return WaitingStatus("Member is syncing...")
             elif replica_status == "REMOVED":
-                return WaitingStatus("Member is removing..")
+                return WaitingStatus("Member is removing...")
             else:
                 return BlockedStatus(replica_status)
     except ServerSelectionTimeoutError as e:

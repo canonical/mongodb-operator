@@ -36,7 +36,7 @@ mongodb                       active      2  mongodb              dpe/edge   96 
 Unit                    Workload  Agent  Machine  Public address  Ports      Message
 data-integrator/0*  active    idle   5        10.23.62.216               received mongodb credentials
 mongodb/0*              active    idle   0        10.23.62.156    27017/tcp
-mongodb/1               active    idle   1        10.23.62.55     27017/tcp  Replica set primary
+mongodb/1               active    idle   1        10.23.62.55     27017/tcp  Primary
 
 Machine  State    Address       Inst id        Series  AZ  Message
 0        started  10.23.62.156  juju-d35d30-0  focal       Running
