@@ -622,7 +622,7 @@ class TestCharm(unittest.TestCase):
         self.harness.set_leader(True)
 
         self.harness.charm._init_operator_user()
-        self.assertEqual("operator_user_created" in self.harness.charm.app_peer_data, True)
+        self.assertEqual("operator-user-created" in self.harness.charm.app_peer_data, True)
 
         self.harness.charm._init_operator_user()
         run.assert_called_once()
