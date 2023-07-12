@@ -29,12 +29,12 @@ mongodb/1   active    idle   1        10.23.62.55     27017/tcp
 mongodb/2   active    idle   2        10.23.62.243    27017/tcp
 
 Machine  State    Address       Inst id        Series  AZ  Message
-0        started  10.23.62.156  juju-d35d30-0  focal       Running
-1        started  10.23.62.55   juju-d35d30-1  focal       Running
-2        started  10.23.62.243  juju-d35d30-2  focal       Running
+0        started  10.23.62.156  juju-d35d30-0  jammy       Running
+1        started  10.23.62.55   juju-d35d30-1  jammy       Running
+2        started  10.23.62.243  juju-d35d30-2  jammy       Running
 ```
 
-You can trust that Charmed MongoDB added these replicas correctly. But if you wanted to verify the replicas got added correctly you could connect to MongoDB via `mongosh`. Since your replica set has 2 additional hosts you will need to update the hosts in your URI. You can retrieve these host IPs with:
+You can trust that Charmed MongoDB added these replicas correctly. But if you wanted to verify the replicas got added correctly you could connect to MongoDB via `charmed-mongodb.mongo`. Since your replica set has 2 additional hosts you will need to update the hosts in your URI. You can retrieve these host IPs with:
 ```shell
 export HOST_IP_1=$(juju run --unit mongodb/1 -- hostname -I | xargs)
 export HOST_IP_2=$(juju run --unit mongodb/2 -- hostname -I | xargs)
@@ -50,14 +50,14 @@ Now view and save the output of the URI:
 echo $URI
 ```
 
-Like earlier we access `mongosh` by `ssh`ing into one of the Charmed MongoDB hosts:
+Like earlier we access `mongo` by `ssh`ing into one of the Charmed MongoDB hosts:
 ```shell
 juju ssh mongodb/0
 ```
 
-While `ssh`d into `mongodb/0`, we can access `mongosh`, using our new URI that we saved above.
+While `ssh`d into `mongodb/0`, we can access `mongo` with `charmed-mongodb.mongo`, using our new URI that we saved above.
 ```shell
-mongosh <saved URI>
+charmed-mongodb.mongo <saved URI>
 ```
 
 Now type `rs.status()` and you should see your replica set configuration. It should look something like this:
@@ -206,8 +206,8 @@ mongodb/0*  active    idle   0        10.23.62.156    27017/tcp  Primary
 mongodb/1   active    idle   1        10.23.62.55     27017/tcp
 
 Machine  State    Address       Inst id        Series  AZ  Message
-0        started  10.23.62.156  juju-d35d30-0  focal       Running
-1        started  10.23.62.55   juju-d35d30-1  focal       Running
+0        started  10.23.62.156  juju-d35d30-0  jammy       Running
+1        started  10.23.62.55   juju-d35d30-1  jammy       Running
 
 ```
 

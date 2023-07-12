@@ -17,14 +17,14 @@ unit-mongodb-0:
   UnitId: mongodb/0
   id: "2"
   results:
-    admin-password: <password>
+    password: <password>
   status: completed
   timing:
     completed: 2022-12-02 11:30:01 +0000 UTC
     enqueued: 2022-12-02 11:29:57 +0000 UTC
     started: 2022-12-02 11:30:01 +0000 UTC
 ```
-The admin password is under the result: `admin-password`.
+The admin password is under the result: `password`.
 
 
 ### Rotate the admin password
@@ -38,18 +38,18 @@ unit-mongodb-0:
   UnitId: mongodb/0
   id: "4"
   results:
-    admin-password: <new password>
+    password: <new password>
   status: completed
   timing:
     completed: 2022-12-02 14:53:30 +0000 UTC
     enqueued: 2022-12-02 14:53:25 +0000 UTC
     started: 2022-12-02 14:53:28 +0000 UTC
 ```
-The admin password is under the result: `admin-password`. It should be different from your previous password.
+The admin password is under the result: `password`. It should be different from your previous password.
 
 *Note when you change the admin password you will also need to update the admin password the in MongoDB URI; as the old password will no longer be valid.* Update the DB password used in the URI and update the URI:
 ```shell
-export DB_PASSWORD=$(juju run-action mongodb/leader get-password --wait | grep admin-password|  awk '{print $2}')
+export DB_PASSWORD=$(juju run-action mongodb/leader get-password --wait | grep password|  awk '{print $2}')
 export URI=mongodb://$DB_USERNAME:$DB_PASSWORD@$HOST_IP/$DB_NAME?replicaSet=$REPL_SET_NAME
 ```
 
@@ -64,17 +64,17 @@ unit-mongodb-0:
   UnitId: mongodb/0
   id: "4"
   results:
-    admin-password: <password>
+    password: <password>
   status: completed
   timing:
     completed: 2022-12-02 14:53:30 +0000 UTC
     enqueued: 2022-12-02 14:53:25 +0000 UTC
     started: 2022-12-02 14:53:28 +0000 UTC
 ```
-The admin password under the result: `admin-password` should match whatever you passed in when you entered the command.
+The admin password under the result: `password` should match whatever you passed in when you entered the command.
 
 *Note that when you change the admin password you will also need to update the admin password in the MongoDB URI, as the old password will no longer be valid.* To update the DB password used in the URI:
 ```shell
-export DB_PASSWORD=$(juju run-action mongodb/leader get-password --wait | grep admin-password|  awk '{print $2}')
+export DB_PASSWORD=$(juju run-action mongodb/leader get-password --wait | grep password|  awk '{print $2}')
 export URI=mongodb://$DB_USERNAME:$DB_PASSWORD@$HOST_IP/$DB_NAME?replicaSet=$REPL_SET_NAME
 ```
