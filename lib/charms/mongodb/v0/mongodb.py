@@ -29,13 +29,10 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 6
+LIBPATCH = 7
 
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
-
-# List of system usernames needed for correct work on the charm.
-CHARM_USERS = ["operator", "backup", "monitor"]
 
 
 @dataclass
@@ -287,6 +284,7 @@ class MongoDBConnection:
             config.username,
             pwd=config.password,
             roles=self._get_roles(config),
+            mechanisms=["SCRAM-SHA-256"],
         )
 
     def update_user(self, config: MongoDBConfiguration):

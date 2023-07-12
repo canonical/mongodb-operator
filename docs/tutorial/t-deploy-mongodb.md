@@ -76,10 +76,10 @@ Model     Controller  Cloud/Region         Version  SLA          Timestamp
 tutorial  overlord    localhost/localhost  2.9.37   unsupported  11:31:16Z
 
 App      Version  Status  Scale  Charm    Channel   Rev  Exposed  Message
-mongodb           active      1  mongodb  5/edge   96  no       Replica set primary
+mongodb           active      1  mongodb  dpe/edge   96  no       Primary
 
 Unit        Workload  Agent  Machine  Public address  Ports      Message
-mongodb/0*  active    idle   0        <host IP>    27017/tcp  Replica set primary
+mongodb/0*  active    idle   0        <host IP>       27017/tcp  Primary
 
 Machine  State    Address       Inst id        Series  AZ  Message
 0        started  10.23.62.156  juju-d35d30-0  jammy       Running

@@ -16,7 +16,6 @@ from charm import MongodbOperatorCharm, NotReadyError, subprocess
 from .helpers import patch_network_get
 
 REPO_NAME = "deb-https://repo.mongodb.org/apt/ubuntu-focal/mongodb-org/5.0"
-GPG_URL = "https://www.mongodb.org/static/pgp/server-5.0.asc"
 REPO_ENTRY = (
     "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/5.0 multiverse"
 )
@@ -41,7 +40,7 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    @patch("charm.MongodbOperatorCharm._init_admin_user")
+    @patch("charm.MongodbOperatorCharm._init_operator_user")
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
     @patch("charm.snap.SnapCache")
     @patch("charm.push_file_to_unit")
@@ -68,7 +67,7 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    @patch("charm.MongodbOperatorCharm._init_admin_user")
+    @patch("charm.MongodbOperatorCharm._init_operator_user")
     @patch("charm.MongodbOperatorCharm._open_port_tcp")
     @patch("charm.push_file_to_unit")
     @patch("builtins.open")
@@ -96,7 +95,7 @@ class TestCharm(unittest.TestCase):
     @patch("charm.push_file_to_unit")
     @patch("builtins.open")
     @patch("charm.MongoDBConnection")
-    @patch("charm.MongodbOperatorCharm._init_admin_user")
+    @patch("charm.MongodbOperatorCharm._init_operator_user")
     def test_on_start_mongod_not_ready_defer(
         self,
         init_admin,
@@ -145,14 +144,14 @@ class TestCharm(unittest.TestCase):
             self.harness.charm.unit.status, BlockedStatus("failed to open TCP port for MongoDB")
         )
 
-    @patch("charm.check_call")
+    @patch("subprocess.check_call")
     def test_set_port(self, _call):
         """Test verifies operation of set port."""
         self.harness.charm._open_port_tcp(27017)
         # Make sure the port is opened and the service is started
         self.assertEqual(_call.call_args_list, [call(["open-port", "27017/TCP"])])
 
-    @patch("charm.check_call")
+    @patch("subprocess.check_call")
     def test_set_port_failure(self, _call):
         """Test verifies that we raise the correct errors when we fail to open a port."""
         _call.side_effect = subprocess.CalledProcessError(cmd="open-port 27017/TCP", returncode=1)
@@ -165,7 +164,7 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.update_mongod_service")
     @patch("charm.snap.SnapCache")
-    @patch("charm.check_call")
+    @patch("subprocess.check_call")
     def test_install_snap_packages_failure(self, _call, snap_cache, update_mongod_service):
         """Test verifies the correct functions get called when installing apt packages."""
         snap_cache.side_effect = snap.SnapError
@@ -290,7 +289,7 @@ class TestCharm(unittest.TestCase):
     @patch("charm.push_file_to_unit")
     @patch("builtins.open")
     @patch("charm.MongoDBConnection")
-    @patch("charm.MongodbOperatorCharm._init_admin_user")
+    @patch("charm.MongodbOperatorCharm._init_operator_user")
     def test_initialise_replica_failure_leads_to_waiting_state(
         self,
         init_admin,
@@ -443,7 +442,7 @@ class TestCharm(unittest.TestCase):
             "1.1.1.1": "PRIMARY"
         }
         self.harness.charm.on.update_status.emit()
-        self.assertEqual(self.harness.charm.unit.status, ActiveStatus("Replica set primary"))
+        self.assertEqual(self.harness.charm.unit.status, ActiveStatus("Primary"))
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charms.mongodb.v0.helpers.MongoDBConnection")
@@ -463,7 +462,7 @@ class TestCharm(unittest.TestCase):
             "1.1.1.1": "SECONDARY"
         }
         self.harness.charm.on.update_status.emit()
-        self.assertEqual(self.harness.charm.unit.status, ActiveStatus("Replica set secondary"))
+        self.assertEqual(self.harness.charm.unit.status, ActiveStatus(""))
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charms.mongodb.v0.helpers.MongoDBConnection")
@@ -489,7 +488,7 @@ class TestCharm(unittest.TestCase):
             "1.1.1.1": "REMOVED"
         }
         self.harness.charm.on.update_status.emit()
-        self.assertEqual(self.harness.charm.unit.status, WaitingStatus("Member is removing.."))
+        self.assertEqual(self.harness.charm.unit.status, WaitingStatus("Member is removing..."))
 
         # Case 3: Member is syncing to replica set
         for syncing_status in ["STARTUP", "STARTUP2", "ROLLBACK", "RECOVERING"]:
@@ -497,7 +496,7 @@ class TestCharm(unittest.TestCase):
                 "1.1.1.1": syncing_status
             }
             self.harness.charm.on.update_status.emit()
-            self.assertEqual(self.harness.charm.unit.status, WaitingStatus("Member is syncing.."))
+            self.assertEqual(self.harness.charm.unit.status, WaitingStatus("Member is syncing..."))
 
         # Case 4: Unknown status
         status_connection.return_value.__enter__.return_value.get_replset_status.return_value = {
@@ -622,10 +621,10 @@ class TestCharm(unittest.TestCase):
         """
         self.harness.set_leader(True)
 
-        self.harness.charm._init_admin_user()
-        self.assertEqual("user_created" in self.harness.charm.app_peer_data, True)
+        self.harness.charm._init_operator_user()
+        self.assertEqual("operator-user-created" in self.harness.charm.app_peer_data, True)
 
-        self.harness.charm._init_admin_user()
+        self.harness.charm._init_operator_user()
         run.assert_called_once()
 
     @patch_network_get(private_address="1.1.1.1")
@@ -700,11 +699,11 @@ class TestCharm(unittest.TestCase):
             action_event.fail.assert_called()
             self.assertEqual(current_password, original_password)
 
-    @patch("charm.ENV_VAR_PATH", "tests/unit/data/env.txt")
+    @patch("config.Config.ENV_VAR_PATH", "tests/unit/data/env.txt")
     def test_auth_not_enabled(self):
         self.assertEqual(self.harness.charm.auth_enabled(), False)
 
-    @patch("charm.ENV_VAR_PATH", "tests/unit/data/env_auth.txt")
+    @patch("config.Config.ENV_VAR_PATH", "tests/unit/data/env_auth.txt")
     def test_auth_enabled(self):
         self.assertEqual(self.harness.charm.auth_enabled(), True)
 
