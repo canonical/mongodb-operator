@@ -979,7 +979,53 @@ class MongodbOperatorCharm(CharmBase):
 
         return any("MONGOD_ARGS" in line and "--auth" in line for line in env_vars)
 
-    # END: helper functions
+    def has_backup_service(self):
+        """Verifies the backup service is available."""
+        snap_cache = snap.SnapCache()
+        mongodb_snap = snap_cache["charmed-mongodb"]
+        if mongodb_snap.present:
+            return True
+
+        return False
+
+    def clear_pbm_config_file(self) -> None:
+        """Overwrites existing config file with the default file provided by snap."""
+        subprocess.check_output(
+            f"charmed-mongodb.pbm config --file {Config.MONGODB_SNAP_DATA_DIR}/etc/pbm/pbm_config.yaml",
+            shell=True,
+        )
+
+    def run_pbm_command(self, cmd: List[str]) -> str:
+        """Executes the provided pbm command.
+
+        Raises:
+            subprocess.CalledProcessError
+        """
+        return subprocess.check_output(f"charmed-mongodb.pbm backup {' '.join(cmd)}", shell=True)
+
+    def start_backup_service(self) -> None:
+        """Starts the pbm agent.
+
+        Raises:
+            snap.SnapError
+        """
+        snap_cache = snap.SnapCache()
+        charmed_mongodb_snap = snap_cache["charmed-mongodb"]
+        charmed_mongodb_snap.start(services=["pbm-agent"])
+
+    def restart_backup_service(self) -> None:
+        """Restarts the pbm agent.
+
+        Raises:
+            snap.SnapError
+        """
+        snap_cache = snap.SnapCache()
+        charmed_mongodb_snap = snap_cache["charmed-mongodb"]
+        charmed_mongodb_snap.restart(services=["pbm-agent"])
+
+
+# pbm_snap.restart(services=["pbm-agent"])
+# END: helper functions
 
 
 if __name__ == "__main__":
