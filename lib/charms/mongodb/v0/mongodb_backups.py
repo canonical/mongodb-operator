@@ -23,12 +23,7 @@ from charms.mongodb.v0.helpers import (
 )
 from charms.operator_libs_linux.v1 import snap
 from ops.framework import Object
-from ops.model import (
-    BlockedStatus,
-    MaintenanceStatus,
-    StatusBase,
-    WaitingStatus,
-)
+from ops.model import BlockedStatus, MaintenanceStatus, StatusBase, WaitingStatus
 from ops.pebble import ExecError
 from tenacity import (
     Retrying,
