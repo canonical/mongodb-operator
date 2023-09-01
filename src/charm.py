@@ -227,12 +227,13 @@ class MongodbOperatorCharm(CharmBase):
 
     @property
     def _juju_has_secrets(self) -> bool:
-        return JujuVersion.from_environ().has_secrets
+        return False
+        # return JujuVersion.from_environ().has_secrets
 
     @property
     def unit_peer_data(self) -> Dict:
         """Peer relation data object."""
-        if not self._relation:
+        if not self._peers:
             return {}
 
         return self._peers.data[self.unit]
@@ -343,8 +344,6 @@ class MongodbOperatorCharm(CharmBase):
         """
         if not self.unit.is_leader():
             return
-
-        self._generate_secrets()
 
         self._on_relation_handler(event)
 
@@ -633,7 +632,7 @@ class MongodbOperatorCharm(CharmBase):
     )
     def _init_monitor_user(self):
         """Creates the monitor user on the MongoDB database."""
-        if self._user_created(MonitorUser):
+        if self._is_user_created(MonitorUser):
             return
 
         with MongoDBConnection(self.mongodb_config) as mongo:
@@ -685,12 +684,11 @@ class MongodbOperatorCharm(CharmBase):
     ) -> MongoDBConfiguration:
         external_ca, _ = self.tls.get_tls_files(UNIT_SCOPE)
         internal_ca, _ = self.tls.get_tls_files(APP_SCOPE)
-        password = self.get_secret(APP_SCOPE, user.get_password_key_name())
         return MongoDBConfiguration(
             replset=self.app.name,
             database=user.get_database_name(),
             username=user.get_username(),
-            password=password,
+            password=self.get_secret(APP_SCOPE, user.get_password_key_name()),
             hosts=hosts,
             roles=user.get_roles(),
             tls_external=external_ca is not None,
@@ -1065,10 +1063,8 @@ class MongodbOperatorCharm(CharmBase):
 
     def _juju_secret_set(self, scope: Scopes, key: str, value: str) -> str:
         """Helper function setting Juju secret."""
-        peer_data = self._peer_data(scope)
-        self._juju_secrets_get(scope)
 
-        secret = self.secrets[scope].get(Config.Secrets.SECRET_LABEL)
+        secret = self._juju_secrets_get(scope)
 
         # It's not the first secret for the scope, we can re-use the existing one
         # that was fetched in the previous call
@@ -1097,8 +1093,9 @@ class MongodbOperatorCharm(CharmBase):
                 raise SecretNotAddedError(f"Couldn't set secret {scope}:{key}")
 
             self.secrets[scope][Config.Secrets.SECRET_LABEL] = secret
-            self.secrets[scope][Config.Secrets.SECRET_CACHE_LABEL] = {key: value}
+            self.secrets[scope][Config.Secrets.SECRET_CACHE_LABE©2L] = {key: value}
             logging.debug(f"Secret {scope}:{key} published (as first). ID: {secret.id}")
+            peer_data = self._peer_data(scope)
             peer_data.update({Config.Secrets.SECRET_INTERNAL_LABEL: secret.id})
 
         return self.secrets[scope][Config.Secrets.SECRET_LABEL].id
