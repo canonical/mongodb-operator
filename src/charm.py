@@ -48,6 +48,8 @@ from ops.charm import (
     RelationDepartedEvent,
     RelationEvent,
     RelationJoinedEvent,
+    SecretChangedEvent,
+    SecretRemoveEvent,
     StartEvent,
     StorageDetachingEvent,
     UpdateStatusEvent,
@@ -111,6 +113,10 @@ class MongodbOperatorCharm(CharmBase):
         self.framework.observe(self.on.get_primary_action, self._on_get_primary_action)
         self.framework.observe(self.on.get_password_action, self._on_get_password)
         self.framework.observe(self.on.set_password_action, self._on_set_password)
+
+        # secrets
+        self.framework.observe(self.on.secret_remove, self._on_secret_remove)
+        self.framework.observe(self.on.secret_changed, self._on_secret_changed)
 
         # handle provider side of relations
         self.client_relations = MongoDBProvider(self, substrate=Config.SUBSTRATE)
@@ -239,8 +245,7 @@ class MongodbOperatorCharm(CharmBase):
 
     @property
     def _juju_has_secrets(self) -> bool:
-        return False
-        # return JujuVersion.from_environ().has_secrets
+        return JujuVersion.from_environ().has_secrets
 
     # END: properties
 
@@ -564,6 +569,28 @@ class MongodbOperatorCharm(CharmBase):
             self._connect_mongodb_exporter()
 
         event.set_results({Config.Actions.PASSWORD_PARAM_NAME: new_password})
+
+    def _on_secret_remove(self, event: SecretRemoveEvent):
+        # We are keeping this function empty on purpose until the issue with secrets
+        # is not fixed. The issue is: https://bugs.launchpad.net/juju/+bug/2023364
+        logging.error(
+            f"_on_secret_remove: Secret {event._id} seems to have no observers, could be removed"
+        )
+
+    def _on_secret_changed(self, event: SecretChangedEvent):
+        secret = event.secret
+
+        if secret.id == self.app_peer_data.get(Config.Secrets.SECRET_INTERNAL_LABEL, None):
+            scope = APP_SCOPE
+        elif secret.id == self.unit_peer_data.get(Config.Secrets.SECRET_INTERNAL_LABEL, None):
+            scope = UNIT_SCOPE
+        else:
+            logging.debug(
+                f"Secret {event._id}:{event.secret.id} changed, but it's irrelevant for us"
+            )
+            return
+        self._update_secrets_cache(scope)
+        self._connect_mongodb_exporter()
 
     # END: charm event handlers
 
@@ -963,7 +990,7 @@ class MongodbOperatorCharm(CharmBase):
         if self._juju_has_secrets:
             if not value:
                 return self._juju_secret_remove(scope, key)
-            return self._juju_secret_get(scope, key)
+            return self._juju_secret_set(scope, key, value)
 
         if scope == UNIT_SCOPE:
             if not value:
@@ -1069,7 +1096,10 @@ class MongodbOperatorCharm(CharmBase):
 
     def _juju_secret_set(self, scope: Scopes, key: str, value: str) -> str:
         """Helper function setting Juju secret."""
-        secret = self._juju_secrets_get(scope)
+        peer_data = self._peer_data(scope)
+        self._juju_secrets_get(scope)
+
+        secret = self.secrets[scope].get(Config.Secrets.SECRET_LABEL)
 
         # It's not the first secret for the scope, we can re-use the existing one
         # that was fetched in the previous call
@@ -1100,12 +1130,11 @@ class MongodbOperatorCharm(CharmBase):
             self.secrets[scope][Config.Secrets.SECRET_LABEL] = secret
             self.secrets[scope][Config.Secrets.SECRET_CACHE_LABEL] = {key: value}
             logging.debug(f"Secret {scope}:{key} published (as first). ID: {secret.id}")
-            peer_data = self._peer_data(scope)
             peer_data.update({Config.Secrets.SECRET_INTERNAL_LABEL: secret.id})
 
         return self.secrets[scope][Config.Secrets.SECRET_LABEL].id
 
-    def _juju_secrets_get(self, scope: Scopes) -> Optional[str]:
+    def _juju_secrets_get(self, scope: Scopes) -> Optional[bool]:
         """Helper function to get Juju secret."""
         peer_data = self._peer_data(scope)
 
@@ -1130,7 +1159,9 @@ class MongodbOperatorCharm(CharmBase):
             # We retrieve and cache actual secret data for the lifetime of the event scope
             self.secrets[scope][Config.Secrets.SECRET_CACHE_LABEL] = secret.get_content()
 
-        return self.secrets[scope].get(Config.Secrets.SECRET_CACHE_LABEL)
+        if self.secrets[scope].get(Config.Secrets.SECRET_CACHE_LABEL):
+            return True
+        return False
 
     def _juju_secret_get(self, scope: Scopes, key: str) -> Optional[str]:
         if not key:
@@ -1147,7 +1178,9 @@ class MongodbOperatorCharm(CharmBase):
 
     def _juju_secret_remove(self, scope: Scopes, key: str) -> None:
         """Remove a Juju 3.x secret."""
-        secret = self._juju_secrets_get(scope)
+        self._juju_secrets_get(scope)
+
+        secret = self.secrets[scope].get(Config.Secrets.SECRET_LABEL)
         if not secret:
             logging.error(f"Secret {scope}:{key} wasn't deleted: no secrets are available")
             return
