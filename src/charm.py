@@ -1003,7 +1003,8 @@ class MongodbOperatorCharm(CharmBase):
         Raises:
             subprocess.CalledProcessError
         """
-        return subprocess.check_output(f"charmed-mongodb.pbm {' '.join(cmd)}", shell=True)
+        pbm_response = subprocess.check_output(f"charmed-mongodb.pbm {' '.join(cmd)}", shell=True)
+        return pbm_response.decode("utf-8")
 
     def start_backup_service(self) -> None:
         """Starts the pbm agent.
