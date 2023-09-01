@@ -77,3 +77,30 @@ async def find_unit(ops_test: OpsTest, leader: bool, app=APP_NAME) -> ops.model.
             ret_unit = unit
 
     return ret_unit
+
+
+async def get_leader_id(ops_test: OpsTest) -> int:
+    """Returns the unit number of the juju leader unit."""
+    leader_unit_id = 0
+    for unit in ops_test.model.applications[APP_NAME].units:
+        if await unit.is_leader_from_status():
+            return leader_unit_id
+
+        leader_unit_id += 1
+
+    return leader_unit_id
+
+
+async def set_password(
+    ops_test: OpsTest, unit_id: int, username: str = "operator", password: str = "secret"
+) -> str:
+    """Use the charm action to retrieve the password from provided unit.
+
+    Returns:
+    String with the password stored on the peer relation databag.
+    """
+    action = await ops_test.model.units.get(f"{APP_NAME}/{unit_id}").run_action(
+        "set-password", **{"username": username, "password": password}
+    )
+    action = await action.wait()
+    return action.results

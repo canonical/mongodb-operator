@@ -38,6 +38,7 @@ class TestCharm(unittest.TestCase):
         self.harness.begin()
         self.peer_rel_id = self.harness.add_relation("database-peers", "database-peers")
 
+    @patch("charm.MongodbOperatorCharm.get_secret")
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongodbOperatorCharm._init_operator_user")
@@ -46,7 +47,7 @@ class TestCharm(unittest.TestCase):
     @patch("charm.push_file_to_unit")
     @patch("builtins.open")
     def test_on_start_not_leader_doesnt_initialise_replica_set(
-        self, open, path, snap, _open_port_tcp, init_admin, connection
+        self, open, path, snap, _open_port_tcp, init_admin, connection, get_secret
     ):
         """Tests that a non leader unit does not initialise the replica set."""
         # set snap data
@@ -54,6 +55,7 @@ class TestCharm(unittest.TestCase):
         mock_mongodb_snap.present = True
         mock_mongodb_snap.start = mock.Mock()
         snap.return_value = {"charmed-mongodb": mock_mongodb_snap}
+        get_secret.return_value = "pass123"
         self.harness.charm.app_peer_data["monitor-password"] = "pass123"
 
         self.harness.set_leader(False)
@@ -505,10 +507,12 @@ class TestCharm(unittest.TestCase):
         self.harness.charm.on.update_status.emit()
         self.assertEqual(self.harness.charm.unit.status, BlockedStatus("unknown"))
 
+    @patch("charm.MongodbOperatorCharm.get_secret")
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    def test_update_status_not_ready(self, connection):
+    def test_update_status_not_ready(self, connection, get_secret):
         """Tests that if mongod is not running on this unit it restarts it."""
+        get_secret.return_value = "pass123"
         connection.return_value.__enter__.return_value.is_ready = False
         self.harness.charm.app_peer_data["db_initialised"] = "True"
 
@@ -517,21 +521,25 @@ class TestCharm(unittest.TestCase):
             self.harness.charm.unit.status, WaitingStatus("Waiting for MongoDB to start")
         )
 
+    @patch("charm.MongodbOperatorCharm.get_secret")
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    def test_get_primary_current_unit_primary(self, connection):
+    def test_get_primary_current_unit_primary(self, connection, get_secret):
         """Tests get primary outputs correct primary when called on a primary replica."""
         mock_event = mock.Mock()
         connection.return_value.__enter__.return_value.primary.return_value = "1.1.1.1"
+        get_secret.return_value = "pass123"
         self.harness.charm._on_get_primary_action(mock_event)
         mock_event.set_results.assert_called_with({"replica-set-primary": "mongodb/0"})
 
+    @patch("charm.MongodbOperatorCharm.get_secret")
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    def test_get_primary_peer_unit_primary(self, connection):
+    def test_get_primary_peer_unit_primary(self, connection, get_secret):
         """Tests get primary outputs correct primary when called on a secondary replica."""
         # add peer unit
         rel_id = self.harness.charm.model.get_relation("database-peers").id
+        get_secret.return_value = "pass123"
         self.harness.add_relation_unit(rel_id, "mongodb/1")
         self.harness.update_relation_data(rel_id, "mongodb/1", {"private-address": "2.2.2.2"})
 
@@ -543,13 +551,15 @@ class TestCharm(unittest.TestCase):
         self.harness.charm._on_get_primary_action(mock_event)
         mock_event.set_results.assert_called_with({"replica-set-primary": "mongodb/1"})
 
+    @patch("charm.MongodbOperatorCharm.get_secret")
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    def test_primary_no_primary(self, connection):
+    def test_primary_no_primary(self, connection, get_secret):
         """Test that that the primary property can handle the case when there is no primary.
 
         Verifies that when there is no primary, the property _primary returns None.
         """
+        get_secret.return_value = "pass123"
         # add peer unit
         rel_id = self.harness.charm.model.get_relation("database-peers").id
         self.harness.add_relation_unit(rel_id, "mongodb/1")
@@ -562,11 +572,13 @@ class TestCharm(unittest.TestCase):
         primary = self.harness.charm._primary
         self.assertEqual(primary, None)
 
+    @patch("charm.MongodbOperatorCharm.get_secret")
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    def test_primary_failure(self, connection):
+    def test_primary_failure(self, connection, get_secret):
         """Tests that when getting the primary fails that no replica is reported as primary."""
         # verify that we raise the correct exception
+        get_secret.return_value = "pass123"
         for exception in PYMONGO_EXCEPTIONS:
             connection.return_value.__enter__.return_value.primary.side_effect = exception
             self.assertEqual(self.harness.charm._primary, None)
@@ -592,11 +604,13 @@ class TestCharm(unittest.TestCase):
             self.harness.charm.on.mongodb_storage_detaching.emit(mock.Mock())
             event.defer.assert_not_called()
 
+    @patch("charm.MongodbOperatorCharm.get_secret")
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongodbOperatorCharm._unit_ips")
     @patch("charm.MongoDBConnection")
-    def test_process_unremoved_units_handles_errors(self, connection, _unit_ips):
+    def test_process_unremoved_units_handles_errors(self, connection, _unit_ips, get_secret):
         """Test failures in process_unremoved_units are handled and not raised."""
+        get_secret.return_value = "pass123"
         connection.return_value.__enter__.return_value.get_replset_members.return_value = {
             "1.1.1.1",
             "2.2.2.2",
