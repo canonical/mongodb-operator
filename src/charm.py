@@ -546,6 +546,11 @@ class MongodbOperatorCharm(CharmBase):
             return
 
         new_password = event.params.get(Config.Actions.PASSWORD_PARAM_NAME, generate_password())
+        if len(new_password) > Config.Secrets.MAX_PASSWORD_LENGTH:
+            event.fail(
+                f"Password cannot be longer than {Config.Secrets.MAX_PASSWORD_LENGTH} characters."
+            )
+            return
         with MongoDBConnection(self.mongodb_config) as mongo:
             try:
                 mongo.set_user_password(username, new_password)
@@ -558,7 +563,7 @@ class MongodbOperatorCharm(CharmBase):
                 event.fail(f"Failed changing the password: {e}")
                 return
 
-        self.set_secret(
+        secret_id = self.set_secret(
             APP_SCOPE, MongoDBUser.get_password_key_name_for_user(username), new_password
         )
 
@@ -568,7 +573,9 @@ class MongodbOperatorCharm(CharmBase):
         if username == MonitorUser.get_username():
             self._connect_mongodb_exporter()
 
-        event.set_results({Config.Actions.PASSWORD_PARAM_NAME: new_password})
+        event.set_results(
+            {Config.Actions.PASSWORD_PARAM_NAME: new_password, "secret-id": secret_id}
+        )
 
     def _on_secret_remove(self, event: SecretRemoveEvent):
         # We are keeping this function empty on purpose until the issue with secrets
@@ -985,7 +992,7 @@ class MongodbOperatorCharm(CharmBase):
         else:
             raise RuntimeError("Unknown secret scope.")
 
-    def set_secret(self, scope: str, key: str, value: Optional[str]) -> None:
+    def set_secret(self, scope: str, key: str, value: Optional[str]) -> Optional[str]:
         """Set secret in the secret storage."""
         if self._juju_has_secrets:
             if not value:
@@ -1112,12 +1119,12 @@ class MongodbOperatorCharm(CharmBase):
                 secret_cache[key] = value
                 try:
                     secret.set_content(secret_cache)
+                    logging.debug(f"Secret {scope}:{key} was {key} set")
                 except OSError as error:
                     logging.error(
-                        f"Error in attempt to set {scope}:{key}. "
+                        f"Error in attempt to set '{key}' secret for scope '{scope}'. "
                         f"Existing keys were: {list(secret_cache.keys())}. {error}"
                     )
-                logging.debug(f"Secret {scope}:{key} was {key} set")
 
         # We need to create a brand-new secret for this scope
         else:
