@@ -1106,7 +1106,7 @@ class MongodbOperatorCharm(CharmBase):
         return self._peers.data[scope_obj]
 
     def _juju_secret_set(self, scope: Scopes, key: str, value: str) -> str:
-        """Helper function setting Juju secret."""
+        """Helper function setting Juju secret in Juju versions >3.0."""
         peer_data = self._peer_data(scope)
         self._juju_secrets_get(scope)
 
