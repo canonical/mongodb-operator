@@ -994,9 +994,9 @@ class MongodbOperatorCharm(CharmBase):
 
     def set_secret(self, scope: str, key: str, value: Optional[str]) -> Optional[str]:
         """Set secret in the secret storage.
-        
-        Juju versions > 3.0 use `juju secrets`, this function first checks which secret store is being used before 
-        setting the secret. 
+
+        Juju versions > 3.0 use `juju secrets`, this function first checks
+          which secret store is being used before setting the secret.
         """
         if self._juju_has_secrets:
             if not value:
@@ -1113,7 +1113,8 @@ class MongodbOperatorCharm(CharmBase):
         secret = self.secrets[scope].get(Config.Secrets.SECRET_LABEL)
 
         # It's not the first secret for the scope, we can re-use the existing one
-        # that was fetched in the previous call
+        # that was fetched in the previous call, as fetching secrets from juju is
+        # slow
         if secret:
             secret_cache = self.secrets[scope][Config.Secrets.SECRET_CACHE_LABEL]
 
