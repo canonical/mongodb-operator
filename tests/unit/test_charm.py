@@ -671,7 +671,9 @@ class TestCharm(unittest.TestCase):
 
         # verify app data is updated and results are reported to user
         self.assertEqual("canonical123", new_password)
-        action_event.set_results.assert_called_with({"password": "canonical123", "secret-id": mock.ANY})
+        action_event.set_results.assert_called_with(
+            {"password": "canonical123", "secret-id": mock.ANY}
+        )
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")

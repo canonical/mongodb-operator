@@ -6,7 +6,6 @@ import json
 import logging
 import os
 import time
-from importlib.metadata import version
 from uuid import uuid4
 
 import pytest

@@ -5,7 +5,6 @@ import json
 import subprocess
 import time
 from datetime import datetime
-from importlib.metadata import version
 from pathlib import Path
 from subprocess import PIPE, check_output
 from typing import List, Optional

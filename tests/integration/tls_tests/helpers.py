@@ -2,7 +2,6 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 from datetime import datetime
-from importlib.metadata import version
 
 import ops
 from pytest_operator.plugin import OpsTest
