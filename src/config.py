@@ -77,4 +77,4 @@ class Config:
         SECRET_KEYFILE_NAME = "keyfile"
         SECRET_INTERNAL_LABEL = "internal-secret"
         SECRET_DELETED_LABEL = "None"
-        MAX_PASSWORD_LENGTH = 50  # TODO what is the max password length?
+        MAX_PASSWORD_LENGTH = 4096

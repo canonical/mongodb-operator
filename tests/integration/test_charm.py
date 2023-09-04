@@ -185,8 +185,6 @@ async def test_monitor_user(ops_test: OpsTest) -> None:
     check_monitor_cmd = f"exec --unit {unit.name} -- {admin_mongod_cmd}"
     return_code, _, _ = await ops_test.juju(*check_monitor_cmd.split())
     assert return_code == 0, "command rs.conf() on monitor user does not work"
-    return_code, _, sdterr = await ops_test.juju(*check_monitor_cmd.split())
-    assert return_code == 0, f"command rs.conf() on monitor user does not work. '{sdterr}'"
 
 
 async def test_only_leader_can_set_while_all_can_read_password_secret(ops_test: OpsTest) -> None:

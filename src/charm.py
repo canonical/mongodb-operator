@@ -1043,7 +1043,6 @@ class MongodbOperatorCharm(CharmBase):
 
         return any("MONGOD_ARGS" in line and "--auth" in line for line in env_vars)
 
-<<<<<<< HEAD
     def has_backup_service(self):
         """Verifies the backup service is available."""
         snap_cache = snap.SnapCache()
@@ -1089,10 +1088,6 @@ class MongodbOperatorCharm(CharmBase):
         charmed_mongodb_snap = snap_cache["charmed-mongodb"]
         charmed_mongodb_snap.restart(services=["pbm-agent"])
 
-
-# pbm_snap.restart(services=["pbm-agent"])
-# END: helper functions
-=======
     def _scope_obj(self, scope: Scopes):
         if scope == APP_SCOPE:
             return self.app
@@ -1208,7 +1203,6 @@ class MongodbOperatorCharm(CharmBase):
         logging.debug(f"Secret {scope}:{key}")
 
     # END: helper functions
->>>>>>> 008665e (WIP: Fixing issue with charm)
 
 
 if __name__ == "__main__":

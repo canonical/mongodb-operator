@@ -150,7 +150,6 @@ async def test_create_and_list_backups(ops_test: OpsTest) -> None:
         assert backups == 1, "Backup not created."
 
 
-@pytest.mark.skip("skip")
 @pytest.mark.abort_on_fail
 async def test_multi_backup(ops_test: OpsTest, continuous_writes_to_db) -> None:
     """With writes in the DB test creating a backup while another one is running.
@@ -237,7 +236,6 @@ async def test_multi_backup(ops_test: OpsTest, continuous_writes_to_db) -> None:
         assert backups == 2, "Backup not created in bucket on AWS."
 
 
-@pytest.mark.skip("skip")
 @pytest.mark.abort_on_fail
 async def test_restore(ops_test: OpsTest, add_writes_to_db) -> None:
     """Simple backup tests that verifies that writes are correctly restored."""
@@ -292,7 +290,6 @@ async def test_restore(ops_test: OpsTest, add_writes_to_db) -> None:
         assert number_writes == number_writes_restored, "writes not correctly restored"
 
 
-@pytest.mark.skip("skip")
 @pytest.mark.parametrize("cloud_provider", ["AWS", "GCP"])
 async def test_restore_new_cluster(ops_test: OpsTest, add_writes_to_db, cloud_provider):
     # configure test for the cloud provider
