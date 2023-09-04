@@ -993,7 +993,11 @@ class MongodbOperatorCharm(CharmBase):
             raise RuntimeError("Unknown secret scope.")
 
     def set_secret(self, scope: str, key: str, value: Optional[str]) -> Optional[str]:
-        """Set secret in the secret storage."""
+        """Set secret in the secret storage.
+        
+        Juju versions > 3.0 use `juju secrets`, this function first checks which secret store is being used before 
+        setting the secret. 
+        """
         if self._juju_has_secrets:
             if not value:
                 return self._juju_secret_remove(scope, key)
