@@ -212,7 +212,7 @@ async def test_reset_and_get_password_secret_same_as_cli(ops_test: OpsTest) -> N
     """Test verifies that we can set and retrieve the correct password using Juju 3.x secrets."""
     new_password = str(uuid4())
 
-    # Re=setting existing password
+    # Resetting existing password
     leader_id = await get_leader_id(ops_test)
     result = await set_password(
         ops_test, unit_id=leader_id, username="monitor", password=new_password
