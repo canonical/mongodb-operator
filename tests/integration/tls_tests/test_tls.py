@@ -19,7 +19,7 @@ DATABASE_APP_NAME = "mongodb"
 TLS_TEST_DATA = "tests/integration/tls_tests/data"
 DB_SERVICE = "snap.charmed-mongodb.mongod.service"
 
-#@pytest.mark.skip(reason="Skipping until update tls certificates test and libray")
+
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy one unit of MongoDB and one unit of TLS."""
