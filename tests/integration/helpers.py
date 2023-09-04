@@ -81,14 +81,10 @@ async def find_unit(ops_test: OpsTest, leader: bool, app=APP_NAME) -> ops.model.
 
 async def get_leader_id(ops_test: OpsTest) -> int:
     """Returns the unit number of the juju leader unit."""
-    leader_unit_id = 0
     for unit in ops_test.model.applications[APP_NAME].units:
         if await unit.is_leader_from_status():
-            return leader_unit_id
-
-        leader_unit_id += 1
-
-    return leader_unit_id
+            return int(unit.name.split("/")[1])
+    return -1
 
 
 async def set_password(

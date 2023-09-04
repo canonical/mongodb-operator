@@ -1171,6 +1171,7 @@ class MongodbOperatorCharm(CharmBase):
         return False
 
     def _juju_secret_get(self, scope: Scopes, key: str) -> Optional[str]:
+        """Helper function to get Juju secret."""
         if not key:
             return
 
