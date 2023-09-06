@@ -326,7 +326,7 @@ class MongodbOperatorCharm(CharmBase):
 
         # app relations should be made aware of the new set of hosts
         try:
-            self.update_app_relation_data()
+            self.client_relations.update_app_relation_data()
         except PyMongoError as e:
             logger.error("Deferring on updating app relation data since: error: %r", e)
             event.defer()
@@ -388,7 +388,7 @@ class MongodbOperatorCharm(CharmBase):
 
         # app relations should be made aware of the new set of hosts
         try:
-            self.update_app_relation_data()
+            self.client_relations.update_app_relation_data()
         except PyMongoError as e:
             logger.error("Deferring on updating app relation data since: error: %r", e)
             event.defer()
@@ -408,7 +408,7 @@ class MongodbOperatorCharm(CharmBase):
 
         # app relations should be made aware of the new set of hosts
         try:
-            self.update_app_relation_data()
+            self.client_relations.update_app_relation_data()
         except PyMongoError as e:
             logger.error("Deferring on updating app relation data since: error: %r", e)
             event.defer()
@@ -684,26 +684,6 @@ class MongodbOperatorCharm(CharmBase):
         self.process_unremoved_units(event)
         self.app_peer_data["replica_set_hosts"] = json.dumps(self._unit_ips)
 
-    def update_app_relation_data(self) -> None:
-        """Helper function to update application relation data."""
-        if not self.db_initialised:
-            return
-
-        database_users = set()
-
-        with MongoDBConnection(self.mongodb_config) as mongo:
-            database_users = mongo.get_users()
-
-        for relation in self.model.relations[Config.Relations.NAME]:
-            username = self.client_relations._get_username_from_relation_id(relation.id)
-            password = relation.data[self.app]["password"]
-            config = self.client_relations._get_config(username, password)
-            if username in database_users:
-                data = relation.data[self.app]
-                data["endpoints"] = ",".join(config.hosts)
-                data["uris"] = config.uri
-                relation.data[self.app].update(data)
-
     def process_unremoved_units(self, event: LeaderElectedEvent) -> None:
         """Removes replica set members that are no longer running as a juju hosts."""
         with MongoDBConnection(self.mongodb_config) as mongo:
@@ -739,7 +719,7 @@ class MongodbOperatorCharm(CharmBase):
 
         # app relations should be made aware of the new set of hosts
         try:
-            self.update_app_relation_data()
+            self.client_relations.update_app_relation_data()
         except PyMongoError as e:
             logger.error("Deferring on updating app relation data since: error: %r", e)
             event.defer()
