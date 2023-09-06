@@ -214,7 +214,7 @@ class MongoDBProvider(Object):
 
     def update_app_relation_data(self) -> None:
         """Helper function to update application relation data."""
-        if not self.charm._db_initialised:
+        if not self.charm.db_initialised:
             return
 
         database_users = set()
