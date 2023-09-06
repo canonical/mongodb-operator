@@ -596,7 +596,7 @@ class MongodbOperatorCharm(CharmBase):
                 f"Secret {event._id}:{event.secret.id} changed, but it's irrelevant for us"
             )
             return
-        self._update_secrets_cache(scope)
+        self._update_juju_secrets_cache(scope)
         self._connect_mongodb_exporter()
 
     # END: charm event handlers
@@ -1103,7 +1103,7 @@ class MongodbOperatorCharm(CharmBase):
     def _juju_secret_set(self, scope: Scopes, key: str, value: str) -> str:
         """Helper function setting Juju secret in Juju versions >3.0."""
         peer_data = self._peer_data(scope)
-        self._juju_secrets_get(scope)
+        self._update_juju_secrets_cache(scope)
 
         secret = self.secrets[scope].get(Config.Secrets.SECRET_LABEL)
 
@@ -1141,7 +1141,7 @@ class MongodbOperatorCharm(CharmBase):
 
         return self.secrets[scope][Config.Secrets.SECRET_LABEL].id
 
-    def _juju_secrets_get(self, scope: Scopes) -> Optional[bool]:
+    def _update_juju_secrets_cache(self, scope: Scopes) -> None:
         """Helper function to get Juju secret."""
         peer_data = self._peer_data(scope)
 
@@ -1166,27 +1166,26 @@ class MongodbOperatorCharm(CharmBase):
             # We retrieve and cache actual secret data for the lifetime of the event scope
             self.secrets[scope][Config.Secrets.SECRET_CACHE_LABEL] = secret.get_content()
 
-        if self.secrets[scope].get(Config.Secrets.SECRET_CACHE_LABEL):
-            return True
-        return False
+    def _get_juju_secrets_cache(self, scope: Scopes):
+        return self.secrets[scope].get(Config.Secrets.SECRET_CACHE_LABEL)
 
     def _juju_secret_get(self, scope: Scopes, key: str) -> Optional[str]:
         """Helper function to get Juju secret."""
         if not key:
             return
 
-        if self._juju_secrets_get(scope):
-            secret_cache = self.secrets[scope].get(Config.Secrets.SECRET_CACHE_LABEL)
-            if secret_cache:
-                secret_data = secret_cache.get(key)
-                if secret_data and secret_data != Config.Secrets.SECRET_DELETED_LABEL:
-                    logging.debug(f"Getting secret {scope}:{key}")
-                    return secret_data
+        self._update_juju_secrets_cache(scope)
+        secret_cache = self._get_juju_secrets_cache(scope)
+        if secret_cache:
+            secret_data = secret_cache.get(key)
+            if secret_data and secret_data != Config.Secrets.SECRET_DELETED_LABEL:
+                logging.debug(f"Getting secret {scope}:{key}")
+                return secret_data
         logging.debug(f"No value found for secret {scope}:{key}")
 
     def _juju_secret_remove(self, scope: Scopes, key: str) -> None:
         """Remove a Juju 3.x secret."""
-        self._juju_secrets_get(scope)
+        self._update_juju_secrets_cache(scope)
 
         secret = self.secrets[scope].get(Config.Secrets.SECRET_LABEL)
         if not secret:
