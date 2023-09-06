@@ -212,11 +212,13 @@ class MongodbOperatorCharm(CharmBase):
         return self.model.get_relation(Config.Relations.PEERS)
 
     @property
-    def _db_initialised(self) -> bool:
+    def db_initialised(self) -> bool:
+        """Check if MongoDB is initialised."""
         return "db_initialised" in self.app_peer_data
 
-    @_db_initialised.setter
-    def _db_initialised(self, value):
+    @db_initialised.setter
+    def db_initialised(self, value):
+        """Set the db_initialised flag."""
         if isinstance(value, bool):
             self.app_peer_data["db_initialised"] = str(value)
         else:
@@ -348,7 +350,7 @@ class MongodbOperatorCharm(CharmBase):
         # only leader should configure replica set and app-changed-events can trigger the relation
         # changed hook resulting in no JUJU_REMOTE_UNIT if this is the case we should return
         # further reconfiguration can be successful only if a replica set is initialised.
-        if not (self.unit.is_leader() and event.unit) or not self._db_initialised:
+        if not (self.unit.is_leader() and event.unit) or not self.db_initialised:
             return
 
         with MongoDBConnection(self.mongodb_config) as mongo:
@@ -458,7 +460,7 @@ class MongodbOperatorCharm(CharmBase):
             return
 
         # no need to report on replica set status until initialised
-        if not self._db_initialised:
+        if not self.db_initialised:
             return
 
         # Cannot check more advanced MongoDB statuses if mongod hasn't started.
@@ -679,7 +681,7 @@ class MongodbOperatorCharm(CharmBase):
 
     def _update_hosts(self, event: LeaderElectedEvent) -> None:
         """Update replica set hosts and remove any unremoved replicas from the config."""
-        if not self._db_initialised:
+        if not self.db_initialised:
             return
 
         self.process_unremoved_units(event)
@@ -809,7 +811,7 @@ class MongodbOperatorCharm(CharmBase):
 
     def _connect_mongodb_exporter(self) -> None:
         """Exposes the endpoint to mongodb_exporter."""
-        if not self._db_initialised:
+        if not self.db_initialised:
             return
 
         # must wait for leader to set URI before connecting
@@ -823,7 +825,7 @@ class MongodbOperatorCharm(CharmBase):
 
     def _connect_pbm_agent(self) -> None:
         """Updates URI for pbm-agent."""
-        if not self._db_initialised:
+        if not self.db_initialised:
             return
 
         # must wait for leader to set URI before any attempts to update are made
@@ -862,7 +864,7 @@ class MongodbOperatorCharm(CharmBase):
             logger.error(f"Exception occurred running '{cmd}'\n {e}")
 
     def _initialise_replica_set(self, event: StartEvent) -> None:
-        if self._db_initialised:
+        if self.db_initialised:
             # The replica set should be initialised only once. Check should be
             # external (e.g., check initialisation inside peer relation). We
             # shouldn't rely on MongoDB response because the data directory
@@ -896,7 +898,7 @@ class MongodbOperatorCharm(CharmBase):
                 return
 
             # replica set initialised properly and ready to go
-            self._db_initialised = True
+            self.db_initialised = True
             self.unit.status = ActiveStatus()
 
     def _unit_ip(self, unit: Unit) -> str:
@@ -962,7 +964,54 @@ class MongodbOperatorCharm(CharmBase):
 
         return any("MONGOD_ARGS" in line and "--auth" in line for line in env_vars)
 
-    # END: helper functions
+    def has_backup_service(self):
+        """Verifies the backup service is available."""
+        snap_cache = snap.SnapCache()
+        mongodb_snap = snap_cache["charmed-mongodb"]
+        if mongodb_snap.present:
+            return True
+
+        return False
+
+    def clear_pbm_config_file(self) -> None:
+        """Overwrites existing config file with the default file provided by snap."""
+        subprocess.check_output(
+            f"charmed-mongodb.pbm config --file {Config.MONGODB_SNAP_DATA_DIR}/etc/pbm/pbm_config.yaml",
+            shell=True,
+        )
+
+    def run_pbm_command(self, cmd: List[str]) -> str:
+        """Executes the provided pbm command.
+
+        Raises:
+            subprocess.CalledProcessError
+        """
+        pbm_response = subprocess.check_output(f"charmed-mongodb.pbm {' '.join(cmd)}", shell=True)
+        return pbm_response.decode("utf-8")
+
+    def start_backup_service(self) -> None:
+        """Starts the pbm agent.
+
+        Raises:
+            snap.SnapError
+        """
+        snap_cache = snap.SnapCache()
+        charmed_mongodb_snap = snap_cache["charmed-mongodb"]
+        charmed_mongodb_snap.start(services=["pbm-agent"])
+
+    def restart_backup_service(self) -> None:
+        """Restarts the pbm agent.
+
+        Raises:
+            snap.SnapError
+        """
+        snap_cache = snap.SnapCache()
+        charmed_mongodb_snap = snap_cache["charmed-mongodb"]
+        charmed_mongodb_snap.restart(services=["pbm-agent"])
+
+
+# pbm_snap.restart(services=["pbm-agent"])
+# END: helper functions
 
 
 if __name__ == "__main__":
