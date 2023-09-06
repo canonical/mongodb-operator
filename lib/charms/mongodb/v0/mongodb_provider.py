@@ -13,9 +13,7 @@ import re
 from collections import namedtuple
 from typing import Optional, Set
 
-from charms.data_platform_libs.v0.data_interfaces import (
-    DatabaseProvides,
-)
+from charms.data_platform_libs.v0.data_interfaces import DatabaseProvides
 from charms.mongodb.v0.helpers import generate_password
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 from ops.charm import CharmBase, RelationBrokenEvent, RelationChangedEvent
@@ -59,6 +57,7 @@ class MongoDBProvider(Object):
 
         Args:
             charm: the charm for which this relation is provided
+            substrate: host type, either "k8s" or "vm"
             relation_name: the name of the relation
         """
         self.relation_name = relation_name

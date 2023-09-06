@@ -8,9 +8,6 @@ import subprocess
 import time
 from typing import Dict, List, Optional, Set
 
-from charms.data_platform_libs.v0.data_interfaces import (
-    DatabaseProvides,
-)
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from charms.mongodb.v0.helpers import (
     KEY_FILE,
