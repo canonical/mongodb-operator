@@ -59,7 +59,7 @@ async def test_endpoints_new_password(ops_test: OpsTest):
     action = await action.wait()
     # wait for non-leader units to receive relation changed event.
     time.sleep(3)
-    await ops_test.model.wait_for_idle()
+    await ops_test.model.wait_for_idle(apps=[app], status="active", idle_period=15)
     for unit in application.units:
         await verify_endpoints(ops_test, unit)
 

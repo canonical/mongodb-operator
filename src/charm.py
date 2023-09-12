@@ -4,6 +4,7 @@
 # See LICENSE file for licensing details.
 import json
 import logging
+import re
 import subprocess
 import time
 from typing import Dict, List, Optional, Set
@@ -585,19 +586,21 @@ class MongodbOperatorCharm(CharmBase):
         )
 
     def _on_secret_changed(self, event: SecretChangedEvent):
-        secret = event.secret
-
-        if secret.id == self.app_peer_data.get(Config.Secrets.SECRET_INTERNAL_LABEL, None):
+        if self._compare_secret_ids(
+            event.secret.id, self.app_peer_data.get(Config.Secrets.SECRET_INTERNAL_LABEL)
+        ):
             scope = APP_SCOPE
-        elif secret.id == self.unit_peer_data.get(Config.Secrets.SECRET_INTERNAL_LABEL, None):
+        elif self._compare_secret_ids(
+            event.secret.id, self.unit_peer_data.get(Config.Secrets.SECRET_INTERNAL_LABEL)
+        ):
             scope = UNIT_SCOPE
         else:
-            logging.debug(
-                f"Secret {event._id}:{event.secret.id} changed, but it's irrelevant for us"
-            )
+            logging.debug("Secret %s changed, but it's unknown", event.secret.id)
             return
+        logging.debug("Secret %s for scope %s changed, refreshing", event.secret.id, scope)
         self._update_juju_secrets_cache(scope)
         self._connect_mongodb_exporter()
+        self._connect_pbm_agent()
 
     # END: charm event handlers
 
@@ -631,7 +634,7 @@ class MongodbOperatorCharm(CharmBase):
             raise AdminUserCreationError
 
         logger.debug(f"{OperatorUser.get_username()} user created")
-        self._user_created(OperatorUser)
+        self._set_user_created(OperatorUser)
 
     @retry(
         stop=stop_after_attempt(3),
@@ -651,7 +654,7 @@ class MongodbOperatorCharm(CharmBase):
             )
             logger.debug("creating the monitor user...")
             mongo.create_user(self.monitor_config)
-            self._user_created(MonitorUser)
+            self._set_user_created(MonitorUser)
 
         # leader should reconnect to exporter after creating the monitor user - since the snap
         # will have an authorisation error until the the user has been created and the daemon
@@ -677,7 +680,7 @@ class MongodbOperatorCharm(CharmBase):
             )
             logger.debug("creating the backup user...")
             mongo.create_user(self.backup_config)
-            self._user_created(BackupUser)
+            self._set_user_created(BackupUser)
 
     # END: users management
 
@@ -685,7 +688,7 @@ class MongodbOperatorCharm(CharmBase):
     def _is_user_created(self, user: MongoDBUser) -> bool:
         return f"{user.get_username()}-user-created" in self.app_peer_data
 
-    def _user_created(self, user: MongoDBUser) -> None:
+    def _set_user_created(self, user: MongoDBUser) -> None:
         self.app_peer_data[f"{user.get_username()}-user-created"] = "True"
 
     def _get_mongodb_config_for_user(
@@ -1099,6 +1102,26 @@ class MongodbOperatorCharm(CharmBase):
             return {}.setdefault(scope, {})
         scope_obj = self._scope_obj(scope)
         return self._peers.data[scope_obj]
+
+    @staticmethod
+    def _compare_secret_ids(secret_id1: str, secret_id2: str) -> bool:
+        """Reliable comparison on secret equality.
+
+        NOTE: Secret IDs may be of any of these forms:
+         - secret://9663a790-7828-4186-8b21-2624c58b6cfe/citb87nubg2s766pab40
+         - secret:citb87nubg2s766pab40
+        """
+        if not secret_id1 or not secret_id2:
+            return False
+
+        regex = re.compile(".*[^/][/:]")
+
+        pure_id1 = regex.sub("", secret_id1)
+        pure_id2 = regex.sub("", secret_id2)
+
+        if pure_id1 and pure_id2:
+            return pure_id1 == pure_id2
+        return False
 
     def _juju_secret_set(self, scope: Scopes, key: str, value: str) -> str:
         """Helper function setting Juju secret in Juju versions >3.0."""
