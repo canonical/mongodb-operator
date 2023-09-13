@@ -49,7 +49,7 @@ async def test_deploy_charms(ops_test: OpsTest, application_charm, database_char
             application_name=ANOTHER_DATABASE_APP_NAME,
         ),
     )
-    await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active", wait_for_units=1)
+    await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active", wait_for_at_least_units=1)
 
 
 @pytest.mark.abort_on_fail

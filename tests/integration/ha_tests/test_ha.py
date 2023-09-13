@@ -69,7 +69,7 @@ async def change_logging(ops_test: OpsTest):
         time.sleep(15)
 
         # remove the log file as to not clog up space on the replicas.
-        rm_cmd = f"run --unit {unit.name} rm {helpers.MONGODB_LOG_PATH}"
+        rm_cmd = f"exec --unit {unit.name} rm {helpers.MONGODB_LOG_PATH}"
         await ops_test.juju(*rm_cmd.split())
 
 
