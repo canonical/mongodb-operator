@@ -63,6 +63,7 @@ async def test_build_deploy_charms(ops_test: OpsTest):
         apps=APP_NAMES, raise_on_error=False, status="active", timeout=2000
     )
 
+
 @pytest.mark.skip("Reactive charms don't work with juju 3.1.5")
 async def test_relation_data(ops_test: OpsTest) -> None:
     """Test the relation data is set correctly for this legacy relation."""
@@ -92,6 +93,7 @@ async def test_relation_data(ops_test: OpsTest) -> None:
     assert version == "5.0"
     assert replset == DATABASE_APP_NAME
 
+
 @pytest.mark.skip("Reactive charms don't work with juju 3.1.5")
 async def test_mongodb_auth_disabled(ops_test: OpsTest) -> None:
     """Test mongodb no longer uses auth after relating to a legacy relation."""
@@ -100,6 +102,7 @@ async def test_mongodb_auth_disabled(ops_test: OpsTest) -> None:
     assert not await auth_enabled(
         connection
     ), "MongoDB requires authentication after legacy relation"
+
 
 @pytest.mark.skip("Reactive charms don't work with juju 3.1.5")
 async def test_legacy_db_ops(ops_test: OpsTest) -> None:
@@ -127,6 +130,7 @@ async def test_legacy_db_ops(ops_test: OpsTest) -> None:
     g.user_permissions_clear("focal")
     user_info = g.user_get("focal")
     assert "users:tokenlist" not in user_info["permissions"], "unable to perform delete operations"
+
 
 @pytest.mark.skip("Reactive charms don't work with juju 3.1.5")
 async def test_add_unit_joins_without_auth(ops_test: OpsTest):
