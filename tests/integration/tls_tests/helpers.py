@@ -56,7 +56,7 @@ async def check_tls(ops_test: OpsTest, unit: ops.model.Unit, enabled: bool) -> b
         ):
             with attempt:
                 mongod_tls_check = await mongo_tls_command(ops_test)
-                check_tls_cmd = f"run --unit {unit.name} -- {mongod_tls_check}"
+                check_tls_cmd = f"exec --unit {unit.name} -- {mongod_tls_check}"
                 return_code, _, _ = await ops_test.juju(*check_tls_cmd.split())
                 tls_enabled = return_code == 0
                 if enabled != tls_enabled:
@@ -70,7 +70,7 @@ async def check_tls(ops_test: OpsTest, unit: ops.model.Unit, enabled: bool) -> b
 
 async def time_file_created(ops_test: OpsTest, unit_name: str, path: str) -> int:
     """Returns the unix timestamp of when a file was created on a specified unit."""
-    time_cmd = f"run --unit {unit_name} --  ls -l --time-style=full-iso {path} "
+    time_cmd = f"exec --unit {unit_name} --  ls -l --time-style=full-iso {path} "
     return_code, ls_output, _ = await ops_test.juju(*time_cmd.split())
 
     if return_code != 0:
@@ -83,9 +83,7 @@ async def time_file_created(ops_test: OpsTest, unit_name: str, path: str) -> int
 
 async def time_process_started(ops_test: OpsTest, unit_name: str, process_name: str) -> int:
     """Retrieves the time that a given process started according to systemd."""
-    time_cmd = (
-        f"run --unit {unit_name} --  systemctl show {process_name} --property=ActiveEnterTimestamp"
-    )
+    time_cmd = f"exec --unit {unit_name} --  systemctl show {process_name} --property=ActiveEnterTimestamp"
     return_code, systemctl_output, _ = await ops_test.juju(*time_cmd.split())
 
     if return_code != 0:

@@ -133,7 +133,7 @@ async def test_add_unit_joins_without_auth(ops_test: OpsTest):
     """Verify scaling mongodb with legacy relations supports no auth."""
     await ops_test.model.applications[DATABASE_APP_NAME].add_unit(count=1)
     await ops_test.model.wait_for_idle(
-        apps=[DATABASE_APP_NAME], status="active", timeout=1000, wait_for_units=3
+        apps=[DATABASE_APP_NAME], status="active", timeout=1000, wait_for_exact_units=3
     )
 
     # verify auth is still disabled
