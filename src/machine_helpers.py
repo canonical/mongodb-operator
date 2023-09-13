@@ -18,24 +18,26 @@ ROOT_USER_GID = 0
 MONGO_USER = "snap_daemon"
 
 
-def update_mongod_service(auth: bool, machine_ip: str, config: MongoDBConfiguration) -> None:
+def update_mongod_service(
+    auth: bool, machine_ip: str, config: MongoDBConfiguration, role: str = "replication"
+) -> None:
     """Updates the mongod service file with the new options for starting."""
     with open(Config.ENV_VAR_PATH, "r") as env_var_file:
         env_vars = env_var_file.readlines()
 
     # write our arguments and write them to /etc/environment - the environment variable here is
     # read in in the charmed-mongob.mongod.service file.
-    mongod_start_args = get_mongod_args(config, auth, snap_install=True)
+    mongo_start_args = get_mongod_args(config, auth, snap_install=True)
     args_added = False
     for index, line in enumerate(env_vars):
         if "MONGOD_ARGS" in line:
             args_added = True
-            env_vars[index] = f"MONGOD_ARGS={mongod_start_args}"
+            env_vars[index] = f"MONGOD_ARGS={mongo_start_args}"
 
     # if it is the first time adding these args to the file - will will need to append them to the
     # file
     if not args_added:
-        env_vars.append(f"MONGOD_ARGS={mongod_start_args}")
+        env_vars.append(f"MONGOD_ARGS={mongo_start_args}")
 
     with open(Config.ENV_VAR_PATH, "w") as service_file:
         service_file.writelines(env_vars)

@@ -84,6 +84,7 @@ def get_mongod_args(
     config: MongoDBConfiguration,
     auth: bool = True,
     snap_install: bool = False,
+    role: str = "replication",
 ) -> str:
     """Construct the MongoDB startup command line.
 
@@ -136,6 +137,12 @@ def get_mongod_args(
                 f"--tlsClusterFile={full_conf_dir}/{TLS_INT_PEM_FILE}",
             ]
         )
+
+    if role == "config-server":
+        cmd.append("--configsvr")
+
+    if role == "shard":
+        cmd.append("--shardsvr")
 
     cmd.append("\n")
     return " ".join(cmd)

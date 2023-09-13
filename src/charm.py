@@ -253,7 +253,10 @@ class MongodbOperatorCharm(CharmBase):
 
         # Construct the mongod startup commandline args for systemd and reload the daemon.
         update_mongod_service(
-            auth=auth, machine_ip=self._unit_ip(self.unit), config=self.mongodb_config
+            auth=auth,
+            machine_ip=self._unit_ip(self.unit),
+            config=self.mongodb_config,
+            role=self.model.config["role"],
         )
 
         # add licenses
@@ -947,6 +950,7 @@ class MongodbOperatorCharm(CharmBase):
                 auth,
                 self._unit_ip(self.unit),
                 config=self.mongodb_config,
+                role=self.model.config["role"],
             )
             mongodb_snap.start(services=["mongod"])
         except snap.SnapError as e:
