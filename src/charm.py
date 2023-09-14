@@ -599,6 +599,8 @@ class MongodbOperatorCharm(CharmBase):
             return
         logging.debug("Secret %s for scope %s changed, refreshing", event.secret.id, scope)
         self._update_juju_secrets_cache(scope)
+
+        # changed secrets means that the URIs used for PBM and mongodb_exporter are now out of date
         self._connect_mongodb_exporter()
         self._connect_pbm_agent()
 
