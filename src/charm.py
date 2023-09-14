@@ -1167,7 +1167,20 @@ class MongodbOperatorCharm(CharmBase):
         return self.secrets[scope][Config.Secrets.SECRET_LABEL].id
 
     def _update_juju_secrets_cache(self, scope: Scopes) -> None:
-        """Helper function to get Juju secret."""
+        """Helper function to retrieve all Juju secrets.
+
+        This function is responsible for direct communication with the Juju Secret
+        store to retrieve the Mono Charm's single, unique Secret object's metadata,
+        and --on success-- its contents.
+        In parallel with retrieving secret information, it's immediately locally cached,
+        making sure that we have the snapshot of the secret for the lifetime of the event
+        (that's being processed) without additional fetch requests to the Juju Secret Store.
+
+        (Note: metadata, i.e. the Secret object itself is cached as it may be necessary for
+        later operations, like updating contents.)
+
+        The function is returning a boolean that reflects success or failure of the above.
+        """
         peer_data = self._peer_data(scope)
 
         if not peer_data.get(Config.Secrets.SECRET_INTERNAL_LABEL):
