@@ -80,6 +80,31 @@ def get_create_user_cmd(
     ]
 
 
+def get_mongos_args(config: MongoDBConfiguration) -> str:
+    """Returns the arguments used for starting mongos on a config-server side application.
+
+    Returns:
+        A string representing the arguments to be passed to mongos.
+    """
+    # mongos running on the config server communicates through localhost
+    config_server_uri = f"{config.replset}/localhost"
+
+    # no need to add TLS since no network calls are used, since mongos is configured to listen
+    # on local host
+    cmd = [
+        # mongos on config server side only runs on local host
+        "--bind_ip localhost",
+        # todo figure out this one
+        f"--configdb {config_server_uri}",
+        # config server is already using 27017
+        "--port 27018",
+        # todo followup PR add keyfile and auth
+        "\n",
+    ]
+
+    return " ".join(cmd)
+
+
 def get_mongod_args(
     config: MongoDBConfiguration,
     auth: bool = True,

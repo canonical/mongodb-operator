@@ -75,7 +75,6 @@ class MongodbOperatorCharm(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
         self._port = Config.MONGODB_PORT
-
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.start, self._on_start)
         self.framework.observe(self.on.update_status, self._on_update_status)
@@ -213,6 +212,15 @@ class MongodbOperatorCharm(CharmBase):
         """Check if MongoDB is initialised."""
         return "db_initialised" in self.app_peer_data
 
+    @property
+    def role(self) -> str:
+        """Returns role of MongoDB deployment."""
+        return self.model.config["role"]
+
+    def is_role(self, role_name: str) -> bool:
+        """Checks if application is running in provided role."""
+        return self.role == role_name
+
     @db_initialised.setter
     def db_initialised(self, value):
         """Set the db_initialised flag."""
@@ -256,7 +264,7 @@ class MongodbOperatorCharm(CharmBase):
             auth=auth,
             machine_ip=self._unit_ip(self.unit),
             config=self.mongodb_config,
-            role=self.model.config["role"],
+            role=self.role,
         )
 
         # add licenses
@@ -275,9 +283,7 @@ class MongodbOperatorCharm(CharmBase):
         try:
             logger.debug("starting MongoDB.")
             self.unit.status = MaintenanceStatus("starting MongoDB")
-            snap_cache = snap.SnapCache()
-            mongodb_snap = snap_cache["charmed-mongodb"]
-            mongodb_snap.start(services=["mongod"])
+            self.start_mongod_service()
             self.unit.status = ActiveStatus()
         except snap.SnapError as e:
             logger.error("An exception occurred when starting mongod agent, error: %s.", str(e))
@@ -291,7 +297,7 @@ class MongodbOperatorCharm(CharmBase):
             return
 
         # check if this unit's deployment of MongoDB is ready
-        with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
+        with MongoDBConnection(self.mongodb_config, f"localhost", direct=True) as direct_mongo:
             if not direct_mongo.is_ready:
                 logger.debug("mongodb service is not ready yet.")
                 self.unit.status = WaitingStatus("waiting for MongoDB to start")
@@ -464,7 +470,7 @@ class MongodbOperatorCharm(CharmBase):
             return
 
         # Cannot check more advanced MongoDB statuses if mongod hasn't started.
-        with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
+        with MongoDBConnection(self.mongodb_config, f"localhost", direct=True) as direct_mongo:
             if not direct_mongo.is_ready:
                 self.unit.status = WaitingStatus("Waiting for MongoDB to start")
                 return
@@ -871,19 +877,24 @@ class MongodbOperatorCharm(CharmBase):
             # can be corrupted.
             return
 
-        with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
+        with MongoDBConnection(self.mongodb_config, f"localhost", direct=True) as direct_mongo:
             try:
                 logger.info("Replica Set initialization")
                 direct_mongo.init_replset()
                 self._peers.data[self.app]["replica_set_hosts"] = json.dumps(
                     [self._unit_ip(self.unit)]
                 )
+
                 logger.info("User initialization")
                 self._init_operator_user()
                 self._init_backup_user()
                 self._init_monitor_user()
-                logger.info("Manage relations")
-                self.client_relations.oversee_users(None, None)
+
+                # in sharding, user management is handled by mongos subordinate charm
+                if self.is_role(Config.REPLICATION):
+                    logger.info("Manage user")
+                    self.client_relations.oversee_users(None, None)
+
             except subprocess.CalledProcessError as e:
                 logger.error(
                     "Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr
@@ -937,22 +948,48 @@ class MongodbOperatorCharm(CharmBase):
         else:
             raise RuntimeError("Unknown secret scope.")
 
+    def start_mongod_service(self):
+        """Starts the mongod service and if necessary starts mongos.
+
+        Raises:
+            snap.SnapError
+        """
+        snap_cache = snap.SnapCache()
+        mongodb_snap = snap_cache["charmed-mongodb"]
+        mongodb_snap.start(services=["mongod"])
+
+        # charms running as config server are responsible for maintaing a server side mongos
+        if self.is_role(Config.CONFIG_SERVER):
+            mongodb_snap.start(services=["mongos"])
+
+    def stop_mongod_service(self):
+        """Stops the mongod service and if necessary stops mongos.
+
+        Raises:
+            snap.SnapError
+        """
+        snap_cache = snap.SnapCache()
+        mongodb_snap = snap_cache["charmed-mongodb"]
+        mongodb_snap.stop(services=["mongod"])
+
+        # charms running as config server are responsible for maintaing a server side mongos
+        if self.is_role(Config.CONFIG_SERVER):
+            mongodb_snap.stop(services=["mongos"])
+
     def restart_mongod_service(self, auth=None):
         """Restarts the mongod service with its associated configuration."""
         if auth is None:
             auth = self.auth_enabled()
 
         try:
-            snap_cache = snap.SnapCache()
-            mongodb_snap = snap_cache["charmed-mongodb"]
-            mongodb_snap.stop(services=["mongod"])
+            self.stop_mongod_service()
             update_mongod_service(
                 auth,
                 self._unit_ip(self.unit),
                 config=self.mongodb_config,
-                role=self.model.config["role"],
+                role=self.role,
             )
-            mongodb_snap.start(services=["mongod"])
+            self.start_mongod_service()
         except snap.SnapError as e:
             logger.error("An exception occurred when starting mongod agent, error: %s.", str(e))
             self.unit.status = BlockedStatus("couldn't start MongoDB")

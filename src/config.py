@@ -6,14 +6,16 @@
 class Config:
     """Configuration for MongoDB Charm."""
 
-    SUBSTRATE = "vm"
-    # We expect the MongoDB container to use the default ports
     MONGODB_PORT = 27017
+    SUBSTRATE = "vm"
     ENV_VAR_PATH = "/etc/environment"
     MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
     MONGOD_CONF_DIR = f"{MONGODB_SNAP_DATA_DIR}/etc/mongod"
     MONGOD_CONF_FILE_PATH = f"{MONGOD_CONF_DIR}/mongod.conf"
-    SNAP_PACKAGES = [("charmed-mongodb", "5/edge", 82)]
+    SNAP_PACKAGES = [("charmed-mongodb", "5/edge/mongos", 83)]
+    CONFIG_SERVER = "config-server"
+    REPLICATION = "replication"
+    SHARD = "shard"
 
     class Actions:
         """Actions related config for MongoDB Charm."""
