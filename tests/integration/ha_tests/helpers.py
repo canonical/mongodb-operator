@@ -487,7 +487,6 @@ async def kill_unit_process(ops_test: OpsTest, unit_name: str, kill_code: str):
     if len(ops_test.model.applications[app].units) < 2:
         await ops_test.model.applications[app].add_unit(count=1)
         await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
-
     kill_cmd = f"exec --unit {unit_name} -- pkill --signal {kill_code} -f {DB_PROCESS}"
     return_code, _, _ = await ops_test.juju(*kill_cmd.split())
 
