@@ -322,7 +322,7 @@ class MongodbOperatorCharm(CharmBase):
             return
 
         # check if this unit's deployment of MongoDB is ready
-        with MongoDBConnection(self.mongodb_config, f"localhost", direct=True) as direct_mongo:
+        with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
             if not direct_mongo.is_ready:
                 logger.debug("mongodb service is not ready yet.")
                 self.unit.status = WaitingStatus("waiting for MongoDB to start")
@@ -495,7 +495,7 @@ class MongodbOperatorCharm(CharmBase):
             return
 
         # Cannot check more advanced MongoDB statuses if mongod hasn't started.
-        with MongoDBConnection(self.mongodb_config, f"localhost", direct=True) as direct_mongo:
+        with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
             if not direct_mongo.is_ready:
                 self.unit.status = WaitingStatus("Waiting for MongoDB to start")
                 return
@@ -952,7 +952,7 @@ class MongodbOperatorCharm(CharmBase):
             # can be corrupted.
             return
 
-        with MongoDBConnection(self.mongodb_config, f"localhost", direct=True) as direct_mongo:
+        with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
             try:
                 logger.info("Replica Set initialization")
                 direct_mongo.init_replset()
@@ -1045,7 +1045,7 @@ class MongodbOperatorCharm(CharmBase):
         mongodb_snap = snap_cache["charmed-mongodb"]
         mongodb_snap.start(services=["mongod"])
 
-        # charms running as config server are responsible for maintaing a server side mongos
+        # charms running as config server are responsible for maintaining a server side mongos
         if self.is_role(Config.CONFIG_SERVER):
             mongodb_snap.start(services=["mongos"])
 
@@ -1059,7 +1059,7 @@ class MongodbOperatorCharm(CharmBase):
         mongodb_snap = snap_cache["charmed-mongodb"]
         mongodb_snap.stop(services=["mongod"])
 
-        # charms running as config server are responsible for maintaing a server side mongos
+        # charms running as config server are responsible for maintaining a server side mongos
         if self.is_role(Config.CONFIG_SERVER):
             mongodb_snap.stop(services=["mongos"])
 
