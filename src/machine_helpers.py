@@ -61,9 +61,15 @@ def push_file_to_unit(parent_dir, file_name, file_contents) -> None:
 
     # MongoDB limitation; it is needed 400 rights for keyfile and we need 440 rights on tls certs
     # to be able to connect via MongoDB shell
-    if "keyFile" in file_name:
+    if Config.TLS.KEY_FILE_NAME in file_name:
         os.chmod(file_name, 0o400)
     else:
         os.chmod(file_name, 0o440)
     mongodb_user = pwd.getpwnam(MONGO_USER)
     os.chown(file_name, mongodb_user.pw_uid, ROOT_USER_GID)
+
+
+def remove_file_from_unit(parent_dir, file_name) -> None:
+    """Remove file from vm unit."""
+    if os.path.exists(f"{parent_dir}/{file_name}"):
+        os.remove(f"{parent_dir}/{file_name}")

@@ -111,14 +111,17 @@ class TestMongoTLS(unittest.TestCase):
         """Test non-leader removes only external cert & chain."""
         # set initial certificate values
         rel_id = self.relate_to_tls_certificates_operator()
-        app_rsa_key = self.harness.charm.app_peer_data["key"]
-        app_csr = self.harness.charm.app_peer_data["csr"]
+        app_rsa_key = self.harness.charm.get_secret("app", "key-secret")
+        app_csr = self.harness.charm.get_secret("app", "csr-secret")
 
         self.harness.set_leader(False)
         self.harness.remove_relation(rel_id)
-        self.assertIsNone(self.harness.charm.unit_peer_data.get("ca", None))
-        self.assertIsNone(self.harness.charm.unit_peer_data.get("cert", None))
-        self.assertIsNone(self.harness.charm.unit_peer_data.get("chain", None))
+        ca_secret = self.harness.charm.get_secret("unit", "ca-secret")
+        cert_secret = self.harness.charm.get_secret("unit", "cert-secret")
+        chain_secret = self.harness.charm.get_secret("unit", "chain-secret")
+        self.assertIsNone(ca_secret)
+        self.assertIsNone(cert_secret)
+        self.assertIsNone(chain_secret)
 
         #  internal certificate should be maintained
         self.verify_internal_rsa_csr(
@@ -138,12 +141,13 @@ class TestMongoTLS(unittest.TestCase):
         self.harness.remove_relation(rel_id)
 
         # internal certificates and external certificates should be removed
-        self.assertIsNone(self.harness.charm.unit_peer_data.get("ca", None))
-        self.assertIsNone(self.harness.charm.unit_peer_data.get("cert", None))
-        self.assertIsNone(self.harness.charm.unit_peer_data.get("chain", None))
-        self.assertIsNone(self.harness.charm.app_peer_data.get("ca", None))
-        self.assertIsNone(self.harness.charm.app_peer_data.get("cert", None))
-        self.assertIsNone(self.harness.charm.app_peer_data.get("chain", None))
+        for scope in ["unit", "app"]:
+            ca_secret = self.harness.charm.get_secret(scope, "ca-secret")
+            cert_secret = self.harness.charm.get_secret(scope, "cert-secret")
+            chain_secret = self.harness.charm.get_secret(scope, "chain-secret")
+            self.assertIsNone(ca_secret)
+            self.assertIsNone(cert_secret)
+            self.assertIsNone(chain_secret)
 
         # units should be restarted after updating TLS settings
         restart_mongod_service.assert_called()
@@ -153,14 +157,17 @@ class TestMongoTLS(unittest.TestCase):
         """Verifies that when an external certificate expires a csr is made."""
         # assume relation exists with a current certificate
         self.relate_to_tls_certificates_operator()
-        self.harness.charm.unit_peer_data["cert"] = "unit-cert"
+
+        self.harness.charm.set_secret("unit", "cert-secret", "unit-cert")
 
         # simulate current certificate expiring
-        old_csr = self.harness.charm.unit_peer_data["csr"]
+        old_csr = self.harness.charm.get_secret("unit", "csr-secret")
+
         self.charm.tls.certs.on.certificate_expiring.emit(certificate="unit-cert", expiry=None)
 
         # verify a new csr was generated
-        new_csr = self.harness.charm.unit_peer_data["csr"]
+
+        new_csr = self.harness.charm.get_secret("unit", "csr-secret")
         self.assertNotEqual(old_csr, new_csr)
 
     @patch_network_get(private_address="1.1.1.1")
@@ -168,22 +175,23 @@ class TestMongoTLS(unittest.TestCase):
         """Verifies that when an internal certificate expires a csr is made."""
         # assume relation exists with a current certificate
         self.relate_to_tls_certificates_operator()
-        self.harness.charm.app_peer_data["cert"] = "app-cert"
-        self.harness.charm.unit_peer_data["cert"] = "unit-cert"
+        self.harness.charm.set_secret("app", "cert-secret", "app-cert")
+        self.harness.charm.set_secret("unit", "cert-secret", "unit-cert")
 
         # simulate current certificate expiring on non-leader
         self.harness.set_leader(False)
-        old_csr = self.harness.charm.app_peer_data["csr"]
+
+        old_csr = self.harness.charm.get_secret("app", "csr-secret")
         self.charm.tls.certs.on.certificate_expiring.emit(certificate="app-cert", expiry=None)
 
         # the csr should not be changed by non-leader units
-        new_csr = self.harness.charm.app_peer_data["csr"]
+        new_csr = self.harness.charm.get_secret("app", "csr-secret")
         self.assertEqual(old_csr, new_csr)
 
         # verify a new csr was generated when leader receives expiry
         self.harness.set_leader(True)
         self.charm.tls.certs.on.certificate_expiring.emit(certificate="app-cert", expiry=None)
-        new_csr = self.harness.charm.app_peer_data["csr"]
+        new_csr = self.harness.charm.get_secret("app", "csr-secret")
         self.assertNotEqual(old_csr, new_csr)
 
     @patch_network_get(private_address="1.1.1.1")
@@ -191,52 +199,59 @@ class TestMongoTLS(unittest.TestCase):
         """Verifies that when an unknown certificate expires nothing happens."""
         # assume relation exists with a current certificate
         self.relate_to_tls_certificates_operator()
-        self.harness.charm.app_peer_data["cert"] = "app-cert"
-        self.harness.charm.unit_peer_data["cert"] = "unit-cert"
+        self.harness.charm.set_secret("app", "cert-secret", "app-cert")
+        self.harness.charm.set_secret("unit", "cert-secret", "unit-cert")
 
         # simulate unknown certificate expiring on leader
-        old_app_csr = self.harness.charm.app_peer_data["csr"]
-        old_unit_csr = self.harness.charm.unit_peer_data["csr"]
+        old_app_csr = self.harness.charm.get_secret("app", "csr-secret")
+        old_unit_csr = self.harness.charm.get_secret("unit", "csr-secret")
+
         self.charm.tls.certs.on.certificate_expiring.emit(certificate="unknown-cert", expiry=None)
-        new_app_csr = self.harness.charm.app_peer_data["csr"]
-        new_unit_csr = self.harness.charm.unit_peer_data["csr"]
+
+        new_app_csr = self.harness.charm.get_secret("app", "csr-secret")
+        new_unit_csr = self.harness.charm.get_secret("unit", "csr-secret")
+
         self.assertEqual(old_app_csr, new_app_csr)
         self.assertEqual(old_unit_csr, new_unit_csr)
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongodbOperatorCharm._push_tls_certificate_to_workload")
+    @patch("charm.MongodbOperatorCharm.push_tls_certificate_to_workload")
     @patch("charm.MongodbOperatorCharm.restart_mongod_service")
     def test_external_certificate_available(self, restart_mongod_service, _):
         """Tests behavior when external certificate is made available."""
         # assume relation exists with a current certificate
         self.relate_to_tls_certificates_operator()
-        self.harness.charm.unit_peer_data["csr"] = "unit-crs"
-        self.harness.charm.unit_peer_data["cert"] = "unit-cert-old"
-        self.harness.charm.app_peer_data["cert"] = "app-cert"
+        self.harness.charm.set_secret("unit", "csr-secret", "csr-secret")
+        self.harness.charm.set_secret("unit", "cert-secret", "unit-cert-old")
+        self.harness.charm.set_secret("app", "cert-secret", "app-cert")
 
         self.charm.tls.certs.on.certificate_available.emit(
-            certificate_signing_request="unit-crs",
+            certificate_signing_request="csr-secret",
             chain=["unit-chain"],
             certificate="unit-cert",
             ca="unit-ca",
         )
 
-        self.assertEqual(self.harness.charm.unit_peer_data["chain"], "unit-chain")
-        self.assertEqual(self.harness.charm.unit_peer_data["cert"], "unit-cert")
-        self.assertEqual(self.harness.charm.unit_peer_data["ca"], "unit-ca")
+        chain_secret = self.harness.charm.get_secret("unit", "chain-secret")
+        unit_secret = self.harness.charm.get_secret("unit", "cert-secret")
+        ca_secret = self.harness.charm.get_secret("unit", "ca-secret")
+
+        self.assertEqual(chain_secret, "unit-chain")
+        self.assertEqual(unit_secret, "unit-cert")
+        self.assertEqual(ca_secret, "unit-ca")
 
         restart_mongod_service.assert_called()
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongodbOperatorCharm._push_tls_certificate_to_workload")
+    @patch("charm.MongodbOperatorCharm.push_tls_certificate_to_workload")
     @patch("charm.MongodbOperatorCharm.restart_mongod_service")
     def test_internal_certificate_available(self, restart_mongod_service, _):
         """Tests behavior when internal certificate is made available."""
         # assume relation exists with a current certificate
         self.relate_to_tls_certificates_operator()
-        self.harness.charm.app_peer_data["csr"] = "app-crs"
-        self.harness.charm.app_peer_data["cert"] = "app-cert-old"
-        self.harness.charm.unit_peer_data["cert"] = "unit-cert"
+        self.harness.charm.set_secret("app", "csr-secret", "app-crs")
+        self.harness.charm.set_secret("app", "cert-secret", "app-cert-old")
+        self.harness.charm.set_secret("unit", "cert-secret", "unit-cert")
 
         self.charm.tls.certs.on.certificate_available.emit(
             certificate_signing_request="app-crs",
@@ -245,24 +260,28 @@ class TestMongoTLS(unittest.TestCase):
             ca="app-ca",
         )
 
-        self.assertEqual(self.harness.charm.app_peer_data["chain"], "app-chain")
-        self.assertEqual(self.harness.charm.app_peer_data["cert"], "app-cert")
-        self.assertEqual(self.harness.charm.app_peer_data["ca"], "app-ca")
+        chain_secret = self.harness.charm.get_secret("app", "chain-secret")
+        unit_secret = self.harness.charm.get_secret("app", "cert-secret")
+        ca_secret = self.harness.charm.get_secret("app", "ca-secret")
+
+        self.assertEqual(chain_secret, "app-chain")
+        self.assertEqual(unit_secret, "app-cert")
+        self.assertEqual(ca_secret, "app-ca")
 
         restart_mongod_service.assert_called()
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongodbOperatorCharm._push_tls_certificate_to_workload")
+    @patch("charm.MongodbOperatorCharm.push_tls_certificate_to_workload")
     @patch("charm.MongodbOperatorCharm.restart_mongod_service")
     def test_unknown_certificate_available(self, restart_mongod_service, _):
         """Tests that when an unknown certificate is available, nothing is updated."""
         # assume relation exists with a current certificate
         self.relate_to_tls_certificates_operator()
-        self.harness.charm.app_peer_data["chain"] = "app-chain-old"
-        self.harness.charm.app_peer_data["cert"] = "app-cert-old"
-        self.harness.charm.app_peer_data["csr"] = "app-crs-old"
-        self.harness.charm.app_peer_data["ca"] = "app-ca-old"
-        self.harness.charm.unit_peer_data["cert"] = "unit-cert"
+        self.harness.charm.set_secret("app", "chain-secret", "app-chain-old")
+        self.harness.charm.set_secret("app", "cert-secret", "app-cert-old")
+        self.harness.charm.set_secret("app", "csr-secret", "app-crs-old")
+        self.harness.charm.set_secret("app", "ca-secret", "app-ca-old")
+        self.harness.charm.set_secret("unit", "cert-secret", "unit-cert")
 
         self.charm.tls.certs.on.certificate_available.emit(
             certificate_signing_request="app-crs",
@@ -271,9 +290,13 @@ class TestMongoTLS(unittest.TestCase):
             ca="app-ca",
         )
 
-        self.assertEqual(self.harness.charm.app_peer_data["chain"], "app-chain-old")
-        self.assertEqual(self.harness.charm.app_peer_data["cert"], "app-cert-old")
-        self.assertEqual(self.harness.charm.app_peer_data["ca"], "app-ca-old")
+        chain_secret = self.harness.charm.get_secret("app", "chain-secret")
+        unit_secret = self.harness.charm.get_secret("app", "cert-secret")
+        ca_secret = self.harness.charm.get_secret("app", "ca-secret")
+
+        self.assertEqual(chain_secret, "app-chain-old")
+        self.assertEqual(unit_secret, "app-cert-old")
+        self.assertEqual(ca_secret, "app-ca-old")
 
         restart_mongod_service.assert_not_called()
 
@@ -291,8 +314,9 @@ class TestMongoTLS(unittest.TestCase):
 
         Checks if rsa/csr were randomly generated or if they are a provided value.
         """
-        unit_rsa_key = self.harness.charm.unit_peer_data.get("key", None)
-        unit_csr = self.harness.charm.unit_peer_data.get("csr", None)
+        unit_rsa_key = self.harness.charm.get_secret("unit", "key-secret")
+        unit_csr = self.harness.charm.get_secret("unit", "csr-secret")
+
         if specific_rsa:
             self.assertEqual(unit_rsa_key, expected_rsa)
         else:
@@ -310,8 +334,8 @@ class TestMongoTLS(unittest.TestCase):
 
         Checks if rsa/csr were randomly generated or if they are a provided value.
         """
-        app_rsa_key = self.harness.charm.app_peer_data.get("key", None)
-        app_csr = self.harness.charm.app_peer_data.get("csr", None)
+        app_rsa_key = self.harness.charm.get_secret("app", "key-secret")
+        app_csr = self.harness.charm.get_secret("app", "csr-secret")
         if specific_rsa:
             self.assertEqual(app_rsa_key, expected_rsa)
         else:

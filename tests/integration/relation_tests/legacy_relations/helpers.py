@@ -159,7 +159,7 @@ async def check_tls(ops_test: OpsTest, unit: ops.model.Unit, enabled: bool) -> b
         ):
             with attempt:
                 mongod_tls_check = await mongo_tls_command(ops_test)
-                check_tls_cmd = f"run --unit {unit.name} -- {mongod_tls_check}"
+                check_tls_cmd = f"exec --unit {unit.name} -- {mongod_tls_check}"
                 return_code, _, _ = await ops_test.juju(*check_tls_cmd.split())
                 tls_enabled = return_code == 0
                 if enabled != tls_enabled:

@@ -32,7 +32,7 @@ ELASTIC_APP_NAME = "elasticsearch"
 APP_NAMES = [GRAYLOG_APP_NAME, ELASTIC_APP_NAME, DATABASE_APP_NAME]
 
 
-@pytest.mark.abort_on_fail
+@pytest.mark.skip("Reactive charms don't work with juju 3.1.5")
 async def test_build_deploy_charms(ops_test: OpsTest):
     """Deploy both charms (application and database) to use in the tests."""
     # Deploy both charms (2 units for each application to test that later they correctly
@@ -64,6 +64,7 @@ async def test_build_deploy_charms(ops_test: OpsTest):
     )
 
 
+@pytest.mark.skip("Reactive charms don't work with juju 3.1.5")
 async def test_relation_data(ops_test: OpsTest) -> None:
     """Test the relation data is set correctly for this legacy relation."""
     related_unit_name = ops_test.model.applications[DATABASE_APP_NAME].units[0].name
@@ -93,6 +94,7 @@ async def test_relation_data(ops_test: OpsTest) -> None:
     assert replset == DATABASE_APP_NAME
 
 
+@pytest.mark.skip("Reactive charms don't work with juju 3.1.5")
 async def test_mongodb_auth_disabled(ops_test: OpsTest) -> None:
     """Test mongodb no longer uses auth after relating to a legacy relation."""
     unit = ops_test.model.applications[DATABASE_APP_NAME].units[0]
@@ -102,6 +104,7 @@ async def test_mongodb_auth_disabled(ops_test: OpsTest) -> None:
     ), "MongoDB requires authentication after legacy relation"
 
 
+@pytest.mark.skip("Reactive charms don't work with juju 3.1.5")
 async def test_legacy_db_ops(ops_test: OpsTest) -> None:
     """Test graylog is able to do CRUD operations."""
     try:
@@ -129,11 +132,12 @@ async def test_legacy_db_ops(ops_test: OpsTest) -> None:
     assert "users:tokenlist" not in user_info["permissions"], "unable to perform delete operations"
 
 
+@pytest.mark.skip("Reactive charms don't work with juju 3.1.5")
 async def test_add_unit_joins_without_auth(ops_test: OpsTest):
     """Verify scaling mongodb with legacy relations supports no auth."""
     await ops_test.model.applications[DATABASE_APP_NAME].add_unit(count=1)
     await ops_test.model.wait_for_idle(
-        apps=[DATABASE_APP_NAME], status="active", timeout=1000, wait_for_units=3
+        apps=[DATABASE_APP_NAME], status="active", timeout=1000, wait_for_exact_units=3
     )
 
     # verify auth is still disabled
@@ -197,7 +201,7 @@ async def test_new_relation_fails_with_legacy(ops_test: OpsTest) -> None:
     ), "MongoDB requires disabled authentication to support legacy relations"
 
 
-@pytest.mark.unstable
+@pytest.mark.skip("Reactive charms don't work with juju 3.1.5")
 async def test_legacy_relation_fails_with_new(ops_test: OpsTest) -> None:
     """Verify legacy relation joining results in blocked when new relations exist."""
     database = await ops_test.build_charm(".")

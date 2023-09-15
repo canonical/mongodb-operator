@@ -443,7 +443,7 @@ async def reused_storage(ops_test: OpsTest, unit_name, removal_time) -> bool:
         If member transitions to STARTUP2 from REMOVED then it is re-using the storage we
         provided.
     """
-    cat_cmd = f"run --unit {unit_name} -- cat {MONGODB_LOG_PATH}"
+    cat_cmd = f"exec --unit {unit_name} -- cat {MONGODB_LOG_PATH}"
     return_code, output, _ = await ops_test.juju(*cat_cmd.split())
 
     if return_code != 0:
@@ -487,8 +487,7 @@ async def kill_unit_process(ops_test: OpsTest, unit_name: str, kill_code: str):
     if len(ops_test.model.applications[app].units) < 2:
         await ops_test.model.applications[app].add_unit(count=1)
         await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
-
-    kill_cmd = f"run --unit {unit_name} -- pkill --signal {kill_code} -f {DB_PROCESS}"
+    kill_cmd = f"exec --unit {unit_name} -- pkill --signal {kill_code} -f {DB_PROCESS}"
     return_code, _, _ = await ops_test.juju(*kill_cmd.split())
 
     if return_code != 0:
@@ -520,7 +519,7 @@ async def db_step_down(ops_test: OpsTest, old_primary_unit: str, sigterm_time: i
     app = await app_name(ops_test)
     for unit in ops_test.model.applications[app].units:
         # verify log file exists on this machine
-        search_file = f"run --unit {unit.name} ls {MONGODB_LOG_PATH}"
+        search_file = f"exec --unit {unit.name} ls {MONGODB_LOG_PATH}"
         return_code, _, _ = await ops_test.juju(*search_file.split())
         if return_code == 2:
             continue
@@ -558,7 +557,7 @@ async def all_db_processes_down(ops_test: OpsTest) -> bool:
         for attempt in Retrying(stop=stop_after_attempt(60), wait=wait_fixed(3)):
             with attempt:
                 for unit in ops_test.model.applications[app].units:
-                    search_db_process = f"run --unit {unit.name} pgrep -x mongod"
+                    search_db_process = f"exec --unit {unit.name} pgrep -x mongod"
                     _, processes, _ = await ops_test.juju(*search_db_process.split())
                     # splitting processes by "\n" results in one or more empty lines, hence we
                     # need to process these lines accordingly.
@@ -592,7 +591,9 @@ async def update_restart_delay(ops_test: OpsTest, unit, delay: int):
     # MONGOD_SERVICE_DEFAULT_PATH since this directory has strict permissions, instead we scp it
     # elsewhere and then move it to MONGOD_SERVICE_DEFAULT_PATH.
     await unit.scp_to(source=TMP_SERVICE_PATH, destination="mongod.service")
-    mv_cmd = f"run --unit {unit.name} mv /home/ubuntu/mongod.service {MONGOD_SERVICE_DEFAULT_PATH}"
+    mv_cmd = (
+        f"exec --unit {unit.name} mv /home/ubuntu/mongod.service {MONGOD_SERVICE_DEFAULT_PATH}"
+    )
     return_code, _, _ = await ops_test.juju(*mv_cmd.split())
     if return_code != 0:
         raise ProcessError(f"Command: {mv_cmd} failed on unit: {unit.name}.")
@@ -601,7 +602,7 @@ async def update_restart_delay(ops_test: OpsTest, unit, delay: int):
     subprocess.call(["rm", TMP_SERVICE_PATH])
 
     # reload the daemon for systemd otherwise changes are not saved
-    reload_cmd = f"run --unit {unit.name} systemctl daemon-reload"
+    reload_cmd = f"exec --unit {unit.name} systemctl daemon-reload"
     return_code, _, _ = await ops_test.juju(*reload_cmd.split())
     if return_code != 0:
         raise ProcessError(f"Command: {reload_cmd} failed on unit: {unit.name}.")
@@ -633,7 +634,9 @@ async def update_service_logging(ops_test: OpsTest, unit, logging: bool):
     # MONGOD_SERVICE_DEFAULT_PATH since this directory has strict permissions, instead we scp it
     # elsewhere and then move it to MONGOD_SERVICE_DEFAULT_PATH.
     await unit.scp_to(source=TMP_SERVICE_PATH, destination="mongod.service")
-    mv_cmd = f"run --unit {unit.name} mv /home/ubuntu/mongod.service {MONGOD_SERVICE_DEFAULT_PATH}"
+    mv_cmd = (
+        f"exec --unit {unit.name} mv /home/ubuntu/mongod.service {MONGOD_SERVICE_DEFAULT_PATH}"
+    )
     return_code, _, _ = await ops_test.juju(*mv_cmd.split())
     if return_code != 0:
         raise ProcessError(f"Command: {mv_cmd} failed on unit: {unit.name}.")
@@ -642,7 +645,7 @@ async def update_service_logging(ops_test: OpsTest, unit, logging: bool):
     subprocess.call(["rm", TMP_SERVICE_PATH])
 
     # reload the daemon for systemd otherwise changes are not saved
-    reload_cmd = f"run --unit {unit.name} systemctl daemon-reload"
+    reload_cmd = f"exec --unit {unit.name} systemctl daemon-reload"
     return_code, _, _ = await ops_test.juju(*reload_cmd.split())
     if return_code != 0:
         raise ProcessError(f"Command: {reload_cmd} failed on unit: {unit.name}.")
@@ -650,13 +653,13 @@ async def update_service_logging(ops_test: OpsTest, unit, logging: bool):
 
 async def stop_mongod(ops_test: OpsTest, unit) -> None:
     """Safely stops the mongod process."""
-    stop_db_process = f"run --unit {unit.name} snap stop charmed-mongodb.mongod"
+    stop_db_process = f"exec --unit {unit.name} snap stop charmed-mongodb.mongod"
     await ops_test.juju(*stop_db_process.split())
 
 
 async def start_mongod(ops_test: OpsTest, unit) -> None:
     """Safely starts the mongod process."""
-    start_db_process = f"run --unit {unit.name} snap start charmed-mongodb.mongod"
+    start_db_process = f"exec --unit {unit.name} snap start charmed-mongodb.mongod"
     await ops_test.juju(*start_db_process.split())
 
 
