@@ -657,7 +657,7 @@ async def test_network_cut(ops_test, continuous_writes):
 
 @pytest.mark.abort_on_fail
 @pytest.mark.unstable
-async def test_scale_up_down(ops_test: OpsTest):
+async def test_scale_up_down(ops_test: OpsTest, continuous_writes):
     """Scale up and down the application and verify the replica set is healthy."""
     scales = [3, -3, 4, -4, 5, -5, 6, -6, 7, -7]
     for count in scales:
@@ -667,7 +667,7 @@ async def test_scale_up_down(ops_test: OpsTest):
 
 @pytest.mark.abort_on_fail
 @pytest.mark.unstable
-async def test_scale_up_down_removing_leader(ops_test: OpsTest):
+async def test_scale_up_down_removing_leader(ops_test: OpsTest, continuous_writes):
     """Scale up and down the application and verify the replica set is healthy."""
     scales = [3, -3, 4, -4, 5, -5, 6, -6, 7, -7]
     for count in scales:
