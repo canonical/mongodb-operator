@@ -38,6 +38,7 @@ from charms.mongodb.v0.users import (
     MongoDBUser,
     MonitorUser,
     OperatorUser,
+    MongosUser,
 )
 from charms.operator_libs_linux.v1 import snap
 from ops import JujuVersion
@@ -346,6 +347,7 @@ class MongodbOperatorCharm(CharmBase):
             return
 
         self._initialise_replica_set(event)
+        self._init_inital_user(MongosUser)
 
     def _on_relation_joined(self, event: RelationJoinedEvent) -> None:
         """Add peer to replica set.
@@ -623,8 +625,8 @@ class MongodbOperatorCharm(CharmBase):
         reraise=True,
         before=before_log(logger, logging.DEBUG),
     )
-    def _init_operator_user(self) -> None:
-        """Creates initial admin user for MongoDB.
+    def _init_inital_user(self, user) -> None:
+        """Creates initial specified admin user.
 
         Initial admin user can be created only through localhost connection.
         see https://www.mongodb.com/docs/manual/core/localhost-exception/
@@ -634,7 +636,7 @@ class MongodbOperatorCharm(CharmBase):
         It is needed to install mongodb-clients inside charm container to make
         this function work correctly.
         """
-        if self._is_user_created(OperatorUser) or not self.unit.is_leader():
+        if self._is_user_created(user) or not self.unit.is_leader():
             return
 
         out = subprocess.run(
@@ -644,8 +646,8 @@ class MongodbOperatorCharm(CharmBase):
         if out.returncode == 0:
             raise AdminUserCreationError
 
-        logger.debug(f"{OperatorUser.get_username()} user created")
-        self._set_user_created(OperatorUser)
+        logger.debug(f"{user.get_username()} user created")
+        self._set_user_created(user)
 
     @retry(
         stop=stop_after_attempt(3),
@@ -742,6 +744,7 @@ class MongodbOperatorCharm(CharmBase):
         share between members via the app data.
         """
         self._check_or_set_user_password(OperatorUser)
+        self._check_or_set_user_password(MongosUser)
         self._check_or_set_user_password(MonitorUser)
 
         if not self.get_secret(APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME):
@@ -961,7 +964,7 @@ class MongodbOperatorCharm(CharmBase):
                 )
 
                 logger.info("User initialization")
-                self._init_operator_user()
+                self._init_inital_user(OperatorUser)
                 self._init_backup_user()
                 self._init_monitor_user()
 

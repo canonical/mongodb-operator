@@ -58,6 +58,8 @@ class MongoDBUser:
         """Returns the key name for the password of the user."""
         if username == OperatorUser.get_username():
             return OperatorUser.get_password_key_name()
+        elif username == MongosUser.get_username():
+            return MongosUser.get_password_key_name()
         elif username == MonitorUser.get_username():
             return MonitorUser.get_password_key_name()
         elif username == BackupUser.get_username():
@@ -74,6 +76,16 @@ class _OperatorUser(MongoDBUser):
     _database_name = "admin"
     _roles = ["default"]
     _hosts = []
+
+
+class _MongosUser(MongoDBUser):
+    """Operator user for MongoDB."""
+
+    _username = "mongos"
+    _password_key_name = f"{_username}-password"
+    _database_name = "admin"
+    _roles = ["default"]
+    _hosts = ["127.0.0.1"]
 
 
 class _MonitorUser(MongoDBUser):
@@ -108,6 +120,12 @@ class _BackupUser(MongoDBUser):
 OperatorUser = _OperatorUser()
 MonitorUser = _MonitorUser()
 BackupUser = _BackupUser()
+MongosUser = _MongosUser()
 
 # List of system usernames needed for correct work on the charm.
-CHARM_USERS = [OperatorUser.get_username(), BackupUser.get_username(), MonitorUser.get_username()]
+CHARM_USERS = [
+    OperatorUser.get_username(),
+    BackupUser.get_username(),
+    MonitorUser.get_username(),
+    MongosUser.get_username(),
+]

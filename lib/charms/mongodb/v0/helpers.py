@@ -79,7 +79,10 @@ def get_create_user_cmd(
     ]
 
 
-def get_mongos_args(config: MongoDBConfiguration) -> str:
+def get_mongos_args(
+    config: MongoDBConfiguration,
+    snap_install: bool = False,
+) -> str:
     """Returns the arguments used for starting mongos on a config-server side application.
 
     Returns:
@@ -90,6 +93,7 @@ def get_mongos_args(config: MongoDBConfiguration) -> str:
 
     # no need to add TLS since no network calls are used, since mongos is configured to listen
     # on local host
+    full_conf_dir = f"{MONGODB_SNAP_DATA_DIR}{CONF_DIR}" if snap_install else CONF_DIR
     cmd = [
         # mongos on config server side only runs on local host
         "--bind_ip localhost",
@@ -98,6 +102,7 @@ def get_mongos_args(config: MongoDBConfiguration) -> str:
         # config server is already using 27017
         "--port 27018",
         # todo followup PR add keyfile and auth
+        f"--keyFile={full_conf_dir}/{KEY_FILE}",
         "\n",
     ]
 

@@ -28,7 +28,7 @@ def update_mongod_service(
     add_args_to_env("MONGOD_ARGS", mongod_start_args)
 
     if role == "config-server":
-        mongos_start_args = get_mongos_args(config)
+        mongos_start_args = get_mongos_args(config, snap_install=True)
         add_args_to_env("MONGOS_ARGS", mongos_start_args)
 
 
