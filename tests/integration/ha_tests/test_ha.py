@@ -667,7 +667,7 @@ async def test_scale_up_down(ops_test: OpsTest, continuous_writes):
 
 @pytest.mark.abort_on_fail
 @pytest.mark.unstable
-async def test_scale_up_down_removing_leader(ops_test: OpsTest):
+async def test_scale_up_down_removing_leader(ops_test: OpsTest, continuous_writes):
     """Scale up and down the application and verify the replica set is healthy."""
     scales = [3, -3, 4, -4, 5, -5, 6, -6, 7, -7]
     for count in scales:
@@ -711,7 +711,7 @@ async def scale_and_verify(ops_test: OpsTest, count: int, remove_leader: bool = 
     assert primary is not None, "Replica set has no primary"
 
 
-async def _verify_writes(ops_test: OpsTest, continuous_writes):
+async def _verify_writes(ops_test: OpsTest):
     # verify that no writes to the db were missed
     total_expected_writes = await helpers.stop_continous_writes(ops_test)
     actual_writes = await helpers.count_writes(ops_test)
