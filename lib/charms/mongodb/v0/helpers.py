@@ -90,13 +90,11 @@ def get_mongos_args(config: MongoDBConfiguration) -> str:
     # mongos running on the config server communicates through localhost
     config_server_uri = f"{config.replset}/localhost"
 
-    # no need to add TLS since no network calls are used, since mongos is configured to listen
-    # on local host
+    # todo follow up PR add TLS
     cmd = [
         # mongos on config server side should run on 0.0.0.0 so it can be accessed by other units
         # in the sharded cluster
-        "--bind_ip 0.0.0.0",
-        # todo figure out this one
+        "--bind_ip",
         f"--configdb {config_server_uri}",
         # config server is already using 27017
         f"--port {Config.MONGOS_PORT}",
