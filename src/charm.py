@@ -921,7 +921,7 @@ class MongodbOperatorCharm(CharmBase):
             # Added to avoid systemd error:
             # 'snap.charmed-mongodb.pbm-agent.service: Start request repeated too quickly'
             time.sleep(1)
-            pbm_snap.start(services=[Config.Backup.SERVICE_NAME])
+            pbm_snap.start(services=[Config.Backup.SERVICE_NAME], enable=True)
         except snap.SnapError as e:
             logger.error(f"Failed to restart {Config.Backup.SERVICE_NAME}: {str(e)}")
             self._get_service_status(Config.Backup.SERVICE_NAME)
@@ -1043,11 +1043,11 @@ class MongodbOperatorCharm(CharmBase):
         """
         snap_cache = snap.SnapCache()
         mongodb_snap = snap_cache["charmed-mongodb"]
-        mongodb_snap.start(services=["mongod"])
+        mongodb_snap.start(services=["mongod"], enable=True)
 
         # charms running as config server are responsible for maintaining a server side mongos
         if self.is_role(Config.Role.CONFIG_SERVER):
-            mongodb_snap.start(services=["mongos"])
+            mongodb_snap.start(services=["mongos"], enable=True)
 
     def stop_mongod_service(self):
         """Stops the mongod service and if necessary stops mongos.
@@ -1122,7 +1122,7 @@ class MongodbOperatorCharm(CharmBase):
         """
         snap_cache = snap.SnapCache()
         charmed_mongodb_snap = snap_cache["charmed-mongodb"]
-        charmed_mongodb_snap.start(services=["pbm-agent"])
+        charmed_mongodb_snap.start(services=["pbm-agent"], enable=True)
 
     def restart_backup_service(self) -> None:
         """Restarts the pbm agent.
