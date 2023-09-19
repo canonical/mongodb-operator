@@ -822,11 +822,11 @@ class MongodbOperatorCharm(CharmBase):
             try:
                 snap_cache = snap.SnapCache()
                 snap_package = snap_cache[snap_name]
-
-                if not snap_package.present:
-                    snap_package.ensure(
-                        snap.SnapState.Latest, channel=snap_channel, revision=snap_revision
-                    )
+                snap_package.ensure(
+                    snap.SnapState.Latest, channel=snap_channel, revision=snap_revision
+                )
+                # snaps will auto refresh so it is necessary to hold the current revision
+                snap_package.hold()
 
             except snap.SnapError as e:
                 logger.error(
@@ -924,7 +924,7 @@ class MongodbOperatorCharm(CharmBase):
             # Added to avoid systemd error:
             # 'snap.charmed-mongodb.pbm-agent.service: Start request repeated too quickly'
             time.sleep(1)
-            pbm_snap.start(services=[Config.Backup.SERVICE_NAME])
+            pbm_snap.start(services=[Config.Backup.SERVICE_NAME], enable=True)
         except snap.SnapError as e:
             logger.error(f"Failed to restart {Config.Backup.SERVICE_NAME}: {str(e)}")
             self._get_service_status(Config.Backup.SERVICE_NAME)
@@ -969,7 +969,7 @@ class MongodbOperatorCharm(CharmBase):
                 self._init_monitor_user()
 
                 # in sharding, user management is handled by mongos subordinate charm
-                if self.is_role(Config.REPLICATION):
+                if self.is_role(Config.Role.REPLICATION):
                     logger.info("Manage user")
                     self.client_relations.oversee_users(None, None)
 
@@ -1046,11 +1046,11 @@ class MongodbOperatorCharm(CharmBase):
         """
         snap_cache = snap.SnapCache()
         mongodb_snap = snap_cache["charmed-mongodb"]
-        mongodb_snap.start(services=["mongod"])
+        mongodb_snap.start(services=["mongod"], enable=True)
 
         # charms running as config server are responsible for maintaining a server side mongos
-        if self.is_role(Config.CONFIG_SERVER):
-            mongodb_snap.start(services=["mongos"])
+        if self.is_role(Config.Role.CONFIG_SERVER):
+            mongodb_snap.start(services=["mongos"], enable=True)
 
     def stop_mongod_service(self):
         """Stops the mongod service and if necessary stops mongos.
@@ -1063,7 +1063,7 @@ class MongodbOperatorCharm(CharmBase):
         mongodb_snap.stop(services=["mongod"])
 
         # charms running as config server are responsible for maintaining a server side mongos
-        if self.is_role(Config.CONFIG_SERVER):
+        if self.is_role(Config.Role.CONFIG_SERVER):
             mongodb_snap.stop(services=["mongos"])
 
     def restart_mongod_service(self, auth=None):
@@ -1125,7 +1125,7 @@ class MongodbOperatorCharm(CharmBase):
         """
         snap_cache = snap.SnapCache()
         charmed_mongodb_snap = snap_cache["charmed-mongodb"]
-        charmed_mongodb_snap.start(services=["pbm-agent"])
+        charmed_mongodb_snap.start(services=["pbm-agent"], enable=True)
 
     def restart_backup_service(self) -> None:
         """Restarts the pbm agent.

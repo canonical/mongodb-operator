@@ -9,6 +9,7 @@ from typing import Literal
 class Config:
     """Configuration for MongoDB Charm."""
 
+    MONGOS_PORT = 27018
     MONGODB_PORT = 27017
     SUBSTRATE = "vm"
     ENV_VAR_PATH = "/etc/environment"
@@ -16,9 +17,13 @@ class Config:
     MONGOD_CONF_DIR = f"{MONGODB_SNAP_DATA_DIR}/etc/mongod"
     MONGOD_CONF_FILE_PATH = f"{MONGOD_CONF_DIR}/mongod.conf"
     SNAP_PACKAGES = [("charmed-mongodb", "5/edge", 84)]
-    CONFIG_SERVER = "config-server"
-    REPLICATION = "replication"
-    SHARD = "shard"
+
+    class Role:
+        """Role config names for MongoDB Charm."""
+
+        CONFIG_SERVER = "config-server"
+        REPLICATION = "replication"
+        SHARD = "shard"
 
     class Actions:
         """Actions related config for MongoDB Charm."""

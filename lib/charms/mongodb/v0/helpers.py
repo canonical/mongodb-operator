@@ -19,6 +19,8 @@ from ops.model import (
 )
 from pymongo.errors import AutoReconnect, ServerSelectionTimeoutError
 
+from config import Config
+
 # The unique Charmhub library identifier, never change it
 LIBID = "b9a7fe0c38d8486a9d1ce94c27d4758e"
 
@@ -94,13 +96,14 @@ def get_mongos_args(
     # no need to add TLS since no network calls are used, since mongos is configured to listen
     # on local host
     full_conf_dir = f"{MONGODB_SNAP_DATA_DIR}{CONF_DIR}" if snap_install else CONF_DIR
+    # todo follow up PR add TLS
     cmd = [
-        # mongos on config server side only runs on local host
-        "--bind_ip localhost",
-        # todo figure out this one
+        # mongos on config server side should run on 0.0.0.0 so it can be accessed by other units
+        # in the sharded cluster
+        "--bind_ip_all",
         f"--configdb {config_server_uri}",
         # config server is already using 27017
-        "--port 27018",
+        f"--port {Config.MONGOS_PORT}",
         # todo followup PR add keyfile and auth
         f"--keyFile={full_conf_dir}/{KEY_FILE}",
         "\n",
