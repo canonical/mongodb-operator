@@ -180,7 +180,7 @@ async def test_monitor_user(ops_test: OpsTest) -> None:
     ]
     hosts = ",".join(replica_set_hosts)
     replica_set_uri = f"mongodb://monitor:{password}@{hosts}/admin?replicaSet=mongodb"
-    admin_mongod_cmd = f"charmed-mongodb.mongo '{replica_set_uri}'  --eval 'rs.conf()'"
+    admin_mongod_cmd = f"charmed-mongodb.mongosh '{replica_set_uri}'  --eval 'rs.conf()'"
     check_monitor_cmd = f"exec --unit {unit.name} -- {admin_mongod_cmd}"
     return_code, _, _ = await ops_test.juju(*check_monitor_cmd.split())
     assert return_code == 0, "command rs.conf() on monitor user does not work"

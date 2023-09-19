@@ -136,7 +136,7 @@ async def mongo_tls_command(ops_test: OpsTest) -> str:
     replica_set_uri = f"mongodb://{hosts}/admin?replicaSet={app}"
 
     return (
-        f"charmed-mongodb.mongo '{replica_set_uri}'  --eval 'rs.status()'"
+        f"charmed-mongodb.mongosh '{replica_set_uri}'  --eval 'rs.status()'"
         f" --tls --tlsCAFile {EXTERNAL_CERT_PATH}"
         f" --tlsCertificateKeyFile {EXTERNAL_PEM_PATH}"
     )
