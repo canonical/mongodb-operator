@@ -94,7 +94,7 @@ def get_mongos_args(config: MongoDBConfiguration) -> str:
     cmd = [
         # mongos on config server side should run on 0.0.0.0 so it can be accessed by other units
         # in the sharded cluster
-        "--bind_ip",
+        "--bind_ip_all",
         f"--configdb {config_server_uri}",
         # config server is already using 27017
         f"--port {Config.MONGOS_PORT}",
