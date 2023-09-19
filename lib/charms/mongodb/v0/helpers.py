@@ -19,6 +19,8 @@ from ops.model import (
 )
 from pymongo.errors import AutoReconnect, ServerSelectionTimeoutError
 
+from config import Config
+
 # The unique Charmhub library identifier, never change it
 LIBID = "b9a7fe0c38d8486a9d1ce94c27d4758e"
 
@@ -97,7 +99,7 @@ def get_mongos_args(config: MongoDBConfiguration) -> str:
         # todo figure out this one
         f"--configdb {config_server_uri}",
         # config server is already using 27017
-        "--port 27018",
+        f"--port {Config.MONGOS_PORT}",
         # todo followup PR add keyfile and auth
         "\n",
     ]

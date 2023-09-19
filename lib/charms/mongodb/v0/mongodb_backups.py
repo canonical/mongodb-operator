@@ -30,6 +30,8 @@ from tenacity import (
     wait_fixed,
 )
 
+from config import Config
+
 # The unique Charmhub library identifier, never change it
 LIBID = "9f2b91c6128d48d6ba22724bf365da3b"
 
@@ -57,6 +59,9 @@ PBM_STATUS_CMD = ["status", "-o", "json"]
 MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
 BACKUP_RESTORE_MAX_ATTEMPTS = 5
 BACKUP_RESTORE_ATTEMPT_COOLDOWN = 15
+
+
+_StrOrBytes = Union[str, bytes]
 
 
 class ResyncError(Exception):
@@ -662,15 +667,15 @@ class MongoDBBackups(Object):
                     break
 
             for host_info in cluster["nodes"]:
-                replica_info = f"mongodb/{self.charm._unit_ip(self.charm.unit)}:27107"
+                replica_info = (
+                    f"mongodb/{self.charm._unit_ip(self.charm.unit)}:{Config.MONGOS_PORT}"
+                )
                 if host_info["host"] == replica_info:
                     break
 
             return str(host_info["errors"])
         except KeyError:
             return ""
-
-    _StrOrBytes = Union[str, bytes]
 
     def process_pbm_error(self, pbm_status: Optional[_StrOrBytes]) -> str:
         """Returns errors found in PBM status."""

@@ -966,7 +966,7 @@ class MongodbOperatorCharm(CharmBase):
                 self._init_monitor_user()
 
                 # in sharding, user management is handled by mongos subordinate charm
-                if self.is_role(Config.REPLICATION):
+                if self.is_role(Config.Role.REPLICATION):
                     logger.info("Manage user")
                     self.client_relations.oversee_users(None, None)
 
@@ -1046,7 +1046,7 @@ class MongodbOperatorCharm(CharmBase):
         mongodb_snap.start(services=["mongod"])
 
         # charms running as config server are responsible for maintaining a server side mongos
-        if self.is_role(Config.CONFIG_SERVER):
+        if self.is_role(Config.Role.CONFIG_SERVER):
             mongodb_snap.start(services=["mongos"])
 
     def stop_mongod_service(self):
@@ -1060,7 +1060,7 @@ class MongodbOperatorCharm(CharmBase):
         mongodb_snap.stop(services=["mongod"])
 
         # charms running as config server are responsible for maintaining a server side mongos
-        if self.is_role(Config.CONFIG_SERVER):
+        if self.is_role(Config.Role.CONFIG_SERVER):
             mongodb_snap.stop(services=["mongos"])
 
     def restart_mongod_service(self, auth=None):
