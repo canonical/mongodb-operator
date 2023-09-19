@@ -627,7 +627,7 @@ class MongodbOperatorCharm(CharmBase):
         reraise=True,
         before=before_log(logger, logging.DEBUG),
     )
-    def _init_inital_user(self, user) -> None:
+    def _init_operator_user(self) -> None:
         """Creates initial specified admin user.
 
         Initial admin user can be created only through localhost connection.
@@ -642,7 +642,7 @@ class MongodbOperatorCharm(CharmBase):
             user: User to create
             mongos: whether or not the user should be created on mongos router
         """
-        if self._is_user_created(user) or not self.unit.is_leader():
+        if self._is_user_created(OperatorUser) or not self.unit.is_leader():
             return
 
         out = subprocess.run(
@@ -652,8 +652,8 @@ class MongodbOperatorCharm(CharmBase):
         if out.returncode == 0:
             raise AdminUserCreationError
 
-        logger.debug(f"{user.get_username()} user created")
-        self._set_user_created(user)
+        logger.debug(f"{OperatorUser.get_username()} user created")
+        self._set_user_created(OperatorUser)
 
     @retry(
         stop=stop_after_attempt(3),
@@ -808,7 +808,7 @@ class MongodbOperatorCharm(CharmBase):
         """Open the given port.
 
         Args:
-            port: The port to open.
+            ports: The port to open.
         """
         for port in ports:
             try:
@@ -970,7 +970,7 @@ class MongodbOperatorCharm(CharmBase):
                 )
 
                 logger.info("User initialization")
-                self._init_inital_user(OperatorUser)
+                self._init_operator_user()
                 self._init_backup_user()
                 self._init_monitor_user()
 

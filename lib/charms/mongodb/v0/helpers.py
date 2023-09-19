@@ -18,6 +18,7 @@ from ops.model import (
     WaitingStatus,
 )
 from pymongo.errors import AutoReconnect, ServerSelectionTimeoutError
+
 from config import Config
 
 # The unique Charmhub library identifier, never change it
@@ -63,7 +64,7 @@ def get_create_user_cmd(
     """
     return [
         mongo_path,
-        f"mongodb://localhost/admin",
+        "mongodb://localhost/admin",
         "--quiet",
         "--eval",
         "db.createUser({"
@@ -101,12 +102,11 @@ def get_mongos_args(
         f"--configdb {config_server_uri}",
         # config server is already using 27017
         f"--port {Config.MONGOS_PORT}",
-        # todo followup PR add keyfile and auth
         f"--keyFile={full_conf_dir}/{KEY_FILE}",
         "\n",
     ]
 
-    # todo add TLS - maybe we can generalise the TLS options code from below
+    # TODO Future PR: support TLS on mongos
 
     return " ".join(cmd)
 
@@ -134,6 +134,8 @@ def get_mongod_args(
         f"--replSet={config.replset}",
         # db must be located within the snap common directory since the snap is strictly confined
         f"--dbpath={full_data_dir}",
+        # for simplicity we run the mongod daemon on shards, configsvrs, and replicas on the same
+        # port
         f"--port {Config.MONGODB_PORT}",
         logging_options,
     ]
@@ -170,11 +172,10 @@ def get_mongod_args(
             ]
         )
 
-    # todo use constants here plz
-    if role == "config-server":
+    if role == Config.Role.CONFIG_SERVER:
         cmd.append("--configsvr")
 
-    if role == "shard":
+    if role == Config.Role.SHARD:
         cmd.append("--shardsvr")
 
     cmd.append("\n")
