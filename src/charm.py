@@ -299,7 +299,7 @@ class MongodbOperatorCharm(CharmBase):
             self.unit.status = MaintenanceStatus("starting MongoDB")
             snap_cache = snap.SnapCache()
             mongodb_snap = snap_cache["charmed-mongodb"]
-            mongodb_snap.start(services=["mongod"])
+            mongodb_snap.start(services=["mongod"], enable=True)
             self.unit.status = ActiveStatus()
         except snap.SnapError as e:
             logger.error("An exception occurred when starting mongod agent, error: %s.", str(e))
@@ -912,7 +912,7 @@ class MongodbOperatorCharm(CharmBase):
             # Added to avoid systemd error:
             # 'snap.charmed-mongodb.pbm-agent.service: Start request repeated too quickly'
             time.sleep(1)
-            pbm_snap.start(services=[Config.Backup.SERVICE_NAME])
+            pbm_snap.start(services=[Config.Backup.SERVICE_NAME], enable=True)
         except snap.SnapError as e:
             logger.error(f"Failed to restart {Config.Backup.SERVICE_NAME}: {str(e)}")
             self._get_service_status(Config.Backup.SERVICE_NAME)
@@ -1035,7 +1035,7 @@ class MongodbOperatorCharm(CharmBase):
                 self._unit_ip(self.unit),
                 config=self.mongodb_config,
             )
-            mongodb_snap.start(services=["mongod"])
+            mongodb_snap.start(services=["mongod"], enable=True)
         except snap.SnapError as e:
             logger.error("An exception occurred when starting mongod agent, error: %s.", str(e))
             self.unit.status = BlockedStatus("couldn't start MongoDB")
@@ -1081,7 +1081,7 @@ class MongodbOperatorCharm(CharmBase):
         """
         snap_cache = snap.SnapCache()
         charmed_mongodb_snap = snap_cache["charmed-mongodb"]
-        charmed_mongodb_snap.start(services=["pbm-agent"])
+        charmed_mongodb_snap.start(services=["pbm-agent"], enable=True)
 
     def restart_backup_service(self) -> None:
         """Restarts the pbm agent.
