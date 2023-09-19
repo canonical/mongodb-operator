@@ -136,7 +136,7 @@ def get_mongod_args(
         f"--dbpath={full_data_dir}",
         # for simplicity we run the mongod daemon on shards, configsvrs, and replicas on the same
         # port
-        f"--port {Config.MONGODB_PORT}",
+        f"--port={Config.MONGODB_PORT}",
         logging_options,
     ]
     if auth:
