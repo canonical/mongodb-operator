@@ -38,7 +38,6 @@ from charms.mongodb.v0.users import (
     MongoDBUser,
     MonitorUser,
     OperatorUser,
-    MongosUser,
 )
 from charms.operator_libs_linux.v1 import snap
 from ops import JujuVersion
@@ -317,7 +316,11 @@ class MongodbOperatorCharm(CharmBase):
             return
 
         try:
-            self._open_port_tcp(self._port)
+            ports = [self._port]
+            if self.is_role(Config.Role.CONFIG_SERVER):
+                ports.append(Config.MONGOS_PORT)
+
+            self._open_ports_tcp(ports)
         except subprocess.CalledProcessError:
             self.unit.status = BlockedStatus("failed to open TCP port for MongoDB")
             return
@@ -347,7 +350,6 @@ class MongodbOperatorCharm(CharmBase):
             return
 
         self._initialise_replica_set(event)
-        self._init_inital_user(MongosUser)
 
     def _on_relation_joined(self, event: RelationJoinedEvent) -> None:
         """Add peer to replica set.
@@ -635,6 +637,10 @@ class MongodbOperatorCharm(CharmBase):
         As a result, where are only hackish ways to create initial user.
         It is needed to install mongodb-clients inside charm container to make
         this function work correctly.
+
+        Args:
+            user: User to create
+            mongos: whether or not the user should be created on mongos router
         """
         if self._is_user_created(user) or not self.unit.is_leader():
             return
@@ -744,7 +750,6 @@ class MongodbOperatorCharm(CharmBase):
         share between members via the app data.
         """
         self._check_or_set_user_password(OperatorUser)
-        self._check_or_set_user_password(MongosUser)
         self._check_or_set_user_password(MonitorUser)
 
         if not self.get_secret(APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME):
@@ -799,18 +804,19 @@ class MongodbOperatorCharm(CharmBase):
             event.defer()
             return
 
-    def _open_port_tcp(self, port: int) -> None:
+    def _open_ports_tcp(self, ports: int) -> None:
         """Open the given port.
 
         Args:
             port: The port to open.
         """
-        try:
-            logger.debug("opening tcp port")
-            subprocess.check_call(["open-port", "{}/TCP".format(port)])
-        except subprocess.CalledProcessError as e:
-            logger.exception("failed opening port: %s", str(e))
-            raise
+        for port in ports:
+            try:
+                logger.debug("opening tcp port")
+                subprocess.check_call(["open-port", "{}/TCP".format(port)])
+            except subprocess.CalledProcessError as e:
+                logger.exception("failed opening port: %s", str(e))
+                raise
 
     def _install_snap_packages(self, packages: List[str]) -> None:
         """Installs package(s) to container.

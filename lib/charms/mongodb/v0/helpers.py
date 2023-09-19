@@ -18,7 +18,6 @@ from ops.model import (
     WaitingStatus,
 )
 from pymongo.errors import AutoReconnect, ServerSelectionTimeoutError
-
 from config import Config
 
 # The unique Charmhub library identifier, never change it
@@ -64,7 +63,7 @@ def get_create_user_cmd(
     """
     return [
         mongo_path,
-        "mongodb://localhost/admin",
+        f"mongodb://localhost/admin",
         "--quiet",
         "--eval",
         "db.createUser({"
@@ -91,12 +90,10 @@ def get_mongos_args(
         A string representing the arguments to be passed to mongos.
     """
     # mongos running on the config server communicates through localhost
-    config_server_uri = f"{config.replset}/localhost"
+    # use constant for port
+    config_server_uri = f"{config.replset}/localhost:27017"
 
-    # no need to add TLS since no network calls are used, since mongos is configured to listen
-    # on local host
     full_conf_dir = f"{MONGODB_SNAP_DATA_DIR}{CONF_DIR}" if snap_install else CONF_DIR
-    # todo follow up PR add TLS
     cmd = [
         # mongos on config server side should run on 0.0.0.0 so it can be accessed by other units
         # in the sharded cluster
@@ -108,6 +105,8 @@ def get_mongos_args(
         f"--keyFile={full_conf_dir}/{KEY_FILE}",
         "\n",
     ]
+
+    # todo add TLS - maybe we can generalise the TLS options code from below
 
     return " ".join(cmd)
 
@@ -135,6 +134,7 @@ def get_mongod_args(
         f"--replSet={config.replset}",
         # db must be located within the snap common directory since the snap is strictly confined
         f"--dbpath={full_data_dir}",
+        f"--port {Config.MONGODB_PORT}",
         logging_options,
     ]
     if auth:
@@ -170,6 +170,7 @@ def get_mongod_args(
             ]
         )
 
+    # todo use constants here plz
     if role == "config-server":
         cmd.append("--configsvr")
 
