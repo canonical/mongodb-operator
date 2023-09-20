@@ -628,7 +628,7 @@ class MongodbOperatorCharm(CharmBase):
         before=before_log(logger, logging.DEBUG),
     )
     def _init_operator_user(self) -> None:
-        """Creates initial specified admin user.
+        """Creates initial admin user for MongoDB.
 
         Initial admin user can be created only through localhost connection.
         see https://www.mongodb.com/docs/manual/core/localhost-exception/
@@ -637,10 +637,6 @@ class MongodbOperatorCharm(CharmBase):
         As a result, where are only hackish ways to create initial user.
         It is needed to install mongodb-clients inside charm container to make
         this function work correctly.
-
-        Args:
-            user: User to create
-            mongos: whether or not the user should be created on mongos router
         """
         if self._is_user_created(OperatorUser) or not self.unit.is_leader():
             return
@@ -808,7 +804,7 @@ class MongodbOperatorCharm(CharmBase):
         """Open the given port.
 
         Args:
-            ports: The port to open.
+            ports: The ports to open.
         """
         for port in ports:
             try:
