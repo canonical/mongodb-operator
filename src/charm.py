@@ -32,6 +32,7 @@ from charms.mongodb.v0.mongodb_backups import S3_RELATION, MongoDBBackups
 from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
+from charms.mongodb.v0.shards_interface import ShardingProvider, ShardingRequirer
 from charms.mongodb.v0.users import (
     CHARM_USERS,
     BackupUser,
@@ -123,6 +124,8 @@ class MongodbOperatorCharm(CharmBase):
         self.legacy_client_relations = MongoDBLegacyProvider(self)
         self.tls = MongoDBTLS(self, Config.Relations.PEERS, substrate=Config.SUBSTRATE)
         self.backups = MongoDBBackups(self)
+        self.shard_relations = ShardingRequirer(self)
+        self.config_server_relations = ShardingProvider(self)
 
         # relation events for Prometheus metrics are handled in the MetricsEndpointProvider
         self._grafana_agent = COSAgentProvider(
@@ -494,10 +497,14 @@ class MongodbOperatorCharm(CharmBase):
             self.unit.status = BlockedStatus("cannot have both legacy and new relations")
             return
 
+        # shard cannot relate to multiple config servers
+        if len(self.model.relations[Config.Relations.SHARDING_RELATIONS_NAME]) > 1:
+            self.charm.unit.status = BlockedStatus("Shards can only relate to one config-server")
+            return
+
         # no need to report on replica set status until initialised
         if not self.db_initialised:
             return
-
         # Cannot check more advanced MongoDB statuses if mongod hasn't started.
         with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
             if not direct_mongo.is_ready:
@@ -542,6 +549,9 @@ class MongodbOperatorCharm(CharmBase):
 
     def _on_set_password(self, event: ActionEvent) -> None:
         """Set the password for the admin user."""
+        if self.is_role(Config.Role.SHARD):
+            event.fail("Cannot set password on shard, please set password on config-server.")
+            return
         # changing the backup password while a backup/restore is in progress can be disastrous
         pbm_status = self.backups._get_pbm_status()
         if isinstance(pbm_status, MaintenanceStatus):
