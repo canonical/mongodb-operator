@@ -33,7 +33,7 @@ from tenacity import (
 from config import Config
 
 # The unique Charmhub library identifier, never change it
-LIBID = "9f2b91c6128d48d6ba22724bf365da3b"
+LIBID = "18c461132b824ace91af0d7abe85f40e"
 
 # Increment this major API version when introducing breaking changes
 LIBAPI = 0
