@@ -681,7 +681,6 @@ class MongoDBBackups(Object):
         """Returns errors found in PBM status."""
         if type(pbm_status) is bytes:
             pbm_status = pbm_status.decode("utf-8")
-
         try:
             error_message = self.retrieve_error_message(json.loads(pbm_status))
         except json.decoder.JSONDecodeError:
