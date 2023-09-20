@@ -24,11 +24,11 @@ def update_mongod_service(
     """Updates the mongod service file with the new options for starting."""
     # write our arguments and write them to /etc/environment - the environment variable here is
     # read in in the charmed-mongob.mongod.service file.
-    mongod_start_args = get_mongod_args(config, auth, snap_install=True)
+    mongod_start_args = get_mongod_args(config, auth, role=role, snap_install=True)
     add_args_to_env("MONGOD_ARGS", mongod_start_args)
 
-    if role == "config-server":
-        mongos_start_args = get_mongos_args(config)
+    if role == Config.Role.CONFIG_SERVER:
+        mongos_start_args = get_mongos_args(config, snap_install=True)
         add_args_to_env("MONGOS_ARGS", mongos_start_args)
 
 

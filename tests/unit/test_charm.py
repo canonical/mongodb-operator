@@ -42,12 +42,12 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongodbOperatorCharm._init_operator_user")
-    @patch("charm.MongodbOperatorCharm._open_port_tcp")
+    @patch("charm.MongodbOperatorCharm._open_ports_tcp")
     @patch("charm.snap.SnapCache")
     @patch("charm.push_file_to_unit")
     @patch("builtins.open")
     def test_on_start_not_leader_doesnt_initialise_replica_set(
-        self, open, path, snap, _open_port_tcp, init_admin, connection, get_secret
+        self, open, path, snap, _open_ports_tcp, init_admin, connection, get_secret
     ):
         """Tests that a non leader unit does not initialise the replica set."""
         # set snap data
@@ -62,7 +62,7 @@ class TestCharm(unittest.TestCase):
         self.harness.charm.on.start.emit()
 
         mock_mongodb_snap.start.assert_called()
-        _open_port_tcp.assert_called()
+        _open_ports_tcp.assert_called()
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus())
         connection.return_value.__enter__.return_value.init_replset.assert_not_called()
         init_admin.assert_not_called()
@@ -70,14 +70,14 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongodbOperatorCharm._init_operator_user")
-    @patch("charm.MongodbOperatorCharm._open_port_tcp")
+    @patch("charm.MongodbOperatorCharm._open_ports_tcp")
     @patch("charm.push_file_to_unit")
     @patch("builtins.open")
     def test_on_start_snap_failure_leads_to_blocked_status(
         self,
         open,
         path,
-        _open_port_tcp,
+        _open_ports_tcp,
         init_admin,
         connection,
     ):
@@ -85,13 +85,13 @@ class TestCharm(unittest.TestCase):
         self.harness.set_leader(True)
         self.harness.charm.on.start.emit()
         self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
-        _open_port_tcp.assert_not_called()
+        _open_ports_tcp.assert_not_called()
 
         connection.return_value.__enter__.return_value.init_replset.assert_not_called()
         init_admin.assert_not_called()
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongodbOperatorCharm._open_port_tcp")
+    @patch("charm.MongodbOperatorCharm._open_ports_tcp")
     @patch("charm.MongodbOperatorCharm._initialise_replica_set")
     @patch("charm.snap.SnapCache")
     @patch("charm.push_file_to_unit")
@@ -106,7 +106,7 @@ class TestCharm(unittest.TestCase):
         path,
         snap,
         initialise_replica_set,
-        _open_port_tcp,
+        _open_ports_tcp,
     ):
         """Test verifies that we wait to initialise replica set when mongod is not running."""
         # set snap data
@@ -124,11 +124,11 @@ class TestCharm(unittest.TestCase):
         init_admin.assert_not_called()
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongodbOperatorCharm._open_port_tcp")
+    @patch("charm.MongodbOperatorCharm._open_ports_tcp")
     @patch("charm.snap.SnapCache")
     @patch("charm.push_file_to_unit")
     @patch("builtins.open")
-    def test_start_unable_to_open_tcp_moves_to_blocked(self, open, path, snap, _open_port_tcp):
+    def test_start_unable_to_open_tcp_moves_to_blocked(self, open, path, snap, _open_ports_tcp):
         """Test verifies that if TCP port cannot be opened we go to the blocked state."""
         # set snap data
         mock_mongodb_snap = mock.Mock()
@@ -137,7 +137,7 @@ class TestCharm(unittest.TestCase):
         snap.return_value = {"charmed-mongodb": mock_mongodb_snap}
 
         self.harness.set_leader(True)
-        _open_port_tcp.side_effect = subprocess.CalledProcessError(
+        _open_ports_tcp.side_effect = subprocess.CalledProcessError(
             cmd="open-port 27017/TCP", returncode=1
         )
         self.harness.charm.on.start.emit()
@@ -149,7 +149,7 @@ class TestCharm(unittest.TestCase):
     @patch("subprocess.check_call")
     def test_set_port(self, _call):
         """Test verifies operation of set port."""
-        self.harness.charm._open_port_tcp(27017)
+        self.harness.charm._open_ports_tcp([27017])
         # Make sure the port is opened and the service is started
         self.assertEqual(_call.call_args_list, [call(["open-port", "27017/TCP"])])
 
@@ -160,7 +160,7 @@ class TestCharm(unittest.TestCase):
 
         with self.assertRaises(subprocess.CalledProcessError):
             with self.assertLogs("charm", "ERROR") as logs:
-                self.harness.charm._open_port_tcp(27017)
+                self.harness.charm._open_ports_tcp([27017])
                 self.assertIn("failed opening port 27017", "".join(logs.output))
 
     @patch_network_get(private_address="1.1.1.1")
@@ -286,7 +286,7 @@ class TestCharm(unittest.TestCase):
             defer.assert_called()
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongodbOperatorCharm._open_port_tcp")
+    @patch("charm.MongodbOperatorCharm._open_ports_tcp")
     @patch("charm.snap.SnapCache")
     @patch("charm.push_file_to_unit")
     @patch("builtins.open")

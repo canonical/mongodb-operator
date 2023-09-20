@@ -13,6 +13,7 @@ class TestMongoDBHelpers(unittest.TestCase):
             "--bind_ip_all",
             "--replSet=my_repl_set",
             "--dbpath=/var/snap/charmed-mongodb/common/var/lib/mongodb",
+            "--port=27017",
             "--auth",
             "--clusterAuthMode=keyFile",
             "--keyFile=/var/snap/charmed-mongodb/current/etc/mongod/keyFile",
@@ -34,6 +35,7 @@ class TestMongoDBHelpers(unittest.TestCase):
             # part of replicaset
             "--replSet=my_repl_set",
             "--dbpath=/var/snap/charmed-mongodb/common/var/lib/mongodb",
+            "--port=27017",
         ]
 
         self.assertEqual(
@@ -47,6 +49,7 @@ class TestMongoDBHelpers(unittest.TestCase):
             # part of replicaset
             "--replSet=my_repl_set",
             "--dbpath=/var/lib/mongodb",
+            "--port=27017",
             "--logpath=/var/lib/mongodb/mongodb.log",
         ]
 

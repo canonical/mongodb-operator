@@ -81,16 +81,20 @@ def get_create_user_cmd(
     ]
 
 
-def get_mongos_args(config: MongoDBConfiguration) -> str:
+def get_mongos_args(
+    config: MongoDBConfiguration,
+    snap_install: bool = False,
+) -> str:
     """Returns the arguments used for starting mongos on a config-server side application.
 
     Returns:
         A string representing the arguments to be passed to mongos.
     """
     # mongos running on the config server communicates through localhost
-    config_server_uri = f"{config.replset}/localhost"
+    # use constant for port
+    config_server_uri = f"{config.replset}/localhost:27017"
 
-    # todo follow up PR add TLS
+    full_conf_dir = f"{MONGODB_SNAP_DATA_DIR}{CONF_DIR}" if snap_install else CONF_DIR
     cmd = [
         # mongos on config server side should run on 0.0.0.0 so it can be accessed by other units
         # in the sharded cluster
@@ -98,9 +102,11 @@ def get_mongos_args(config: MongoDBConfiguration) -> str:
         f"--configdb {config_server_uri}",
         # config server is already using 27017
         f"--port {Config.MONGOS_PORT}",
-        # todo followup PR add keyfile and auth
+        f"--keyFile={full_conf_dir}/{KEY_FILE}",
         "\n",
     ]
+
+    # TODO Future PR: support TLS on mongos
 
     return " ".join(cmd)
 
@@ -128,6 +134,9 @@ def get_mongod_args(
         f"--replSet={config.replset}",
         # db must be located within the snap common directory since the snap is strictly confined
         f"--dbpath={full_data_dir}",
+        # for simplicity we run the mongod daemon on shards, configsvrs, and replicas on the same
+        # port
+        f"--port={Config.MONGODB_PORT}",
         logging_options,
     ]
     if auth:
@@ -163,10 +172,10 @@ def get_mongod_args(
             ]
         )
 
-    if role == "config-server":
+    if role == Config.Role.CONFIG_SERVER:
         cmd.append("--configsvr")
 
-    if role == "shard":
+    if role == Config.Role.SHARD:
         cmd.append("--shardsvr")
 
     cmd.append("\n")

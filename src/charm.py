@@ -316,7 +316,11 @@ class MongodbOperatorCharm(CharmBase):
             return
 
         try:
-            self._open_port_tcp(self._port)
+            ports = [self._port]
+            if self.is_role(Config.Role.CONFIG_SERVER):
+                ports.append(Config.MONGOS_PORT)
+
+            self._open_ports_tcp(ports)
         except subprocess.CalledProcessError:
             self.unit.status = BlockedStatus("failed to open TCP port for MongoDB")
             return
@@ -796,18 +800,19 @@ class MongodbOperatorCharm(CharmBase):
             event.defer()
             return
 
-    def _open_port_tcp(self, port: int) -> None:
+    def _open_ports_tcp(self, ports: int) -> None:
         """Open the given port.
 
         Args:
-            port: The port to open.
+            ports: The ports to open.
         """
-        try:
-            logger.debug("opening tcp port")
-            subprocess.check_call(["open-port", "{}/TCP".format(port)])
-        except subprocess.CalledProcessError as e:
-            logger.exception("failed opening port: %s", str(e))
-            raise
+        for port in ports:
+            try:
+                logger.debug("opening tcp port")
+                subprocess.check_call(["open-port", "{}/TCP".format(port)])
+            except subprocess.CalledProcessError as e:
+                logger.exception("failed opening port: %s", str(e))
+                raise
 
     def _install_snap_packages(self, packages: List[str]) -> None:
         """Installs package(s) to container.
