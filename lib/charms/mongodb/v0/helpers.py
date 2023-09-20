@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 
 # noinspection GrazieInspection
 def get_create_user_cmd(
-    config: MongoDBConfiguration, mongo_path="charmed-mongodb.mongosh"
+    config: MongoDBConfiguration, mongo_path="charmed-mongodb.mongo"
 ) -> List[str]:
     """Creates initial admin user for MongoDB.
 
