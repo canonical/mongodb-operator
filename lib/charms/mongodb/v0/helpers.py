@@ -7,7 +7,7 @@ import os
 import secrets
 import string
 import subprocess
-from typing import List, Optional, Union
+from typing import List
 
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 from ops.model import (
@@ -19,6 +19,8 @@ from ops.model import (
 )
 from pymongo.errors import AutoReconnect, ServerSelectionTimeoutError
 
+from config import Config
+
 # The unique Charmhub library identifier, never change it
 LIBID = "b9a7fe0c38d8486a9d1ce94c27d4758e"
 
@@ -27,8 +29,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 7
-
+LIBPATCH = 8
 
 # path to store mongodb ketFile
 KEY_FILE = "keyFile"
@@ -80,10 +81,35 @@ def get_create_user_cmd(
     ]
 
 
+def get_mongos_args(config: MongoDBConfiguration) -> str:
+    """Returns the arguments used for starting mongos on a config-server side application.
+
+    Returns:
+        A string representing the arguments to be passed to mongos.
+    """
+    # mongos running on the config server communicates through localhost
+    config_server_uri = f"{config.replset}/localhost"
+
+    # todo follow up PR add TLS
+    cmd = [
+        # mongos on config server side should run on 0.0.0.0 so it can be accessed by other units
+        # in the sharded cluster
+        "--bind_ip_all",
+        f"--configdb {config_server_uri}",
+        # config server is already using 27017
+        f"--port {Config.MONGOS_PORT}",
+        # todo followup PR add keyfile and auth
+        "\n",
+    ]
+
+    return " ".join(cmd)
+
+
 def get_mongod_args(
     config: MongoDBConfiguration,
     auth: bool = True,
     snap_install: bool = False,
+    role: str = "replication",
 ) -> str:
     """Construct the MongoDB startup command line.
 
@@ -136,6 +162,12 @@ def get_mongod_args(
                 f"--tlsClusterFile={full_conf_dir}/{TLS_INT_PEM_FILE}",
             ]
         )
+
+    if role == "config-server":
+        cmd.append("--configsvr")
+
+    if role == "shard":
+        cmd.append("--shardsvr")
 
     cmd.append("\n")
     return " ".join(cmd)
@@ -200,25 +232,6 @@ def copy_licenses_to_unit():
     subprocess.check_output(
         "cp -r /snap/charmed-mongodb/current/licenses/* src/licenses", shell=True
     )
-
-
-_StrOrBytes = Union[str, bytes]
-
-
-def process_pbm_error(error_string: Optional[_StrOrBytes]) -> str:
-    """Parses pbm error string and returns a user friendly message."""
-    message = "couldn't configure s3 backup option"
-    if not error_string:
-        return message
-    if type(error_string) == bytes:
-        error_string = error_string.decode("utf-8")
-    if "status code: 403" in error_string:  # type: ignore
-        message = "s3 credentials are incorrect."
-    elif "status code: 404" in error_string:  # type: ignore
-        message = "s3 configurations are incompatible."
-    elif "status code: 301" in error_string:  # type: ignore
-        message = "s3 configurations are incompatible."
-    return message
 
 
 def current_pbm_op(pbm_status: str) -> str:
