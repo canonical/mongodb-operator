@@ -6,13 +6,8 @@ from ops.framework import Object
 import logging
 
 from ops.model import (
-    ActiveStatus,
     BlockedStatus,
     MaintenanceStatus,
-    Relation,
-    SecretNotFoundError,
-    Unit,
-    WaitingStatus,
 )
 
 from charms.mongodb.v0.mongodb import (
@@ -37,16 +32,14 @@ LIBAPI = 0
 # to 0 if you are raising the major API version
 LIBPATCH = 1
 
-# TODO: add your code here! Happy coding!
-
 
 class ShardingRequirer(Object):
-    """TODO docstring - something about how this is used on config server side."""
+    """Manage relations between the config server and the shard, on the config-server's side."""
 
     def __init__(
         self, charm: CharmBase, relation_name: str = Config.Relations.CONFIG_SERVER_RELATIONS_NAME
     ) -> None:
-        """Constructor for MongoDBProvider object.
+        """Constructor for ShardingRequirer object.
 
         Args:
             relation_name: the name of the relation
@@ -61,7 +54,7 @@ class ShardingRequirer(Object):
         # TODO Future PR, enable shard drainage by listening for relation departed events
 
     def _on_relation_joined(self, event):
-        """TODO doc string"""
+        """Handles providing shards with secrets and adding shards to the config server."""
         if self.charm.is_role(Config.Role.REPLICATION):
             self.unit.status = BlockedStatus("role replication does not support sharding")
             logger.error("sharding interface not supported with config role=replication")
@@ -99,8 +92,8 @@ class ShardingRequirer(Object):
     def _update_relation_data(self, relation_id: int, data: dict) -> None:
         """Updates a set of key-value pairs in the relation.
 
-        This function writes in the application data bag, therefore,
-        only the leader unit can call it.
+        This function writes in the application data bag, therefore, only the leader unit can call
+        it.
 
         Args:
             relation_id: the identifier for a particular relation.
@@ -114,7 +107,7 @@ class ShardingRequirer(Object):
 
 
 class ShardingProvider(Object):
-    """TODO docstring - something about how this is used on shard side."""
+    """Manage relations between the config server and the shard, on the shard's side."""
 
     def __init__(
         self, charm: CharmBase, relation_name: str = Config.Relations.SHARDING_RELATIONS_NAME
@@ -132,10 +125,10 @@ class ShardingProvider(Object):
             charm.on[self.relation_name].relation_changed, self._on_relation_changed
         )
 
-        # TODO Future PR, enable shard drainage by listening for relation departed events
+        # TODO Future PR, enable shard drainage by observing relation departed events
 
     def _on_relation_changed(self, event):
-        """TODO doc string"""
+        """Retrieves secrets from config-server and updates them within the shard."""
         if self.charm.is_role(Config.Role.REPLICATION):
             self.unit.status = BlockedStatus("role replication does not support sharding")
             logger.error("sharding interface not supported with config role=replication")
@@ -167,7 +160,7 @@ class ShardingProvider(Object):
             return
 
     def update_operator_password(self, new_password: str) -> None:
-        """TODO docstring
+        """Updates the password for the operator user.
 
         Raises:
             PyMongoError, NotReadyError
@@ -200,7 +193,7 @@ class ShardingProvider(Object):
         )
 
     def update_keyfile(self, key_file_contents: str) -> None:
-        """TODO docstring"""
+        """Updates keyfile on all units."""
         if not key_file_contents:
             return
 
