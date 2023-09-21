@@ -34,7 +34,7 @@ Machine  State    Address       Inst id        Series  AZ  Message
 2        started  10.23.62.243  juju-d35d30-2  jammy       Running
 ```
 
-You can trust that Charmed MongoDB added these replicas correctly. But if you wanted to verify the replicas got added correctly you could connect to MongoDB via `charmed-mongodb.mongosh`. Since your replica set has 2 additional hosts you will need to update the hosts in your URI. You can retrieve these host IPs with:
+You can trust that Charmed MongoDB added these replicas correctly. But if you wanted to verify the replicas got added correctly you could connect to MongoDB via `charmed-mongodb.mongo`. Since your replica set has 2 additional hosts you will need to update the hosts in your URI. You can retrieve these host IPs with:
 ```shell
 export HOST_IP_1=$(juju run --unit mongodb/1 -- hostname -I | xargs)
 export HOST_IP_2=$(juju run --unit mongodb/2 -- hostname -I | xargs)
@@ -50,23 +50,23 @@ Now view and save the output of the URI:
 echo $URI
 ```
 
-Like earlier we access `mongosh` by `ssh`ing into one of the Charmed MongoDB hosts:
+Like earlier we access `mongo` by `ssh`ing into one of the Charmed MongoDB hosts:
 ```shell
 juju ssh mongodb/0
 ```
 
-While `ssh`d into `mongodb/0`, we can access `mongosh` with `charmed-mongodb.mongosh`, using our new URI that we saved above.
+While `ssh`d into `mongodb/0`, we can access `mongo` with `charmed-mongodb.mongo`, using our new URI that we saved above.
 ```shell
-charmed-mongodb.mongosh <saved URI>
+charmed-mongodb.mongo <saved URI>
 ```
 
 Now type `rs.status()` and you should see your replica set configuration. It should look something like this:
 ```json
 {
   set: 'mongodb',
-  date: ISODate("2023-09-21T10:19:56.666Z"),
+  date: ISODate("2022-12-02T14:39:52.732Z"),
   myState: 1,
-  term: Long("8"),
+  term: Long("1"),
   syncSourceHost: '',
   syncSourceId: -1,
   heartbeatIntervalMillis: Long("2000"),
@@ -75,106 +75,105 @@ Now type `rs.status()` and you should see your replica set configuration. It sho
   votingMembersCount: 3,
   writableVotingMembersCount: 3,
   optimes: {
-    lastCommittedOpTime: { ts: Timestamp({ t: 1695291593, i: 4 }), t: Long("8") },
-    lastCommittedWallTime: ISODate("2023-09-21T10:19:53.387Z"),
-    readConcernMajorityOpTime: { ts: Timestamp({ t: 1695291593, i: 4 }), t: Long("8") },
-    appliedOpTime: { ts: Timestamp({ t: 1695291593, i: 4 }), t: Long("8") },
-    durableOpTime: { ts: Timestamp({ t: 1695291593, i: 4 }), t: Long("8") },
-    lastAppliedWallTime: ISODate("2023-09-21T10:19:53.387Z"),
-    lastDurableWallTime: ISODate("2023-09-21T10:19:53.387Z")
+    lastCommittedOpTime: { ts: Timestamp({ t: 1669991990, i: 1 }), t: Long("1") },
+    lastCommittedWallTime: ISODate("2022-12-02T14:39:50.020Z"),
+    readConcernMajorityOpTime: { ts: Timestamp({ t: 1669991990, i: 1 }), t: Long("1") },
+    appliedOpTime: { ts: Timestamp({ t: 1669991990, i: 1 }), t: Long("1") },
+    durableOpTime: { ts: Timestamp({ t: 1669991990, i: 1 }), t: Long("1") },
+    lastAppliedWallTime: ISODate("2022-12-02T14:39:50.020Z"),
+    lastDurableWallTime: ISODate("2022-12-02T14:39:50.020Z")
   },
-  lastStableRecoveryTimestamp: Timestamp({ t: 1695291546, i: 2 }),
+  lastStableRecoveryTimestamp: Timestamp({ t: 1669991950, i: 1 }),
   electionCandidateMetrics: {
     lastElectionReason: 'electionTimeout',
-    lastElectionDate: ISODate("2023-09-21T09:57:28.251Z"),
-    electionTerm: Long("8"),
-    lastCommittedOpTimeAtElection: { ts: Timestamp({ t: 0, i: 0 }), t: Long("-1") },
-    lastSeenOpTimeAtElection: { ts: Timestamp({ t: 1695290223, i: 4 }), t: Long("7") },
-    numVotesNeeded: 2,
+    lastElectionDate: ISODate("2022-12-02T11:24:09.587Z"),
+    electionTerm: Long("1"),
+    lastCommittedOpTimeAtElection: { ts: Timestamp({ t: 1669980249, i: 1 }), t: Long("-1") },
+    lastSeenOpTimeAtElection: { ts: Timestamp({ t: 1669980249, i: 1 }), t: Long("-1") },
+    numVotesNeeded: 1,
     priorityAtElection: 1,
     electionTimeoutMillis: Long("10000"),
-    numCatchUpOps: Long("0"),
-    newTermStartDate: ISODate("2023-09-21T09:57:28.258Z"),
-    wMajorityWriteAvailabilityDate: ISODate("2023-09-21T09:57:28.810Z")
+    newTermStartDate: ISODate("2022-12-02T11:24:09.630Z"),
+    wMajorityWriteAvailabilityDate: ISODate("2022-12-02T11:24:09.651Z")
   },
   members: [
     {
       _id: 0,
-      name: '10.165.186.135:27017',
+      name: '10.23.62.156:27017',
       health: 1,
       state: 1,
       stateStr: 'PRIMARY',
-      uptime: 1371,
-      optime: { ts: Timestamp({ t: 1695291593, i: 4 }), t: Long("8") },
-      optimeDate: ISODate("2023-09-21T10:19:53.000Z"),
-      lastAppliedWallTime: ISODate("2023-09-21T10:19:53.387Z"),
-      lastDurableWallTime: ISODate("2023-09-21T10:19:53.387Z"),
+      uptime: 11747,
+      optime: { ts: Timestamp({ t: 1669991990, i: 1 }), t: Long("1") },
+      optimeDate: ISODate("2022-12-02T14:39:50.000Z"),
+      lastAppliedWallTime: ISODate("2022-12-02T14:39:50.020Z"),
+      lastDurableWallTime: ISODate("2022-12-02T14:39:50.020Z"),
       syncSourceHost: '',
       syncSourceId: -1,
       infoMessage: '',
-      electionTime: Timestamp({ t: 1695290248, i: 1 }),
-      electionDate: ISODate("2023-09-21T09:57:28.000Z"),
+      electionTime: Timestamp({ t: 1669980249, i: 2 }),
+      electionDate: ISODate("2022-12-02T11:24:09.000Z"),
       configVersion: 5,
-      configTerm: 8,
+      configTerm: 1,
       self: true,
       lastHeartbeatMessage: ''
     },
     {
       _id: 1,
-      name: '10.165.186.225:27017',
+      name: '10.23.62.55:27017',
       health: 1,
       state: 2,
       stateStr: 'SECONDARY',
-      uptime: 1351,
-      optime: { ts: Timestamp({ t: 1695291593, i: 4 }), t: Long("8") },
-      optimeDurable: { ts: Timestamp({ t: 1695291593, i: 4 }), t: Long("8") },
-      optimeDate: ISODate("2023-09-21T10:19:53.000Z"),
-      optimeDurableDate: ISODate("2023-09-21T10:19:53.000Z"),
-      lastAppliedWallTime: ISODate("2023-09-21T10:19:53.387Z"),
-      lastDurableWallTime: ISODate("2023-09-21T10:19:53.387Z"),
-      lastHeartbeat: ISODate("2023-09-21T10:19:56.298Z"),
-      lastHeartbeatRecv: ISODate("2023-09-21T10:19:55.325Z"),
+      uptime: 305,
+      optime: { ts: Timestamp({ t: 1669991990, i: 1 }), t: Long("1") },
+      optimeDurable: { ts: Timestamp({ t: 1669991990, i: 1 }), t: Long("1") },
+      optimeDate: ISODate("2022-12-02T14:39:50.000Z"),
+      optimeDurableDate: ISODate("2022-12-02T14:39:50.000Z"),
+      lastAppliedWallTime: ISODate("2022-12-02T14:39:50.020Z"),
+      lastDurableWallTime: ISODate("2022-12-02T14:39:50.020Z"),
+      lastHeartbeat: ISODate("2022-12-02T14:39:51.868Z"),
+      lastHeartbeatRecv: ISODate("2022-12-02T14:39:51.882Z"),
       pingMs: Long("0"),
       lastHeartbeatMessage: '',
-      syncSourceHost: '10.165.186.135:27017',
+      syncSourceHost: '10.23.62.156:27017',
       syncSourceId: 0,
       infoMessage: '',
       configVersion: 5,
-      configTerm: 8
+      configTerm: 1
     },
     {
       _id: 2,
-      name: '10.165.186.179:27017',
+      name: '10.23.62.243:27017',
       health: 1,
       state: 2,
       stateStr: 'SECONDARY',
-      uptime: 1351,
-      optime: { ts: Timestamp({ t: 1695291593, i: 4 }), t: Long("8") },
-      optimeDurable: { ts: Timestamp({ t: 1695291593, i: 4 }), t: Long("8") },
-      optimeDate: ISODate("2023-09-21T10:19:53.000Z"),
-      optimeDurableDate: ISODate("2023-09-21T10:19:53.000Z"),
-      lastAppliedWallTime: ISODate("2023-09-21T10:19:53.387Z"),
-      lastDurableWallTime: ISODate("2023-09-21T10:19:53.387Z"),
-      lastHeartbeat: ISODate("2023-09-21T10:19:56.602Z"),
-      lastHeartbeatRecv: ISODate("2023-09-21T10:19:55.344Z"),
+      uptime: 300,
+      optime: { ts: Timestamp({ t: 1669991990, i: 1 }), t: Long("1") },
+      optimeDurable: { ts: Timestamp({ t: 1669991990, i: 1 }), t: Long("1") },
+      optimeDate: ISODate("2022-12-02T14:39:50.000Z"),
+      optimeDurableDate: ISODate("2022-12-02T14:39:50.000Z"),
+      lastAppliedWallTime: ISODate("2022-12-02T14:39:50.020Z"),
+      lastDurableWallTime: ISODate("2022-12-02T14:39:50.020Z"),
+      lastHeartbeat: ISODate("2022-12-02T14:39:51.861Z"),
+      lastHeartbeatRecv: ISODate("2022-12-02T14:39:52.372Z"),
       pingMs: Long("0"),
       lastHeartbeatMessage: '',
-      syncSourceHost: '10.165.186.135:27017',
-      syncSourceId: 0,
+      syncSourceHost: '10.23.62.55:27017',
+      syncSourceId: 1,
       infoMessage: '',
       configVersion: 5,
-      configTerm: 8
+      configTerm: 1
     }
   ],
   ok: 1,
   '$clusterTime': {
-    clusterTime: Timestamp({ t: 1695291593, i: 4 }),
+    clusterTime: Timestamp({ t: 1669991990, i: 1 }),
     signature: {
-      hash: Binary.createFromBase64("HiSmynKsjpsdvfJFZemY8q75KVs=", 0),
-      keyId: Long("7281212693464219655")
+      hash: Binary(Buffer.from("dbe96e73cf659617bb88b6ad11152551c0dd9c8d", "hex"), 0),
+      keyId: Long("7172510554420936709")
     }
   },
-  operationTime: Timestamp({ t: 1695291593, i: 4 })
+  operationTime: Timestamp({ t: 1669991990, i: 1 })
 }
 ```
 
