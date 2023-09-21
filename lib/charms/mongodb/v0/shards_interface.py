@@ -164,6 +164,8 @@ class ShardingProvider(Object):
         if not new_password or new_password == current_password or not self.charm.unit.is_leader():
             return
 
+        # TODO, in the future use set_password from src/charm.py - this will require adding a
+        # library, for exceptions used in both charm code and lib code.
         with MongoDBConnection(self.charm.mongodb_config) as mongo:
             try:
                 mongo.set_user_password(OperatorUser.get_username(), new_password)

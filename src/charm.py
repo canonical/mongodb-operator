@@ -496,14 +496,10 @@ class MongodbOperatorCharm(CharmBase):
             self.unit.status = BlockedStatus("cannot have both legacy and new relations")
             return
 
-        # shard cannot relate to multiple config servers
-        if len(self.model.relations[Config.Relations.SHARDING_RELATIONS_NAME]) > 1:
-            self.charm.unit.status = BlockedStatus("Shards can only relate to one config-server")
-            return
-
         # no need to report on replica set status until initialised
         if not self.db_initialised:
             return
+
         # Cannot check more advanced MongoDB statuses if mongod hasn't started.
         with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
             if not direct_mongo.is_ready:
