@@ -76,6 +76,9 @@ class ShardingRequirer(Object):
         if not self.charm.unit.is_leader():
             return
 
+        if "db_initialised" not in self.charm.app_peer_data:
+            event.defer()
+
         # TODO Future PR, sync tls secrets and PBM password
         self._update_relation_data(
             event.relation.id,
@@ -91,8 +94,7 @@ class ShardingRequirer(Object):
         )
 
         # TODO Future PR, add shard to config server
-
-    # todo handle rotating  passwords
+        # TODO Follow up PR, handle rotating passwords
 
     def _update_relation_data(self, relation_id: int, data: dict) -> None:
         """Updates a set of key-value pairs in the relation.
@@ -145,46 +147,74 @@ class ShardingProvider(Object):
             )
             return
 
+        if "db_initialised" not in self.charm.app_peer_data:
+            event.defer()
+
+        # shards rely on the config server for secrets
         relation_data = event.relation.data[event.app]
+        try:
+            self.update_operator_password(new_password=relation_data.get("operator-password"))
+        except (PyMongoError, NotReadyError):
+            self.charm.unit.status = BlockedStatus("Shard not added to config-server")
+            return
 
-        # put keyfile on the machine with appropriate permissions
-        key_file_contents = relation_data.get("key-file")
-        self.charm.push_file_to_unit(
-            parent_dir=Config.MONGOD_CONF_DIR,
-            file_name=KEY_FILE,
-            file_contents=self.charm.get_secret(
-                Config.Relations.APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME
-            ),
-        )
-
-        if self.charm.unit.is_leader():
-            new_password = relation_data.get("operator-password")
-            with MongoDBConnection(self.charm.mongodb_config) as mongo:
-                try:
-                    mongo.set_user_password(OperatorUser.get_username(), new_password)
-                except NotReadyError:
-                    self.charm.unit.status = BlockedStatus("Shard not added to config-server")
-                    logger.error(
-                        "Failed changing the password: Not all members healthy or finished initial sync."
-                    )
-                    return
-                except PyMongoError as e:
-                    self.charm.unit.status = BlockedStatus("Shard not added to config-server")
-                    logger.error(f"Failed changing the password: {e}")
-                    return
-
-            self.charm.set_secret(
-                Config.Relations.APP_SCOPE,
-                MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username()),
-                new_password,
-            )
-            self.charm.set_secret(
-                Config.Relations.APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME, key_file_contents
-            )
+        self.update_keyfile(key_file_contents=relation_data.get("key-file"))
 
         self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
-        self.charm.restart_mongod_service()
 
         # TODO future PR, leader unit verifies shard was added to cluster
         if not self.charm.unit.is_leader():
             return
+
+    def update_operator_password(self, new_password: str) -> None:
+        """TODO docstring
+
+        Raises:
+            PyMongoError, NotReadyError
+        """
+        current_password = (
+            self.charm.get_secret(
+                Config.Relations.APP_SCOPE, MongoDBUser.get_password_key_name_for_user("operator")
+            ),
+        )
+
+        if not new_password or new_password == current_password or not self.charm.unit.is_leader():
+            return
+
+        with MongoDBConnection(self.charm.mongodb_config) as mongo:
+            try:
+                mongo.set_user_password(OperatorUser.get_username(), new_password)
+            except NotReadyError:
+                logger.error(
+                    "Failed changing the password: Not all members healthy or finished initial sync."
+                )
+                raise
+            except PyMongoError as e:
+                logger.error(f"Failed changing the password: {e}")
+                raise
+
+        self.charm.set_secret(
+            Config.Relations.APP_SCOPE,
+            MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username()),
+            new_password,
+        )
+
+    def update_keyfile(self, key_file_contents: str) -> None:
+        """TODO docstring"""
+        if not key_file_contents:
+            return
+
+        # put keyfile on the machine with appropriate permissions
+        self.charm.push_file_to_unit(
+            parent_dir=Config.MONGOD_CONF_DIR, file_name=KEY_FILE, file_contents=key_file_contents
+        )
+
+        # when the contents of the keyfile change, we must restart the service
+        self.charm.restart_mongod_service()
+
+        if not self.charm.unit.is_leader():
+            return
+
+        self.charm.set_secret(
+            Config.Relations.APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME, key_file_contents
+        )
