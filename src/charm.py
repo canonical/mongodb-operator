@@ -576,21 +576,11 @@ class MongodbOperatorCharm(CharmBase):
             )
             return
 
-        with MongoDBConnection(self.mongodb_config) as mongo:
-            try:
-                mongo.set_user_password(username, new_password)
-            except NotReadyError:
-                event.fail(
-                    "Failed changing the password: Not all members healthy or finished initial sync."
-                )
-                return
-            except PyMongoError as e:
-                event.fail(f"Failed changing the password: {e}")
-                return
-
-        secret_id = self.set_secret(
-            APP_SCOPE, MongoDBUser.get_password_key_name_for_user(username), new_password
-        )
+        try:
+            secret_id = self.set_password(username, new_password)
+        except SetPasswordError as e:
+            event.fail(e)
+            return
 
         if username == BackupUser.get_username():
             self._connect_pbm_agent()
@@ -600,6 +590,26 @@ class MongodbOperatorCharm(CharmBase):
 
         event.set_results(
             {Config.Actions.PASSWORD_PARAM_NAME: new_password, "secret-id": secret_id}
+        )
+
+    def set_password(self, username, password) -> int:
+        """Sets the password for a given username and return the secret id.
+
+        Raises:
+            SetPasswordError
+        """
+        with MongoDBConnection(self.mongodb_config) as mongo:
+            try:
+                mongo.set_user_password(username, password)
+            except NotReadyError:
+                raise SetPasswordError(
+                    "Failed changing the password: Not all members healthy or finished initial sync."
+                )
+            except PyMongoError as e:
+                raise SetPasswordError(f"Failed changing the password: {e}")
+
+        return self.set_secret(
+            APP_SCOPE, MongoDBUser.get_password_key_name_for_user(username), password
         )
 
     def _on_secret_remove(self, event: SecretRemoveEvent):
@@ -1317,6 +1327,10 @@ class MongodbOperatorCharm(CharmBase):
         logging.debug(f"Secret {scope}:{key}")
 
     # END: helper functions
+
+
+class SetPasswordError(Exception):
+    """Raised on failure to set password for MongoDB user."""
 
 
 if __name__ == "__main__":
