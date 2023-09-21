@@ -1,23 +1,21 @@
-"""TODO: Add a proper docstring here.
+# Copyright 2023 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+"""In this class, we manage relations between config-servers and shards.
+
+This class handles the sharing of secrets between sharded components, adding shards, and removing
+shards.
 """
-from ops.charm import CharmBase
-from config import Config
-from ops.framework import Object
 import logging
 
-from ops.model import (
-    BlockedStatus,
-    MaintenanceStatus,
-)
-
-from charms.mongodb.v0.mongodb import (
-    MongoDBConnection,
-    NotReadyError,
-    PyMongoError,
-)
-
 from charms.mongodb.v0.helpers import KEY_FILE
+from charms.mongodb.v0.mongodb import MongoDBConnection, NotReadyError, PyMongoError
 from charms.mongodb.v0.users import MongoDBUser, OperatorUser
+from ops.charm import CharmBase
+from ops.framework import Object
+from ops.model import BlockedStatus, MaintenanceStatus
+
+from config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -39,11 +37,7 @@ class ShardingRequirer(Object):
     def __init__(
         self, charm: CharmBase, relation_name: str = Config.Relations.CONFIG_SERVER_RELATIONS_NAME
     ) -> None:
-        """Constructor for ShardingRequirer object.
-
-        Args:
-            relation_name: the name of the relation
-        """
+        """Constructor for ShardingRequirer object."""
         self.relation_name = relation_name
         self.charm = charm
 
@@ -112,11 +106,7 @@ class ShardingProvider(Object):
     def __init__(
         self, charm: CharmBase, relation_name: str = Config.Relations.SHARDING_RELATIONS_NAME
     ) -> None:
-        """Constructor for ShardingProvider object.
-
-        Args:
-            relation_name: the name of the relation
-        """
+        """Constructor for ShardingProvider object."""
         self.relation_name = relation_name
         self.charm = charm
 

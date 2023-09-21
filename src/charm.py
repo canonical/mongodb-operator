@@ -4,13 +4,13 @@
 # See LICENSE file for licensing details.
 import json
 import logging
+import os
+import pwd
 import re
 import subprocess
 import time
-from typing import Dict, List, Optional, Set
-import os
-import pwd
 from pathlib import Path
+from typing import Dict, List, Optional, Set
 
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from charms.mongodb.v0.helpers import (
@@ -77,7 +77,7 @@ from exceptions import (
     ApplicationHostNotFoundError,
     SecretNotAddedError,
 )
-from machine_helpers import update_mongod_service, MONGO_USER, ROOT_USER_GID
+from machine_helpers import MONGO_USER, ROOT_USER_GID, update_mongod_service
 
 logger = logging.getLogger(__name__)
 
@@ -862,14 +862,14 @@ class MongodbOperatorCharm(CharmBase):
         )
 
     def push_file_to_unit(self, parent_dir, file_name, file_contents) -> None:
-        """K8s charms can push files to their containers easily, this is the vm charm workaround."""
+        """K8s charms can push files to their containers easily, this is a vm charm workaround."""
         Path(parent_dir).mkdir(parents=True, exist_ok=True)
         file_name = f"{parent_dir}/{file_name}"
         with open(file_name, "w") as write_file:
             write_file.write(file_contents)
 
-        # MongoDB limitation; it is needed 400 rights for keyfile and we need 440 rights on tls certs
-        # to be able to connect via MongoDB shell
+        # MongoDB limitation; it is needed 400 rights for keyfile and we need 440 rights on tls
+        # certs to be able to connect via MongoDB shell
         if Config.TLS.KEY_FILE_NAME in file_name:
             os.chmod(file_name, 0o400)
         else:
@@ -877,7 +877,7 @@ class MongodbOperatorCharm(CharmBase):
         mongodb_user = pwd.getpwnam(MONGO_USER)
         os.chown(file_name, mongodb_user.pw_uid, ROOT_USER_GID)
 
-    def remove_file_from_unit(parent_dir, file_name) -> None:
+    def remove_file_from_unit(self, parent_dir, file_name) -> None:
         """Remove file from vm unit."""
         if os.path.exists(f"{parent_dir}/{file_name}"):
             os.remove(f"{parent_dir}/{file_name}")
@@ -914,8 +914,7 @@ class MongodbOperatorCharm(CharmBase):
                 file_contents=internal_pem,
             )
 
-    @staticmethod
-    def delete_tls_certificate_from_workload() -> None:
+    def delete_tls_certificate_from_workload(self) -> None:
         """Deletes certificate from VM."""
         logger.info("Deleting TLS certificate from VM")
 
