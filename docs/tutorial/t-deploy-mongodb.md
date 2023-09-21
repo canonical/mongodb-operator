@@ -6,7 +6,7 @@ This is part of the [Charmed MongoDB Tutorial](/t/charmed-mongodb-tutorial/8061)
 
 To deploy Charmed MongoDB, all you need to do is run the following command, which will fetch the charm from [Charmhub](https://charmhub.io/mongodb?channel=5/edge) and deploy it to your model:
 ```shell
-juju deploy mongodb --channel 5/edge
+juju deploy mongodb --channel 6/edge
 ```
 
 Juju will now fetch Charmed MongoDB and begin deploying it to the LXD cloud. This process can take several minutes depending on how provisioned (RAM, CPU,etc) your machine is. You can track the progress by running:
@@ -33,7 +33,7 @@ To exit the screen with `juju status --watch 1s`, enter `Ctrl+c`.
 ## Access MongoDB
 > **!** *Disclaimer: this part of the tutorial accesses MongoDB via the `admin` user. **Do not** directly interface with the admin user in a production environment. In a production environment [always create a separate user](https://www.mongodb.com/docs/manual/tutorial/create-users/) and connect to MongoDB with that user instead. Later in the section covering Relations we will cover how to access MongoDB without the admin user.*
 
-The first action most users take after installing MongoDB is accessing MongoDB. The easiest way to do this is via the MongoDB shell, with `mongo`. You can read more about the MongoDB shell [here](https://www.mongodb.com/docs/mongodb-shell/). For this part of the Tutorial we will access MongoDB via  `mongo`. Fortunately there is no need to install the Mongo shell, as `mongo` is already installed on the units hosting the Charmed MongoDB application as `charmed-mongodb.mongo`. 
+The first action most users take after installing MongoDB is accessing MongoDB. The easiest way to do this is via the MongoDB shell, with `mongosh`. You can read more about the MongoDB shell [here](https://www.mongodb.com/docs/mongodb-shell/). For this part of the Tutorial we will access MongoDB via  `mongosh`. Fortunately there is no need to install the Mongo shell, as `mongosj` is already installed on the units hosting the Charmed MongoDB application as `charmed-mongodb.mongosh`.
 
 ### MongoDB URI
 Connecting to the database requires a Uniform Resource Identifier (URI), MongoDB expects a [MongoDB specific URI](https://www.mongodb.com/docs/manual/reference/connection-string/). The URI for MongoDB contains information which is used to authenticate us to the database. We use a URI of the format:
@@ -101,7 +101,7 @@ export REPL_SET_NAME="mongodb"
 ```
 
 ### Generate the MongoDB URI
-Now that we have the necessary fields to connect to the URI, we can connect to MongoDB with `charmed-mongodb.mongo` via the URI. We can create the URI with:
+Now that we have the necessary fields to connect to the URI, we can connect to MongoDB with `charmed-mongodb.mongosh` via the URI. We can create the URI with:
 ```shell
 export URI=mongodb://$DB_USERNAME:$DB_PASSWORD@$HOST_IP/$DB_NAME?replicaSet=$REPL_SET_NAME
 ```
@@ -111,16 +111,16 @@ echo $URI
 ```
 
 ### Connect via MongoDB URI
-As said earlier, `mongo` is already installed in Charmed MongoDB as `charmed-mongodb.mongo`. To access the unit hosting Charmed MongoDB, ssh into it:
+As said earlier, `mongosh` is already installed in Charmed MongoDB as `charmed-mongodb.mongosh`. To access the unit hosting Charmed MongoDB, ssh into it:
 ```shell
 juju ssh mongodb/0
 ```
 *Note if at any point you'd like to leave the unit hosting Charmed MongoDB, enter* `exit`.
 
-While `ssh`d into `mongodb/0`, we can access `mongo`, using the URI that we saved in the step [Generate the MongoDB URI](#generate-the-mongodb-uri).
+While `ssh`d into `mongodb/0`, we can access `mongosh`, using the URI that we saved in the step [Generate the MongoDB URI](#generate-the-mongodb-uri).
 
 ```shell
-charmed-mongodb.mongo <saved URI>
+charmed-mongodb.mongosh <saved URI>
 ```
 
 You should now see:

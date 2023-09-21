@@ -74,10 +74,10 @@ Notice that in the previous step when you typed `juju run-action data-integrator
 ```shell
 juju ssh mongodb/0
 ```
-Then access `mongo` with the URI that you copied above:
+Then access `mongosh` with the URI that you copied above:
 
 ```shell
-charmed-mongodb.mongo "<uri copied from juju run-action data-integrator/leader get-credentials --wait>"
+charmed-mongodb.mongosh "<uri copied from juju run-action data-integrator/leader get-credentials --wait>"
 ```
 ***Note: be sure you wrap the URI in `"` with no trailing whitespace*.**
 
