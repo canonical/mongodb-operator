@@ -8,6 +8,9 @@ import re
 import subprocess
 import time
 from typing import Dict, List, Optional, Set
+import os
+import pwd
+from pathlib import Path
 
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from charms.mongodb.v0.helpers import (
@@ -74,11 +77,7 @@ from exceptions import (
     ApplicationHostNotFoundError,
     SecretNotAddedError,
 )
-from machine_helpers import (
-    push_file_to_unit,
-    remove_file_from_unit,
-    update_mongod_service,
-)
+from machine_helpers import update_mongod_service, MONGO_USER, ROOT_USER_GID
 
 logger = logging.getLogger(__name__)
 
@@ -552,6 +551,7 @@ class MongodbOperatorCharm(CharmBase):
         if self.is_role(Config.Role.SHARD):
             event.fail("Cannot set password on shard, please set password on config-server.")
             return
+
         # changing the backup password while a backup/restore is in progress can be disastrous
         pbm_status = self.backups._get_pbm_status()
         if isinstance(pbm_status, MaintenanceStatus):
@@ -575,6 +575,7 @@ class MongodbOperatorCharm(CharmBase):
                 f"Password cannot be longer than {Config.Secrets.MAX_PASSWORD_LENGTH} characters."
             )
             return
+
         with MongoDBConnection(self.mongodb_config) as mongo:
             try:
                 mongo.set_user_password(username, new_password)
@@ -854,24 +855,45 @@ class MongodbOperatorCharm(CharmBase):
             return
 
         # put keyfile on the machine with appropriate permissions
-        push_file_to_unit(
+        self.push_file_to_unit(
             parent_dir=Config.MONGOD_CONF_DIR,
             file_name=KEY_FILE,
             file_contents=self.get_secret(APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME),
         )
 
+    def push_file_to_unit(self, parent_dir, file_name, file_contents) -> None:
+        """K8s charms can push files to their containers easily, this is the vm charm workaround."""
+        Path(parent_dir).mkdir(parents=True, exist_ok=True)
+        file_name = f"{parent_dir}/{file_name}"
+        with open(file_name, "w") as write_file:
+            write_file.write(file_contents)
+
+        # MongoDB limitation; it is needed 400 rights for keyfile and we need 440 rights on tls certs
+        # to be able to connect via MongoDB shell
+        if Config.TLS.KEY_FILE_NAME in file_name:
+            os.chmod(file_name, 0o400)
+        else:
+            os.chmod(file_name, 0o440)
+        mongodb_user = pwd.getpwnam(MONGO_USER)
+        os.chown(file_name, mongodb_user.pw_uid, ROOT_USER_GID)
+
+    def remove_file_from_unit(parent_dir, file_name) -> None:
+        """Remove file from vm unit."""
+        if os.path.exists(f"{parent_dir}/{file_name}"):
+            os.remove(f"{parent_dir}/{file_name}")
+
     def push_tls_certificate_to_workload(self) -> None:
         """Uploads certificate to the workload container."""
         external_ca, external_pem = self.tls.get_tls_files(UNIT_SCOPE)
         if external_ca is not None:
-            push_file_to_unit(
+            self.push_file_to_unit(
                 parent_dir=Config.MONGOD_CONF_DIR,
                 file_name=TLS_EXT_CA_FILE,
                 file_contents=external_ca,
             )
 
         if external_pem is not None:
-            push_file_to_unit(
+            self.push_file_to_unit(
                 parent_dir=Config.MONGOD_CONF_DIR,
                 file_name=TLS_EXT_PEM_FILE,
                 file_contents=external_pem,
@@ -879,14 +901,14 @@ class MongodbOperatorCharm(CharmBase):
 
         internal_ca, internal_pem = self.tls.get_tls_files(APP_SCOPE)
         if internal_ca is not None:
-            push_file_to_unit(
+            self.push_file_to_unit(
                 parent_dir=Config.MONGOD_CONF_DIR,
                 file_name=TLS_INT_CA_FILE,
                 file_contents=internal_ca,
             )
 
         if internal_pem is not None:
-            push_file_to_unit(
+            self.push_file_to_unit(
                 parent_dir=Config.MONGOD_CONF_DIR,
                 file_name=TLS_INT_PEM_FILE,
                 file_contents=internal_pem,
@@ -903,7 +925,7 @@ class MongodbOperatorCharm(CharmBase):
             Config.TLS.INT_CA_FILE,
             Config.TLS.INT_PEM_FILE,
         ]:
-            remove_file_from_unit(Config.MONGOD_CONF_DIR, file)
+            self.remove_file_from_unit(Config.MONGOD_CONF_DIR, file)
 
     def _connect_mongodb_exporter(self) -> None:
         """Exposes the endpoint to mongodb_exporter."""

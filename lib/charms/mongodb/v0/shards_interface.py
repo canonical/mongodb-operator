@@ -15,6 +15,15 @@ from ops.model import (
     WaitingStatus,
 )
 
+from charms.mongodb.v0.mongodb import (
+    MongoDBConnection,
+    NotReadyError,
+    PyMongoError,
+)
+
+from charms.mongodb.v0.helpers import KEY_FILE
+from charms.mongodb.v0.users import MongoDBUser, OperatorUser
+
 logger = logging.getLogger(__name__)
 
 
@@ -35,7 +44,7 @@ class ShardingRequirer(Object):
     """TODO docstring - something about how this is used on config server side."""
 
     def __init__(
-        self, charm: CharmBase, relation_name: str = Config.Relations.SHARDING_RELATIONS_NAME
+        self, charm: CharmBase, relation_name: str = Config.Relations.CONFIG_SERVER_RELATIONS_NAME
     ) -> None:
         """Constructor for MongoDBProvider object.
 
@@ -53,23 +62,53 @@ class ShardingRequirer(Object):
 
     def _on_relation_joined(self, event):
         """TODO doc string"""
-        if not self.charm.is_role(Config.Role.REPLICATION):
+        if self.charm.is_role(Config.Role.REPLICATION):
             self.unit.status = BlockedStatus("role replication does not support sharding")
             logger.error("sharding interface not supported with config role=replication")
             return
 
         if not self.charm.is_role(Config.Role.CONFIG_SERVER):
             logger.info(
-                "skipping relation joined event ShardingRequirer should only be executed by config-server"
+                "skipping relation joined event ShardingRequirer is only be executed by config-server"
             )
             return
 
         if not self.charm.unit.is_leader():
             return
 
-        # todo verify it is related to a shard and not a replica
+        # TODO Future PR, sync tls secrets and PBM password
+        self._update_relation_data(
+            event.relation.id,
+            {
+                "operator-password": self.charm.get_secret(
+                    Config.Relations.APP_SCOPE,
+                    MongoDBUser.get_password_key_name_for_user("operator"),
+                ),
+                "key-file": self.charm.get_secret(
+                    Config.Relations.APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME
+                ),
+            },
+        )
 
-        # todo send out secrets
+        # TODO Future PR, add shard to config server
+
+    # todo handle rotating  passwords
+
+    def _update_relation_data(self, relation_id: int, data: dict) -> None:
+        """Updates a set of key-value pairs in the relation.
+
+        This function writes in the application data bag, therefore,
+        only the leader unit can call it.
+
+        Args:
+            relation_id: the identifier for a particular relation.
+            data: dict containing the key-value pairs
+                that should be updated in the relation.
+        """
+        if self.charm.unit.is_leader():
+            relation = self.charm.model.get_relation(self.relation_name, relation_id)
+            if relation:
+                relation.data[self.charm.model.app].update(data)
 
 
 class ShardingProvider(Object):
@@ -88,43 +127,64 @@ class ShardingProvider(Object):
 
         super().__init__(charm, self.relation_name)
         self.framework.observe(
-            charm.on[self.relation_name].relation_joined, self._on_relation_joined
-        )
-        self.framework.observe(
             charm.on[self.relation_name].relation_changed, self._on_relation_changed
         )
 
         # TODO Future PR, enable shard drainage by listening for relation departed events
 
-    def _on_relation_joined(self, event):
-        """TODO doc string"""
-        if not self.charm.is_role(Config.Role.REPLICATION):
-            self.unit.status = BlockedStatus("role replication does not support sharding")
-            logger.error("sharding interface not supported with config role=replication")
-            return
-
-        if not self.charm.is_role(Config.Role.SHARD):
-            logger.info(
-                "skipping relation joined event ShardingProvider should only be executed by shards"
-            )
-            return
-
-        if not self.charm.unit.is_leader():
-            return
-
-        # todo verify it is related to a config server and not a replica
-
     def _on_relation_changed(self, event):
         """TODO doc string"""
-        if not self.charm.is_role(Config.Role.REPLICATION):
+        if self.charm.is_role(Config.Role.REPLICATION):
             self.unit.status = BlockedStatus("role replication does not support sharding")
             logger.error("sharding interface not supported with config role=replication")
             return
 
         if not self.charm.is_role(Config.Role.SHARD):
             logger.info(
-                "skipping relation changed event ShardingProvider should only be executed by shards"
+                "skipping relation changed event ShardingProvider is only be executed by shards"
             )
             return
 
-        # TODO update all secrets and restart
+        relation_data = event.relation.data[event.app]
+
+        # put keyfile on the machine with appropriate permissions
+        key_file_contents = relation_data.get("key-file")
+        self.charm.push_file_to_unit(
+            parent_dir=Config.MONGOD_CONF_DIR,
+            file_name=KEY_FILE,
+            file_contents=self.charm.get_secret(
+                Config.Relations.APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME
+            ),
+        )
+
+        if self.charm.unit.is_leader():
+            new_password = relation_data.get("operator-password")
+            with MongoDBConnection(self.charm.mongodb_config) as mongo:
+                try:
+                    mongo.set_user_password(OperatorUser.get_username(), new_password)
+                except NotReadyError:
+                    self.charm.unit.status = BlockedStatus("Shard not added to config-server")
+                    logger.error(
+                        "Failed changing the password: Not all members healthy or finished initial sync."
+                    )
+                    return
+                except PyMongoError as e:
+                    self.charm.unit.status = BlockedStatus("Shard not added to config-server")
+                    logger.error(f"Failed changing the password: {e}")
+                    return
+
+            self.charm.set_secret(
+                Config.Relations.APP_SCOPE,
+                MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username()),
+                new_password,
+            )
+            self.charm.set_secret(
+                Config.Relations.APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME, key_file_contents
+            )
+
+        self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
+        self.charm.restart_mongod_service()
+
+        # TODO future PR, leader unit verifies shard was added to cluster
+        if not self.charm.unit.is_leader():
+            return
