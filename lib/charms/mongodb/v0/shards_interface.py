@@ -14,6 +14,7 @@ from charms.mongodb.v0.users import MongoDBUser, OperatorUser
 from ops.charm import CharmBase
 from ops.framework import Object
 from ops.model import BlockedStatus, MaintenanceStatus
+from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from config import Config
 
@@ -29,9 +30,11 @@ LIBAPI = 0
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
 LIBPATCH = 1
+KEYFILE_KEY = "key-file"
+OPERATOR_PASSWORD_KEY = "operator-password"
 
 
-class ShardingRequirer(Object):
+class ShardingProvider(Object):
     """Manage relations between the config server and the shard, on the config-server's side."""
 
     def __init__(
@@ -63,18 +66,18 @@ class ShardingRequirer(Object):
         if not self.charm.unit.is_leader():
             return
 
-        if "db_initialised" not in self.charm.app_peer_data:
+        if not self.charm.db_initialised:
             event.defer()
 
         # TODO Future PR, sync tls secrets and PBM password
         self._update_relation_data(
             event.relation.id,
             {
-                "operator-password": self.charm.get_secret(
+                OPERATOR_PASSWORD_KEY: self.charm.get_secret(
                     Config.Relations.APP_SCOPE,
                     MongoDBUser.get_password_key_name_for_user("operator"),
                 ),
-                "key-file": self.charm.get_secret(
+                KEYFILE_KEY: self.charm.get_secret(
                     Config.Relations.APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME
                 ),
             },
@@ -100,7 +103,7 @@ class ShardingRequirer(Object):
                 relation.data[self.charm.model.app].update(data)
 
 
-class ShardingProvider(Object):
+class ConfigServerRequirer(Object):
     """Manage relations between the config server and the shard, on the shard's side."""
 
     def __init__(
@@ -130,18 +133,18 @@ class ShardingProvider(Object):
             )
             return
 
-        if "db_initialised" not in self.charm.app_peer_data:
+        if not self.charm.db_initialised:
             event.defer()
 
         # shards rely on the config server for secrets
         relation_data = event.relation.data[event.app]
+        self.update_keyfile(key_file_contents=relation_data.get(KEYFILE_KEY))
+
         try:
-            self.update_operator_password(new_password=relation_data.get("operator-password"))
-        except (PyMongoError, NotReadyError):
+            self.update_operator_password(new_password=relation_data.get(OPERATOR_PASSWORD_KEY))
+        except RetryError:
             self.charm.unit.status = BlockedStatus("Shard not added to config-server")
             return
-
-        self.update_keyfile(key_file_contents=relation_data.get("key-file"))
 
         self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
 
@@ -153,7 +156,7 @@ class ShardingProvider(Object):
         """Updates the password for the operator user.
 
         Raises:
-            PyMongoError, NotReadyError
+            RetryError
         """
         current_password = (
             self.charm.get_secret(
@@ -164,19 +167,23 @@ class ShardingProvider(Object):
         if not new_password or new_password == current_password or not self.charm.unit.is_leader():
             return
 
-        # TODO, in the future use set_password from src/charm.py - this will require adding a
-        # library, for exceptions used in both charm code and lib code.
-        with MongoDBConnection(self.charm.mongodb_config) as mongo:
-            try:
-                mongo.set_user_password(OperatorUser.get_username(), new_password)
-            except NotReadyError:
-                logger.error(
-                    "Failed changing the password: Not all members healthy or finished initial sync."
-                )
-                raise
-            except PyMongoError as e:
-                logger.error(f"Failed changing the password: {e}")
-                raise
+        # updating operator password, usually comes after keyfile was updated, hence, the mongodb
+        # service was restarted. Sometimes this requires units getting insync again.
+        for attempt in Retrying(stop=stop_after_delay(60), wait=wait_fixed(3)):
+            with attempt:
+                # TODO, in the future use set_password from src/charm.py - this will require adding
+                # a library, for exceptions used in both charm code and lib code.
+                with MongoDBConnection(self.charm.mongodb_config) as mongo:
+                    try:
+                        mongo.set_user_password(OperatorUser.get_username(), new_password)
+                    except NotReadyError:
+                        logger.error(
+                            "Failed changing the password: Not all members healthy or finished initial sync."
+                        )
+                        raise
+                    except PyMongoError as e:
+                        logger.error(f"Failed changing the password: {e}")
+                        raise
 
         self.charm.set_secret(
             Config.Relations.APP_SCOPE,

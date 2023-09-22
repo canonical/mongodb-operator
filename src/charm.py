@@ -35,7 +35,7 @@ from charms.mongodb.v0.mongodb_backups import S3_RELATION, MongoDBBackups
 from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
-from charms.mongodb.v0.shards_interface import ShardingProvider, ShardingRequirer
+from charms.mongodb.v0.shards_interface import ConfigServerRequirer, ShardingProvider
 from charms.mongodb.v0.users import (
     CHARM_USERS,
     BackupUser,
@@ -48,6 +48,7 @@ from ops import JujuVersion
 from ops.charm import (
     ActionEvent,
     CharmBase,
+    ConfigChangedEvent,
     InstallEvent,
     LeaderElectedEvent,
     RelationDepartedEvent,
@@ -92,6 +93,9 @@ class MongodbOperatorCharm(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
         self._port = Config.MONGODB_PORT
+
+        # lifecycle events
+        self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.start, self._on_start)
         self.framework.observe(self.on.update_status, self._on_update_status)
@@ -123,8 +127,8 @@ class MongodbOperatorCharm(CharmBase):
         self.legacy_client_relations = MongoDBLegacyProvider(self)
         self.tls = MongoDBTLS(self, Config.Relations.PEERS, substrate=Config.SUBSTRATE)
         self.backups = MongoDBBackups(self)
-        self.shard_relations = ShardingRequirer(self)
-        self.config_server_relations = ShardingProvider(self)
+        self.shard_relations = ShardingProvider(self)
+        self.config_server_relations = ConfigServerRequirer(self)
 
         # relation events for Prometheus metrics are handled in the MetricsEndpointProvider
         self._grafana_agent = COSAgentProvider(
@@ -238,7 +242,17 @@ class MongodbOperatorCharm(CharmBase):
     @property
     def role(self) -> str:
         """Returns role of MongoDB deployment."""
-        return self.model.config["role"]
+        if "role" not in self.app_peer_data and self.unit.is_leader():
+            self.app_peer_data["role"] = self.model.config["role"]
+        else:
+            # if leader hasn't set the role yet, use the one set by model
+            self.model.config["role"]
+
+        return self.app_peer_data.get("role")
+
+    def is_role_changed(self) -> bool:
+        """Checks if application is running in provided role."""
+        return self.role != self.model.config["role"]
 
     def is_role(self, role_name: str) -> bool:
         """Checks if application is running in provided role."""
@@ -296,6 +310,22 @@ class MongodbOperatorCharm(CharmBase):
 
         # add licenses
         copy_licenses_to_unit()
+
+    def _on_config_changed(self, event: ConfigChangedEvent) -> None:
+        """Listen to changes in application configuration.
+
+        To prevent a user from migrating a cluster, and causing the component to become
+        unresponsive therefore causing a cluster failure, error the component. This prevents it
+        from executing other hooks with a new role.
+        """
+        # TODO in the future (24.04) support migration of components
+        if self.is_role_changed():
+            logger.error(
+                f"cluster migration currently not supported, cannot change from { self.model.config['role']} to {self.role}"
+            )
+            raise ShardingMigrationError(
+                f"Migration of sharding components not permitted, revert config role to {self.role}"
+            )
 
     def _on_start(self, event: StartEvent) -> None:
         """Enables MongoDB service and initialises replica set.
@@ -1323,6 +1353,10 @@ class MongodbOperatorCharm(CharmBase):
         logging.debug(f"Secret {scope}:{key}")
 
     # END: helper functions
+
+
+class ShardingMigrationError(Exception):
+    """Raised when there is an attempt to change the role of a sharding component."""
 
 
 class SetPasswordError(Exception):
