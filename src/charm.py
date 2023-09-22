@@ -584,6 +584,11 @@ class MongodbOperatorCharm(CharmBase):
         if username == MonitorUser.get_username():
             self._connect_mongodb_exporter()
 
+        # rotate password to shards
+        # TODO in the future support rotating passwords of pbm
+        if username == OperatorUser.get_username():
+            self.shard_relations.update_credentials(username, new_password)
+
         event.set_results(
             {Config.Actions.PASSWORD_PARAM_NAME: new_password, "secret-id": secret_id}
         )

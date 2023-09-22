@@ -70,7 +70,7 @@ class ShardingRequirer(Object):
         self._update_relation_data(
             event.relation.id,
             {
-                "operator-password": self.charm.get_secret(
+                "operator": self.charm.get_secret(
                     Config.Relations.APP_SCOPE,
                     MongoDBUser.get_password_key_name_for_user("operator"),
                 ),
@@ -81,7 +81,11 @@ class ShardingRequirer(Object):
         )
 
         # TODO Future PR, add shard to config server
-        # TODO Follow up PR, handle rotating passwords
+
+    def update_credentials(self, key: str, value: str) -> None:
+        """Sends new credentials, for a key value pair accross all shards."""
+        for relation in self.charm.model.relations[self.relation_name]:
+            self._update_relation_data(relation.id, {key: value})
 
     def _update_relation_data(self, relation_id: int, data: dict) -> None:
         """Updates a set of key-value pairs in the relation.
@@ -136,7 +140,7 @@ class ShardingProvider(Object):
         # shards rely on the config server for secrets
         relation_data = event.relation.data[event.app]
         try:
-            self.update_operator_password(new_password=relation_data.get("operator-password"))
+            self.update_operator_password(new_password=relation_data.get("operator"))
         except (PyMongoError, NotReadyError):
             self.charm.unit.status = BlockedStatus("Shard not added to config-server")
             return
@@ -164,8 +168,6 @@ class ShardingProvider(Object):
         if not new_password or new_password == current_password or not self.charm.unit.is_leader():
             return
 
-        # TODO, in the future use set_password from src/charm.py - this will require adding a
-        # library, for exceptions used in both charm code and lib code.
         with MongoDBConnection(self.charm.mongodb_config) as mongo:
             try:
                 mongo.set_user_password(OperatorUser.get_username(), new_password)
