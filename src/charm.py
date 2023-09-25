@@ -242,11 +242,17 @@ class MongodbOperatorCharm(CharmBase):
     @property
     def role(self) -> str:
         """Returns role of MongoDB deployment."""
-        if "role" not in self.app_peer_data and self.unit.is_leader():
+        if (
+            "role" not in self.app_peer_data
+            and self.unit.is_leader()
+            and self.model.config["role"]
+        ):
             self.app_peer_data["role"] = self.model.config["role"]
+            # app data bag isn't set until function completes
+            return self.model.config["role"]
         else:
             # if leader hasn't set the role yet, use the one set by model
-            self.model.config["role"]
+            return self.model.config["role"]
 
         return self.app_peer_data.get("role")
 
@@ -762,7 +768,7 @@ class MongodbOperatorCharm(CharmBase):
         return MongoDBConfiguration(
             replset=self.app.name,
             database=user.get_database_name(),
-            username=user.get_username(),
+            username=f"{user.get_username()}-{self.role}",
             password=self.get_secret(APP_SCOPE, user.get_password_key_name()),
             hosts=hosts,
             roles=user.get_roles(),
