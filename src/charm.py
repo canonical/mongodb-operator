@@ -40,7 +40,6 @@ from charms.mongodb.v0.users import (
     OperatorUser,
 )
 from charms.operator_libs_linux.v1 import snap
-from ops import JujuVersion
 from ops.charm import (
     ActionEvent,
     CharmBase,
@@ -251,10 +250,6 @@ class MongodbOperatorCharm(CharmBase):
             raise ValueError(
                 f"'db_initialised' must be a boolean value. Proivded: {value} is of type {type(value)}"
             )
-
-    @property
-    def _juju_has_secrets(self) -> bool:
-        return JujuVersion.from_environ().has_secrets
 
     # END: properties
 
@@ -1006,15 +1001,7 @@ class MongodbOperatorCharm(CharmBase):
 
     def get_secret(self, scope: str, key: str) -> Optional[str]:
         """Get secret from the secret storage."""
-        if self._juju_has_secrets:
-            return self._juju_secret_get(scope, key)
-
-        if scope == UNIT_SCOPE:
-            return self.unit_peer_data.get(key, None)
-        elif scope == APP_SCOPE:
-            return self.app_peer_data.get(key, None)
-        else:
-            raise RuntimeError("Unknown secret scope.")
+        return self._juju_secret_get(scope, key)
 
     def set_secret(self, scope: str, key: str, value: Optional[str]) -> Optional[str]:
         """Set secret in the secret storage.
@@ -1022,23 +1009,9 @@ class MongodbOperatorCharm(CharmBase):
         Juju versions > 3.0 use `juju secrets`, this function first checks
           which secret store is being used before setting the secret.
         """
-        if self._juju_has_secrets:
-            if not value:
-                return self._juju_secret_remove(scope, key)
-            return self._juju_secret_set(scope, key, value)
-
-        if scope == UNIT_SCOPE:
-            if not value:
-                del self.unit_peer_data[key]
-                return
-            self.unit_peer_data.update({key: str(value)})
-        elif scope == APP_SCOPE:
-            if not value:
-                del self.app_peer_data[key]
-                return
-            self.app_peer_data.update({key: str(value)})
-        else:
-            raise RuntimeError("Unknown secret scope.")
+        if not value:
+            return self._juju_secret_remove(scope, key)
+        return self._juju_secret_set(scope, key, value)
 
     def start_mongod_service(self):
         """Starts the mongod service and if necessary starts mongos.
