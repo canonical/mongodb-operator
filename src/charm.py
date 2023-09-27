@@ -250,7 +250,7 @@ class MongodbOperatorCharm(CharmBase):
             self.app_peer_data["role"] = self.model.config["role"]
             # app data bag isn't set until function completes
             return self.model.config["role"]
-        else:
+        elif "role" not in self.app_peer_data:
             # if leader hasn't set the role yet, use the one set by model
             return self.model.config["role"]
 
@@ -768,7 +768,7 @@ class MongodbOperatorCharm(CharmBase):
         return MongoDBConfiguration(
             replset=self.app.name,
             database=user.get_database_name(),
-            username=f"{user.get_username()}-{self.role}",
+            username=user.get_username(),
             password=self.get_secret(APP_SCOPE, user.get_password_key_name()),
             hosts=hosts,
             roles=user.get_roles(),

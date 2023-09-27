@@ -10,9 +10,11 @@ import logging
 
 from charms.mongodb.v0.helpers import KEY_FILE
 from charms.mongodb.v0.users import MongoDBUser, OperatorUser
+from charms.mongodb.v0.mongodb import MongoDBConnection, NotReadyError, PyMongoError
 from ops.charm import CharmBase
 from ops.framework import Object
 from ops.model import BlockedStatus, MaintenanceStatus
+from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from config import Config
 
@@ -137,7 +139,11 @@ class ConfigServerRequirer(Object):
         # shards rely on the config server for secrets
         relation_data = event.relation.data[event.app]
         self.update_keyfile(key_file_contents=relation_data.get(KEYFILE_KEY))
-        self.update_operator_password(new_password=relation_data.get(OPERATOR_PASSWORD_KEY))
+        try:
+            self.update_operator_password(new_password=relation_data.get(OPERATOR_PASSWORD_KEY))
+        except RetryError:
+            self.charm.unit.status = BlockedStatus("Shard not added to config-server")
+            return
 
         self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
 
@@ -159,6 +165,24 @@ class ConfigServerRequirer(Object):
 
         if not new_password or new_password == current_password or not self.charm.unit.is_leader():
             return
+
+        # updating operator password, usually comes after keyfile was updated, hence, the mongodb
+        # service was restarted. Sometimes this requires units getting insync again.
+        for attempt in Retrying(stop=stop_after_delay(60), wait=wait_fixed(3)):
+            with attempt:
+                # TODO, in the future use set_password from src/charm.py - this will require adding
+                # a library, for exceptions used in both charm code and lib code.
+                with MongoDBConnection(self.charm.mongodb_config) as mongo:
+                    try:
+                        mongo.set_user_password(OperatorUser.get_username(), new_password)
+                    except NotReadyError:
+                        logger.error(
+                            "Failed changing the password: Not all members healthy or finished initial sync."
+                        )
+                        raise
+                    except PyMongoError as e:
+                        logger.error(f"Failed changing the password: {e}")
+                        raise
 
         self.charm.set_secret(
             Config.Relations.APP_SCOPE,
