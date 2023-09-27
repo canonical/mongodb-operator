@@ -49,7 +49,6 @@ from ops.charm import (
     RelationEvent,
     RelationJoinedEvent,
     SecretChangedEvent,
-    SecretRemoveEvent,
     StartEvent,
     StorageDetachingEvent,
     UpdateStatusEvent,
@@ -114,7 +113,6 @@ class MongodbOperatorCharm(CharmBase):
         self.framework.observe(self.on.set_password_action, self._on_set_password)
 
         # secrets
-        self.framework.observe(self.on.secret_remove, self._on_secret_remove)
         self.framework.observe(self.on.secret_changed, self._on_secret_changed)
 
         # handle provider side of relations
@@ -584,13 +582,6 @@ class MongodbOperatorCharm(CharmBase):
 
         event.set_results(
             {Config.Actions.PASSWORD_PARAM_NAME: new_password, "secret-id": secret_id}
-        )
-
-    def _on_secret_remove(self, event: SecretRemoveEvent):
-        # We are keeping this function empty on purpose until the issue with secrets
-        # is not fixed. The issue is: https://bugs.launchpad.net/juju/+bug/2023364
-        logging.error(
-            f"_on_secret_remove: Secret {event._id} seems to have no observers, could be removed"
         )
 
     def _on_secret_changed(self, event: SecretChangedEvent):
