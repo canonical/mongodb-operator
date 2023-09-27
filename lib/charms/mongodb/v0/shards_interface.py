@@ -9,8 +9,8 @@ shards.
 import logging
 
 from charms.mongodb.v0.helpers import KEY_FILE
-from charms.mongodb.v0.users import MongoDBUser, OperatorUser
 from charms.mongodb.v0.mongodb import MongoDBConnection, NotReadyError, PyMongoError
+from charms.mongodb.v0.users import MongoDBUser, OperatorUser
 from ops.charm import CharmBase
 from ops.framework import Object
 from ops.model import BlockedStatus, MaintenanceStatus
