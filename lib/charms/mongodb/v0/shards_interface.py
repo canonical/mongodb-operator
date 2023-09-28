@@ -31,7 +31,7 @@ LIBAPI = 0
 # to 0 if you are raising the major API version
 LIBPATCH = 1
 KEYFILE_KEY = "key-file"
-OPERATOR_PASSWORD_KEY = "operator-password"
+OPERATOR_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username())
 
 
 class ShardingProvider(Object):
@@ -75,7 +75,7 @@ class ShardingProvider(Object):
             {
                 OPERATOR_PASSWORD_KEY: self.charm.get_secret(
                     Config.Relations.APP_SCOPE,
-                    MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username()),
+                    OPERATOR_PASSWORD_KEY,
                 ),
                 KEYFILE_KEY: self.charm.get_secret(
                     Config.Relations.APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME
@@ -173,7 +173,7 @@ class ConfigServerRequirer(Object):
         current_password = (
             self.charm.get_secret(
                 Config.Relations.APP_SCOPE,
-                MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username()),
+                OPERATOR_PASSWORD_KEY,
             ),
         )
 
@@ -200,7 +200,7 @@ class ConfigServerRequirer(Object):
 
         self.charm.set_secret(
             Config.Relations.APP_SCOPE,
-            MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username()),
+            OPERATOR_PASSWORD_KEY,
             new_password,
         )
 
