@@ -11,14 +11,14 @@ from pymongo import MongoClient
 from pymongo.errors import PyMongoError
 
 # The unique Charmhub library identifier, never change it
-LIBID = "49c69d9977574dd7942eb7b54f43355b"
+LIBID = "e20d5b19670d4c55a4934a21d3f3b29a"
 
 # Increment this major API version when introducing breaking changes
 LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 7
+LIBPATCH = 1
 
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
