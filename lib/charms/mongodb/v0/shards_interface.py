@@ -6,18 +6,19 @@
 This class handles the sharing of secrets between sharded components, adding shards, and removing
 shards.
 """
-import logging
 import json
-from charms.mongodb.v0.mongos import MongosConnection, PyMongoError
+import logging
+from typing import Optional
+
 from charms.mongodb.v0.helpers import KEY_FILE
 from charms.mongodb.v0.mongodb import MongoDBConnection, NotReadyError, PyMongoError
+from charms.mongodb.v0.mongos import MongosConnection
 from charms.mongodb.v0.users import MongoDBUser, OperatorUser
 from ops.charm import CharmBase, RelationBrokenEvent
 from ops.framework import Object
 from ops.model import BlockedStatus, MaintenanceStatus
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
-from typing import Optional, List
 from config import Config
 
 logger = logging.getLogger(__name__)
@@ -54,7 +55,7 @@ class ShardingProvider(Object):
         self.framework.observe(
             charm.on[self.relation_name].relation_changed, self._on_relation_event
         )
-        # TODO Future PR, add shard to config server
+
         # TODO Follow up PR, handle rotating passwords
 
     def _on_relation_joined(self, event):
@@ -91,7 +92,7 @@ class ShardingProvider(Object):
         )
 
     def _on_relation_event(self, event):
-        """TODO"""
+        """Handles adding, removing, and updating of shards."""
         if self.charm.is_role(Config.Role.REPLICATION):
             self.unit.status = BlockedStatus("role replication does not support sharding")
             logger.error("sharding interface not supported with config role=replication")
@@ -115,21 +116,21 @@ class ShardingProvider(Object):
 
         try:
             logger.info("Adding shards not present in cluster.")
-            self.add_shards(departed_relation_id, event)
-            # TODO Future PR, enable self healing by listening for relation changed events
+            self.add_shards(departed_relation_id)
+            # TODO Future PR, enable updating shards by listening for relation changed events
             # TODO Future PR, enable shard drainage by listening for relation departed events
         except PyMongoError as e:
             logger.error("Deferring _on_relation_event for shards interface since: error=%r", e)
             event.defer()
             return
 
-    def add_shards(self, departed_shard_id, event):
-        """TODO docstring
+    def add_shards(self, departed_shard_id):
+        """Adds shards to cluster.
 
-        raise: PyMongoError
+        raises: PyMongoError
         """
         with MongosConnection(self.charm.mongos_config) as mongo:
-            cluster_shards = mongo.get_shard_members()  # todo make this function
+            cluster_shards = mongo.get_shard_members()
             relation_shards = self._get_shards_from_relations(departed_shard_id)
 
             # TODO Future PR, limit number of shards add at a time, based on the number of
@@ -141,7 +142,7 @@ class ShardingProvider(Object):
                     continue
 
                 logger.info("Adding shard: %s ", shard)
-                mongo.add_shard(shard, shard_hosts)  # todo make this function
+                mongo.add_shard(shard, shard_hosts)
 
     def _update_relation_data(self, relation_id: int, data: dict) -> None:
         """Updates a set of key-value pairs in the relation.
@@ -160,7 +161,7 @@ class ShardingProvider(Object):
                 relation.data[self.charm.model.app].update(data)
 
     def _get_shards_from_relations(self, departed_shard_id: Optional[int]):
-        """TODO docstring"""
+        """Returns a list of the shards related to the config-server."""
         relations = self.model.relations[self.relation_name]
         return set(
             [
@@ -171,14 +172,14 @@ class ShardingProvider(Object):
         )
 
     def _get_shard_hosts(self, shard_name) -> str:
-        """TODO docstring"""
+        """Retrieves the hosts for a specified shard."""
         relations = self.model.relations[self.relation_name]
         for relation in relations:
             if self._get_shard_name_from_relation(relation) == shard_name:
                 return json.loads(relation.data[relation.app].get(HOSTS_KEY, "[]"))
 
     def _get_shard_name_from_relation(self, relation):
-        """TODO docstring"""
+        """Returns the name of a shard for a specified relation."""
         return relation.app.name
 
 

@@ -3,23 +3,12 @@
 # See LICENSE file for licensing details.
 
 import logging
-import re
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Set
+from typing import Optional, Set
 from urllib.parse import quote_plus
 
-from bson.json_util import dumps
 from pymongo import MongoClient
-from pymongo.errors import OperationFailure, PyMongoError
-from tenacity import (
-    RetryError,
-    Retrying,
-    before_log,
-    retry,
-    stop_after_attempt,
-    stop_after_delay,
-    wait_fixed,
-)
+from pymongo.errors import PyMongoError
 
 # The unique Charmhub library identifier, never change it
 LIBID = "49c69d9977574dd7942eb7b54f43355b"
@@ -147,7 +136,11 @@ class MongosConnection:
         return set(curr_members)
 
     def add_shard(self, shard_name, shard_hosts, shard_port=27017):
-        """TODO"""
+        """Adds shard to the cluster.
+
+        Raises:
+            ConfigurationError, ConfigurationError, OperationFailure
+        """
         shard_hosts = [f"{host}:{shard_port}" for host in shard_hosts]
         shard_hosts = ",".join(shard_hosts)
         shard_url = f"{shard_name}/{shard_hosts}"
@@ -155,7 +148,7 @@ class MongosConnection:
         # number of secondaries on the primary shard
 
         if shard_name in self.get_shard_members():
-            logger.info("Skipping adding shard %s, shard is already in cluser", shard_name)
+            logger.info("Skipping adding shard %s, shard is already in cluster", shard_name)
             return
 
         logger.info("Adding shard %s", shard_name)

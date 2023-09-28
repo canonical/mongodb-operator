@@ -31,11 +31,11 @@ from charms.mongodb.v0.mongodb import (
     NotReadyError,
     PyMongoError,
 )
-from charms.mongodb.v0.mongos import MongosConfiguration
 from charms.mongodb.v0.mongodb_backups import S3_RELATION, MongoDBBackups
 from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
+from charms.mongodb.v0.mongos import MongosConfiguration
 from charms.mongodb.v0.shards_interface import ConfigServerRequirer, ShardingProvider
 from charms.mongodb.v0.users import (
     CHARM_USERS,
