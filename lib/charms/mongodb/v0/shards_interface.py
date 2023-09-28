@@ -7,15 +7,17 @@ This class handles the sharing of secrets between sharded components, adding sha
 shards.
 """
 import logging
-
+import json
+from charms.mongodb.v0.mongos import MongosConnection, PyMongoError
 from charms.mongodb.v0.helpers import KEY_FILE
 from charms.mongodb.v0.mongodb import MongoDBConnection, NotReadyError, PyMongoError
 from charms.mongodb.v0.users import MongoDBUser, OperatorUser
-from ops.charm import CharmBase
+from ops.charm import CharmBase, RelationBrokenEvent
 from ops.framework import Object
 from ops.model import BlockedStatus, MaintenanceStatus
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
+from typing import Optional, List
 from config import Config
 
 logger = logging.getLogger(__name__)
@@ -32,6 +34,7 @@ LIBAPI = 0
 LIBPATCH = 1
 KEYFILE_KEY = "key-file"
 OPERATOR_PASSWORD_KEY = "operator-password"
+HOSTS_KEY = "host"
 
 
 class ShardingProvider(Object):
@@ -48,7 +51,11 @@ class ShardingProvider(Object):
         self.framework.observe(
             charm.on[self.relation_name].relation_joined, self._on_relation_joined
         )
-        # TODO Future PR, enable shard drainage by listening for relation departed events
+        self.framework.observe(
+            charm.on[self.relation_name].relation_changed, self._on_relation_event
+        )
+        # TODO Future PR, add shard to config server
+        # TODO Follow up PR, handle rotating passwords
 
     def _on_relation_joined(self, event):
         """Handles providing shards with secrets and adding shards to the config server."""
@@ -83,8 +90,58 @@ class ShardingProvider(Object):
             },
         )
 
-        # TODO Future PR, add shard to config server
-        # TODO Follow up PR, handle rotating passwords
+    def _on_relation_event(self, event):
+        """TODO"""
+        if self.charm.is_role(Config.Role.REPLICATION):
+            self.unit.status = BlockedStatus("role replication does not support sharding")
+            logger.error("sharding interface not supported with config role=replication")
+            return
+
+        if not self.charm.is_role(Config.Role.CONFIG_SERVER):
+            logger.info(
+                "skipping relation joined event ShardingRequirer is only be executed by config-server"
+            )
+            return
+
+        if not self.charm.unit.is_leader():
+            return
+
+        if not self.charm.db_initialised:
+            event.defer()
+
+        departed_relation_id = None
+        if type(event) is RelationBrokenEvent:
+            departed_relation_id = event.relation.id
+
+        try:
+            logger.info("Adding shards not present in cluster.")
+            self.add_shards(departed_relation_id, event)
+            # TODO Future PR, enable self healing by listening for relation changed events
+            # TODO Future PR, enable shard drainage by listening for relation departed events
+        except PyMongoError as e:
+            logger.error("Deferring _on_relation_event for shards interface since: error=%r", e)
+            event.defer()
+            return
+
+    def add_shards(self, departed_shard_id, event):
+        """TODO docstring
+
+        raise: PyMongoError
+        """
+        with MongosConnection(self.charm.mongos_config) as mongo:
+            cluster_shards = mongo.get_shard_members()  # todo make this function
+            relation_shards = self._get_shards_from_relations(departed_shard_id)
+
+            # TODO Future PR, limit number of shards add at a time, based on the number of
+            # replicas in the primary shard
+            for shard in relation_shards - cluster_shards:
+                shard_hosts = self._get_shard_hosts(shard)
+                if not len(shard_hosts):
+                    logger.info("host info for shard %s not yet added, skipping", shard)
+                    continue
+
+                logger.info("Adding shard: %s ", shard)
+                mongo.add_shard(shard, shard_hosts)  # todo make this function
 
     def _update_relation_data(self, relation_id: int, data: dict) -> None:
         """Updates a set of key-value pairs in the relation.
@@ -101,6 +158,28 @@ class ShardingProvider(Object):
             relation = self.charm.model.get_relation(self.relation_name, relation_id)
             if relation:
                 relation.data[self.charm.model.app].update(data)
+
+    def _get_shards_from_relations(self, departed_shard_id: Optional[int]):
+        """TODO docstring"""
+        relations = self.model.relations[self.relation_name]
+        return set(
+            [
+                self._get_shard_name_from_relation(relation)
+                for relation in relations
+                if relation.id != departed_shard_id
+            ]
+        )
+
+    def _get_shard_hosts(self, shard_name) -> str:
+        """TODO docstring"""
+        relations = self.model.relations[self.relation_name]
+        for relation in relations:
+            if self._get_shard_name_from_relation(relation) == shard_name:
+                return json.loads(relation.data[relation.app].get(HOSTS_KEY, "[]"))
+
+    def _get_shard_name_from_relation(self, relation):
+        """TODO docstring"""
+        return relation.app.name
 
 
 class ConfigServerRequirer(Object):
@@ -147,9 +226,16 @@ class ConfigServerRequirer(Object):
 
         self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
 
-        # TODO future PR, leader unit verifies shard was added to cluster
         if not self.charm.unit.is_leader():
             return
+
+        # send hosts to mongos to be added to the cluster
+        self._update_relation_data(
+            event.relation.id,
+            {HOSTS_KEY: json.dumps(self.charm._unit_ips)},
+        )
+
+        # TODO future PR, leader unit verifies shard was added to cluster (update-status hook)
 
     def update_operator_password(self, new_password: str) -> None:
         """Updates the password for the operator user.
@@ -209,3 +295,19 @@ class ConfigServerRequirer(Object):
         self.charm.set_secret(
             Config.Relations.APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME, key_file_contents
         )
+
+    def _update_relation_data(self, relation_id: int, data: dict) -> None:
+        """Updates a set of key-value pairs in the relation.
+
+        This function writes in the application data bag, therefore, only the leader unit can call
+        it.
+
+        Args:
+            relation_id: the identifier for a particular relation.
+            data: dict containing the key-value pairs
+                that should be updated in the relation.
+        """
+        if self.charm.unit.is_leader():
+            relation = self.charm.model.get_relation(self.relation_name, relation_id)
+            if relation:
+                relation.data[self.charm.model.app].update(data)
