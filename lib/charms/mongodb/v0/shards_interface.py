@@ -13,7 +13,7 @@ from charms.mongodb.v0.mongodb import MongoDBConnection, NotReadyError, PyMongoE
 from charms.mongodb.v0.users import MongoDBUser, OperatorUser
 from ops.charm import CharmBase
 from ops.framework import Object
-from ops.model import BlockedStatus, MaintenanceStatus
+from ops.model import BlockedStatus, MaintenanceStatus, WaitingStatus
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from config import Config
@@ -53,7 +53,7 @@ class ShardingProvider(Object):
     def _on_relation_joined(self, event):
         """Handles providing shards with secrets and adding shards to the config server."""
         if self.charm.is_role(Config.Role.REPLICATION):
-            self.unit.status = BlockedStatus("role replication does not support sharding")
+            self.charm.unit.status = BlockedStatus("role replication does not support sharding")
             logger.error("sharding interface not supported with config role=replication")
             return
 
@@ -75,7 +75,7 @@ class ShardingProvider(Object):
             {
                 OPERATOR_PASSWORD_KEY: self.charm.get_secret(
                     Config.Relations.APP_SCOPE,
-                    MongoDBUser.get_password_key_name_for_user("operator"),
+                    MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username()),
                 ),
                 KEYFILE_KEY: self.charm.get_secret(
                     Config.Relations.APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME
@@ -123,7 +123,7 @@ class ConfigServerRequirer(Object):
     def _on_relation_changed(self, event):
         """Retrieves secrets from config-server and updates them within the shard."""
         if self.charm.is_role(Config.Role.REPLICATION):
-            self.unit.status = BlockedStatus("role replication does not support sharding")
+            self.charm.unit.status = BlockedStatus("role replication does not support sharding")
             logger.error("sharding interface not supported with config role=replication")
             return
 
@@ -139,17 +139,27 @@ class ConfigServerRequirer(Object):
         # shards rely on the config server for secrets
         relation_data = event.relation.data[event.app]
         self.update_keyfile(key_file_contents=relation_data.get(KEYFILE_KEY))
+
+        # restart on high loaded databases can be very slow (e.g. up to 10-20 minutes).
+        with MongoDBConnection(self.charm.mongodb_config) as mongo:
+            if not mongo.is_ready:
+                logger.info("shard has not started yet, deferfing")
+                self.charm.unit.status = WaitingStatus("Waiting for MongoDB to start")
+                event.defer()
+                return
+
+        self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
+
+        if not self.charm.unit.is_leader():
+            return
+
         try:
             self.update_operator_password(new_password=relation_data.get(OPERATOR_PASSWORD_KEY))
         except RetryError:
             self.charm.unit.status = BlockedStatus("Shard not added to config-server")
             return
 
-        self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
-
         # TODO future PR, leader unit verifies shard was added to cluster
-        if not self.charm.unit.is_leader():
-            return
 
     def update_operator_password(self, new_password: str) -> None:
         """Updates the password for the operator user.
@@ -157,13 +167,17 @@ class ConfigServerRequirer(Object):
         Raises:
             RetryError
         """
+        if not new_password or not self.charm.unit.is_leader():
+            return
+
         current_password = (
             self.charm.get_secret(
-                Config.Relations.APP_SCOPE, MongoDBUser.get_password_key_name_for_user("operator")
+                Config.Relations.APP_SCOPE,
+                MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username()),
             ),
         )
 
-        if not new_password or new_password == current_password or not self.charm.unit.is_leader():
+        if new_password == current_password:
             return
 
         # updating operator password, usually comes after keyfile was updated, hence, the mongodb
@@ -192,7 +206,10 @@ class ConfigServerRequirer(Object):
 
     def update_keyfile(self, key_file_contents: str) -> None:
         """Updates keyfile on all units."""
-        if not key_file_contents:
+        # keyfile is set by leader in application data, application data does not necessarily
+        # match what is on the machine.
+        current_key_file = self.charm.get_keyfile_contents()
+        if not key_file_contents or key_file_contents == current_key_file:
             return
 
         # put keyfile on the machine with appropriate permissions

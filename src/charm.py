@@ -898,6 +898,24 @@ class MongodbOperatorCharm(CharmBase):
             file_contents=self.get_secret(APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME),
         )
 
+    def get_keyfile_contents(self) -> str:
+        """Retrieves the contents of the keyfile on host machine."""
+        # wait for keyFile to be created by leader unit
+        if not self.get_secret(APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME):
+            logger.debug("waiting for leader unit to generate keyfile contents")
+            return
+
+        key_file_path = f"{Config.MONGOD_CONF_DIR}/{KEY_FILE}"
+        key_file = Path(key_file_path)
+        if not key_file.is_file():
+            logger.info("no keyfile present")
+            return
+
+        with open(key_file_path, "r") as file:
+            key = file.read()
+
+        return key
+
     def push_file_to_unit(self, parent_dir, file_name, file_contents) -> None:
         """K8s charms can push files to their containers easily, this is a vm charm workaround."""
         Path(parent_dir).mkdir(parents=True, exist_ok=True)
