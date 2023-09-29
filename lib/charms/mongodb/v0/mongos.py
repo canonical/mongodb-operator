@@ -4,11 +4,12 @@
 
 import logging
 from dataclasses import dataclass
-from typing import Optional, Set
+from typing import Optional, Set, Dict
 from urllib.parse import quote_plus
 
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError
+from charms.mongodb.v0.mongodb import NotReadyError
 
 # The unique Charmhub library identifier, never change it
 LIBID = "e20d5b19670d4c55a4934a21d3f3b29a"
@@ -63,8 +64,16 @@ class MongosConfiguration:
         )
 
 
-class NotReadyError(PyMongoError):
-    """Raised when not all replica set members healthy or finished initial sync."""
+class RemovePrimaryShardException(Exception):
+    """Raised when there is an attempt to remove the primary shard."""
+
+
+class ShardNotInClusterException(Exception):
+    """Raised when shard is not present in cluster, but it is expected to be."""
+
+
+class ShardNotPlannedForRemoval(Exception):
+    """Raised when it is expected that a shard is planned for removal, but it is not."""
 
 
 class MongosConnection:
@@ -127,7 +136,7 @@ class MongosConnection:
             A set of the shard members as reported by mongos.
 
         Raises:
-            ConfigurationError, ConfigurationError, OperationFailure
+            ConfigurationError, OperationFailure
         """
         shard_list = self.client.admin.command("listShards")
         curr_members = [
@@ -139,7 +148,7 @@ class MongosConnection:
         """Adds shard to the cluster.
 
         Raises:
-            ConfigurationError, ConfigurationError, OperationFailure
+            ConfigurationError, OperationFailure
         """
         shard_hosts = [f"{host}:{shard_port}" for host in shard_hosts]
         shard_hosts = ",".join(shard_hosts)
@@ -153,6 +162,66 @@ class MongosConnection:
 
         logger.info("Adding shard %s", shard_name)
         self.client.admin.command("addShard", shard_url)
+
+    def remove_shard(self, shard_name):
+        """Removes shard from the cluster.
+
+        Raises:
+            ConfigurationError, OperationFailure, NotReadyError,
+            RemovePrimaryShardException
+        """
+        sc_status = self.client.admin.command("listShards")
+        if self._is_any_draining(sc_status):
+            cannot_remove_shard = (
+                f"cannot remove shard {shard_name} from cluster, another shard is draining"
+            )
+            logger.info(cannot_remove_shard)
+            raise NotReadyError(cannot_remove_shard)
+
+        # TODO Follow up PR, there is no MongoDB command to retrieve primary shard, this is
+        # possible with mongosh
+        primary_shard = False
+        if primary_shard:
+            cannot_remove_primary_shard = (
+                f"Shard {shard_name} is the primary shard, cannot remove."
+            )
+            logger.error(cannot_remove_primary_shard)
+            raise RemovePrimaryShardException(cannot_remove_primary_shard)
+
+        logger.info("Attemping to remove shard %s", shard_name)
+        self.client.admin.command("removeShard", shard_name)
+        logger.info("Shard %s, now draining", shard_name)
+
+    def _is_shard_draining(self, shard_name) -> bool:
+        """todo
+
+        Raises:
+            ConfigurationError, OperationFailure, ShardNotInClusterException,
+            ShardNotPlannedForRemoval
+        """
+        sc_status = self.client.admin.command("listShards")
+        for shard in sc_status["shards"]:
+            if shard["_id"] == shard_name:
+                if "draining" not in shard:
+                    raise ShardNotPlannedForRemoval(
+                        f"Shard {shard_name} has not been marked for removal",
+                    )
+                return shard["draining"]
+
+        raise ShardNotInClusterException(
+            f"Shard {shard_name} not in cluster, could not retrieve draining status"
+        )
+
+    @staticmethod
+    def _is_any_draining(sc_status: Dict) -> bool:
+        """Returns true if any shard members is draining.
+
+        Checks if any members in sharded cluster are draining data.
+
+        Args:
+            rs_status: current state of shard cluster status as reported by mongos.
+        """
+        return any(shard.get("draining", False) for shard in sc_status["shards"])
 
     @staticmethod
     def _hostname_from_hostport(hostname: str) -> str:

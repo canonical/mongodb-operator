@@ -165,6 +165,19 @@ class MongodbOperatorCharm(CharmBase):
         return None
 
     @property
+    def drained(self) -> bool:
+        """Returns whether the shard has been drained."""
+        if not self.is_role(Config.Role.SHARD):
+            logger.info("Component %s is not a shard, cannot check draining status.", self.role)
+            return False
+
+        if "draining" not in self.app_peer_data:
+            logger.info("Draining status has not been set. It is set on relation_departed")
+            return False
+
+        return self.app_peer_data.get("drain")
+
+    @property
     def _unit_ips(self) -> List[str]:
         """Retrieve IP addresses associated with MongoDB application.
 
@@ -197,6 +210,13 @@ class MongodbOperatorCharm(CharmBase):
     def mongos_config(self) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for mongos in the deployment of MongoDB."""
         return self._get_mongos_config_for_user(OperatorUser, set(self._unit_ips))
+
+    def remote_mongos_config(self, hosts) -> MongoDBConfiguration:
+        """Generates a MongoDBConfiguration object for mongos in the deployment of MongoDB."""
+
+        # mongos that are part of the cluster have the same username and password, but different
+        # hosts
+        return self._get_mongos_config_for_user(OperatorUser, hosts)
 
     @property
     def mongodb_config(self) -> MongoDBConfiguration:

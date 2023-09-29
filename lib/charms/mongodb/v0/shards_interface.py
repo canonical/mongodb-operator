@@ -8,15 +8,25 @@ shards.
 """
 import json
 import logging
+import time
 from typing import Optional
 
 from charms.mongodb.v0.helpers import KEY_FILE
-from charms.mongodb.v0.mongodb import MongoDBConnection, NotReadyError, PyMongoError
-from charms.mongodb.v0.mongos import MongosConnection
+from charms.mongodb.v0.mongodb import (
+    MongoDBConnection,
+    NotReadyError,
+    PyMongoError,
+    OperationFailure,
+)
+from charms.mongodb.v0.mongos import (
+    MongosConnection,
+    ShardNotInClusterException,
+    ShardNotPlannedForRemoval,
+)
 from charms.mongodb.v0.users import MongoDBUser, OperatorUser
-from ops.charm import CharmBase, RelationBrokenEvent
+from ops.charm import CharmBase, RelationDepartedEvent
 from ops.framework import Object
-from ops.model import BlockedStatus, MaintenanceStatus
+from ops.model import BlockedStatus, MaintenanceStatus, ActiveStatus
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from config import Config
@@ -38,6 +48,10 @@ OPERATOR_PASSWORD_KEY = "operator-password"
 HOSTS_KEY = "host"
 
 
+class RemoveLastShardException(Exception):
+    """Raised when there is an attempt to remove the last shard in the cluster."""
+
+
 class ShardingProvider(Object):
     """Manage relations between the config server and the shard, on the config-server's side."""
 
@@ -54,6 +68,9 @@ class ShardingProvider(Object):
         )
         self.framework.observe(
             charm.on[self.relation_name].relation_changed, self._on_relation_event
+        )
+        self.framework.observe(
+            charm.on[self.relation_name].relation_departed, self._on_relation_event
         )
 
         # TODO Follow up PR, handle rotating passwords
@@ -88,6 +105,7 @@ class ShardingProvider(Object):
                 KEYFILE_KEY: self.charm.get_secret(
                     Config.Relations.APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME
                 ),
+                HOSTS_KEY: json.dumps(self.charm._unit_ips),
             },
         )
 
@@ -111,15 +129,23 @@ class ShardingProvider(Object):
             event.defer()
 
         departed_relation_id = None
-        if type(event) is RelationBrokenEvent:
+        if type(event) is RelationDepartedEvent:
             departed_relation_id = event.relation.id
 
         try:
             logger.info("Adding shards not present in cluster.")
             self.add_shards(departed_relation_id)
+            self.remove_shards(departed_relation_id)
             # TODO Future PR, enable updating shards by listening for relation changed events
             # TODO Future PR, enable shard drainage by listening for relation departed events
-        except PyMongoError as e:
+        except OperationFailure as e:
+            if e.code == 20:
+                logger.error(
+                    "Cannot not remove the last shard from cluster, this is forbidden by mongos."
+                )
+                # we should not lose connection with the shard, prevent other hooks from executing.
+                raise RemoveLastShardException()
+        except (PyMongoError, NotReadyError) as e:
             logger.error("Deferring _on_relation_event for shards interface since: error=%r", e)
             event.defer()
             return
@@ -143,6 +169,21 @@ class ShardingProvider(Object):
 
                 logger.info("Adding shard: %s ", shard)
                 mongo.add_shard(shard, shard_hosts)
+
+    def remove_shards(self, departed_shard_id):
+        """Removes shards from cluster.
+
+        raises: PyMongoError, NotReadyError
+        """
+        with MongosConnection(self.charm.mongos_config) as mongo:
+            cluster_shards = mongo.get_shard_members()
+            relation_shards = self._get_shards_from_relations(departed_shard_id)
+
+            for shard in cluster_shards - relation_shards:
+                self.charm.unit.status = MaintenanceStatus(f"Draining shard {shard}")
+                logger.info("Attemping to removing shard: %s", shard)
+                mongo.remove_shard(shard)
+                logger.info("Attemping to removing shard: %s", shard)
 
     def _update_relation_data(self, relation_id: int, data: dict) -> None:
         """Updates a set of key-value pairs in the relation.
@@ -197,6 +238,9 @@ class ConfigServerRequirer(Object):
         self.framework.observe(
             charm.on[self.relation_name].relation_changed, self._on_relation_changed
         )
+        self.framework.observe(
+            charm.on[self.relation_name].relation_departed, self._on_relation_departed
+        )
 
         # TODO Future PR, enable shard drainage by observing relation departed events
 
@@ -237,6 +281,68 @@ class ConfigServerRequirer(Object):
         )
 
         # TODO future PR, leader unit verifies shard was added to cluster (update-status hook)
+
+    def _on_relation_departed(self, event):
+        """todo"""
+        if self.charm.is_role(Config.Role.REPLICATION):
+            self.unit.status = BlockedStatus("role replication does not support sharding")
+            logger.error("sharding interface not supported with config role=replication")
+            return
+
+        if not self.charm.is_role(Config.Role.SHARD):
+            logger.info(
+                "skipping relation departed event ShardingProvider is only be executed by shards"
+            )
+            return
+
+        if not self.charm.db_initialised:
+            event.defer()
+            return
+
+        self.charm.unit.status = MaintenanceStatus("Draining shard from cluster")
+        mongos_hosts = json.loads(event.relation.data[event.relation.app].get(HOSTS_KEY))
+        drained = False
+        while not drained:
+            try:
+                drained = self.drained(mongos_hosts, self.charm.app.name)
+                logger.debug("Shards draining state: %s", drained)
+                # no need to continously check and abuse resouces while shard is draining
+                time.sleep(10)
+            except PyMongoError as e:
+                logger.error("Error occured while draining shard: %s", e)
+                self.charm.unit.status = BlockedStatus("Failed to drain shard from cluster")
+            except ShardNotPlannedForRemoval:
+                logger.info(
+                    "Shard %s has not been identifies for removal. Must wait for mongos cluster-admin to remove shard."
+                )
+            except ShardNotInClusterException:
+                logger.info("Shard to remove, is not in sharded cluster.")
+                break
+
+        self.charm.unit.status = ActiveStatus("Shard drained from cluster, ready for removal")
+        # TODO future PR, leader unit displays this message in update-status hook
+        # TODO future PR, check for shard drainage when removing application
+
+    def drained(self, mongos_hosts, shard_name):
+        """todo
+
+        Raises:
+            ConfigurationError, OperationFailure, ShardNotInClusterException,
+            ShardNotPlannedForRemoval
+        """
+        if not self.charm.is_role(Config.Role.SHARD):
+            logger.info(
+                "Component %s is not a shard, cannot check draining status.", self.charm.role
+            )
+            return False
+
+        if "draining" not in self.charm.app_peer_data and not self.charm.unit.is_leader():
+            return False
+
+        with MongosConnection(self.charm.remote_mongos_config(set(mongos_hosts))) as mongo:
+            draining = mongo._is_shard_draining(shard_name)
+            self.charm.app_peer_data["draining"] = json.dumps(draining)
+            return self.charm.app_peer_data.get("draining")
 
     def update_operator_password(self, new_password: str) -> None:
         """Updates the password for the operator user.
