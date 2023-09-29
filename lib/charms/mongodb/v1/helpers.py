@@ -1,13 +1,14 @@
 """Simple functions, which can be used in both K8s and VM charms."""
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
+from ctypes import Union
 import json
 import logging
 import os
 import secrets
 import string
 import subprocess
-from typing import List
+from typing import List, Optional
 
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 from ops.model import (
@@ -241,6 +242,24 @@ def copy_licenses_to_unit():
         "cp -r /snap/charmed-mongodb/current/licenses/* src/licenses", shell=True
     )
 
+
+_StrOrBytes = Union[str, bytes]
+
+
+def process_pbm_error(error_string: Optional[_StrOrBytes]) -> str:
+    """Parses pbm error string and returns a user friendly message."""
+    message = "couldn't configure s3 backup option"
+    if not error_string:
+        return message
+    if type(error_string) is bytes:
+        error_string = error_string.decode("utf-8")
+    if "status code: 403" in error_string:  # type: ignore
+        message = "s3 credentials are incorrect."
+    elif "status code: 404" in error_string:  # type: ignore
+        message = "s3 configurations are incompatible."
+    elif "status code: 301" in error_string:  # type: ignore
+        message = "s3 configurations are incompatible."
+    return message
 
 def current_pbm_op(pbm_status: str) -> str:
     """Parses pbm status for the operation that pbm is running."""
