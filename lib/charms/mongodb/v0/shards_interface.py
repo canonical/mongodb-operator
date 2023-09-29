@@ -155,10 +155,15 @@ class ConfigServerRequirer(Object):
         if not self.charm.unit.is_leader():
             return
 
+        # TODO Future work, see if needed to check for all units restarted / primary elected
+
         try:
             self.update_operator_password(new_password=relation_data.get(OPERATOR_PASSWORD_KEY))
         except RetryError:
             self.charm.unit.status = BlockedStatus("Shard not added to config-server")
+            logger.error(
+                "Shard could not be added to config server, failed to set operator password."
+            )
             return
 
         # TODO future PR, leader unit verifies shard was added to cluster
