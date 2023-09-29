@@ -7,7 +7,8 @@ import os
 import secrets
 import string
 import subprocess
-from typing import List
+from ctypes import Union
+from typing import List, Optional
 
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 from ops.model import (
@@ -259,6 +260,7 @@ def process_pbm_error(error_string: Optional[_StrOrBytes]) -> str:
     elif "status code: 301" in error_string:  # type: ignore
         message = "s3 configurations are incompatible."
     return message
+
 
 def current_pbm_op(pbm_status: str) -> str:
     """Parses pbm status for the operation that pbm is running."""
