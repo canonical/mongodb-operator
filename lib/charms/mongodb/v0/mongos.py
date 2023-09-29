@@ -4,12 +4,11 @@
 
 import logging
 from dataclasses import dataclass
-from typing import Optional, Set, Dict
+from typing import Dict, Optional, Set
 from urllib.parse import quote_plus
 
-from pymongo import MongoClient
-from pymongo.errors import PyMongoError
 from charms.mongodb.v0.mongodb import NotReadyError
+from pymongo import MongoClient
 
 # The unique Charmhub library identifier, never change it
 LIBID = "e20d5b19670d4c55a4934a21d3f3b29a"
@@ -64,15 +63,15 @@ class MongosConfiguration:
         )
 
 
-class RemovePrimaryShardException(Exception):
+class RemovePrimaryShardError(Exception):
     """Raised when there is an attempt to remove the primary shard."""
 
 
-class ShardNotInClusterException(Exception):
+class ShardNotInClusterError(Exception):
     """Raised when shard is not present in cluster, but it is expected to be."""
 
 
-class ShardNotPlannedForRemoval(Exception):
+class ShardNotPlannedForRemovalError(Exception):
     """Raised when it is expected that a shard is planned for removal, but it is not."""
 
 
@@ -163,12 +162,12 @@ class MongosConnection:
         logger.info("Adding shard %s", shard_name)
         self.client.admin.command("addShard", shard_url)
 
-    def remove_shard(self, shard_name):
+    def remove_shard(self, shard_name: str) -> None:
         """Removes shard from the cluster.
 
         Raises:
             ConfigurationError, OperationFailure, NotReadyError,
-            RemovePrimaryShardException
+            RemovePrimaryShardError
         """
         sc_status = self.client.admin.command("listShards")
         if self._is_any_draining(sc_status):
@@ -186,29 +185,29 @@ class MongosConnection:
                 f"Shard {shard_name} is the primary shard, cannot remove."
             )
             logger.error(cannot_remove_primary_shard)
-            raise RemovePrimaryShardException(cannot_remove_primary_shard)
+            raise RemovePrimaryShardError(cannot_remove_primary_shard)
 
-        logger.info("Attemping to remove shard %s", shard_name)
+        logger.info("Attempting to remove shard %s", shard_name)
         self.client.admin.command("removeShard", shard_name)
         logger.info("Shard %s, now draining", shard_name)
 
-    def _is_shard_draining(self, shard_name) -> bool:
-        """todo
+    def _is_shard_draining(self, shard_name: str) -> bool:
+        """Reports if a given shard is currently in the draining state.
 
         Raises:
-            ConfigurationError, OperationFailure, ShardNotInClusterException,
-            ShardNotPlannedForRemoval
+            ConfigurationError, OperationFailure, ShardNotInClusterError,
+            ShardNotPlannedForRemovalError
         """
         sc_status = self.client.admin.command("listShards")
         for shard in sc_status["shards"]:
             if shard["_id"] == shard_name:
                 if "draining" not in shard:
-                    raise ShardNotPlannedForRemoval(
+                    raise ShardNotPlannedForRemovalError(
                         f"Shard {shard_name} has not been marked for removal",
                     )
                 return shard["draining"]
 
-        raise ShardNotInClusterException(
+        raise ShardNotInClusterError(
             f"Shard {shard_name} not in cluster, could not retrieve draining status"
         )
 
@@ -219,7 +218,7 @@ class MongosConnection:
         Checks if any members in sharded cluster are draining data.
 
         Args:
-            rs_status: current state of shard cluster status as reported by mongos.
+            sc_status: current state of shard cluster status as reported by mongos.
         """
         return any(shard.get("draining", False) for shard in sc_status["shards"])
 

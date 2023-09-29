@@ -213,7 +213,6 @@ class MongodbOperatorCharm(CharmBase):
 
     def remote_mongos_config(self, hosts) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for mongos in the deployment of MongoDB."""
-
         # mongos that are part of the cluster have the same username and password, but different
         # hosts
         return self._get_mongos_config_for_user(OperatorUser, hosts)
