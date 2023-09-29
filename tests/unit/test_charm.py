@@ -44,7 +44,7 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongodbOperatorCharm._init_operator_user")
     @patch("charm.MongodbOperatorCharm._open_ports_tcp")
     @patch("charm.snap.SnapCache")
-    @patch("charm.push_file_to_unit")
+    @patch("charm.MongodbOperatorCharm.push_file_to_unit")
     @patch("builtins.open")
     def test_on_start_not_leader_doesnt_initialise_replica_set(
         self, open, path, snap, _open_ports_tcp, init_admin, connection, get_secret
@@ -71,7 +71,7 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongoDBConnection")
     @patch("charm.MongodbOperatorCharm._init_operator_user")
     @patch("charm.MongodbOperatorCharm._open_ports_tcp")
-    @patch("charm.push_file_to_unit")
+    @patch("charm.MongodbOperatorCharm.push_file_to_unit")
     @patch("builtins.open")
     def test_on_start_snap_failure_leads_to_blocked_status(
         self,
@@ -94,7 +94,7 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongodbOperatorCharm._open_ports_tcp")
     @patch("charm.MongodbOperatorCharm._initialise_replica_set")
     @patch("charm.snap.SnapCache")
-    @patch("charm.push_file_to_unit")
+    @patch("charm.MongodbOperatorCharm.push_file_to_unit")
     @patch("builtins.open")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongodbOperatorCharm._init_operator_user")
@@ -126,7 +126,7 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongodbOperatorCharm._open_ports_tcp")
     @patch("charm.snap.SnapCache")
-    @patch("charm.push_file_to_unit")
+    @patch("charm.MongodbOperatorCharm.push_file_to_unit")
     @patch("builtins.open")
     def test_start_unable_to_open_tcp_moves_to_blocked(self, open, path, snap, _open_ports_tcp):
         """Test verifies that if TCP port cannot be opened we go to the blocked state."""
@@ -288,7 +288,7 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongodbOperatorCharm._open_ports_tcp")
     @patch("charm.snap.SnapCache")
-    @patch("charm.push_file_to_unit")
+    @patch("charm.MongodbOperatorCharm.push_file_to_unit")
     @patch("builtins.open")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongodbOperatorCharm._init_operator_user")

@@ -4,9 +4,12 @@
 # See LICENSE file for licensing details.
 import json
 import logging
+import os
+import pwd
 import re
 import subprocess
 import time
+from pathlib import Path
 from typing import Dict, List, Optional, Set
 
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
@@ -32,6 +35,7 @@ from charms.mongodb.v0.mongodb_backups import S3_RELATION, MongoDBBackups
 from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
+from charms.mongodb.v0.shards_interface import ConfigServerRequirer, ShardingProvider
 from charms.mongodb.v0.users import (
     CHARM_USERS,
     BackupUser,
@@ -43,6 +47,7 @@ from charms.operator_libs_linux.v1 import snap
 from ops.charm import (
     ActionEvent,
     CharmBase,
+    ConfigChangedEvent,
     InstallEvent,
     LeaderElectedEvent,
     RelationDepartedEvent,
@@ -72,11 +77,7 @@ from exceptions import (
     ApplicationHostNotFoundError,
     SecretNotAddedError,
 )
-from machine_helpers import (
-    push_file_to_unit,
-    remove_file_from_unit,
-    update_mongod_service,
-)
+from machine_helpers import MONGO_USER, ROOT_USER_GID, update_mongod_service
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +92,9 @@ class MongodbOperatorCharm(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
         self._port = Config.MONGODB_PORT
+
+        # lifecycle events
+        self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.start, self._on_start)
         self.framework.observe(self.on.update_status, self._on_update_status)
@@ -122,6 +126,8 @@ class MongodbOperatorCharm(CharmBase):
         self.legacy_client_relations = MongoDBLegacyProvider(self)
         self.tls = MongoDBTLS(self, Config.Relations.PEERS, substrate=Config.SUBSTRATE)
         self.backups = MongoDBBackups(self)
+        self.shard_relations = ShardingProvider(self)
+        self.config_server_relations = ConfigServerRequirer(self)
 
         # relation events for Prometheus metrics are handled in the MetricsEndpointProvider
         self._grafana_agent = COSAgentProvider(
@@ -235,7 +241,23 @@ class MongodbOperatorCharm(CharmBase):
     @property
     def role(self) -> str:
         """Returns role of MongoDB deployment."""
-        return self.model.config["role"]
+        if (
+            "role" not in self.app_peer_data
+            and self.unit.is_leader()
+            and self.model.config["role"]
+        ):
+            self.app_peer_data["role"] = self.model.config["role"]
+            # app data bag isn't set until function completes
+            return self.model.config["role"]
+        elif "role" not in self.app_peer_data:
+            # if leader hasn't set the role yet, use the one set by model
+            return self.model.config["role"]
+
+        return self.app_peer_data.get("role")
+
+    def is_role_changed(self) -> bool:
+        """Checks if application is running in provided role."""
+        return self.role != self.model.config["role"]
 
     def is_role(self, role_name: str) -> bool:
         """Checks if application is running in provided role."""
@@ -289,6 +311,22 @@ class MongodbOperatorCharm(CharmBase):
 
         # add licenses
         copy_licenses_to_unit()
+
+    def _on_config_changed(self, event: ConfigChangedEvent) -> None:
+        """Listen to changes in application configuration.
+
+        To prevent a user from migrating a cluster, and causing the component to become
+        unresponsive therefore causing a cluster failure, error the component. This prevents it
+        from executing other hooks with a new role.
+        """
+        # TODO in the future (24.04) support migration of components
+        if self.is_role_changed():
+            logger.error(
+                f"cluster migration currently not supported, cannot change from { self.model.config['role']} to {self.role}"
+            )
+            raise ShardingMigrationError(
+                f"Migration of sharding components not permitted, revert config role to {self.role}"
+            )
 
     def _on_start(self, event: StartEvent) -> None:
         """Enables MongoDB service and initialises replica set.
@@ -537,6 +575,10 @@ class MongodbOperatorCharm(CharmBase):
 
     def _on_set_password(self, event: ActionEvent) -> None:
         """Set the password for the admin user."""
+        if self.is_role(Config.Role.SHARD):
+            event.fail("Cannot set password on shard, please set password on config-server.")
+            return
+
         # changing the backup password while a backup/restore is in progress can be disastrous
         pbm_status = self.backups._get_pbm_status()
         if isinstance(pbm_status, MaintenanceStatus):
@@ -560,21 +602,12 @@ class MongodbOperatorCharm(CharmBase):
                 f"Password cannot be longer than {Config.Secrets.MAX_PASSWORD_LENGTH} characters."
             )
             return
-        with MongoDBConnection(self.mongodb_config) as mongo:
-            try:
-                mongo.set_user_password(username, new_password)
-            except NotReadyError:
-                event.fail(
-                    "Failed changing the password: Not all members healthy or finished initial sync."
-                )
-                return
-            except PyMongoError as e:
-                event.fail(f"Failed changing the password: {e}")
-                return
 
-        secret_id = self.set_secret(
-            APP_SCOPE, MongoDBUser.get_password_key_name_for_user(username), new_password
-        )
+        try:
+            secret_id = self.set_password(username, new_password)
+        except SetPasswordError as e:
+            event.fail(e)
+            return
 
         if username == BackupUser.get_username():
             self._connect_pbm_agent()
@@ -584,6 +617,26 @@ class MongodbOperatorCharm(CharmBase):
 
         event.set_results(
             {Config.Actions.PASSWORD_PARAM_NAME: new_password, "secret-id": secret_id}
+        )
+
+    def set_password(self, username, password) -> int:
+        """Sets the password for a given username and return the secret id.
+
+        Raises:
+            SetPasswordError
+        """
+        with MongoDBConnection(self.mongodb_config) as mongo:
+            try:
+                mongo.set_user_password(username, password)
+            except NotReadyError:
+                raise SetPasswordError(
+                    "Failed changing the password: Not all members healthy or finished initial sync."
+                )
+            except PyMongoError as e:
+                raise SetPasswordError(f"Failed changing the password: {e}")
+
+        return self.set_secret(
+            APP_SCOPE, MongoDBUser.get_password_key_name_for_user(username), password
         )
 
     def _on_secret_remove(self, event: SecretRemoveEvent):
@@ -839,24 +892,63 @@ class MongodbOperatorCharm(CharmBase):
             return
 
         # put keyfile on the machine with appropriate permissions
-        push_file_to_unit(
+        self.push_file_to_unit(
             parent_dir=Config.MONGOD_CONF_DIR,
             file_name=KEY_FILE,
             file_contents=self.get_secret(APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME),
         )
 
+    def get_keyfile_contents(self) -> str:
+        """Retrieves the contents of the keyfile on host machine."""
+        # wait for keyFile to be created by leader unit
+        if not self.get_secret(APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME):
+            logger.debug("waiting for leader unit to generate keyfile contents")
+            return
+
+        key_file_path = f"{Config.MONGOD_CONF_DIR}/{KEY_FILE}"
+        key_file = Path(key_file_path)
+        if not key_file.is_file():
+            logger.info("no keyfile present")
+            return
+
+        with open(key_file_path, "r") as file:
+            key = file.read()
+
+        return key
+
+    def push_file_to_unit(self, parent_dir, file_name, file_contents) -> None:
+        """K8s charms can push files to their containers easily, this is a vm charm workaround."""
+        Path(parent_dir).mkdir(parents=True, exist_ok=True)
+        file_name = f"{parent_dir}/{file_name}"
+        with open(file_name, "w") as write_file:
+            write_file.write(file_contents)
+
+        # MongoDB limitation; it is needed 400 rights for keyfile and we need 440 rights on tls
+        # certs to be able to connect via MongoDB shell
+        if Config.TLS.KEY_FILE_NAME in file_name:
+            os.chmod(file_name, 0o400)
+        else:
+            os.chmod(file_name, 0o440)
+        mongodb_user = pwd.getpwnam(MONGO_USER)
+        os.chown(file_name, mongodb_user.pw_uid, ROOT_USER_GID)
+
+    def remove_file_from_unit(self, parent_dir, file_name) -> None:
+        """Remove file from vm unit."""
+        if os.path.exists(f"{parent_dir}/{file_name}"):
+            os.remove(f"{parent_dir}/{file_name}")
+
     def push_tls_certificate_to_workload(self) -> None:
         """Uploads certificate to the workload container."""
         external_ca, external_pem = self.tls.get_tls_files(UNIT_SCOPE)
         if external_ca is not None:
-            push_file_to_unit(
+            self.push_file_to_unit(
                 parent_dir=Config.MONGOD_CONF_DIR,
                 file_name=TLS_EXT_CA_FILE,
                 file_contents=external_ca,
             )
 
         if external_pem is not None:
-            push_file_to_unit(
+            self.push_file_to_unit(
                 parent_dir=Config.MONGOD_CONF_DIR,
                 file_name=TLS_EXT_PEM_FILE,
                 file_contents=external_pem,
@@ -864,21 +956,20 @@ class MongodbOperatorCharm(CharmBase):
 
         internal_ca, internal_pem = self.tls.get_tls_files(APP_SCOPE)
         if internal_ca is not None:
-            push_file_to_unit(
+            self.push_file_to_unit(
                 parent_dir=Config.MONGOD_CONF_DIR,
                 file_name=TLS_INT_CA_FILE,
                 file_contents=internal_ca,
             )
 
         if internal_pem is not None:
-            push_file_to_unit(
+            self.push_file_to_unit(
                 parent_dir=Config.MONGOD_CONF_DIR,
                 file_name=TLS_INT_PEM_FILE,
                 file_contents=internal_pem,
             )
 
-    @staticmethod
-    def delete_tls_certificate_from_workload() -> None:
+    def delete_tls_certificate_from_workload(self) -> None:
         """Deletes certificate from VM."""
         logger.info("Deleting TLS certificate from VM")
 
@@ -888,7 +979,7 @@ class MongodbOperatorCharm(CharmBase):
             Config.TLS.INT_CA_FILE,
             Config.TLS.INT_PEM_FILE,
         ]:
-            remove_file_from_unit(Config.MONGOD_CONF_DIR, file)
+            self.remove_file_from_unit(Config.MONGOD_CONF_DIR, file)
 
     def _connect_mongodb_exporter(self) -> None:
         """Exposes the endpoint to mongodb_exporter."""
@@ -1259,6 +1350,14 @@ class MongodbOperatorCharm(CharmBase):
         logging.debug(f"Secret {scope}:{key}")
 
     # END: helper functions
+
+
+class ShardingMigrationError(Exception):
+    """Raised when there is an attempt to change the role of a sharding component."""
+
+
+class SetPasswordError(Exception):
+    """Raised on failure to set password for MongoDB user."""
 
 
 if __name__ == "__main__":
