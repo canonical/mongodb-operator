@@ -16,7 +16,7 @@ from charms.mongodb.v0.mongos import MongosConnection
 from charms.mongodb.v0.users import MongoDBUser, OperatorUser
 from ops.charm import CharmBase, RelationBrokenEvent
 from ops.framework import Object
-from ops.model import BlockedStatus, MaintenanceStatus, WaitingStatus
+from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from config import Config
@@ -32,7 +32,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 2
 KEYFILE_KEY = "key-file"
 HOSTS_KEY = "hosts"
 OPERATOR_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username())
@@ -137,13 +137,22 @@ class ShardingProvider(Object):
             # TODO Future PR, limit number of shards add at a time, based on the number of
             # replicas in the primary shard
             for shard in relation_shards - cluster_shards:
-                shard_hosts = self._get_shard_hosts(shard)
-                if not len(shard_hosts):
-                    logger.info("host info for shard %s not yet added, skipping", shard)
-                    continue
+                try:
+                    shard_hosts = self._get_shard_hosts(shard)
+                    if not len(shard_hosts):
+                        logger.info("host info for shard %s not yet added, skipping", shard)
+                        continue
 
-                logger.info("Adding shard: %s ", shard)
-                mongo.add_shard(shard, shard_hosts)
+                    self.charm.unit.status = MaintenanceStatus(
+                        f"Adding shard {shard} to config-server"
+                    )
+                    logger.info("Adding shard: %s ", shard)
+                    mongo.add_shard(shard, shard_hosts)
+                except PyMongoError as e:
+                    logger.error("Failed to add shard %s to the config server, error=%r", shard, e)
+                    raise
+
+        self.charm.unit.status = ActiveStatus("")
 
     def _update_relation_data(self, relation_id: int, data: dict) -> None:
         """Updates a set of key-value pairs in the relation.
@@ -246,7 +255,7 @@ class ConfigServerRequirer(Object):
             )
             return
 
-        # send hosts to mongos to be added to the cluster
+        # send shard hosts to config-server mongos, so that shard can be added to the cluster.
         self._update_relation_data(
             event.relation.id,
             {HOSTS_KEY: json.dumps(self.charm._unit_ips)},

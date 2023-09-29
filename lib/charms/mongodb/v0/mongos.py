@@ -145,7 +145,9 @@ class MongosConnection:
         shard_hosts = ",".join(shard_hosts)
         shard_url = f"{shard_name}/{shard_hosts}"
         # TODO Future PR raise error when number of shards currently adding are higher than the
-        # number of secondaries on the primary shard
+        # number of secondaries on the primary shard. This will be challenging, as there is no
+        # MongoDB command to retrieve the primary shard. Will likely need to be done via
+        # mongosh
 
         if shard_name in self.get_shard_members():
             logger.info("Skipping adding shard %s, shard is already in cluster", shard_name)
