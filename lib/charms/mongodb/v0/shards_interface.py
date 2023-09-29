@@ -68,6 +68,7 @@ class ShardingProvider(Object):
 
         if not self.charm.db_initialised:
             event.defer()
+            return
 
         # TODO Future PR, sync tls secrets and PBM password
         self._update_relation_data(
@@ -135,6 +136,7 @@ class ConfigServerRequirer(Object):
 
         if not self.charm.db_initialised:
             event.defer()
+            return
 
         # shards rely on the config server for secrets
         relation_data = event.relation.data[event.app]
