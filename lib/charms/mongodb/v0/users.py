@@ -110,4 +110,8 @@ MonitorUser = _MonitorUser()
 BackupUser = _BackupUser()
 
 # List of system usernames needed for correct work on the charm.
-CHARM_USERS = [OperatorUser.get_username(), BackupUser.get_username(), MonitorUser.get_username()]
+CHARM_USERS = [
+    OperatorUser.get_username(),
+    BackupUser.get_username(),
+    MonitorUser.get_username(),
+]

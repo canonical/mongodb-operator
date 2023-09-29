@@ -40,7 +40,6 @@ from charms.mongodb.v0.users import (
     OperatorUser,
 )
 from charms.operator_libs_linux.v1 import snap
-from ops import JujuVersion
 from ops.charm import (
     ActionEvent,
     CharmBase,
@@ -92,7 +91,6 @@ class MongodbOperatorCharm(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
         self._port = Config.MONGODB_PORT
-
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.start, self._on_start)
         self.framework.observe(self.on.update_status, self._on_update_status)
@@ -234,6 +232,15 @@ class MongodbOperatorCharm(CharmBase):
         """Check if MongoDB is initialised."""
         return "db_initialised" in self.app_peer_data
 
+    @property
+    def role(self) -> str:
+        """Returns role of MongoDB deployment."""
+        return self.model.config["role"]
+
+    def is_role(self, role_name: str) -> bool:
+        """Checks if application is running in provided role."""
+        return self.role == role_name
+
     @db_initialised.setter
     def db_initialised(self, value):
         """Set the db_initialised flag."""
@@ -243,10 +250,6 @@ class MongodbOperatorCharm(CharmBase):
             raise ValueError(
                 f"'db_initialised' must be a boolean value. Proivded: {value} is of type {type(value)}"
             )
-
-    @property
-    def _juju_has_secrets(self) -> bool:
-        return JujuVersion.from_environ().has_secrets
 
     # END: properties
 
@@ -278,7 +281,10 @@ class MongodbOperatorCharm(CharmBase):
 
         # Construct the mongod startup commandline args for systemd and reload the daemon.
         update_mongod_service(
-            auth=auth, machine_ip=self._unit_ip(self.unit), config=self.mongodb_config
+            auth=auth,
+            machine_ip=self._unit_ip(self.unit),
+            config=self.mongodb_config,
+            role=self.role,
         )
 
         # add licenses
@@ -297,9 +303,7 @@ class MongodbOperatorCharm(CharmBase):
         try:
             logger.debug("starting MongoDB.")
             self.unit.status = MaintenanceStatus("starting MongoDB")
-            snap_cache = snap.SnapCache()
-            mongodb_snap = snap_cache["charmed-mongodb"]
-            mongodb_snap.start(services=["mongod"], enable=True)
+            self.start_mongod_service()
             self.unit.status = ActiveStatus()
         except snap.SnapError as e:
             logger.error("An exception occurred when starting mongod agent, error: %s.", str(e))
@@ -307,7 +311,11 @@ class MongodbOperatorCharm(CharmBase):
             return
 
         try:
-            self._open_port_tcp(self._port)
+            ports = [self._port]
+            if self.is_role(Config.Role.CONFIG_SERVER):
+                ports.append(Config.MONGOS_PORT)
+
+            self._open_ports_tcp(ports)
         except subprocess.CalledProcessError:
             self.unit.status = BlockedStatus("failed to open TCP port for MongoDB")
             return
@@ -787,18 +795,19 @@ class MongodbOperatorCharm(CharmBase):
             event.defer()
             return
 
-    def _open_port_tcp(self, port: int) -> None:
+    def _open_ports_tcp(self, ports: int) -> None:
         """Open the given port.
 
         Args:
-            port: The port to open.
+            ports: The ports to open.
         """
-        try:
-            logger.debug("opening tcp port")
-            subprocess.check_call(["open-port", "{}/TCP".format(port)])
-        except subprocess.CalledProcessError as e:
-            logger.exception("failed opening port: %s", str(e))
-            raise
+        for port in ports:
+            try:
+                logger.debug("opening tcp port")
+                subprocess.check_call(["open-port", "{}/TCP".format(port)])
+            except subprocess.CalledProcessError as e:
+                logger.exception("failed opening port: %s", str(e))
+                raise
 
     def _install_snap_packages(self, packages: List[str]) -> None:
         """Installs package(s) to container.
@@ -950,12 +959,17 @@ class MongodbOperatorCharm(CharmBase):
                 self._peers.data[self.app]["replica_set_hosts"] = json.dumps(
                     [self._unit_ip(self.unit)]
                 )
+
                 logger.info("User initialization")
                 self._init_operator_user()
                 self._init_backup_user()
                 self._init_monitor_user()
-                logger.info("Manage relations")
-                self.client_relations.oversee_users(None, None)
+
+                # in sharding, user management is handled by mongos subordinate charm
+                if self.is_role(Config.Role.REPLICATION):
+                    logger.info("Manage user")
+                    self.client_relations.oversee_users(None, None)
+
             except subprocess.CalledProcessError as e:
                 logger.error(
                     "Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr
@@ -987,15 +1001,7 @@ class MongodbOperatorCharm(CharmBase):
 
     def get_secret(self, scope: str, key: str) -> Optional[str]:
         """Get secret from the secret storage."""
-        if self._juju_has_secrets:
-            return self._juju_secret_get(scope, key)
-
-        if scope == UNIT_SCOPE:
-            return self.unit_peer_data.get(key, None)
-        elif scope == APP_SCOPE:
-            return self.app_peer_data.get(key, None)
-        else:
-            raise RuntimeError("Unknown secret scope.")
+        return self._juju_secret_get(scope, key)
 
     def set_secret(self, scope: str, key: str, value: Optional[str]) -> Optional[str]:
         """Set secret in the secret storage.
@@ -1003,23 +1009,37 @@ class MongodbOperatorCharm(CharmBase):
         Juju versions > 3.0 use `juju secrets`, this function first checks
           which secret store is being used before setting the secret.
         """
-        if self._juju_has_secrets:
-            if not value:
-                return self._juju_secret_remove(scope, key)
-            return self._juju_secret_set(scope, key, value)
+        if not value:
+            return self._juju_secret_remove(scope, key)
+        return self._juju_secret_set(scope, key, value)
 
-        if scope == UNIT_SCOPE:
-            if not value:
-                del self.unit_peer_data[key]
-                return
-            self.unit_peer_data.update({key: str(value)})
-        elif scope == APP_SCOPE:
-            if not value:
-                del self.app_peer_data[key]
-                return
-            self.app_peer_data.update({key: str(value)})
-        else:
-            raise RuntimeError("Unknown secret scope.")
+    def start_mongod_service(self):
+        """Starts the mongod service and if necessary starts mongos.
+
+        Raises:
+            snap.SnapError
+        """
+        snap_cache = snap.SnapCache()
+        mongodb_snap = snap_cache["charmed-mongodb"]
+        mongodb_snap.start(services=["mongod"], enable=True)
+
+        # charms running as config server are responsible for maintaining a server side mongos
+        if self.is_role(Config.Role.CONFIG_SERVER):
+            mongodb_snap.start(services=["mongos"], enable=True)
+
+    def stop_mongod_service(self):
+        """Stops the mongod service and if necessary stops mongos.
+
+        Raises:
+            snap.SnapError
+        """
+        snap_cache = snap.SnapCache()
+        mongodb_snap = snap_cache["charmed-mongodb"]
+        mongodb_snap.stop(services=["mongod"])
+
+        # charms running as config server are responsible for maintaining a server side mongos
+        if self.is_role(Config.Role.CONFIG_SERVER):
+            mongodb_snap.stop(services=["mongos"])
 
     def restart_mongod_service(self, auth=None):
         """Restarts the mongod service with its associated configuration."""
@@ -1027,15 +1047,14 @@ class MongodbOperatorCharm(CharmBase):
             auth = self.auth_enabled()
 
         try:
-            snap_cache = snap.SnapCache()
-            mongodb_snap = snap_cache["charmed-mongodb"]
-            mongodb_snap.stop(services=["mongod"])
+            self.stop_mongod_service()
             update_mongod_service(
                 auth,
                 self._unit_ip(self.unit),
                 config=self.mongodb_config,
+                role=self.role,
             )
-            mongodb_snap.start(services=["mongod"], enable=True)
+            self.start_mongod_service()
         except snap.SnapError as e:
             logger.error("An exception occurred when starting mongod agent, error: %s.", str(e))
             self.unit.status = BlockedStatus("couldn't start MongoDB")
