@@ -7,8 +7,7 @@ import os
 import secrets
 import string
 import subprocess
-from ctypes import Union
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 from ops.model import (
