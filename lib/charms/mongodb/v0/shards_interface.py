@@ -6,9 +6,8 @@
 This class handles the sharing of secrets between sharded components, adding shards, and removing
 shards.
 """
-import json
 import logging
-from typing import Optional
+from typing import List, Optional
 
 from charms.mongodb.v0.helpers import KEY_FILE
 from charms.mongodb.v0.mongodb import MongoDBConnection, NotReadyError, PyMongoError
@@ -34,7 +33,6 @@ LIBAPI = 0
 # to 0 if you are raising the major API version
 LIBPATCH = 2
 KEYFILE_KEY = "key-file"
-HOSTS_KEY = "hosts"
 OPERATOR_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username())
 
 
@@ -181,12 +179,16 @@ class ShardingProvider(Object):
             ]
         )
 
-    def _get_shard_hosts(self, shard_name) -> str:
+    def _get_shard_hosts(self, shard_name) -> List[str]:
         """Retrieves the hosts for a specified shard."""
         relations = self.model.relations[self.relation_name]
         for relation in relations:
             if self._get_shard_name_from_relation(relation) == shard_name:
-                return json.loads(relation.data[relation.app].get(HOSTS_KEY, "[]"))
+                hosts = []
+                for unit in relation.units:
+                    hosts.append(relation.data[unit].get("private-address"))
+
+                return hosts
 
     def _get_shard_name_from_relation(self, relation):
         """Returns the name of a shard for a specified relation."""
@@ -254,12 +256,6 @@ class ConfigServerRequirer(Object):
                 "Shard could not be added to config server, failed to set operator password."
             )
             return
-
-        # send shard hosts to config-server mongos, so that shard can be added to the cluster.
-        self._update_relation_data(
-            event.relation.id,
-            {HOSTS_KEY: json.dumps(self.charm._unit_ips)},
-        )
 
         # TODO future PR, leader unit verifies shard was added to cluster (update-status hook)
 
