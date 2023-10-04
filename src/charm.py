@@ -771,7 +771,7 @@ class MongodbOperatorCharm(CharmBase):
             username=user.get_username(),
             password=self.get_secret(APP_SCOPE, user.get_password_key_name()),
             hosts=hosts,
-            port=27018,
+            port=Config.MONGOS_PORT,
             roles=user.get_roles(),
             tls_external=external_ca is not None,
             tls_internal=internal_ca is not None,

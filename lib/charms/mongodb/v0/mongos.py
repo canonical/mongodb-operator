@@ -10,6 +10,8 @@ from urllib.parse import quote_plus
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError
 
+from config import Config
+
 # The unique Charmhub library identifier, never change it
 LIBID = "e20d5b19670d4c55a4934a21d3f3b29a"
 
@@ -84,7 +86,7 @@ class MongosConnection:
     with MongoMongos(self._mongos_config) as mongo:
         try:
             mongo.<some operation from this class>
-        except ConfigurationError, ConfigurationError, OperationFailure:
+        except ConfigurationError, OperationFailure:
             <error handling as needed>
     """
 
@@ -127,7 +129,7 @@ class MongosConnection:
             A set of the shard members as reported by mongos.
 
         Raises:
-            ConfigurationError, ConfigurationError, OperationFailure
+            ConfigurationError, OperationFailure
         """
         shard_list = self.client.admin.command("listShards")
         curr_members = [
@@ -135,11 +137,11 @@ class MongosConnection:
         ]
         return set(curr_members)
 
-    def add_shard(self, shard_name, shard_hosts, shard_port=27017):
+    def add_shard(self, shard_name, shard_hosts, shard_port=Config.MONGODB_PORT):
         """Adds shard to the cluster.
 
         Raises:
-            ConfigurationError, ConfigurationError, OperationFailure
+            ConfigurationError, OperationFailure
         """
         shard_hosts = [f"{host}:{shard_port}" for host in shard_hosts]
         shard_hosts = ",".join(shard_hosts)
