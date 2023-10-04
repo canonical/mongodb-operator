@@ -72,6 +72,8 @@ class Config:
         NAME = "database"
         PEERS = "database-peers"
         OBSOLETE_RELATIONS_NAME = "obsolete"
+        SHARDING_RELATIONS_NAME = "sharding"
+        CONFIG_SERVER_RELATIONS_NAME = "config-server"
         APP_SCOPE = "app"
         UNIT_SCOPE = "unit"
         Scopes = Literal[APP_SCOPE, UNIT_SCOPE]

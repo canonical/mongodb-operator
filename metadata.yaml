@@ -25,6 +25,8 @@ provides:
     interface: mongodb
   cos-agent:
     interface: cos_agent
+  config-server:
+    interface: shards
 
 storage:
   mongodb:
@@ -39,6 +41,10 @@ requires:
   certificates:
     interface: tls-certificates
     limit: 1
-
   s3-credentials:
     interface: s3
+    limit: 1
+  sharding:
+    interface: shards
+    # shards can only relate to one config-server
+    limit: 1
