@@ -136,10 +136,10 @@ class ShardingProvider(Object):
             logger.info("Adding shards not present in cluster.")
             self.add_shards(departed_relation_id)
             self.remove_shards(departed_relation_id)
-            # TODO Future PR, enable updating shards by listening for relation changed events
-            # TODO Future PR, enable shard drainage by listening for relation departed events
         except OperationFailure as e:
             if e.code == 20:
+                # TODO Future PR, allow removal of last shards that have no data. This will be
+                # tricky since we are not allowed to update the mongos config in this way.
                 logger.error(
                     "Cannot not remove the last shard from cluster, this is forbidden by mongos."
                 )
@@ -241,8 +241,6 @@ class ConfigServerRequirer(Object):
         self.framework.observe(
             charm.on[self.relation_name].relation_departed, self._on_relation_departed
         )
-
-        # TODO Future PR, enable shard drainage by observing relation departed events
 
     def _on_relation_changed(self, event):
         """Retrieves secrets from config-server and updates them within the shard."""

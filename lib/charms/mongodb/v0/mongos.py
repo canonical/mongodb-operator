@@ -178,9 +178,11 @@ class MongosConnection:
             raise NotReadyError(cannot_remove_shard)
 
         # TODO Follow up PR, there is no MongoDB command to retrieve primary shard, this is
-        # possible with mongosh
+        # possible with mongosh.
         primary_shard = False
         if primary_shard:
+            # TODO Future PR, support removing Primary Shard if there are no unsharded collections
+            # on it. All sharded collections should perform `MovePrimary`
             cannot_remove_primary_shard = (
                 f"Shard {shard_name} is the primary shard, cannot remove."
             )
