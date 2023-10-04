@@ -1265,7 +1265,7 @@ class MongodbOperatorCharm(CharmBase):
 
         secret = self.secrets[scope].get(Config.Secrets.SECRET_LABEL)
 
-        # It's not the first secret for the scope, we can re-use the existing one
+        # It's not the first secret for the scope, we can reuse the existing one
         # that was fetched in the previous call, as fetching secrets from juju is
         # slow
         if secret:
