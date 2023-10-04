@@ -505,7 +505,7 @@ class MongoDBBackups(Object):
 
         If PBM is resyncing, the function will retry to create backup
         (up to  BACKUP_RESTORE_MAX_ATTEMPTS times) with BACKUP_RESTORE_ATTEMPT_COOLDOWN
-        time between attepts.
+        time between attempts.
 
         If PMB returen any other error, the function will raise RestoreError.
         """
@@ -541,7 +541,7 @@ class MongoDBBackups(Object):
 
         If PBM is resyncing, the function will retry to create backup
         (up to BACKUP_RESTORE_MAX_ATTEMPTS times)
-        with BACKUP_RESTORE_ATTEMPT_COOLDOWN time between attepts.
+        with BACKUP_RESTORE_ATTEMPT_COOLDOWN time between attempts.
 
         If PMB returen any other error, the function will raise BackupError.
         """
