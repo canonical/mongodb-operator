@@ -334,8 +334,12 @@ class ConfigServerRequirer(Object):
             )
             return False
 
-        if "draining" not in self.charm.app_peer_data and not self.charm.unit.is_leader():
+        # leader has not checked for draining status, so we assume not yet drained
+        if "draining" not in self.charm.app_peer_data:
             return False
+
+        if not self.charm.unit.is_leader():
+            return self.charm.app_peer_data.get("draining")
 
         with MongosConnection(self.charm.remote_mongos_config(set(mongos_hosts))) as mongo:
             draining = mongo._is_shard_draining(shard_name)
