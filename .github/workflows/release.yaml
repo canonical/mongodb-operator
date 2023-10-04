@@ -31,11 +31,9 @@ jobs:
         with:
           credentials: "${{ secrets.CHARMHUB_TOKEN }}"
           github-token: "${{ secrets.GITHUB_TOKEN }}"
-      # TODO - wait until track request is approved:
-      # https://discourse.charmhub.io/t/request-track-6-for-charmed-mongodb-operator/11900
-      # - name: Upload charm to charmhub
-      #   uses: canonical/charming-actions/upload-charm@2.2.2
-      #   with:
-      #     credentials: "${{ secrets.CHARMHUB_TOKEN }}"
-      #     github-token: "${{ secrets.GITHUB_TOKEN }}"
-      #     channel: "6/edge"
+      - name: Upload charm to charmhub
+        uses: canonical/charming-actions/upload-charm@2.2.2
+        with:
+          credentials: "${{ secrets.CHARMHUB_TOKEN }}"
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          channel: "6/edge"

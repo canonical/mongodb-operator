@@ -4,6 +4,7 @@
 from datetime import datetime
 
 import ops
+from charms.mongodb.v0.helpers import MONGO_SHELL
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_attempt, wait_exponential
 
@@ -33,7 +34,7 @@ async def mongo_tls_command(ops_test: OpsTest) -> str:
     replica_set_uri = f"mongodb://operator:" f"{password}@" f"{hosts}/admin?replicaSet={app}"
 
     return (
-        f"charmed-mongodb.mongo '{replica_set_uri}'  --eval 'rs.status()'"
+        f"{MONGO_SHELL} '{replica_set_uri}'  --eval 'rs.status()'"
         f" --tls --tlsCAFile {EXTERNAL_CERT_PATH}"
         f" --tlsCertificateKeyFile {EXTERNAL_PEM_PATH}"
     )

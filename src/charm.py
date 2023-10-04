@@ -35,7 +35,7 @@ from charms.mongodb.v0.mongodb_backups import S3_RELATION, MongoDBBackups
 from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
-from charms.mongodb.v0.shards_interface import ShardingProvider, ShardingRequirer
+from charms.mongodb.v0.shards_interface import ConfigServerRequirer, ShardingProvider
 from charms.mongodb.v0.users import (
     CHARM_USERS,
     BackupUser,
@@ -44,10 +44,10 @@ from charms.mongodb.v0.users import (
     OperatorUser,
 )
 from charms.operator_libs_linux.v1 import snap
-from ops import JujuVersion
 from ops.charm import (
     ActionEvent,
     CharmBase,
+    ConfigChangedEvent,
     InstallEvent,
     LeaderElectedEvent,
     RelationDepartedEvent,
@@ -92,6 +92,9 @@ class MongodbOperatorCharm(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
         self._port = Config.MONGODB_PORT
+
+        # lifecycle events
+        self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.start, self._on_start)
         self.framework.observe(self.on.update_status, self._on_update_status)
@@ -123,8 +126,8 @@ class MongodbOperatorCharm(CharmBase):
         self.legacy_client_relations = MongoDBLegacyProvider(self)
         self.tls = MongoDBTLS(self, Config.Relations.PEERS, substrate=Config.SUBSTRATE)
         self.backups = MongoDBBackups(self)
-        self.shard_relations = ShardingRequirer(self)
-        self.config_server_relations = ShardingProvider(self)
+        self.shard_relations = ShardingProvider(self)
+        self.config_server_relations = ConfigServerRequirer(self)
 
         # relation events for Prometheus metrics are handled in the MetricsEndpointProvider
         self._grafana_agent = COSAgentProvider(
@@ -238,7 +241,23 @@ class MongodbOperatorCharm(CharmBase):
     @property
     def role(self) -> str:
         """Returns role of MongoDB deployment."""
-        return self.model.config["role"]
+        if (
+            "role" not in self.app_peer_data
+            and self.unit.is_leader()
+            and self.model.config["role"]
+        ):
+            self.app_peer_data["role"] = self.model.config["role"]
+            # app data bag isn't set until function completes
+            return self.model.config["role"]
+        elif "role" not in self.app_peer_data:
+            # if leader hasn't set the role yet, use the one set by model
+            return self.model.config["role"]
+
+        return self.app_peer_data.get("role")
+
+    def is_role_changed(self) -> bool:
+        """Checks if application is running in provided role."""
+        return self.role != self.model.config["role"]
 
     def is_role(self, role_name: str) -> bool:
         """Checks if application is running in provided role."""
@@ -253,10 +272,6 @@ class MongodbOperatorCharm(CharmBase):
             raise ValueError(
                 f"'db_initialised' must be a boolean value. Proivded: {value} is of type {type(value)}"
             )
-
-    @property
-    def _juju_has_secrets(self) -> bool:
-        return JujuVersion.from_environ().has_secrets
 
     # END: properties
 
@@ -296,6 +311,22 @@ class MongodbOperatorCharm(CharmBase):
 
         # add licenses
         copy_licenses_to_unit()
+
+    def _on_config_changed(self, event: ConfigChangedEvent) -> None:
+        """Listen to changes in application configuration.
+
+        To prevent a user from migrating a cluster, and causing the component to become
+        unresponsive therefore causing a cluster failure, error the component. This prevents it
+        from executing other hooks with a new role.
+        """
+        # TODO in the future (24.04) support migration of components
+        if self.is_role_changed():
+            logger.error(
+                f"cluster migration currently not supported, cannot change from { self.model.config['role']} to {self.role}"
+            )
+            raise ShardingMigrationError(
+                f"Migration of sharding components not permitted, revert config role to {self.role}"
+            )
 
     def _on_start(self, event: StartEvent) -> None:
         """Enables MongoDB service and initialises replica set.
@@ -544,19 +575,8 @@ class MongodbOperatorCharm(CharmBase):
 
     def _on_set_password(self, event: ActionEvent) -> None:
         """Set the password for the admin user."""
-        if self.is_role(Config.Role.SHARD):
-            event.fail("Cannot set password on shard, please set password on config-server.")
-            return
-
-        # changing the backup password while a backup/restore is in progress can be disastrous
-        pbm_status = self.backups._get_pbm_status()
-        if isinstance(pbm_status, MaintenanceStatus):
-            event.fail("Cannot change password while a backup/restore is in progress.")
-            return
-
-        # only leader can write the new password into peer relation.
-        if not self.unit.is_leader():
-            event.fail("The action can be run only on leader unit.")
+        # check conditions for setting the password and fail if necessary
+        if not self.pass_pre_set_password_checks(event):
             return
 
         username = self._get_user_or_fail_event(
@@ -585,9 +605,12 @@ class MongodbOperatorCharm(CharmBase):
             self._connect_mongodb_exporter()
 
         # rotate password to shards
-        # TODO in the future support rotating passwords of pbm
+        # TODO in the future support rotating passwords of pbm across shards
         if username == OperatorUser.get_username():
-            self.shard_relations.update_credentials(username, new_password)
+            self.shard_relations.update_credentials(
+                MongoDBUser.get_password_key_name_for_user(username),
+                new_password,
+            )
 
         event.set_results(
             {Config.Actions.PASSWORD_PARAM_NAME: new_password, "secret-id": secret_id}
@@ -756,6 +779,25 @@ class MongodbOperatorCharm(CharmBase):
             return
         return username
 
+    def pass_pre_set_password_checks(self, event: ActionEvent) -> bool:
+        """Checks conditions for setting the password and fail if necessary."""
+        if self.is_role(Config.Role.SHARD):
+            event.fail("Cannot set password on shard, please set password on config-server.")
+            return
+
+        # changing the backup password while a backup/restore is in progress can be disastrous
+        pbm_status = self.backups._get_pbm_status()
+        if isinstance(pbm_status, MaintenanceStatus):
+            event.fail("Cannot change password while a backup/restore is in progress.")
+            return
+
+        # only leader can write the new password into peer relation.
+        if not self.unit.is_leader():
+            event.fail("The action can be run only on leader unit.")
+            return
+
+        return True
+
     def _check_or_set_user_password(self, user: MongoDBUser) -> None:
         key = user.get_password_key_name()
         if not self.get_secret(APP_SCOPE, key):
@@ -871,6 +913,24 @@ class MongodbOperatorCharm(CharmBase):
             file_name=KEY_FILE,
             file_contents=self.get_secret(APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME),
         )
+
+    def get_keyfile_contents(self) -> str:
+        """Retrieves the contents of the keyfile on host machine."""
+        # wait for keyFile to be created by leader unit
+        if not self.get_secret(APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME):
+            logger.debug("waiting for leader unit to generate keyfile contents")
+            return
+
+        key_file_path = f"{Config.MONGOD_CONF_DIR}/{KEY_FILE}"
+        key_file = Path(key_file_path)
+        if not key_file.is_file():
+            logger.info("no keyfile present")
+            return
+
+        with open(key_file_path, "r") as file:
+            key = file.read()
+
+        return key
 
     def push_file_to_unit(self, parent_dir, file_name, file_contents) -> None:
         """K8s charms can push files to their containers easily, this is a vm charm workaround."""
@@ -1048,15 +1108,7 @@ class MongodbOperatorCharm(CharmBase):
 
     def get_secret(self, scope: str, key: str) -> Optional[str]:
         """Get secret from the secret storage."""
-        if self._juju_has_secrets:
-            return self._juju_secret_get(scope, key)
-
-        if scope == UNIT_SCOPE:
-            return self.unit_peer_data.get(key, None)
-        elif scope == APP_SCOPE:
-            return self.app_peer_data.get(key, None)
-        else:
-            raise RuntimeError("Unknown secret scope.")
+        return self._juju_secret_get(scope, key)
 
     def set_secret(self, scope: str, key: str, value: Optional[str]) -> Optional[str]:
         """Set secret in the secret storage.
@@ -1064,23 +1116,9 @@ class MongodbOperatorCharm(CharmBase):
         Juju versions > 3.0 use `juju secrets`, this function first checks
           which secret store is being used before setting the secret.
         """
-        if self._juju_has_secrets:
-            if not value:
-                return self._juju_secret_remove(scope, key)
-            return self._juju_secret_set(scope, key, value)
-
-        if scope == UNIT_SCOPE:
-            if not value:
-                del self.unit_peer_data[key]
-                return
-            self.unit_peer_data.update({key: str(value)})
-        elif scope == APP_SCOPE:
-            if not value:
-                del self.app_peer_data[key]
-                return
-            self.app_peer_data.update({key: str(value)})
-        else:
-            raise RuntimeError("Unknown secret scope.")
+        if not value:
+            return self._juju_secret_remove(scope, key)
+        return self._juju_secret_set(scope, key, value)
 
     def start_mongod_service(self):
         """Starts the mongod service and if necessary starts mongos.
@@ -1220,7 +1258,7 @@ class MongodbOperatorCharm(CharmBase):
 
         secret = self.secrets[scope].get(Config.Secrets.SECRET_LABEL)
 
-        # It's not the first secret for the scope, we can re-use the existing one
+        # It's not the first secret for the scope, we can reuse the existing one
         # that was fetched in the previous call, as fetching secrets from juju is
         # slow
         if secret:
@@ -1328,6 +1366,10 @@ class MongodbOperatorCharm(CharmBase):
         logging.debug(f"Secret {scope}:{key}")
 
     # END: helper functions
+
+
+class ShardingMigrationError(Exception):
+    """Raised when there is an attempt to change the role of a sharding component."""
 
 
 class SetPasswordError(Exception):

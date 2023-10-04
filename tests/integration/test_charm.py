@@ -9,6 +9,7 @@ import time
 from uuid import uuid4
 
 import pytest
+from charms.mongodb.v0.helpers import MONGO_SHELL
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError, ServerSelectionTimeoutError
 from pytest_operator.plugin import OpsTest
@@ -180,7 +181,8 @@ async def test_monitor_user(ops_test: OpsTest) -> None:
     ]
     hosts = ",".join(replica_set_hosts)
     replica_set_uri = f"mongodb://monitor:{password}@{hosts}/admin?replicaSet=mongodb"
-    admin_mongod_cmd = f"charmed-mongodb.mongo '{replica_set_uri}'  --eval 'rs.conf()'"
+
+    admin_mongod_cmd = f"{MONGO_SHELL} '{replica_set_uri}'  --eval 'rs.conf()'"
     check_monitor_cmd = f"exec --unit {unit.name} -- {admin_mongod_cmd}"
     return_code, _, _ = await ops_test.juju(*check_monitor_cmd.split())
     assert return_code == 0, "command rs.conf() on monitor user does not work"
@@ -204,7 +206,6 @@ async def test_only_leader_can_set_while_all_can_read_password_secret(ops_test: 
         assert password2 == password
 
 
-@pytest.mark.usefixtures("only_with_juju_secrets")
 async def test_reset_and_get_password_secret_same_as_cli(ops_test: OpsTest) -> None:
     """Test verifies that we can set and retrieve the correct password using Juju 3.x secrets."""
     new_password = str(uuid4())
@@ -229,21 +230,6 @@ async def test_reset_and_get_password_secret_same_as_cli(ops_test: OpsTest) -> N
     assert data[secret_id]["content"]["Data"]["monitor-password"] == password
 
 
-@pytest.mark.usefixtures("only_without_juju_secrets")
-async def test_reset_and_get_password_no_secret(ops_test: OpsTest, mocker) -> None:
-    """Test verifies that we can set and retrieve the correct password using Juju 2.x."""
-    new_password = str(uuid4())
-
-    # Re=setting existing password
-    leader_id = await get_leader_id(ops_test)
-    await set_password(ops_test, unit_id=leader_id, username="monitor", password=new_password)
-
-    # Getting back the pw programmatically
-    password = await get_password(ops_test, username="monitor")
-    assert password == new_password
-
-
-@pytest.mark.usefixtures("only_with_juju_secrets")
 async def test_empty_password(ops_test: OpsTest) -> None:
     """Test that the password can't be set to an empty string."""
     leader_id = await get_leader_id(ops_test)
@@ -256,7 +242,6 @@ async def test_empty_password(ops_test: OpsTest) -> None:
     assert password1 == password2
 
 
-@pytest.mark.usefixtures("only_with_juju_secrets")
 async def test_no_password_change_on_invalid_password(ops_test: OpsTest) -> None:
     """Test that in general, there is no change when password validation fails."""
     leader_id = await get_leader_id(ops_test)

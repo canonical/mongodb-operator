@@ -70,7 +70,7 @@ Testing high availability on a production cluster can be done with:
 tox run -e ha-integration -- --model=<model_name>
 ```
 
-Note if you'd like to test storage re-use in ha-testing, your storage must not be of the type `rootfs`. `rootfs` storage is tied to the machine lifecycle and does not stick around after unit removal. `rootfs` storage is used by default with `tox run -e ha-integration`. To test ha-testing for storage re-use: 
+Note if you'd like to test storage reuse in ha-testing, your storage must not be of the type `rootfs`. `rootfs` storage is tied to the machine lifecycle and does not stick around after unit removal. `rootfs` storage is used by default with `tox run -e ha-integration`. To test ha-testing for storage reuse: 
 ```shell
 juju create-storage-pool mongodb-ebs ebs volume-type=standard # create a storage pool
 juju deploy ./*charm --storage mongodb=mongodb-ebs,7G,1 # deploy 1 or more units of application with said storage pool

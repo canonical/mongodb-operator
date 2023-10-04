@@ -16,7 +16,7 @@ class Config:
     MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
     MONGOD_CONF_DIR = f"{MONGODB_SNAP_DATA_DIR}/etc/mongod"
     MONGOD_CONF_FILE_PATH = f"{MONGOD_CONF_DIR}/mongod.conf"
-    SNAP_PACKAGES = [("charmed-mongodb", "5/edge", 84)]
+    SNAP_PACKAGES = [("charmed-mongodb", "6/edge", 87)]
 
     class Role:
         """Role config names for MongoDB Charm."""

@@ -25,10 +25,8 @@ provides:
     interface: mongodb
   cos-agent:
     interface: cos_agent
-  sharding:
+  config-server:
     interface: shards
-    # shards can only relate to one replica set
-    limit: 1
 
 storage:
   mongodb:
@@ -46,5 +44,7 @@ requires:
   s3-credentials:
     interface: s3
     limit: 1
-  config-server:
+  sharding:
     interface: shards
+    # shards can only relate to one config-server
+    limit: 1
