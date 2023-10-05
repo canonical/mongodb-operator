@@ -177,16 +177,18 @@ class MongoDBProvider(Object):
                     # We need to wait for the moment when the provider library
                     # set the database name into the relation.
                     continue
-                logger.info("Create relation user: %s on %s", config.username, config.database)
+                logger.error(">>>>>> Create relation user: %s on %s", config.username, config.database)
                 mongo.create_user(config)
                 self._set_relation(config)
+            
 
             for username in relation_users.intersection(database_users):
                 config = self._get_config(username, None)
-                logger.info("Update relation user: %s on %s", config.username, config.database)
+                logger.error(">>>>>> Update relation user: %s on %s", config.username, config.database)
                 mongo.update_user(config)
-                logger.info("Updating relation data according to diff")
+                logger.error("Updating relation data according to diff")
                 self._diff(event)
+        
 
             if not self.charm.model.config["auto-delete"]:
                 return
@@ -248,7 +250,7 @@ class MongoDBProvider(Object):
 
         for relation in self.charm.model.relations[REL_NAME]:
             username = self._get_username_from_relation_id(relation.id)
-            password = relation.data[self.charm.app]["password"]
+            password = self._get_or_set_password(relation)
             config = self._get_config(username, password)
             if username in database_users:
                 self.database_provides.set_endpoints(
@@ -259,12 +261,36 @@ class MongoDBProvider(Object):
                     relation.id,
                     config.uri,
                 )
+            logger.error(">>>>>>>>>>>>>>>>>>>> update_app_relation_data '%s", self)
+    
+    def _get_or_set_password(self, relation: Relation) -> str:
+        """Retrieve password from cache or generate a new one.
+
+        Args:
+            relation (Relation): The relation for each the password is cached.
+
+        Returns:
+            str: The password.
+        """
+        relation_data = self.database_provides.fetch_relation_data(
+                [relation.id], ["password"], relation.name
+            )
+        logger.error(">>>>>>>>>>>>>>>>>>>> _get_or_set_password '%s', '%s'", relation_data, self)
+        password = relation_data.get(relation.id, {}).get("password")
+        if password:
+            logger.error(">>>>>>>>>>>>>>>>>>>> _get_or_set_password found password '%s', '%s'", password, self)
+            return password
+        password = generate_password()
+        logger.error(">>>>>>>>>>>>>>>>>>>> _get_or_set_password generated password '%s', '%s'", password, self)
+        self.database_provides.update_relation_data(relation.id, {"password": password})
+        return password
+    
 
     def _get_config(self, username: str, password: Optional[str]) -> MongoDBConfiguration:
         """Construct the config object for future user creation."""
         relation = self._get_relation_from_username(username)
         if not password:
-            password = generate_password()
+            password = self._get_or_set_password(relation)
 
         return MongoDBConfiguration(
             replset=self.charm.app.name,
