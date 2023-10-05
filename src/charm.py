@@ -171,11 +171,7 @@ class MongodbOperatorCharm(CharmBase):
             logger.info("Component %s is not a shard, cannot check draining status.", self.role)
             return False
 
-        if "draining" not in self.app_peer_data:
-            logger.info("Draining status has not been set. It is set on relation_departed")
-            return False
-
-        return self.app_peer_data.get("drain")
+        return self.app_peer_data.get("drained", False)
 
     @property
     def _unit_ips(self) -> List[str]:

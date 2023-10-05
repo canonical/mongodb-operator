@@ -24,7 +24,7 @@ from charms.mongodb.v0.mongos import (
     ShardNotPlannedForRemovalError,
 )
 from charms.mongodb.v0.users import MongoDBUser, OperatorUser
-from ops.charm import CharmBase, EventBase, RelationDepartedEvent
+from ops.charm import CharmBase, EventBase, RelationBrokenEvent
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
@@ -74,10 +74,11 @@ class ShardingProvider(Object):
             charm.on[self.relation_name].relation_changed, self._on_relation_event
         )
         self.framework.observe(
-            charm.on[self.relation_name].relation_departed, self._on_relation_event
+            charm.on[self.relation_name].relation_broken, self._on_relation_event
         )
 
-        # TODO Follow up PR, handle rotating passwords
+        # TODO Future PR: handle self healing when all IP addresses of a shard changes and we have
+        # to manually update mongos
 
     def _on_relation_joined(self, event):
         """Handles providing shards with secrets and adding shards to the config server."""
@@ -134,7 +135,7 @@ class ShardingProvider(Object):
             return
 
         departed_relation_id = None
-        if type(event) is RelationDepartedEvent:
+        if type(event) is RelationBrokenEvent:
             departed_relation_id = event.relation.id
 
         try:
@@ -286,7 +287,7 @@ class ConfigServerRequirer(Object):
             charm.on[self.relation_name].relation_changed, self._on_relation_changed
         )
         self.framework.observe(
-            charm.on[self.relation_name].relation_departed, self._on_relation_departed
+            charm.on[self.relation_name].relation_broken, self._on_relation_broken
         )
 
     def _on_relation_changed(self, event):
@@ -336,7 +337,7 @@ class ConfigServerRequirer(Object):
 
         # TODO future PR, leader unit verifies shard was added to cluster (update-status hook)
 
-    def _on_relation_departed(self, event) -> None:
+    def _on_relation_broken(self, event) -> None:
         """Waits for the shard to be fully drained from the cluster."""
         if self.charm.is_role(Config.Role.REPLICATION):
             self.unit.status = BlockedStatus("role replication does not support sharding")
@@ -345,7 +346,7 @@ class ConfigServerRequirer(Object):
 
         if not self.charm.is_role(Config.Role.SHARD):
             logger.info(
-                "skipping relation departed event ShardingProvider is only be executed by shards"
+                "skipping relation broken event ShardingProvider is only be executed by shards"
             )
             return
 
@@ -355,7 +356,7 @@ class ConfigServerRequirer(Object):
 
         self.charm.unit.status = MaintenanceStatus("Draining shard from cluster")
         # mongos hosts must be retrieved via relation data, as relation.units are not available in
-        # departed
+        # broken
         mongos_hosts = json.loads(event.relation.data[event.relation.app].get(HOSTS_KEY))
         drained = False
         while not drained:
