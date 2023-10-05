@@ -423,6 +423,7 @@ class MongodbOperatorCharm(CharmBase):
         # app relations should be made aware of the new set of hosts
         try:
             self.client_relations.update_app_relation_data()
+            self.shard_relations._update_mongos_hosts()
         except PyMongoError as e:
             logger.error("Deferring on updating app relation data since: error: %r", e)
             event.defer()
@@ -485,6 +486,7 @@ class MongodbOperatorCharm(CharmBase):
         # app relations should be made aware of the new set of hosts
         try:
             self.client_relations.update_app_relation_data()
+            self.shard_relations._update_mongos_hosts()
         except PyMongoError as e:
             logger.error("Deferring on updating app relation data since: error: %r", e)
             event.defer()
@@ -505,6 +507,7 @@ class MongodbOperatorCharm(CharmBase):
         # app relations should be made aware of the new set of hosts
         try:
             self.client_relations.update_app_relation_data()
+            self.shard_relations._update_mongos_hosts()
         except PyMongoError as e:
             logger.error("Deferring on updating app relation data since: error: %r", e)
             event.defer()
@@ -901,6 +904,7 @@ class MongodbOperatorCharm(CharmBase):
         # app relations should be made aware of the new set of hosts
         try:
             self.client_relations.update_app_relation_data()
+            self.shard_relations._update_mongos_hosts()
         except PyMongoError as e:
             logger.error("Deferring on updating app relation data since: error: %r", e)
             event.defer()

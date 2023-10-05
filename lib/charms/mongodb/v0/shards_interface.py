@@ -44,6 +44,7 @@ LIBAPI = 0
 # to 0 if you are raising the major API version
 LIBPATCH = 2
 KEYFILE_KEY = "key-file"
+HOSTS_KEY = "host"
 OPERATOR_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username())
 
 
@@ -61,7 +62,7 @@ class ShardingProvider(Object):
     def __init__(
         self, charm: CharmBase, relation_name: str = Config.Relations.CONFIG_SERVER_RELATIONS_NAME
     ) -> None:
-        """Constructor for ShardingRequirer object."""
+        """Constructor for ShardingProvider object."""
         self.relation_name = relation_name
         self.charm = charm
 
@@ -80,7 +81,7 @@ class ShardingProvider(Object):
 
     def _on_relation_joined(self, event):
         """Handles providing shards with secrets and adding shards to the config server."""
-        if not self.pass_hook_checks:
+        if not self.pass_hook_checks(event):
             return
 
         # TODO Future PR, sync tls secrets and PBM password
@@ -94,11 +95,12 @@ class ShardingProvider(Object):
                 KEYFILE_KEY: self.charm.get_secret(
                     Config.Relations.APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME
                 ),
+                HOSTS_KEY: json.dumps(self.charm._unit_ips),
             },
         )
 
     def pass_hook_checks(self, event: EventBase) -> bool:
-        """Runs the pre-hooks checks for ShardingRequirer, returns True if all pass."""
+        """Runs the pre-hooks checks for ShardingProvider, returns True if all pass."""
         if self.charm.is_role(Config.Role.REPLICATION):
             self.unit.status = BlockedStatus("role replication does not support sharding")
             logger.error(
@@ -109,7 +111,7 @@ class ShardingProvider(Object):
 
         if not self.charm.is_role(Config.Role.CONFIG_SERVER):
             logger.info(
-                "Skipping %s. ShardingRequirer is only be executed by config-server", type(event)
+                "Skipping %s. ShardingProvider is only be executed by config-server", type(event)
             )
             return False
 
@@ -128,7 +130,7 @@ class ShardingProvider(Object):
 
         Updating of shards is done automatically via MongoDB change-streams.
         """
-        if not self.pass_hook_checks:
+        if not self.pass_hook_checks(event):
             return
 
         departed_relation_id = None
@@ -155,6 +157,9 @@ class ShardingProvider(Object):
                 )
                 # we should not lose connection with the shard, prevent other hooks from executing.
                 raise RemoveLastShardError()
+
+            logger.error("Deferring _on_relation_event for shards interface since: error=%r", e)
+            event.defer()
         except (PyMongoError, NotReadyError) as e:
             logger.error("Deferring _on_relation_event for shards interface since: error=%r", e)
             event.defer()
@@ -213,6 +218,15 @@ class ShardingProvider(Object):
         """Sends new credentials, for a key value pair across all shards."""
         for relation in self.charm.model.relations[self.relation_name]:
             self._update_relation_data(relation.id, {key: value})
+
+    def _update_mongos_hosts(self):
+        """Updates the hosts for mongos on the relation data."""
+        if not self.charm.is_role(Config.Role.CONFIG_SERVER):
+            logger.info("Skipping, ShardingProvider is only be executed by config-server")
+            return
+
+        for relation in self.charm.model.relations[self.relation_name]:
+            self._update_relation_data(relation.id, {HOSTS_KEY: json.dumps(self.charm._unit_ips)})
 
     def _update_relation_data(self, relation_id: int, data: dict) -> None:
         """Updates a set of key-value pairs in the relation.
@@ -340,17 +354,19 @@ class ConfigServerRequirer(Object):
             return
 
         self.charm.unit.status = MaintenanceStatus("Draining shard from cluster")
-        mongos_hosts = self._get_mongos_hosts()
+        # mongos hosts must be retrieved via relation data, as relation.units are not available in
+        # departed
+        mongos_hosts = json.loads(event.relation.data[event.relation.app].get(HOSTS_KEY))
         drained = False
         while not drained:
             try:
+                time.sleep(10)
                 drained = self.drained(mongos_hosts, self.charm.app.name)
                 draining_status = (
                     "Shard is still draining" if not drained else "Shard is fully drained."
                 )
                 logger.debug(draining_status)
                 # no need to continuously check and abuse resources while shard is draining
-                time.sleep(10)
             except PyMongoError as e:
                 logger.error("Error occurred while draining shard: %s", e)
                 self.charm.unit.status = BlockedStatus("Failed to drain shard from cluster")
@@ -475,13 +491,3 @@ class ConfigServerRequirer(Object):
             relation = self.charm.model.get_relation(self.relation_name, relation_id)
             if relation:
                 relation.data[self.charm.model.app].update(data)
-
-    def _get_mongos_hosts(self) -> List[str]:
-        """Retrieves the hosts for mongos router."""
-        # metadata limits us to only one config-server relation
-        config_server_relations = self.model.relations[self.relation_name][0]
-        hosts = []
-        for unit in config_server_relations.units:
-            hosts.append(config_server_relations.data[unit].get("private-address"))
-
-        return hosts

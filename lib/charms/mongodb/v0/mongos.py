@@ -9,10 +9,8 @@ from urllib.parse import quote_plus
 
 from charms.mongodb.v0.mongodb import NotReadyError
 from pymongo import MongoClient
-from pymongo.errors import PyMongoError
 
 from config import Config
-
 
 # The unique Charmhub library identifier, never change it
 LIBID = "e20d5b19670d4c55a4934a21d3f3b29a"
