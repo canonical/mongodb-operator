@@ -35,6 +35,7 @@ from charms.mongodb.v0.mongodb_backups import S3_RELATION, MongoDBBackups
 from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
+from charms.mongodb.v0.mongos import MongosConfiguration
 from charms.mongodb.v0.shards_interface import ConfigServerRequirer, ShardingProvider
 from charms.mongodb.v0.users import (
     CHARM_USERS,
@@ -191,6 +192,11 @@ class MongodbOperatorCharm(CharmBase):
             A list of hosts addresses (strings).
         """
         return json.loads(self.app_peer_data.get("replica_set_hosts", "[]"))
+
+    @property
+    def mongos_config(self) -> MongoDBConfiguration:
+        """Generates a MongoDBConfiguration object for mongos in the deployment of MongoDB."""
+        return self._get_mongos_config_for_user(OperatorUser, set(self._unit_ips))
 
     @property
     def mongodb_config(self) -> MongoDBConfiguration:
@@ -750,6 +756,23 @@ class MongodbOperatorCharm(CharmBase):
 
     def _set_user_created(self, user: MongoDBUser) -> None:
         self.app_peer_data[f"{user.get_username()}-user-created"] = "True"
+
+    def _get_mongos_config_for_user(
+        self, user: MongoDBUser, hosts: Set[str]
+    ) -> MongosConfiguration:
+        external_ca, _ = self.tls.get_tls_files(UNIT_SCOPE)
+        internal_ca, _ = self.tls.get_tls_files(APP_SCOPE)
+
+        return MongosConfiguration(
+            database=user.get_database_name(),
+            username=user.get_username(),
+            password=self.get_secret(APP_SCOPE, user.get_password_key_name()),
+            hosts=hosts,
+            port=Config.MONGOS_PORT,
+            roles=user.get_roles(),
+            tls_external=external_ca is not None,
+            tls_internal=internal_ca is not None,
+        )
 
     def _get_mongodb_config_for_user(
         self, user: MongoDBUser, hosts: Set[str]
