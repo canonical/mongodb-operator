@@ -152,6 +152,11 @@ class ShardingProvider(Object):
 
         self.charm.unit.status = ActiveStatus("")
 
+    def update_credentials(self, key: str, value: str) -> None:
+        """Sends new credentials, for a key value pair across all shards."""
+        for relation in self.charm.model.relations[self.relation_name]:
+            self._update_relation_data(relation.id, {key: value})
+
     def _update_relation_data(self, relation_id: int, data: dict) -> None:
         """Updates a set of key-value pairs in the relation.
 
