@@ -600,19 +600,8 @@ class MongodbOperatorCharm(CharmBase):
 
     def _on_set_password(self, event: ActionEvent) -> None:
         """Set the password for the admin user."""
-        if self.is_role(Config.Role.SHARD):
-            event.fail("Cannot set password on shard, please set password on config-server.")
-            return
-
-        # changing the backup password while a backup/restore is in progress can be disastrous
-        pbm_status = self.backups._get_pbm_status()
-        if isinstance(pbm_status, MaintenanceStatus):
-            event.fail("Cannot change password while a backup/restore is in progress.")
-            return
-
-        # only leader can write the new password into peer relation.
-        if not self.unit.is_leader():
-            event.fail("The action can be run only on leader unit.")
+        # check conditions for setting the password and fail if necessary
+        if not self.pass_pre_set_password_checks(event):
             return
 
         username = self._get_user_or_fail_event(
@@ -639,6 +628,14 @@ class MongodbOperatorCharm(CharmBase):
 
         if username == MonitorUser.get_username():
             self._connect_mongodb_exporter()
+
+        # rotate password to shards
+        # TODO in the future support rotating passwords of pbm across shards
+        if username == OperatorUser.get_username():
+            self.shard_relations.update_credentials(
+                MongoDBUser.get_password_key_name_for_user(username),
+                new_password,
+            )
 
         event.set_results(
             {Config.Actions.PASSWORD_PARAM_NAME: new_password, "secret-id": secret_id}
@@ -790,7 +787,7 @@ class MongodbOperatorCharm(CharmBase):
             username=user.get_username(),
             password=self.get_secret(APP_SCOPE, user.get_password_key_name()),
             hosts=hosts,
-            port=27018,
+            port=Config.MONGOS_PORT,
             roles=user.get_roles(),
             tls_external=external_ca is not None,
             tls_internal=internal_ca is not None,
@@ -823,6 +820,25 @@ class MongodbOperatorCharm(CharmBase):
             )
             return
         return username
+
+    def pass_pre_set_password_checks(self, event: ActionEvent) -> bool:
+        """Checks conditions for setting the password and fail if necessary."""
+        if self.is_role(Config.Role.SHARD):
+            event.fail("Cannot set password on shard, please set password on config-server.")
+            return
+
+        # changing the backup password while a backup/restore is in progress can be disastrous
+        pbm_status = self.backups._get_pbm_status()
+        if isinstance(pbm_status, MaintenanceStatus):
+            event.fail("Cannot change password while a backup/restore is in progress.")
+            return
+
+        # only leader can write the new password into peer relation.
+        if not self.unit.is_leader():
+            event.fail("The action can be run only on leader unit.")
+            return
+
+        return True
 
     def _check_or_set_user_password(self, user: MongoDBUser) -> None:
         key = user.get_password_key_name()
@@ -939,6 +955,24 @@ class MongodbOperatorCharm(CharmBase):
             file_name=KEY_FILE,
             file_contents=self.get_secret(APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME),
         )
+
+    def get_keyfile_contents(self) -> str:
+        """Retrieves the contents of the keyfile on host machine."""
+        # wait for keyFile to be created by leader unit
+        if not self.get_secret(APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME):
+            logger.debug("waiting for leader unit to generate keyfile contents")
+            return
+
+        key_file_path = f"{Config.MONGOD_CONF_DIR}/{KEY_FILE}"
+        key_file = Path(key_file_path)
+        if not key_file.is_file():
+            logger.info("no keyfile present")
+            return
+
+        with open(key_file_path, "r") as file:
+            key = file.read()
+
+        return key
 
     def push_file_to_unit(self, parent_dir, file_name, file_contents) -> None:
         """K8s charms can push files to their containers easily, this is a vm charm workaround."""

@@ -9,7 +9,7 @@ shards.
 import json
 import logging
 import time
-from typing import Optional, Set
+from typing import List, Optional, Set
 
 from charms.mongodb.v0.helpers import KEY_FILE
 from charms.mongodb.v0.mongodb import (
@@ -26,7 +26,7 @@ from charms.mongodb.v0.mongos import (
 from charms.mongodb.v0.users import MongoDBUser, OperatorUser
 from ops.charm import CharmBase, EventBase, RelationDepartedEvent
 from ops.framework import Object
-from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
+from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from config import Config
@@ -42,10 +42,9 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 2
 KEYFILE_KEY = "key-file"
-OPERATOR_PASSWORD_KEY = "operator-password"
-HOSTS_KEY = "host"
+OPERATOR_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username())
 
 
 class RemoveLastShardError(Exception):
@@ -90,16 +89,15 @@ class ShardingProvider(Object):
             {
                 OPERATOR_PASSWORD_KEY: self.charm.get_secret(
                     Config.Relations.APP_SCOPE,
-                    MongoDBUser.get_password_key_name_for_user("operator"),
+                    OPERATOR_PASSWORD_KEY,
                 ),
                 KEYFILE_KEY: self.charm.get_secret(
                     Config.Relations.APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME
                 ),
-                HOSTS_KEY: json.dumps(self.charm._unit_ips),
             },
         )
 
-    def run_hook_checks(self, event: EventBase) -> bool:
+    def pass_hook_checks(self, event: EventBase) -> bool:
         """Runs the pre-hooks checks for ShardingRequirer, returns True if all pass."""
         if self.charm.is_role(Config.Role.REPLICATION):
             self.unit.status = BlockedStatus("role replication does not support sharding")
@@ -174,13 +172,22 @@ class ShardingProvider(Object):
             # TODO Future PR, limit number of shards add at a time, based on the number of
             # replicas in the primary shard
             for shard in relation_shards - cluster_shards:
-                shard_hosts = self._get_shard_hosts(shard)
-                if not len(shard_hosts):
-                    logger.info("host info for shard %s not yet added, skipping", shard)
-                    continue
+                try:
+                    shard_hosts = self._get_shard_hosts(shard)
+                    if not len(shard_hosts):
+                        logger.info("host info for shard %s not yet added, skipping", shard)
+                        continue
 
-                logger.info("Adding shard: %s ", shard)
-                mongo.add_shard(shard, shard_hosts)
+                    self.charm.unit.status = MaintenanceStatus(
+                        f"Adding shard {shard} to config-server"
+                    )
+                    logger.info("Adding shard: %s ", shard)
+                    mongo.add_shard(shard, shard_hosts)
+                except PyMongoError as e:
+                    logger.error("Failed to add shard %s to the config server, error=%r", shard, e)
+                    raise
+
+        self.charm.unit.status = ActiveStatus("")
 
     def remove_shards(self, departed_shard_id):
         """Removes shards from cluster.
@@ -201,6 +208,11 @@ class ShardingProvider(Object):
                     shard_draining_message = f"shard {shard} still exists in cluster after removal, it is still draining."
                     logger.info(shard_draining_message)
                     raise NotDrainedError(shard_draining_message)
+
+    def update_credentials(self, key: str, value: str) -> None:
+        """Sends new credentials, for a key value pair across all shards."""
+        for relation in self.charm.model.relations[self.relation_name]:
+            self._update_relation_data(relation.id, {key: value})
 
     def _update_relation_data(self, relation_id: int, data: dict) -> None:
         """Updates a set of key-value pairs in the relation.
@@ -229,12 +241,16 @@ class ShardingProvider(Object):
             ]
         )
 
-    def _get_shard_hosts(self, shard_name) -> str:
+    def _get_shard_hosts(self, shard_name) -> List[str]:
         """Retrieves the hosts for a specified shard."""
         relations = self.model.relations[self.relation_name]
         for relation in relations:
             if self._get_shard_name_from_relation(relation) == shard_name:
-                return json.loads(relation.data[relation.app].get(HOSTS_KEY, "[]"))
+                hosts = []
+                for unit in relation.units:
+                    hosts.append(relation.data[unit].get("private-address"))
+
+                return hosts
 
     def _get_shard_name_from_relation(self, relation):
         """Returns the name of a shard for a specified relation."""
@@ -262,7 +278,7 @@ class ConfigServerRequirer(Object):
     def _on_relation_changed(self, event):
         """Retrieves secrets from config-server and updates them within the shard."""
         if self.charm.is_role(Config.Role.REPLICATION):
-            self.unit.status = BlockedStatus("role replication does not support sharding")
+            self.charm.unit.status = BlockedStatus("role replication does not support sharding")
             logger.error("sharding interface not supported with config role=replication")
             return
 
@@ -274,26 +290,35 @@ class ConfigServerRequirer(Object):
 
         if not self.charm.db_initialised:
             event.defer()
+            return
 
         # shards rely on the config server for secrets
         relation_data = event.relation.data[event.app]
         self.update_keyfile(key_file_contents=relation_data.get(KEYFILE_KEY))
-        try:
-            self.update_operator_password(new_password=relation_data.get(OPERATOR_PASSWORD_KEY))
-        except RetryError:
-            self.charm.unit.status = BlockedStatus("Shard not added to config-server")
-            return
+
+        # restart on high loaded databases can be very slow (e.g. up to 10-20 minutes).
+        with MongoDBConnection(self.charm.mongodb_config) as mongo:
+            if not mongo.is_ready:
+                logger.info("shard has not started yet, deferfing")
+                self.charm.unit.status = WaitingStatus("Waiting for MongoDB to start")
+                event.defer()
+                return
 
         self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
 
         if not self.charm.unit.is_leader():
             return
 
-        # send hosts to mongos to be added to the cluster
-        self._update_relation_data(
-            event.relation.id,
-            {HOSTS_KEY: json.dumps(self.charm._unit_ips)},
-        )
+        # TODO Future work, see if needed to check for all units restarted / primary elected
+
+        try:
+            self.update_operator_password(new_password=relation_data.get(OPERATOR_PASSWORD_KEY))
+        except RetryError:
+            self.charm.unit.status = BlockedStatus("Shard not added to config-server")
+            logger.error(
+                "Shard could not be added to config server, failed to set operator password."
+            )
+            return
 
         # TODO future PR, leader unit verifies shard was added to cluster (update-status hook)
 
@@ -315,7 +340,7 @@ class ConfigServerRequirer(Object):
             return
 
         self.charm.unit.status = MaintenanceStatus("Draining shard from cluster")
-        mongos_hosts = json.loads(event.relation.data[event.relation.app].get(HOSTS_KEY))
+        mongos_hosts = self._get_mongos_hosts()
         drained = False
         while not drained:
             try:
@@ -375,13 +400,17 @@ class ConfigServerRequirer(Object):
         Raises:
             RetryError
         """
+        if not new_password or not self.charm.unit.is_leader():
+            return
+
         current_password = (
             self.charm.get_secret(
-                Config.Relations.APP_SCOPE, MongoDBUser.get_password_key_name_for_user("operator")
+                Config.Relations.APP_SCOPE,
+                OPERATOR_PASSWORD_KEY,
             ),
         )
 
-        if not new_password or new_password == current_password or not self.charm.unit.is_leader():
+        if new_password == current_password:
             return
 
         # updating operator password, usually comes after keyfile was updated, hence, the mongodb
@@ -404,13 +433,16 @@ class ConfigServerRequirer(Object):
 
         self.charm.set_secret(
             Config.Relations.APP_SCOPE,
-            MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username()),
+            OPERATOR_PASSWORD_KEY,
             new_password,
         )
 
     def update_keyfile(self, key_file_contents: str) -> None:
         """Updates keyfile on all units."""
-        if not key_file_contents:
+        # keyfile is set by leader in application data, application data does not necessarily
+        # match what is on the machine.
+        current_key_file = self.charm.get_keyfile_contents()
+        if not key_file_contents or key_file_contents == current_key_file:
             return
 
         # put keyfile on the machine with appropriate permissions
@@ -443,3 +475,13 @@ class ConfigServerRequirer(Object):
             relation = self.charm.model.get_relation(self.relation_name, relation_id)
             if relation:
                 relation.data[self.charm.model.app].update(data)
+
+    def _get_mongos_hosts(self) -> List[str]:
+        """Retrieves the hosts for mongos router."""
+        # metadata limits us to only one config-server relation
+        config_server_relations = self.model.relations[self.relation_name][0]
+        hosts = []
+        for unit in config_server_relations.units:
+            hosts.append(config_server_relations.data[unit].get("private-address"))
+
+        return hosts

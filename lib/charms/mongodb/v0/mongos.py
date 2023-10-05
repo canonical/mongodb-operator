@@ -9,6 +9,10 @@ from urllib.parse import quote_plus
 
 from charms.mongodb.v0.mongodb import NotReadyError
 from pymongo import MongoClient
+from pymongo.errors import PyMongoError
+
+from config import Config
+
 
 # The unique Charmhub library identifier, never change it
 LIBID = "e20d5b19670d4c55a4934a21d3f3b29a"
@@ -92,7 +96,7 @@ class MongosConnection:
     with MongoMongos(self._mongos_config) as mongo:
         try:
             mongo.<some operation from this class>
-        except ConfigurationError, ConfigurationError, OperationFailure:
+        except ConfigurationError, OperationFailure:
             <error handling as needed>
     """
 
@@ -143,7 +147,7 @@ class MongosConnection:
         ]
         return set(curr_members)
 
-    def add_shard(self, shard_name, shard_hosts, shard_port=27017):
+    def add_shard(self, shard_name, shard_hosts, shard_port=Config.MONGODB_PORT):
         """Adds shard to the cluster.
 
         Raises:
@@ -153,7 +157,9 @@ class MongosConnection:
         shard_hosts = ",".join(shard_hosts)
         shard_url = f"{shard_name}/{shard_hosts}"
         # TODO Future PR raise error when number of shards currently adding are higher than the
-        # number of secondaries on the primary shard
+        # number of secondaries on the primary shard. This will be challenging, as there is no
+        # MongoDB command to retrieve the primary shard. Will likely need to be done via
+        # mongosh
 
         if shard_name in self.get_shard_members():
             logger.info("Skipping adding shard %s, shard is already in cluster", shard_name)
