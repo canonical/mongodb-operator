@@ -170,7 +170,9 @@ class MongosConnection:
             RemovePrimaryShardError
         """
         sc_status = self.client.admin.command("listShards")
-        if self._is_any_draining(sc_status):
+        # It is necessary to call removeShard multiple times on a shard to guarantee removal.
+        # Allow re-removal of shards that are currently draining.
+        if self._is_any_draining(sc_status, ignore_shard=shard_name):
             cannot_remove_shard = (
                 f"cannot remove shard {shard_name} from cluster, another shard is draining"
             )
@@ -214,15 +216,20 @@ class MongosConnection:
         )
 
     @staticmethod
-    def _is_any_draining(sc_status: Dict) -> bool:
+    def _is_any_draining(sc_status: Dict, ignore_shard: str = "") -> bool:
         """Returns true if any shard members is draining.
 
         Checks if any members in sharded cluster are draining data.
 
         Args:
             sc_status: current state of shard cluster status as reported by mongos.
+            ignore_shard: shard to ignore
         """
-        return any(shard.get("draining", False) for shard in sc_status["shards"])
+        return any(
+            # check draining status of all shards except the one to be ignored.
+            shard.get("draining", False) if shard["_id"] != ignore_shard else False
+            for shard in sc_status["shards"]
+        )
 
     @staticmethod
     def _hostname_from_hostport(hostname: str) -> str:
