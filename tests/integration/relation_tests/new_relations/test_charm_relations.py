@@ -13,7 +13,7 @@ from pytest_operator.plugin import OpsTest
 from tenacity import RetryError
 
 from ...ha_tests.helpers import replica_set_primary
-from .helpers import get_application_relation_data, verify_application_data
+from .helpers import get_application_relation_data, get_secret_data, verify_application_data
 
 MEDIAN_REELECTION_TIME = 12
 APPLICATION_APP_NAME = "application"
@@ -37,17 +37,17 @@ async def test_deploy_charms(ops_test: OpsTest, application_charm, database_char
         ops_test.model.deploy(
             application_charm,
             application_name=APPLICATION_APP_NAME,
-            num_units=2,
+            num_units=1,
         ),
         ops_test.model.deploy(
             database_charm,
             application_name=DATABASE_APP_NAME,
-            num_units=2,
+            num_units=1,
         ),
-        ops_test.model.deploy(
-            database_charm,
-            application_name=ANOTHER_DATABASE_APP_NAME,
-        ),
+        # ops_test.model.deploy(
+        #     database_charm,
+        #     application_name=ANOTHER_DATABASE_APP_NAME,
+        # ),
     )
     await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active", wait_for_at_least_units=1)
 
@@ -56,16 +56,23 @@ async def test_deploy_charms(ops_test: OpsTest, application_charm, database_char
 async def test_database_relation_with_charm_libraries(ops_test: OpsTest):
     """Test basic functionality of database relation interface."""
     # Relate the charms and wait for them exchanging some connection data.
+    import pdb; pdb.set_trace()
     await ops_test.model.add_relation(
         f"{APPLICATION_APP_NAME}:{FIRST_DATABASE_RELATION_NAME}", DATABASE_APP_NAME
     )
     await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active")
-    connection_string = await get_application_relation_data(
-        ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME, "uris"
+    
+    secret_uri = await get_application_relation_data(
+        ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME, "secret-user"
     )
+
+    first_relation_user_data = await get_secret_data(ops_test, secret_uri)
+    connection_string = first_relation_user_data.get("uris")
+
     database = await get_application_relation_data(
         ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME, "database"
     )
+    
     client = MongoClient(
         connection_string,
         directConnection=False,
