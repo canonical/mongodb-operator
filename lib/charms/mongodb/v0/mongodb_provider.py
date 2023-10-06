@@ -86,7 +86,7 @@ class MongoDBProvider(Object):
         creates or drops MongoDB users and sets credentials into relation
         data. As a result, related charm gets credentials for accessing the
         MongoDB database.
-        """
+        """        
         if not self.charm.unit.is_leader():
             return
         # We shouldn't try to create or update users if the database is not
@@ -248,6 +248,7 @@ class MongoDBProvider(Object):
         Returns:
             str: The password.
         """
+        import pdb; pdb.set_trace()
         relation_data = self.database_provides.fetch_relation_data(
                 [relation.id], ["password"], relation.name
             )

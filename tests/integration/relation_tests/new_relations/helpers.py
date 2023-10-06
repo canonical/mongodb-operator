@@ -97,3 +97,9 @@ async def verify_application_data(
         return False
 
     return True
+
+async def get_secret_data(ops_test, secret_uri):
+    secret_unique_id = secret_uri.split("/")[-1]
+    complete_command = f"show-secret {secret_uri} --reveal --format=json"
+    _, stdout, _ = await ops_test.juju(*complete_command.split())
+    return json.loads(stdout)[secret_unique_id]["content"]["Data"]
