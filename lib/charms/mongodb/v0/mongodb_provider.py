@@ -29,7 +29,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 4
+LIBPATCH = 5
 
 logger = logging.getLogger(__name__)
 REL_NAME = "database"
@@ -65,6 +65,9 @@ class MongoDBProvider(Object):
 
         super().__init__(charm, self.relation_name)
         self.framework.observe(
+            charm.on[self.relation_name].relation_departed, self._on_relation_departed
+        )
+        self.framework.observe(
             charm.on[self.relation_name].relation_broken, self._on_relation_event
         )
         self.framework.observe(
@@ -78,6 +81,30 @@ class MongoDBProvider(Object):
         self.framework.observe(
             self.database_provides.on.database_requested, self._on_relation_event
         )
+
+    def _on_relation_departed(self, event):
+        """Checks if users should be removed on the following event (relation-broken).
+
+        Relation-broken executes after relation-departed, and it must know if it should remove the
+        related user. Relation-broken doesn't have access to `event.departing_unit`, so we make
+        use of it here.
+
+        We receive relation departed events when: the relation has been removed, units are scaling
+        down, or the application has been removed. Only proceed to process user removal if the
+        relation has been removed.
+        """
+        if not self.charm.unit.is_leader():
+            return
+
+        # assume relation departed is due to manual removal of relation.
+        remove_users = True
+
+        # check if relation departed is due to current unit being removed. (i.e. scaling down the
+        # application.)
+        if event.departing_unit == self.charm.unit:
+            remove_users = False
+
+        self.charm.app_peer_data["remove_users"] = json.dumps(remove_users)
 
     def _on_relation_event(self, event):
         """Handle relation joined events.
@@ -111,6 +138,21 @@ class MongoDBProvider(Object):
         departed_relation_id = None
         if type(event) is RelationBrokenEvent:
             departed_relation_id = event.relation.id
+            # we receives relation broken events when: the relation has been removed, units are
+            # scaling down, or the application has been removed. Only proceed to process user
+            # removal if the relation has been removed.
+            if "remove_users" not in self.charm.app_peer_data:
+                logger.info(
+                    "Deferring, must wait for relation departed hook to decide if relation should be removed."
+                )
+                event.defer()
+                return
+
+            if not json.loads(self.charm.app_peer_data["remove_users"]):
+                logger.info(
+                    "Relation broken event occurring due to scale down, do not proceed to remove users."
+                )
+                return
 
         try:
             self.oversee_users(departed_relation_id, event)
