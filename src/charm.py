@@ -521,6 +521,29 @@ class MongodbOperatorCharm(CharmBase):
         # units is 1 that means there are no other peers expected.
         single_node_replica_set = self.app.planned_units() == 1 and len(self._peers.units) == 0
         if single_node_replica_set:
+            # raise when relations still exist with sharding components (config-server, mongos, and
+            # shards). Removing an application calls these events in the following order: storage
+            # detached, (peer relation hooks), and finally (relation hooks). We cannot
+            # process draining shards in relation hooks after the storage has been detached.
+            if len(self.model.relations[self.shard_relations.relation_name]):
+                curr_shard_relations = [
+                    rel.app.name
+                    for rel in self.model.relations[self.shard_relations.relation_name]
+                ]
+                early_removal_message = f"Cannot remove config-server, still related to shards {', '.join(curr_shard_relations)}"
+                logger.error(early_removal_message)
+                raise EarlyRemovalOfShardError(early_removal_message)
+
+            if len(self.model.relations[self.config_server_relations.relation_name]):
+                config_server_relation = [
+                    rel.app.name
+                    for rel in self.model.relations[self.config_server_relations.relation_name]
+                ]
+                early_removal_message = f"Cannot remove config-server, still related to config-server {config_server_relation}"
+                logger.error(early_removal_message)
+                raise EarlyRemovalOfConfigServerError(early_removal_message)
+
+            # if no relations ith sharded components, proceed to removal of application.
             return
 
         try:
@@ -1416,6 +1439,14 @@ class ShardingMigrationError(Exception):
 
 class SetPasswordError(Exception):
     """Raised on failure to set password for MongoDB user."""
+
+
+class EarlyRemovalOfShardError(Exception):
+    """Raised when there is an attempt to remove a shard, while related to a config-server."""
+
+
+class EarlyRemovalOfConfigServerError(Exception):
+    """Raised when there is an attempt to remove a config-server, while related to a shard."""
 
 
 if __name__ == "__main__":

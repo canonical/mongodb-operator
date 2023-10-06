@@ -71,6 +71,9 @@ class ShardingProvider(Object):
             charm.on[self.relation_name].relation_joined, self._on_relation_joined
         )
         self.framework.observe(
+            charm.on[self.relation_name].relation_departed, self._on_relation_departed
+        )
+        self.framework.observe(
             charm.on[self.relation_name].relation_changed, self._on_relation_event
         )
         self.framework.observe(
@@ -103,7 +106,7 @@ class ShardingProvider(Object):
     def pass_hook_checks(self, event: EventBase) -> bool:
         """Runs the pre-hooks checks for ShardingProvider, returns True if all pass."""
         if self.charm.is_role(Config.Role.REPLICATION):
-            self.unit.status = BlockedStatus("role replication does not support sharding")
+            self.charm.unit.status = BlockedStatus("role replication does not support sharding")
             logger.error(
                 "Skipping %s. Sharding interface not supported with config role=replication.",
                 type(event),
@@ -126,6 +129,31 @@ class ShardingProvider(Object):
 
         return True
 
+    def _on_relation_departed(self, event):
+        """Checks if shards should be drained on the following event (relation-broken).
+
+        Relation-broken executes after relation-departed, and it must know if it should drain the
+        related shards. Relation-broken doesn't have access to `event.departing_unit`, so we make
+        use of it here.
+
+        We receive relation departed events when: the relation has been removed, units are scaling
+        down, or the application has been removed. Only proceed to process shard removal if the
+        relation has been removed. We do not process removal of shards on application removal,
+        as the storage get detached prior.
+        """
+        if not self.charm.unit.is_leader():
+            return
+
+        # assume relation departed is due to manual removal of relation.
+        drain_shards = True
+
+        # check if relation departed is due to current unit being removed. (i.e. scaling down the
+        # application.)
+        if event.departing_unit == self.charm.unit:
+            drain_shards = False
+
+        self.charm.app_peer_data["drain_shards"] = json.dumps(drain_shards)
+
     def _on_relation_event(self, event):
         """Handles adding and removing of shards.
 
@@ -137,6 +165,22 @@ class ShardingProvider(Object):
         departed_relation_id = None
         if type(event) is RelationBrokenEvent:
             departed_relation_id = event.relation.id
+            # we receives relation broken events when: the relation has been removed, units are
+            # scaling down, or the application has been removed. Only proceed to process shard
+            # removal if the relation has been removed. We do not process removal of shards on
+            # application removal, as the storage get detached prior.
+            if "drain_shards" not in self.charm.app_peer_data:
+                logger.info(
+                    "Deferring, must wait for relation departed hook to decide if relation should be removed."
+                )
+                event.defer()
+                return
+
+            if not json.loads(self.charm.app_peer_data["drain_shards"]):
+                logger.info(
+                    "Relation broken event occurring due to scale down, do not proceed to drain shards."
+                )
+                return
 
         try:
             logger.info("Adding shards not present in cluster.")
@@ -286,25 +330,19 @@ class ConfigServerRequirer(Object):
         self.framework.observe(
             charm.on[self.relation_name].relation_changed, self._on_relation_changed
         )
+
+        self.framework.observe(
+            charm.on[self.relation_name].relation_departed, self._on_relation_departed
+        )
+
         self.framework.observe(
             charm.on[self.relation_name].relation_broken, self._on_relation_broken
         )
 
     def _on_relation_changed(self, event):
         """Retrieves secrets from config-server and updates them within the shard."""
-        if self.charm.is_role(Config.Role.REPLICATION):
-            self.charm.unit.status = BlockedStatus("role replication does not support sharding")
-            logger.error("sharding interface not supported with config role=replication")
-            return
-
-        if not self.charm.is_role(Config.Role.SHARD):
-            logger.info(
-                "skipping relation changed event ShardingProvider is only be executed by shards"
-            )
-            return
-
-        if not self.charm.db_initialised:
-            event.defer()
+        if not self.pass_hook_checks(event):
+            logger.info("Skipping relation joined event: hook checks re not passed")
             return
 
         # shards rely on the config server for secrets
@@ -337,21 +375,69 @@ class ConfigServerRequirer(Object):
 
         # TODO future PR, leader unit verifies shard was added to cluster (update-status hook)
 
-    def _on_relation_broken(self, event) -> None:
-        """Waits for the shard to be fully drained from the cluster."""
+    def pass_hook_checks(self, event):
+        """Runs the pre-hooks checks for ConfigServerRequirer, returns True if all pass."""
         if self.charm.is_role(Config.Role.REPLICATION):
-            self.unit.status = BlockedStatus("role replication does not support sharding")
+            self.charm.unit.status = BlockedStatus("role replication does not support sharding")
             logger.error("sharding interface not supported with config role=replication")
-            return
+            return False
 
         if not self.charm.is_role(Config.Role.SHARD):
-            logger.info(
-                "skipping relation broken event ShardingProvider is only be executed by shards"
-            )
-            return
+            logger.info("skipping %s is only be executed by shards", type(event))
+            return False
 
         if not self.charm.db_initialised:
             event.defer()
+            return False
+
+        return True
+
+    def _on_relation_departed(self, event):
+        """Checks if shards should be drained on the following event (relation-broken).
+
+        Relation-broken executes after relation-departed, and it must know if it should drain the
+        related shards. Relation-broken doesn't have access to `event.departing_unit`, so we make
+        use of it here.
+
+        We receive relation departed events when: the relation has been removed, units are scaling
+        down, or the application has been removed. Only proceed to process shard removal if the
+        relation has been removed. We do not process removal of shards on application removal,
+        as the storage get detached prior.
+        """
+        if not self.charm.unit.is_leader():
+            return
+
+        # assume relation departed is due to manual removal of relation.
+        drain_shards = True
+
+        # check if relation departed is due to current unit being removed. (i.e. scaling down the
+        # application.)
+        if event.departing_unit == self.charm.unit:
+            drain_shards = False
+
+        self.charm.app_peer_data["drain_shards"] = json.dumps(drain_shards)
+
+    def _on_relation_broken(self, event) -> None:
+        """Waits for the shard to be fully drained from the cluster."""
+        if not self.pass_hook_checks(event):
+            logger.info("Skipping relation joined event: hook checks re not passed")
+            return
+
+        # we receive relation broken events when: the relation has been removed, units are
+        # scaling down, or the application has been removed. Only proceed to process shard
+        # removal if the relation has been removed. We do not process removal of shards on
+        # application removal, as the storage get detached prior.
+        if "drain_shards" not in self.charm.app_peer_data:
+            logger.info(
+                "Deferring, must wait for relation departed hook to decide if relation should be removed."
+            )
+            event.defer()
+            return
+
+        if not json.loads(self.charm.app_peer_data["drain_shards"]):
+            logger.info(
+                "Relation broken event occurring due to scale down, do not proceed to drain shards."
+            )
             return
 
         self.charm.unit.status = MaintenanceStatus("Draining shard from cluster")
@@ -375,6 +461,7 @@ class ConfigServerRequirer(Object):
                 logger.info(
                     "Shard %s has not been identifies for removal. Must wait for mongos cluster-admin to remove shard."
                 )
+                self.charm.unit.status = WaitingStatus("Waiting for config-server to remove shard")
             except ShardNotInClusterError:
                 logger.info(
                     "Shard to remove is not in sharded cluster. It has been successfully removed."
