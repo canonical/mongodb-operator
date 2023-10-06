@@ -46,6 +46,7 @@ LIBPATCH = 3
 KEYFILE_KEY = "key-file"
 HOSTS_KEY = "host"
 OPERATOR_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username())
+FORBIDDEN_REMOVAL_ERR_CODE = 20
 
 
 class RemoveLastShardError(Exception):
@@ -83,6 +84,7 @@ class ShardingProvider(Object):
     def _on_relation_joined(self, event):
         """Handles providing shards with secrets and adding shards to the config server."""
         if not self.pass_hook_checks(event):
+            logger.info("Skipping relation joined event: hook checks did not pass")
             return
 
         # TODO Future PR, sync tls secrets and PBM password
@@ -132,6 +134,13 @@ class ShardingProvider(Object):
         Updating of shards is done automatically via MongoDB change-streams.
         """
         if not self.pass_hook_checks(event):
+            logger.info("Skipping relation event: hook checks did not pass")
+            return
+
+        # adding/removing shards while a backup/restore is in progress can be disastrous
+        pbm_status = self.charm.backups._get_pbm_status()
+        if isinstance(pbm_status, MaintenanceStatus):
+            event.defer("Cannot add/remove shards while a backup/restore is in progress.")
             return
 
         departed_relation_id = None
@@ -150,7 +159,7 @@ class ShardingProvider(Object):
             event.defer()
             return
         except OperationFailure as e:
-            if e.code == 20:
+            if e.code == FORBIDDEN_REMOVAL_ERR_CODE:
                 # TODO Future PR, allow removal of last shards that have no data. This will be
                 # tricky since we are not allowed to update the mongos config in this way.
                 logger.error(
@@ -208,7 +217,7 @@ class ShardingProvider(Object):
                 self.charm.unit.status = MaintenanceStatus(f"Draining shard {shard}")
                 logger.info("Attempting to removing shard: %s", shard)
                 mongo.remove_shard(shard)
-                logger.info("Attempting to removing shard: %s", shard)
+                logger.info("Shard: %s, is now draining", shard)
 
                 if shard in mongo.get_shard_members():
                     shard_draining_message = f"shard {shard} still exists in cluster after removal, it is still draining."
