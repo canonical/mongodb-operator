@@ -42,7 +42,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 2
+LIBPATCH = 3
 KEYFILE_KEY = "key-file"
 HOSTS_KEY = "host"
 OPERATOR_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username())
@@ -361,13 +361,13 @@ class ConfigServerRequirer(Object):
         drained = False
         while not drained:
             try:
+                # no need to continuously check and abuse resources while shard is draining
                 time.sleep(10)
                 drained = self.drained(mongos_hosts, self.charm.app.name)
                 draining_status = (
                     "Shard is still draining" if not drained else "Shard is fully drained."
                 )
                 logger.debug(draining_status)
-                # no need to continuously check and abuse resources while shard is draining
             except PyMongoError as e:
                 logger.error("Error occurred while draining shard: %s", e)
                 self.charm.unit.status = BlockedStatus("Failed to drain shard from cluster")
