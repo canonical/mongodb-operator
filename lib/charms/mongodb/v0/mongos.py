@@ -180,12 +180,12 @@ class MongosConnection:
             cannot_remove_shard = (
                 f"cannot remove shard {shard_name} from cluster, another shard is draining"
             )
-            logger.info(cannot_remove_shard)
+            logger.error(cannot_remove_shard)
             raise NotReadyError(cannot_remove_shard)
 
         # TODO Follow up PR, there is no MongoDB command to retrieve primary shard, this is
         # possible with mongosh.
-        primary_shard = False
+        primary_shard = self.get_primary_shard()
         if primary_shard:
             # TODO Future PR, support removing Primary Shard if there are no unsharded collections
             # on it. All sharded collections should perform `MovePrimary`
@@ -196,8 +196,24 @@ class MongosConnection:
             raise RemovePrimaryShardError(cannot_remove_primary_shard)
 
         logger.info("Attempting to remove shard %s", shard_name)
-        self.client.admin.command("removeShard", shard_name)
-        logger.info("Shard %s, now draining", shard_name)
+        removal_info = self.client.admin.command("removeShard", shard_name)
+
+        # process removal status
+        remaining_chunks = (
+            removal_info["remaining"]["chunks"] if "remaining" in removal_info else "None"
+        )
+        dbs_to_move = (
+            removal_info["dbsToMove"]
+            if "dbsToMove" in removal_info and removal_info["dbsToMove"] != []
+            else ["None"]
+        )
+        logger.info(
+            "Shard %s is draining status is: %s. Remaining chunks: %s. DBs to move: %s.",
+            shard_name,
+            removal_info["state"],
+            str(remaining_chunks),
+            ",".join(dbs_to_move),
+        )
 
     def _is_shard_draining(self, shard_name: str) -> bool:
         """Reports if a given shard is currently in the draining state.
@@ -218,6 +234,12 @@ class MongosConnection:
         raise ShardNotInClusterError(
             f"Shard {shard_name} not in cluster, could not retrieve draining status"
         )
+
+    def get_primary_shard(self) -> str:
+        """Processes sc_status and identifies the primary shard."""
+        # TODO Follow up PR, implement this function there is no MongoDB command to retrieve
+        # primary shard, this is possible with mongosh.
+        return False
 
     @staticmethod
     def _is_any_draining(sc_status: Dict, ignore_shard: str = "") -> bool:
