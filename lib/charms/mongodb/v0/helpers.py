@@ -83,7 +83,7 @@ class MongoDBHelper(Object):
         # check if relation departed is due to current unit being removed. (i.e. scaling down the
         # application.)
         if event.departing_unit == self.charm.unit:
-            logger.debug(
+            logger.info(
                 "Relation departed is due to scale down, no need to process removed relation in RelationBrokenEvent."
             )
             relation_departed = False
