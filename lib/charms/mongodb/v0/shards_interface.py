@@ -145,14 +145,16 @@ class ShardingProvider(Object):
             return
 
         # assume relation departed is due to manual removal of relation.
-        drain_shards = True
+        relation_departed = True
 
         # check if relation departed is due to current unit being removed. (i.e. scaling down the
         # application.)
         if event.departing_unit == self.charm.unit:
-            drain_shards = False
+            relation_departed = False
 
-        self.charm.app_peer_data["drain_shards"] = json.dumps(drain_shards)
+        self.charm.app_peer_data[f"relation_{event.relation.id}_departed"] = json.dumps(
+            relation_departed
+        )
 
     def _on_relation_event(self, event):
         """Handles adding and removing of shards.
@@ -169,14 +171,16 @@ class ShardingProvider(Object):
             # scaling down, or the application has been removed. Only proceed to process shard
             # removal if the relation has been removed. We do not process removal of shards on
             # application removal, as the storage get detached prior.
-            if "drain_shards" not in self.charm.app_peer_data:
+            if f"relation_{departed_relation_id}_departed" not in self.charm.app_peer_data:
                 logger.info(
                     "Deferring, must wait for relation departed hook to decide if relation should be removed."
                 )
                 event.defer()
                 return
 
-            if not json.loads(self.charm.app_peer_data["drain_shards"]):
+            if not json.loads(
+                self.charm.app_peer_data[f"relation_{departed_relation_id}_departed"]
+            ):
                 logger.info(
                     "Relation broken event occurring due to scale down, do not proceed to drain shards."
                 )
@@ -408,14 +412,16 @@ class ConfigServerRequirer(Object):
             return
 
         # assume relation departed is due to manual removal of relation.
-        drain_shards = True
+        relation_departed = True
 
         # check if relation departed is due to current unit being removed. (i.e. scaling down the
         # application.)
         if event.departing_unit == self.charm.unit:
-            drain_shards = False
+            relation_departed = False
 
-        self.charm.app_peer_data["drain_shards"] = json.dumps(drain_shards)
+        self.charm.app_peer_data[f"relation_{event.relation.id}_departed"] = json.dumps(
+            relation_departed
+        )
 
     def _on_relation_broken(self, event) -> None:
         """Waits for the shard to be fully drained from the cluster."""
@@ -427,14 +433,14 @@ class ConfigServerRequirer(Object):
         # scaling down, or the application has been removed. Only proceed to process shard
         # removal if the relation has been removed. We do not process removal of shards on
         # application removal, as the storage get detached prior.
-        if "drain_shards" not in self.charm.app_peer_data:
+        if f"relation_{event.relation.id}_departed" not in self.charm.app_peer_data:
             logger.info(
                 "Deferring, must wait for relation departed hook to decide if relation should be removed."
             )
             event.defer()
             return
 
-        if not json.loads(self.charm.app_peer_data["drain_shards"]):
+        if not json.loads(self.charm.app_peer_data[f"relation_{event.relation.id}_departed"]):
             logger.info(
                 "Relation broken event occurring due to scale down, do not proceed to drain shards."
             )
