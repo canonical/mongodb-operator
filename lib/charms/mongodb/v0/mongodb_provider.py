@@ -84,10 +84,13 @@ class MongoDBProvider(Object):
 
     def _on_relation_departed(self, event):
         """Checks if users should be removed on the following event (relation-broken)."""
-        if self.charm.mongodb_helpers._is_departed_removed_relation(event):
-            logger.info(
-                "Relation departed event occurred due to relation removal, proceed to clean up users in RelationBroken."
-            )
+        # relation departed and relation broken events occur during scaling down or during relation
+        # removal, only relation departed events have access to metadata to determine which case.
+        self.charm.set_scaling_down(event)
+
+        # check if were scaling down and add a log message
+        if self.charm.is_scaling_down(event.relation.id):
+            logger.info("Scaling down the application, no need to remove external users.")
 
     def _on_relation_event(self, event):
         """Handle relation joined events.
@@ -121,18 +124,17 @@ class MongoDBProvider(Object):
         departed_relation_id = None
         if type(event) is RelationBrokenEvent:
             departed_relation_id = event.relation.id
-            # we receives relation broken events when: the relation has been removed, units are
-            # scaling down, or the application has been removed. Only proceed to process user
-            # removal if the relation has been removed.
-            relation_departed_key = f"relation_{event.relation.id}_departed"
-            if relation_departed_key not in self.charm.app_peer_data:
+
+            # Only relation_deparated events can check if scaling down
+            if not self.charm.has_departed_run(departed_relation_id):
                 logger.info(
                     "Deferring, must wait for relation departed hook to decide if relation should be removed."
                 )
                 event.defer()
                 return
 
-            if not json.loads(self.charm.app_peer_data[relation_departed_key]):
+            # check if were scaling down and add a log message
+            if self.charm.is_scaling_down(event.relation.id):
                 logger.info(
                     "Relation broken event occurring due to scale down, do not proceed to remove users."
                 )

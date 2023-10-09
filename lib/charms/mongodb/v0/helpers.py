@@ -10,8 +10,6 @@ import subprocess
 from typing import List
 
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
-from ops.charm import CharmBase, RelationDepartedEvent
-from ops.framework import Object
 from ops.model import (
     ActiveStatus,
     BlockedStatus,
@@ -31,7 +29,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 9
+LIBPATCH = 8
 
 # path to store mongodb ketFile
 KEY_FILE = "keyFile"
@@ -49,50 +47,6 @@ DATA_DIR = "/var/lib/mongodb"
 CONF_DIR = "/etc/mongod"
 MONGODB_LOG_FILENAME = "mongodb.log"
 logger = logging.getLogger(__name__)
-
-
-class MongoDBHelper(Object):
-    """In this class, we manage client database relations."""
-
-    def __init__(self, charm: CharmBase) -> None:
-        """Constructor for MongoDBProvider object.
-
-        Args:
-            charm: the charm for which this relation is provided
-        """
-        super().__init__(charm, None)
-        self.charm = charm
-
-    def _is_departed_removed_relation(self, event: RelationDepartedEvent):
-        """Sets app metadata indicating if a relation should be removed.
-
-        Relation-broken executes after relation-departed, and it must know if it should remove the
-        related user. Relation-broken doesn't have access to `event.departing_unit`, so we make
-        use of it here.
-
-        We receive relation departed events when: the relation has been removed, units are scaling
-        down, or the application has been removed. Only proceed to process user removal if the
-        relation has been removed.
-        """
-        if not self.charm.unit.is_leader():
-            return
-
-        # assume relation departed is due to manual removal of relation.
-        relation_departed = True
-
-        # check if relation departed is due to current unit being removed. (i.e. scaling down the
-        # application.)
-        if event.departing_unit == self.charm.unit:
-            logger.info(
-                "Relation departed is due to scale down, no need to process removed relation in RelationBrokenEvent."
-            )
-            relation_departed = False
-
-        self.charm.app_peer_data[f"relation_{event.relation.id}_departed"] = json.dumps(
-            relation_departed
-        )
-
-        return relation_departed
 
 
 # noinspection GrazieInspection
