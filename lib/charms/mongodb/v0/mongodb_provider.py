@@ -97,14 +97,14 @@ class MongoDBProvider(Object):
             return
 
         # assume relation departed is due to manual removal of relation.
-        remove_users = True
+        relation_departed = True
 
         # check if relation departed is due to current unit being removed. (i.e. scaling down the
         # application.)
         if event.departing_unit == self.charm.unit:
-            remove_users = False
+            relation_departed = False
 
-        self.charm.app_peer_data["remove_users"] = json.dumps(remove_users)
+        self.charm.app_peer_data[f"relation_{event.relation.id}_departed"] = json.dumps(relation_departed)
 
     def _on_relation_event(self, event):
         """Handle relation joined events.
@@ -141,14 +141,15 @@ class MongoDBProvider(Object):
             # we receives relation broken events when: the relation has been removed, units are
             # scaling down, or the application has been removed. Only proceed to process user
             # removal if the relation has been removed.
-            if "remove_users" not in self.charm.app_peer_data:
+            relation_departed_key = f"relation_{event.relation.id}_departed"
+            if relation_departed_key not in self.charm.app_peer_data:
                 logger.info(
                     "Deferring, must wait for relation departed hook to decide if relation should be removed."
                 )
                 event.defer()
                 return
 
-            if not json.loads(self.charm.app_peer_data["remove_users"]):
+            if not json.loads(self.charm.app_peer_data[relation_departed_key]):
                 logger.info(
                     "Relation broken event occurring due to scale down, do not proceed to remove users."
                 )
