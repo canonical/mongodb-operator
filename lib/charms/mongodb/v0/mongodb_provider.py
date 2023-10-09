@@ -83,28 +83,11 @@ class MongoDBProvider(Object):
         )
 
     def _on_relation_departed(self, event):
-        """Checks if users should be removed on the following event (relation-broken).
-
-        Relation-broken executes after relation-departed, and it must know if it should remove the
-        related user. Relation-broken doesn't have access to `event.departing_unit`, so we make
-        use of it here.
-
-        We receive relation departed events when: the relation has been removed, units are scaling
-        down, or the application has been removed. Only proceed to process user removal if the
-        relation has been removed.
-        """
-        if not self.charm.unit.is_leader():
-            return
-
-        # assume relation departed is due to manual removal of relation.
-        relation_departed = True
-
-        # check if relation departed is due to current unit being removed. (i.e. scaling down the
-        # application.)
-        if event.departing_unit == self.charm.unit:
-            relation_departed = False
-
-        self.charm.app_peer_data[f"relation_{event.relation.id}_departed"] = json.dumps(relation_departed)
+        """Checks if users should be removed on the following event (relation-broken)."""
+        if self.charm.mongodb_helpers._is_departed_removed_relation(event):
+            logger.info(
+                "Relation departed event occurred due to relation removal, proceed to clean up users in RelationBroken."
+            )
 
     def _on_relation_event(self, event):
         """Handle relation joined events.

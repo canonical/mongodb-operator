@@ -19,6 +19,7 @@ from charms.mongodb.v0.helpers import (
     TLS_EXT_PEM_FILE,
     TLS_INT_CA_FILE,
     TLS_INT_PEM_FILE,
+    MongoDBHelper,
     build_unit_status,
     copy_licenses_to_unit,
     generate_keyfile,
@@ -123,6 +124,7 @@ class MongodbOperatorCharm(CharmBase):
         self.framework.observe(self.on.secret_changed, self._on_secret_changed)
 
         # handle provider side of relations
+        self.mongodb_helpers = MongoDBHelper(self)
         self.client_relations = MongoDBProvider(self, substrate=Config.SUBSTRATE)
         self.legacy_client_relations = MongoDBLegacyProvider(self)
         self.tls = MongoDBTLS(self, Config.Relations.PEERS, substrate=Config.SUBSTRATE)
