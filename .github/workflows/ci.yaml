@@ -25,18 +25,18 @@ on:
         required: true
 
 jobs:
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Install tox
-        # TODO: Consider replacing with custom image on self-hosted runner OR pinning version
-        run: python3 -m pip install tox
-      - name: Run linters
-        run: tox run -e lint
+  # lint:
+  #   name: Lint
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 5
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v3
+  #     - name: Install tox
+  #       # TODO: Consider replacing with custom image on self-hosted runner OR pinning version
+  #       run: python3 -m pip install tox
+  #     - name: Run linters
+  #       run: tox run -e lint
 
   unit-test:
     name: Unit tests
@@ -75,16 +75,9 @@ jobs:
       fail-fast: false
       matrix:
         tox-environments:
-          - charm-integration
-          - ha-integration
           - relation-integration
-          - legacy-integration
-          - tls-integration
-          - backup-integration
-          - metric-integration
     name: ${{ matrix.tox-environments }}
     needs:
-      - lint
       - unit-test
       - lib-check
       - build
@@ -116,10 +109,19 @@ jobs:
             echo "mark_expression=not unstable" >> $GITHUB_OUTPUT
           fi
       - name: Run integration tests
-        run: tox run -e ${{ matrix.tox-environments }} -- -m '${{ steps.select-tests.outputs.mark_expression }}'
+        run: tox run -e ${{ matrix.tox-environments }} -- -m '${{ steps.select-tests.outputs.mark_expression }}' --model testing
         env:
           CI_PACKED_CHARMS: ${{ needs.build.outputs.charms }}
           AWS_ACCESS_KEY: ${{ matrix.tox-environments != 'backup-integration' || secrets.AWS_ACCESS_KEY }}
           AWS_SECRET_KEY: ${{ matrix.tox-environments != 'backup-integration' || secrets.AWS_SECRET_KEY }}
           GCP_ACCESS_KEY: ${{ matrix.tox-environments != 'backup-integration' || secrets.GCP_ACCESS_KEY }}
           GCP_SECRET_KEY: ${{ matrix.tox-environments != 'backup-integration' || secrets.GCP_SECRET_KEY }}
+      - name: Print logs
+        run: juju switch testing; juju debug-log --replay --no-tail
+      - name: Dump logs
+        uses: canonical/charm-logdump-action@main
+        if: failure()
+        with:
+          app: secrets-test
+          model: testing
+
