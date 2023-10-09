@@ -165,6 +165,15 @@ class MongodbOperatorCharm(CharmBase):
         return None
 
     @property
+    def drained(self) -> bool:
+        """Returns whether the shard has been drained."""
+        if not self.is_role(Config.Role.SHARD):
+            logger.info("Component %s is not a shard, cannot check draining status.", self.role)
+            return False
+
+        return self.app_peer_data.get("drained", False)
+
+    @property
     def _unit_ips(self) -> List[str]:
         """Retrieve IP addresses associated with MongoDB application.
 
@@ -197,6 +206,12 @@ class MongodbOperatorCharm(CharmBase):
     def mongos_config(self) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for mongos in the deployment of MongoDB."""
         return self._get_mongos_config_for_user(OperatorUser, set(self._unit_ips))
+
+    def remote_mongos_config(self, hosts) -> MongoDBConfiguration:
+        """Generates a MongoDBConfiguration object for mongos in the deployment of MongoDB."""
+        # mongos that are part of the cluster have the same username and password, but different
+        # hosts
+        return self._get_mongos_config_for_user(OperatorUser, hosts)
 
     @property
     def mongodb_config(self) -> MongoDBConfiguration:
@@ -404,6 +419,7 @@ class MongodbOperatorCharm(CharmBase):
         # app relations should be made aware of the new set of hosts
         try:
             self.client_relations.update_app_relation_data()
+            self.shard_relations._update_mongos_hosts()
         except PyMongoError as e:
             logger.error("Deferring on updating app relation data since: error: %r", e)
             event.defer()
@@ -466,6 +482,7 @@ class MongodbOperatorCharm(CharmBase):
         # app relations should be made aware of the new set of hosts
         try:
             self.client_relations.update_app_relation_data()
+            self.shard_relations._update_mongos_hosts()
         except PyMongoError as e:
             logger.error("Deferring on updating app relation data since: error: %r", e)
             event.defer()
@@ -486,6 +503,7 @@ class MongodbOperatorCharm(CharmBase):
         # app relations should be made aware of the new set of hosts
         try:
             self.client_relations.update_app_relation_data()
+            self.shard_relations._update_mongos_hosts()
         except PyMongoError as e:
             logger.error("Deferring on updating app relation data since: error: %r", e)
             event.defer()
@@ -882,6 +900,7 @@ class MongodbOperatorCharm(CharmBase):
         # app relations should be made aware of the new set of hosts
         try:
             self.client_relations.update_app_relation_data()
+            self.shard_relations._update_mongos_hosts()
         except PyMongoError as e:
             logger.error("Deferring on updating app relation data since: error: %r", e)
             event.defer()
