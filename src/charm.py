@@ -1407,6 +1407,19 @@ class MongodbOperatorCharm(CharmBase):
         secret.set_content(secret_cache)
         logging.debug(f"Secret {scope}:{key}")
 
+    def check_relation_broken_or_scale_down(self, event: RelationDepartedEvent) -> None:
+        """Checks relation departed event is the result of removed relation or scale down.
+
+        Relation departed and relation broken events occur during scaling down or during relation
+        removal, only relation departed events have access to metadata to determine which case.
+        """
+        self.set_scaling_down(event)
+
+        if self.is_scaling_down(event.relation.id):
+            logger.info(
+                "Scaling down the application, no need to process removed relation in broken hook."
+            )
+
     def is_scaling_down(self, rel_id: int) -> bool:
         """Returns True if the application is scaling down."""
         rel_departed_key = self._generate_relation_departed_key(rel_id)
