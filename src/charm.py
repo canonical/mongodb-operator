@@ -1430,6 +1430,28 @@ class MongodbOperatorCharm(CharmBase):
         secret.set_content(secret_cache)
         logging.debug(f"Secret {scope}:{key}")
 
+    def is_scaling_down(self, rel_id: int) -> bool:
+        """Returns True if the application is scaling down."""
+        rel_departed_key = self._generate_relation_departed_key(rel_id)
+        return json.loads(self.unit_peer_data[rel_departed_key])
+
+    def has_departed_run(self, rel_id: int) -> bool:
+        """Returns True if the relation departed event has run."""
+        rel_departed_key = self._generate_relation_departed_key(rel_id)
+        return rel_departed_key in self.unit_peer_data
+
+    def set_scaling_down(self, event: RelationDepartedEvent) -> None:
+        """Sets whether or not the current unit is scaling down."""
+        # check if relation departed is due to current unit being removed. (i.e. scaling down the
+        # application.)
+        rel_departed_key = self._generate_relation_departed_key(event.relation.id)
+        self.unit_peer_data[rel_departed_key] = json.dumps(event.departing_unit == self.unit)
+
+    @staticmethod
+    def _generate_relation_departed_key(rel_id: int) -> str:
+        """Generates the relation departed key for a specified relation id."""
+        return f"relation_{rel_id}_departed"
+
     # END: helper functions
 
 

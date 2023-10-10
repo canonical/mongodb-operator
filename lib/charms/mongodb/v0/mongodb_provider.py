@@ -29,7 +29,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 4
+LIBPATCH = 5
 
 logger = logging.getLogger(__name__)
 REL_NAME = "database"
@@ -65,6 +65,9 @@ class MongoDBProvider(Object):
 
         super().__init__(charm, self.relation_name)
         self.framework.observe(
+            charm.on[self.relation_name].relation_departed, self._on_relation_departed
+        )
+        self.framework.observe(
             charm.on[self.relation_name].relation_broken, self._on_relation_event
         )
         self.framework.observe(
@@ -78,6 +81,16 @@ class MongoDBProvider(Object):
         self.framework.observe(
             self.database_provides.on.database_requested, self._on_relation_event
         )
+
+    def _on_relation_departed(self, event):
+        """Checks if users should be removed on the following event (relation-broken)."""
+        # relation departed and relation broken events occur during scaling down or during relation
+        # removal, only relation departed events have access to metadata to determine which case.
+        self.charm.set_scaling_down(event)
+
+        # check if were scaling down and add a log message
+        if self.charm.is_scaling_down(event.relation.id):
+            logger.info("Scaling down the application, no need to remove external users.")
 
     def _on_relation_event(self, event):
         """Handle relation joined events.
@@ -111,6 +124,21 @@ class MongoDBProvider(Object):
         departed_relation_id = None
         if type(event) is RelationBrokenEvent:
             departed_relation_id = event.relation.id
+
+            # Only relation_deparated events can check if scaling down
+            if not self.charm.has_departed_run(departed_relation_id):
+                logger.info(
+                    "Deferring, must wait for relation departed hook to decide if relation should be removed."
+                )
+                event.defer()
+                return
+
+            # check if were scaling down and add a log message
+            if self.charm.is_scaling_down(event.relation.id):
+                logger.info(
+                    "Relation broken event occurring due to scale down, do not proceed to remove users."
+                )
+                return
 
         try:
             self.oversee_users(departed_relation_id, event)
