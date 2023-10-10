@@ -50,6 +50,8 @@ async def get_application_relation_data(
         relation_data = [v for v in relation_data if v["relation-id"] == relation_id]
 
     if relation_alias:
+        import pdb
+        pdb.set_trace()
         # Filter the data based on the cluster/relation alias.
         relation_data = [
             v
@@ -104,3 +106,12 @@ async def get_secret_data(ops_test, secret_uri):
     complete_command = f"show-secret {secret_uri} --reveal --format=json"
     _, stdout, _ = await ops_test.juju(*complete_command.split())
     return json.loads(stdout)[secret_unique_id]["content"]["Data"]
+
+
+async def get_connection_string(ops_test: OpsTest, app_name, relation_name, relation_id = None, relation_alias = None) -> str:
+    secret_uri = await get_application_relation_data(
+        ops_test, app_name, relation_name, "secret-user", relation_id, relation_alias
+    )
+
+    first_relation_user_data = await get_secret_data(ops_test, secret_uri)
+    return first_relation_user_data.get("uris")

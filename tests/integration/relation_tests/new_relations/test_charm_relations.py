@@ -13,11 +13,7 @@ from pytest_operator.plugin import OpsTest
 from tenacity import RetryError
 
 from ...ha_tests.helpers import replica_set_primary
-from .helpers import (
-    get_application_relation_data,
-    get_secret_data,
-    verify_application_data,
-)
+from .helpers import (get_application_relation_data, verify_application_data, get_connection_string)
 
 MEDIAN_REELECTION_TIME = 12
 APPLICATION_APP_NAME = "application"
@@ -56,13 +52,6 @@ async def test_deploy_charms(ops_test: OpsTest, application_charm, database_char
     await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active", wait_for_at_least_units=1)
 
 
-async def _get_connection_string(ops_test: OpsTest, app_name, relation_name) -> str:
-    secret_uri = await get_application_relation_data(
-        ops_test, app_name, relation_name, "secret-user"
-    )
-
-    first_relation_user_data = await get_secret_data(ops_test, secret_uri)
-    return first_relation_user_data.get("uris")
 
 
 @pytest.mark.abort_on_fail
@@ -74,7 +63,7 @@ async def test_database_relation_with_charm_libraries(ops_test: OpsTest):
     )
     await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active")
 
-    connection_string = await _get_connection_string(
+    connection_string = await get_connection_string(
         ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME
     )
 
@@ -178,7 +167,7 @@ async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
     ), "Primary is not present in DB endpoints."
 
     # test crud operations
-    connection_string = await _get_connection_string(
+    connection_string = await get_connection_string(
         ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME
     )
     database = await get_application_relation_data(
@@ -218,7 +207,7 @@ async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
 
 async def test_user_with_extra_roles(ops_test: OpsTest):
     """Test superuser actions (ie creating a new user and creating a new database)."""
-    connection_string = await _get_connection_string(
+    connection_string = await get_connection_string(
         ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME
     )
     database = await get_application_relation_data(
@@ -262,17 +251,16 @@ async def test_two_applications_doesnt_share_the_same_relation_data(
     await ops_test.model.wait_for_idle(apps=all_app_names, status="active")
 
     # Assert the two application have different relation (connection) data.
-    application_connection_string = await _get_connection_string(
+    application_connection_string = await get_connection_string(
         ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME
     )
 
-    another_application_connection_string = await _get_connection_string(
+    another_application_connection_string = await get_connection_string(
         ops_test, another_application_app_name, FIRST_DATABASE_RELATION_NAME
     )
     assert application_connection_string != another_application_connection_string
 
 
-@pytest.mark.skip("Skip")
 async def test_an_application_can_connect_to_multiple_database_clusters(ops_test: OpsTest):
     """Test that an application can connect to different clusters of the same database."""
     # Relate the application with both database clusters
@@ -288,26 +276,23 @@ async def test_an_application_can_connect_to_multiple_database_clusters(ops_test
 
     # Retrieve the connection string to both database clusters using the relation aliases
     # and assert they are different.
-    application_connection_string = await get_application_relation_data(
+    application_connection_string = await get_connection_string(
         ops_test,
         APPLICATION_APP_NAME,
         MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME,
-        "uris",
         relation_id=first_cluster_relation.id,
     )
-
-    another_application_connection_string = await get_application_relation_data(
+    
+    another_application_connection_string = await get_connection_string(
         ops_test,
         APPLICATION_APP_NAME,
         MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME,
-        "uris",
         relation_id=second_cluster_relation.id,
     )
 
     assert application_connection_string != another_application_connection_string
 
 
-@pytest.mark.skip("Skip")
 async def test_an_application_can_connect_to_multiple_aliased_database_clusters(
     ops_test: OpsTest, database_charm
 ):
@@ -329,19 +314,17 @@ async def test_an_application_can_connect_to_multiple_aliased_database_clusters(
 
     # Retrieve the connection string to both database clusters using the relation aliases
     # and assert they are different.
-    application_connection_string = await get_application_relation_data(
+    application_connection_string = await get_connection_string(
         ops_test,
         APPLICATION_APP_NAME,
         ALIASED_MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME,
-        "uris",
         relation_alias="cluster1",
     )
 
-    another_application_connection_string = await get_application_relation_data(
+    another_application_connection_string = await get_connection_string(
         ops_test,
         APPLICATION_APP_NAME,
         ALIASED_MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME,
-        "uris",
         relation_alias="cluster2",
     )
 
@@ -357,10 +340,10 @@ async def test_an_application_can_request_multiple_databases(ops_test: OpsTest, 
     await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active")
 
     # Get the connection strings to connect to both databases.
-    first_database_connection_string = await _get_connection_string(
+    first_database_connection_string = await get_connection_string(
         ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME
     )
-    second_database_connection_string = await _get_connection_string(
+    second_database_connection_string = await get_connection_string(
         ops_test, APPLICATION_APP_NAME, SECOND_DATABASE_RELATION_NAME
     )
 
@@ -371,7 +354,7 @@ async def test_an_application_can_request_multiple_databases(ops_test: OpsTest, 
 async def test_removed_relation_no_longer_has_access(ops_test: OpsTest):
     """Verify removed applications no longer have access to the database."""
     # before removing relation we need its authorisation via connection string
-    connection_string = await _get_connection_string(
+    connection_string = await get_connection_string(
         ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME
     )
 
