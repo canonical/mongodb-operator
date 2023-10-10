@@ -4,11 +4,11 @@
 
 import logging
 from dataclasses import dataclass
-from typing import Optional, Set
+from typing import Dict, Optional, Set
 from urllib.parse import quote_plus
 
+from charms.mongodb.v0.mongodb import NotReadyError
 from pymongo import MongoClient
-from pymongo.errors import PyMongoError
 
 from config import Config
 
@@ -20,7 +20,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 2
 
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
@@ -65,8 +65,16 @@ class MongosConfiguration:
         )
 
 
-class NotReadyError(PyMongoError):
-    """Raised when not all replica set members healthy or finished initial sync."""
+class RemovePrimaryShardError(Exception):
+    """Raised when there is an attempt to remove the primary shard."""
+
+
+class ShardNotInClusterError(Exception):
+    """Raised when shard is not present in cluster, but it is expected to be."""
+
+
+class ShardNotPlannedForRemovalError(Exception):
+    """Raised when it is expected that a shard is planned for removal, but it is not."""
 
 
 class MongosConnection:
@@ -157,6 +165,97 @@ class MongosConnection:
 
         logger.info("Adding shard %s", shard_name)
         self.client.admin.command("addShard", shard_url)
+
+    def remove_shard(self, shard_name: str) -> None:
+        """Removes shard from the cluster.
+
+        Raises:
+            ConfigurationError, OperationFailure, NotReadyError,
+            RemovePrimaryShardError
+        """
+        sc_status = self.client.admin.command("listShards")
+        # It is necessary to call removeShard multiple times on a shard to guarantee removal.
+        # Allow re-removal of shards that are currently draining.
+        if self._is_any_draining(sc_status, ignore_shard=shard_name):
+            cannot_remove_shard = (
+                f"cannot remove shard {shard_name} from cluster, another shard is draining"
+            )
+            logger.error(cannot_remove_shard)
+            raise NotReadyError(cannot_remove_shard)
+
+        # TODO Follow up PR, there is no MongoDB command to retrieve primary shard, this is
+        # possible with mongosh.
+        primary_shard = self.get_primary_shard()
+        if primary_shard:
+            # TODO Future PR, support removing Primary Shard if there are no unsharded collections
+            # on it. All sharded collections should perform `MovePrimary`
+            cannot_remove_primary_shard = (
+                f"Shard {shard_name} is the primary shard, cannot remove."
+            )
+            logger.error(cannot_remove_primary_shard)
+            raise RemovePrimaryShardError(cannot_remove_primary_shard)
+
+        logger.info("Attempting to remove shard %s", shard_name)
+        removal_info = self.client.admin.command("removeShard", shard_name)
+
+        # process removal status
+        remaining_chunks = (
+            removal_info["remaining"]["chunks"] if "remaining" in removal_info else "None"
+        )
+        dbs_to_move = (
+            removal_info["dbsToMove"]
+            if "dbsToMove" in removal_info and removal_info["dbsToMove"] != []
+            else ["None"]
+        )
+        logger.info(
+            "Shard %s is draining status is: %s. Remaining chunks: %s. DBs to move: %s.",
+            shard_name,
+            removal_info["state"],
+            str(remaining_chunks),
+            ",".join(dbs_to_move),
+        )
+
+    def _is_shard_draining(self, shard_name: str) -> bool:
+        """Reports if a given shard is currently in the draining state.
+
+        Raises:
+            ConfigurationError, OperationFailure, ShardNotInClusterError,
+            ShardNotPlannedForRemovalError
+        """
+        sc_status = self.client.admin.command("listShards")
+        for shard in sc_status["shards"]:
+            if shard["_id"] == shard_name:
+                if "draining" not in shard:
+                    raise ShardNotPlannedForRemovalError(
+                        f"Shard {shard_name} has not been marked for removal",
+                    )
+                return shard["draining"]
+
+        raise ShardNotInClusterError(
+            f"Shard {shard_name} not in cluster, could not retrieve draining status"
+        )
+
+    def get_primary_shard(self) -> str:
+        """Processes sc_status and identifies the primary shard."""
+        # TODO Follow up PR, implement this function there is no MongoDB command to retrieve
+        # primary shard, this is possible with mongosh.
+        return False
+
+    @staticmethod
+    def _is_any_draining(sc_status: Dict, ignore_shard: str = "") -> bool:
+        """Returns true if any shard members is draining.
+
+        Checks if any members in sharded cluster are draining data.
+
+        Args:
+            sc_status: current state of shard cluster status as reported by mongos.
+            ignore_shard: shard to ignore
+        """
+        return any(
+            # check draining status of all shards except the one to be ignored.
+            shard.get("draining", False) if shard["_id"] != ignore_shard else False
+            for shard in sc_status["shards"]
+        )
 
     @staticmethod
     def _hostname_from_hostport(hostname: str) -> str:
