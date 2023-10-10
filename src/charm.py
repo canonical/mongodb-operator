@@ -127,8 +127,8 @@ class MongodbOperatorCharm(CharmBase):
         self.legacy_client_relations = MongoDBLegacyProvider(self)
         self.tls = MongoDBTLS(self, Config.Relations.PEERS, substrate=Config.SUBSTRATE)
         self.backups = MongoDBBackups(self)
-        self.shard_relations = ShardingProvider(self)
-        self.config_server_relations = ConfigServerRequirer(self)
+        self.config_server = ShardingProvider(self)
+        self.shard = ConfigServerRequirer(self)
 
         # relation events for Prometheus metrics are handled in the MetricsEndpointProvider
         self._grafana_agent = COSAgentProvider(
@@ -419,7 +419,7 @@ class MongodbOperatorCharm(CharmBase):
         # app relations should be made aware of the new set of hosts
         try:
             self.client_relations.update_app_relation_data()
-            self.shard_relations._update_mongos_hosts()
+            self.config_server._update_mongos_hosts()
         except PyMongoError as e:
             logger.error("Deferring on updating app relation data since: error: %r", e)
             event.defer()
@@ -482,7 +482,7 @@ class MongodbOperatorCharm(CharmBase):
         # app relations should be made aware of the new set of hosts
         try:
             self.client_relations.update_app_relation_data()
-            self.shard_relations._update_mongos_hosts()
+            self.config_server._update_mongos_hosts()
         except PyMongoError as e:
             logger.error("Deferring on updating app relation data since: error: %r", e)
             event.defer()
@@ -503,7 +503,7 @@ class MongodbOperatorCharm(CharmBase):
         # app relations should be made aware of the new set of hosts
         try:
             self.client_relations.update_app_relation_data()
-            self.shard_relations._update_mongos_hosts()
+            self.config_server._update_mongos_hosts()
         except PyMongoError as e:
             logger.error("Deferring on updating app relation data since: error: %r", e)
             event.defer()
@@ -518,20 +518,20 @@ class MongodbOperatorCharm(CharmBase):
         # A single replica cannot step down as primary and we cannot reconfigure the replica set to
         # have 0 members.
         if self._is_removing_last_replica:
-            # Removing an application calls these events in the following order: storage detached,
-            # (peer relation hooks), and finally (relation hooks). Do not detach storage without
-            # draining shards.
-            if self.shard_relations.has_shards():
-                current_shards = self.shard_relations.get_related_shards()
+            # removing config-server from a sharded cluster can be disaterous.
+            if self.is_role(Config.Role.CONFIG_SERVER) and self.config_server.has_shards():
+                current_shards = self.config_server.get_related_shards()
                 early_removal_message = f"Cannot remove config-server, still related to shards {', '.join(current_shards)}"
                 logger.error(early_removal_message)
-                raise EarlyRemovalOfShardError(early_removal_message)
-
-            if self.config_server_relations.has_config_server():
-                related_config_server = self.shard_relations.get_related_config_server()
-                early_removal_message = f"Cannot remove config-server, still related to config-server {related_config_server}"
-                logger.error(early_removal_message)
                 raise EarlyRemovalOfConfigServerError(early_removal_message)
+
+            # cannot drain shard after storage detached.
+            if self.is_role(Config.Role.SHARD) and self.shard.has_config_server():
+                logger.info("Wait for shard to drain before detaching storage.")
+                self.unit.status = MaintenanceStatus("Draining shard from cluster")
+                mongos_hosts = self.shard.get_mongos_hosts()
+                self.shard.wait_for_draining(mongos_hosts)
+                logger.info("Shard successfully drained storage.")
 
             return
 
@@ -643,7 +643,7 @@ class MongodbOperatorCharm(CharmBase):
         # rotate password to shards
         # TODO in the future support rotating passwords of pbm across shards
         if username == OperatorUser.get_username():
-            self.shard_relations.update_credentials(
+            self.config_server.update_credentials(
                 MongoDBUser.get_password_key_name_for_user(username),
                 new_password,
             )
@@ -912,7 +912,7 @@ class MongodbOperatorCharm(CharmBase):
         # app relations should be made aware of the new set of hosts
         try:
             self.client_relations.update_app_relation_data()
-            self.shard_relations._update_mongos_hosts()
+            self.config_server._update_mongos_hosts()
         except PyMongoError as e:
             logger.error("Deferring on updating app relation data since: error: %r", e)
             event.defer()
@@ -1454,12 +1454,10 @@ class MongodbOperatorCharm(CharmBase):
         """Generates the relation departed key for a specified relation id."""
         return f"relation_{rel_id}_departed"
 
-    @staticmethod
+    @property
     def _is_removing_last_replica(self) -> bool:
         """Returns True if the last replica (juju unit) is getting removed."""
-        # please note that planned_units will always be >=1. When planned
-        # units is 1 that means there are no other peers expected.
-        return self.app.planned_units() == 1 and len(self._peers.units) == 0
+        return self.app.planned_units() == 0 and len(self._peers.units) == 0
 
     # END: helper functions
 
@@ -1470,10 +1468,6 @@ class ShardingMigrationError(Exception):
 
 class SetPasswordError(Exception):
     """Raised on failure to set password for MongoDB user."""
-
-
-class EarlyRemovalOfShardError(Exception):
-    """Raised when there is an attempt to remove a shard, while related to a config-server."""
 
 
 class EarlyRemovalOfConfigServerError(Exception):

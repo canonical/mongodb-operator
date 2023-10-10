@@ -72,7 +72,8 @@ class ShardingProvider(Object):
             charm.on[self.relation_name].relation_joined, self._on_relation_joined
         )
         self.framework.observe(
-            charm.on[self.relation_name].relation_departed, self._on_relation_departed
+            charm.on[self.relation_name].relation_departed,
+            self.charm.check_relation_broken_or_scale_down,
         )
         self.framework.observe(
             charm.on[self.relation_name].relation_changed, self._on_relation_event
@@ -136,16 +137,6 @@ class ShardingProvider(Object):
             return
 
         return True
-
-    def _on_relation_departed(self, event):
-        """Checks if shards should be drained on the following event (relation-broken)."""
-        # relation departed and relation broken events occur during scaling down or during relation
-        # removal, only relation departed events have access to metadata to determine which case.
-        self.charm.set_scaling_down(event)
-
-        # check if were scaling down and add a log message
-        if self.charm.is_scaling_down(event.relation.id):
-            logger.info("Scaling down the application, no need to drain shards.")
 
     def _on_relation_event(self, event):
         """Handles adding and removing of shards.
@@ -332,7 +323,8 @@ class ConfigServerRequirer(Object):
         )
 
         self.framework.observe(
-            charm.on[self.relation_name].relation_departed, self._on_relation_departed
+            charm.on[self.relation_name].relation_departed,
+            self.charm.check_relation_broken_or_scale_down,
         )
 
         self.framework.observe(
@@ -392,17 +384,7 @@ class ConfigServerRequirer(Object):
 
         return True
 
-    def _on_relation_departed(self, event):
-        """Checks if shards should be drained on the following event (relation-broken)."""
-        # relation departed and relation broken events occur during scaling down or during relation
-        # removal, only relation departed events have access to metadata to determine which case.
-        self.charm.set_scaling_down(event)
-
-        # check if were scaling down and add a log message
-        if self.charm.is_scaling_down(event.relation.id):
-            logger.info("Scaling down the application, no need to drain shard.")
-
-    def _on_relation_broken(self, event) -> None:
+    def _on_relation_broken(self, event: RelationBrokenEvent) -> None:
         """Waits for the shard to be fully drained from the cluster."""
         if not self.pass_hook_checks(event):
             logger.info("Skipping relation joined event: hook checks re not passed")
@@ -428,7 +410,16 @@ class ConfigServerRequirer(Object):
         # mongos hosts must be retrieved via relation data, as relation.units are not available in
         # broken
         mongos_hosts = json.loads(event.relation.data[event.relation.app].get(HOSTS_KEY))
+        self.wait_for_draining(mongos_hosts)
+
+        self.charm.unit.status = ActiveStatus("Shard drained from cluster, ready for removal")
+        # TODO future PR, leader unit displays this message in update-status hook
+        # TODO future PR, check for shard drainage when removing application
+
+    def wait_for_draining(self, mongos_hosts: List[str]):
+        """Waits for shards to be drained from sharded cluster."""
         drained = False
+
         while not drained:
             try:
                 # no need to continuously check and abuse resources while shard is draining
@@ -454,10 +445,6 @@ class ConfigServerRequirer(Object):
                     self.charm.app_peer_data["drained"] = json.dumps(True)
 
                 break
-
-        self.charm.unit.status = ActiveStatus("Shard drained from cluster, ready for removal")
-        # TODO future PR, leader unit displays this message in update-status hook
-        # TODO future PR, check for shard drainage when removing application
 
     def drained(self, mongos_hosts: Set[str], shard_name: str) -> bool:
         """Returns whether a shard has been drained from the cluster.
@@ -571,3 +558,9 @@ class ConfigServerRequirer(Object):
     def get_related_config_server(self) -> List[str]:
         """Returns the related config server."""
         return [rel.app.name for rel in self.charm.model.relations[self.relation_name]]
+
+    def get_mongos_hosts(self) -> List[str]:
+        """Returns a list of IP addresses for the mongos hosts."""
+        # only one related config-server is possible
+        config_server_relation = self.charm.model.relations[self.relation_name][0]
+        return json.loads(config_server_relation.data[config_server_relation.app].get(HOSTS_KEY))
