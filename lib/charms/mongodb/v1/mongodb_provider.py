@@ -89,7 +89,7 @@ class MongoDBProvider(Object):
         creates or drops MongoDB users and sets credentials into relation
         data. As a result, related charm gets credentials for accessing the
         MongoDB database.
-        """        
+        """
         if not self.charm.unit.is_leader():
             return
         # We shouldn't try to create or update users if the database is not
@@ -177,18 +177,14 @@ class MongoDBProvider(Object):
                     # We need to wait for the moment when the provider library
                     # set the database name into the relation.
                     continue
-                logger.error(">>>>>> Create relation user: %s on %s", config.username, config.database)
                 mongo.create_user(config)
                 self._set_relation(config)
-            
 
             for username in relation_users.intersection(database_users):
                 config = self._get_config(username, None)
-                logger.error(">>>>>> Update relation user: %s on %s", config.username, config.database)
                 mongo.update_user(config)
                 logger.error("Updating relation data according to diff")
                 self._diff(event)
-        
 
             if not self.charm.model.config["auto-delete"]:
                 return
@@ -261,8 +257,7 @@ class MongoDBProvider(Object):
                     relation.id,
                     config.uri,
                 )
-            logger.error(">>>>>>>>>>>>>>>>>>>> update_app_relation_data '%s", self)
-    
+
     def _get_or_set_password(self, relation: Relation) -> str:
         """Retrieve password from cache or generate a new one.
 
@@ -272,20 +267,12 @@ class MongoDBProvider(Object):
         Returns:
             str: The password.
         """
-        import pdb; pdb.set_trace()
-        relation_data = self.database_provides.fetch_relation_data(
-                [relation.id], ["password"], relation.name
-            )
-        logger.error(">>>>>>>>>>>>>>>>>>>> _get_or_set_password '%s', '%s'", relation_data, self)
-        password = relation_data.get(relation.id, {}).get("password")
+        password = self.database_provides.fetch_my_relation_field(relation.id, "password")
         if password:
-            logger.error(">>>>>>>>>>>>>>>>>>>> _get_or_set_password found password '%s', '%s'", password, self)
             return password
         password = generate_password()
-        logger.error(">>>>>>>>>>>>>>>>>>>> _get_or_set_password generated password '%s', '%s'", password, self)
         self.database_provides.update_relation_data(relation.id, {"password": password})
         return password
-    
 
     def _get_config(self, username: str, password: Optional[str]) -> MongoDBConfiguration:
         """Construct the config object for future user creation."""
