@@ -57,14 +57,6 @@ class NotDrainedError(Exception):
     """Raised when a shard is still in the cluster after removal."""
 
 
-class RemoveLastShardError(Exception):
-    """Raised when there is an attempt to remove the last shard in the cluster."""
-
-
-class NotDrainedError(Exception):
-    """Raised when a shard is still in the cluster after removal."""
-
-
 class ShardingProvider(Object):
     """Manage relations between the config server and the shard, on the config-server's side."""
 
@@ -137,34 +129,23 @@ class ShardingProvider(Object):
             event.defer()
             return False
 
+        # adding/removing shards while a backup/restore is in progress can be disastrous
+        pbm_status = self.charm.backups._get_pbm_status()
+        if isinstance(pbm_status, MaintenanceStatus):
+            event.defer("Cannot add/remove shards while a backup/restore is in progress.")
+            return
+
         return True
 
     def _on_relation_departed(self, event):
-        """Checks if shards should be drained on the following event (relation-broken).
+        """Checks if shards should be drained on the following event (relation-broken)."""
+        # relation departed and relation broken events occur during scaling down or during relation
+        # removal, only relation departed events have access to metadata to determine which case.
+        self.charm.set_scaling_down(event)
 
-        Relation-broken executes after relation-departed, and it must know if it should drain the
-        related shards. Relation-broken doesn't have access to `event.departing_unit`, so we make
-        use of it here.
-
-        We receive relation departed events when: the relation has been removed, units are scaling
-        down, or the application has been removed. Only proceed to process shard removal if the
-        relation has been removed. We do not process removal of shards on application removal,
-        as the storage get detached prior.
-        """
-        if not self.charm.unit.is_leader():
-            return
-
-        # assume relation departed is due to manual removal of relation.
-        relation_departed = True
-
-        # check if relation departed is due to current unit being removed. (i.e. scaling down the
-        # application.)
-        if event.departing_unit == self.charm.unit:
-            relation_departed = False
-
-        self.charm.app_peer_data[f"relation_{event.relation.id}_departed"] = json.dumps(
-            relation_departed
-        )
+        # check if were scaling down and add a log message
+        if self.charm.is_scaling_down(event.relation.id):
+            logger.info("Scaling down the application, no need to drain shards.")
 
     def _on_relation_event(self, event):
         """Handles adding and removing of shards.
@@ -175,31 +156,21 @@ class ShardingProvider(Object):
             logger.info("Skipping relation event: hook checks did not pass")
             return
 
-        # adding/removing shards while a backup/restore is in progress can be disastrous
-        pbm_status = self.charm.backups._get_pbm_status()
-        if isinstance(pbm_status, MaintenanceStatus):
-            event.defer("Cannot add/remove shards while a backup/restore is in progress.")
-            return
-
         departed_relation_id = None
         if type(event) is RelationBrokenEvent:
+            # Only relation_deparated events can check if scaling down
             departed_relation_id = event.relation.id
-            # we receives relation broken events when: the relation has been removed, units are
-            # scaling down, or the application has been removed. Only proceed to process shard
-            # removal if the relation has been removed. We do not process removal of shards on
-            # application removal, as the storage get detached prior.
-            if f"relation_{departed_relation_id}_departed" not in self.charm.app_peer_data:
+            if not self.charm.has_departed_run(departed_relation_id):
                 logger.info(
                     "Deferring, must wait for relation departed hook to decide if relation should be removed."
                 )
                 event.defer()
                 return
 
-            if not json.loads(
-                self.charm.app_peer_data[f"relation_{departed_relation_id}_departed"]
-            ):
+            # check if were scaling down and add a log message
+            if self.charm.is_scaling_down(event.relation.id):
                 logger.info(
-                    "Relation broken event occurring due to scale down, do not proceed to drain shards."
+                    "Relation broken event occurring due to scale down, do not proceed to remove users."
                 )
                 return
 
@@ -414,31 +385,14 @@ class ConfigServerRequirer(Object):
         return True
 
     def _on_relation_departed(self, event):
-        """Checks if shards should be drained on the following event (relation-broken).
+        """Checks if shards should be drained on the following event (relation-broken)."""
+        # relation departed and relation broken events occur during scaling down or during relation
+        # removal, only relation departed events have access to metadata to determine which case.
+        self.charm.set_scaling_down(event)
 
-        Relation-broken executes after relation-departed, and it must know if it should drain the
-        related shards. Relation-broken doesn't have access to `event.departing_unit`, so we make
-        use of it here.
-
-        We receive relation departed events when: the relation has been removed, units are scaling
-        down, or the application has been removed. Only proceed to process shard removal if the
-        relation has been removed. We do not process removal of shards on application removal,
-        as the storage get detached prior.
-        """
-        if not self.charm.unit.is_leader():
-            return
-
-        # assume relation departed is due to manual removal of relation.
-        relation_departed = True
-
-        # check if relation departed is due to current unit being removed. (i.e. scaling down the
-        # application.)
-        if event.departing_unit == self.charm.unit:
-            relation_departed = False
-
-        self.charm.app_peer_data[f"relation_{event.relation.id}_departed"] = json.dumps(
-            relation_departed
-        )
+        # check if were scaling down and add a log message
+        if self.charm.is_scaling_down(event.relation.id):
+            logger.info("Scaling down the application, no need to drain shard.")
 
     def _on_relation_broken(self, event) -> None:
         """Waits for the shard to be fully drained from the cluster."""
@@ -446,20 +400,19 @@ class ConfigServerRequirer(Object):
             logger.info("Skipping relation joined event: hook checks re not passed")
             return
 
-        # we receive relation broken events when: the relation has been removed, units are
-        # scaling down, or the application has been removed. Only proceed to process shard
-        # removal if the relation has been removed. We do not process removal of shards on
-        # application removal, as the storage get detached prior.
-        if f"relation_{event.relation.id}_departed" not in self.charm.app_peer_data:
+        # Only relation_deparated events can check if scaling down
+        departed_relation_id = event.relation.id
+        if not self.charm.has_departed_run(departed_relation_id):
             logger.info(
                 "Deferring, must wait for relation departed hook to decide if relation should be removed."
             )
             event.defer()
             return
 
-        if not json.loads(self.charm.app_peer_data[f"relation_{event.relation.id}_departed"]):
+        # check if were scaling down and add a log message
+        if self.charm.is_scaling_down(event.relation.id):
             logger.info(
-                "Relation broken event occurring due to scale down, do not proceed to drain shards."
+                "Relation broken event occurring due to scale down, do not proceed to remove users."
             )
             return
 
