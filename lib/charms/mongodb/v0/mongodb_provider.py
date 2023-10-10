@@ -62,10 +62,12 @@ class MongoDBProvider(Object):
         """
         self.relation_name = relation_name
         self.substrate = substrate
+        self.charm = charm
 
         super().__init__(charm, self.relation_name)
         self.framework.observe(
-            charm.on[self.relation_name].relation_departed, self._on_relation_departed
+            charm.on[self.relation_name].relation_departed,
+            self.charm.check_relation_broken_or_scale_down,
         )
         self.framework.observe(
             charm.on[self.relation_name].relation_broken, self._on_relation_event
@@ -74,23 +76,11 @@ class MongoDBProvider(Object):
             charm.on[self.relation_name].relation_changed, self._on_relation_event
         )
 
-        self.charm = charm
-
         # Charm events defined in the database provides charm library.
         self.database_provides = DatabaseProvides(self.charm, relation_name=self.relation_name)
         self.framework.observe(
             self.database_provides.on.database_requested, self._on_relation_event
         )
-
-    def _on_relation_departed(self, event):
-        """Checks if users should be removed on the following event (relation-broken)."""
-        # relation departed and relation broken events occur during scaling down or during relation
-        # removal, only relation departed events have access to metadata to determine which case.
-        self.charm.set_scaling_down(event)
-
-        # check if were scaling down and add a log message
-        if self.charm.is_scaling_down(event.relation.id):
-            logger.info("Scaling down the application, no need to remove external users.")
 
     def _on_relation_event(self, event):
         """Handle relation joined events.
