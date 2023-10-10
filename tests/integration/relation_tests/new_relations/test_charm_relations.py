@@ -13,7 +13,11 @@ from pytest_operator.plugin import OpsTest
 from tenacity import RetryError
 
 from ...ha_tests.helpers import replica_set_primary
-from .helpers import (get_application_relation_data, verify_application_data, get_connection_string)
+from .helpers import (
+    get_application_relation_data,
+    get_connection_string,
+    verify_application_data,
+)
 
 MEDIAN_REELECTION_TIME = 12
 APPLICATION_APP_NAME = "application"
@@ -50,8 +54,6 @@ async def test_deploy_charms(ops_test: OpsTest, application_charm, database_char
         ),
     )
     await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active", wait_for_at_least_units=1)
-
-
 
 
 @pytest.mark.abort_on_fail
@@ -282,7 +284,7 @@ async def test_an_application_can_connect_to_multiple_database_clusters(ops_test
         MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME,
         relation_id=first_cluster_relation.id,
     )
-    
+
     another_application_connection_string = await get_connection_string(
         ops_test,
         APPLICATION_APP_NAME,
