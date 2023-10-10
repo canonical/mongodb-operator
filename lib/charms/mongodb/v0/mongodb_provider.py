@@ -123,9 +123,8 @@ class MongoDBProvider(Object):
 
         departed_relation_id = None
         if type(event) is RelationBrokenEvent:
-            departed_relation_id = event.relation.id
-
             # Only relation_deparated events can check if scaling down
+            departed_relation_id = event.relation.id
             if not self.charm.has_departed_run(departed_relation_id):
                 logger.info(
                     "Deferring, must wait for relation departed hook to decide if relation should be removed."
@@ -134,11 +133,15 @@ class MongoDBProvider(Object):
                 return
 
             # check if were scaling down and add a log message
-            if self.charm.is_scaling_down(event.relation.id):
+            if self.charm.is_scaling_down(departed_relation_id):
                 logger.info(
                     "Relation broken event occurring due to scale down, do not proceed to remove users."
                 )
                 return
+
+            logger.info(
+                "Relation broken event occurring due to relation removal, proceed to remove user."
+            )
 
         try:
             self.oversee_users(departed_relation_id, event)
@@ -214,6 +217,9 @@ class MongoDBProvider(Object):
             a Diff instance containing the added, deleted and changed
                 keys from the event relation databag.
         """
+        if not isinstance(event, RelationChangedEvent):
+            logger.info("Cannot compute diff of event type: %s", type(event))
+            return
         # TODO import marvelous unit tests in a future PR
         # Retrieve the old data from the data key in the application relation databag.
         old_data = json.loads(event.relation.data[self.charm.model.app].get("data", "{}"))

@@ -522,7 +522,7 @@ class MongodbOperatorCharm(CharmBase):
             # (peer relation hooks), and finally (relation hooks). Do not detach storage without
             # draining shards.
             if self.shard_relations.has_shards():
-                current_shards = self.shard_relations.related_shards()
+                current_shards = self.shard_relations.get_related_shards()
                 early_removal_message = f"Cannot remove config-server, still related to shards {', '.join(current_shards)}"
                 logger.error(early_removal_message)
                 raise EarlyRemovalOfShardError(early_removal_message)
