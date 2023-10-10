@@ -515,35 +515,24 @@ class MongodbOperatorCharm(CharmBase):
         If the removing unit is primary also allow it to step down and elect another unit as
         primary while it still has access to its storage.
         """
-        # if we are removing the last replica it will not be able to step down as primary and we
-        # cannot reconfigure the replica set to have 0 members. To prevent retrying for 10 minutes
-        # set this flag to True. please note that planned_units will always be >=1. When planned
-        # units is 1 that means there are no other peers expected.
-        single_node_replica_set = self.app.planned_units() == 1 and len(self._peers.units) == 0
-        if single_node_replica_set:
-            # raise when relations still exist with sharding components (config-server, mongos, and
-            # shards). Removing an application calls these events in the following order: storage
-            # detached, (peer relation hooks), and finally (relation hooks). We cannot
-            # process draining shards in relation hooks after the storage has been detached.
-            if len(self.model.relations[self.shard_relations.relation_name]):
-                curr_shard_relations = [
-                    rel.app.name
-                    for rel in self.model.relations[self.shard_relations.relation_name]
-                ]
-                early_removal_message = f"Cannot remove config-server, still related to shards {', '.join(curr_shard_relations)}"
+        # A single replica cannot step down as primary and we cannot reconfigure the replica set to
+        # have 0 members.
+        if self._is_removing_last_replica:
+            # Removing an application calls these events in the following order: storage detached,
+            # (peer relation hooks), and finally (relation hooks). Do not detach storage without
+            # draining shards.
+            if self.shard_relations.has_shards():
+                current_shards = self.shard_relations.related_shards()
+                early_removal_message = f"Cannot remove config-server, still related to shards {', '.join(current_shards)}"
                 logger.error(early_removal_message)
                 raise EarlyRemovalOfShardError(early_removal_message)
 
-            if len(self.model.relations[self.config_server_relations.relation_name]):
-                config_server_relation = [
-                    rel.app.name
-                    for rel in self.model.relations[self.config_server_relations.relation_name]
-                ]
-                early_removal_message = f"Cannot remove config-server, still related to config-server {config_server_relation}"
+            if self.config_server_relations.has_config_server():
+                related_config_server = self.shard_relations.get_related_config_server()
+                early_removal_message = f"Cannot remove config-server, still related to config-server {related_config_server}"
                 logger.error(early_removal_message)
                 raise EarlyRemovalOfConfigServerError(early_removal_message)
 
-            # if no relations ith sharded components, proceed to removal of application.
             return
 
         try:
@@ -1451,6 +1440,13 @@ class MongodbOperatorCharm(CharmBase):
     def _generate_relation_departed_key(rel_id: int) -> str:
         """Generates the relation departed key for a specified relation id."""
         return f"relation_{rel_id}_departed"
+
+    @staticmethod
+    def _is_removing_last_replica(self) -> bool:
+        """Returns True if the last replica (juju unit) is getting removed."""
+        # please note that planned_units will always be >=1. When planned
+        # units is 1 that means there are no other peers expected.
+        return self.app.planned_units() == 1 and len(self._peers.units) == 0
 
     # END: helper functions
 

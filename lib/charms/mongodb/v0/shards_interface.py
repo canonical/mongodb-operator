@@ -307,6 +307,14 @@ class ShardingProvider(Object):
         """Returns the name of a shard for a specified relation."""
         return relation.app.name
 
+    def has_shards(self) -> bool:
+        """Returns True if currently related to shards."""
+        return len(self.charm.model.relations[self.relation_name]) > 0
+
+    def get_related_shards(self) -> List[str]:
+        """Returns a list of related shards."""
+        return [rel.app.name for rel in self.charm.model.relations[self.relation_name]]
+
 
 class ConfigServerRequirer(Object):
     """Manage relations between the config server and the shard, on the shard's side."""
@@ -555,3 +563,11 @@ class ConfigServerRequirer(Object):
             relation = self.charm.model.get_relation(self.relation_name, relation_id)
             if relation:
                 relation.data[self.charm.model.app].update(data)
+
+    def has_config_server(self) -> bool:
+        """Returns True if currently related to config server."""
+        return len(self.charm.model.relations[self.relation_name]) > 0
+
+    def get_related_config_server(self) -> List[str]:
+        """Returns the related config server."""
+        return [rel.app.name for rel in self.charm.model.relations[self.relation_name]]
