@@ -1647,6 +1647,7 @@ class DatabaseRequires(DataRequires):
         relation = self.charm.model.get_relation(self.relation_name, relation_id)
         if relation:
             relation.data[self.local_unit].update({"alias": available_aliases[0]})
+        self.update_relation_data(relation_id, {"alias": available_aliases[0]})
 
     def _emit_aliased_event(self, event: RelationChangedEvent, event_name: str) -> None:
         """Emit an aliased event to a particular relation if it has an alias.
