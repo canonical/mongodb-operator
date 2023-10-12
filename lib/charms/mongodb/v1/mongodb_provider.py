@@ -177,13 +177,15 @@ class MongoDBProvider(Object):
                     # We need to wait for the moment when the provider library
                     # set the database name into the relation.
                     continue
+                logger.info("Create relation user: %s on %s", config.username, config.database)
                 mongo.create_user(config)
                 self._set_relation(config)
 
             for username in relation_users.intersection(database_users):
                 config = self._get_config(username, None)
+                logger.info("Update relation user: %s on %s", config.username, config.database)
                 mongo.update_user(config)
-                logger.error("Updating relation data according to diff")
+                logger.info("Updating relation data according to diff")
                 self._diff(event)
 
             if not self.charm.model.config["auto-delete"]:
