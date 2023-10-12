@@ -36,11 +36,11 @@ from config import Config
 LIBID = "18c461132b824ace91af0d7abe85f40e"
 
 # Increment this major API version when introducing breaking changes
-LIBAPI = 0
+LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 7
+LIBPATCH = 0
 
 logger = logging.getLogger(__name__)
 

@@ -7,11 +7,11 @@ from typing import Set
 LIBID = "b74007eda21c453a89e4dcc6382aa2b3"
 
 # Increment this major API version when introducing breaking changes
-LIBAPI = 0
+LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 0
 
 
 class MongoDBUser:
