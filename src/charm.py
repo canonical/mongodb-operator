@@ -419,7 +419,7 @@ class MongodbOperatorCharm(CharmBase):
         # app relations should be made aware of the new set of hosts
         try:
             self.client_relations.update_app_relation_data()
-            self.config_server._update_mongos_hosts()
+            self.config_server.update_mongos_hosts()
         except PyMongoError as e:
             logger.error("Deferring on updating app relation data since: error: %r", e)
             event.defer()
@@ -482,7 +482,7 @@ class MongodbOperatorCharm(CharmBase):
         # app relations should be made aware of the new set of hosts
         try:
             self.client_relations.update_app_relation_data()
-            self.config_server._update_mongos_hosts()
+            self.config_server.update_mongos_hosts()
         except PyMongoError as e:
             logger.error("Deferring on updating app relation data since: error: %r", e)
             event.defer()
@@ -503,7 +503,7 @@ class MongodbOperatorCharm(CharmBase):
         # app relations should be made aware of the new set of hosts
         try:
             self.client_relations.update_app_relation_data()
-            self.config_server._update_mongos_hosts()
+            self.config_server.update_mongos_hosts()
         except PyMongoError as e:
             logger.error("Deferring on updating app relation data since: error: %r", e)
             event.defer()
@@ -582,7 +582,7 @@ class MongodbOperatorCharm(CharmBase):
         # update the units status based on it's replica set config and backup status. An error in
         # the status of MongoDB takes precedence over pbm status.
         mongodb_status = build_unit_status(self.mongodb_config, self._unit_ip(self.unit))
-        pbm_status = self.backups._get_pbm_status()
+        pbm_status = self.backups.get_pbm_status()
         if (
             not isinstance(mongodb_status, ActiveStatus)
             or not self.model.get_relation(
@@ -839,7 +839,7 @@ class MongodbOperatorCharm(CharmBase):
             return
 
         # changing the backup password while a backup/restore is in progress can be disastrous
-        pbm_status = self.backups._get_pbm_status()
+        pbm_status = self.backups.get_pbm_status()
         if isinstance(pbm_status, MaintenanceStatus):
             event.fail("Cannot change password while a backup/restore is in progress.")
             return
@@ -912,7 +912,7 @@ class MongodbOperatorCharm(CharmBase):
         # app relations should be made aware of the new set of hosts
         try:
             self.client_relations.update_app_relation_data()
-            self.config_server._update_mongos_hosts()
+            self.config_server.update_mongos_hosts()
         except PyMongoError as e:
             logger.error("Deferring on updating app relation data since: error: %r", e)
             event.defer()

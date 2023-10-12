@@ -322,7 +322,7 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charms.mongodb.v0.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
-    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.MongoDBBackups.get_pbm_status")
     @patch("charm.build_unit_status")
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
     def test_update_status_mongodb_error(
@@ -357,7 +357,7 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charms.mongodb.v0.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
-    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.MongoDBBackups.get_pbm_status")
     @patch("charm.build_unit_status")
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
     def test_update_status_pbm_error(
@@ -387,7 +387,7 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charms.mongodb.v0.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
-    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.MongoDBBackups.get_pbm_status")
     @patch("charm.build_unit_status")
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
     def test_update_status_pbm_and_mongodb_ready(
@@ -409,7 +409,7 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charms.mongodb.v0.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
-    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.MongoDBBackups.get_pbm_status")
     @patch("charm.build_unit_status")
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
     def test_update_status_no_s3(
@@ -429,7 +429,7 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charms.mongodb.v0.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
-    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.MongoDBBackups.get_pbm_status")
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
     def test_update_status_primary(self, _, pbm_status, connection, status_connection):
         """Tests that update status identifies the primary unit and updates status."""
@@ -449,7 +449,7 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charms.mongodb.v0.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
-    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.MongoDBBackups.get_pbm_status")
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
     def test_update_status_secondary(self, _, pbm_status, connection, status_connection):
         """Tests that update status identifies secondary units and doesn't update status."""
@@ -469,7 +469,7 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charms.mongodb.v0.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
-    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.MongoDBBackups.get_pbm_status")
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
     def test_update_status_additional_messages(self, _, pbm_status, connection, status_connection):
         """Tests status updates are correct for non-primary and non-secondary cases."""
@@ -643,7 +643,7 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.MongoDBBackups.get_pbm_status")
     def test_set_password(self, pbm_status, connection):
         """Tests that a new admin password is generated and is returned to the user."""
         self.harness.set_leader(True)
@@ -659,7 +659,7 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.MongoDBBackups.get_pbm_status")
     def test_set_password_provided(self, pbm_status, connection):
         """Tests that a given password is set as the new mongodb password."""
         self.harness.set_leader(True)
@@ -677,7 +677,7 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.MongoDBBackups.get_pbm_status")
     def test_set_password_failure(self, pbm_status, connection):
         """Tests failure to reset password does not update app data and failure is reported."""
         self.harness.set_leader(True)
@@ -698,7 +698,7 @@ class TestCharm(unittest.TestCase):
             action_event.fail.assert_called()
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.MongoDBBackups.get_pbm_status")
     def test_set_backup_password_pbm_busy(self, pbm_status):
         """Tests changes to passwords fail when pbm is restoring/backing up."""
         self.harness.set_leader(True)

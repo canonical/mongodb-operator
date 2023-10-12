@@ -131,7 +131,7 @@ class ShardingProvider(Object):
             return False
 
         # adding/removing shards while a backup/restore is in progress can be disastrous
-        pbm_status = self.charm.backups._get_pbm_status()
+        pbm_status = self.charm.backups.get_pbm_status()
         if isinstance(pbm_status, MaintenanceStatus):
             event.defer("Cannot add/remove shards while a backup/restore is in progress.")
             return
@@ -247,7 +247,7 @@ class ShardingProvider(Object):
         for relation in self.charm.model.relations[self.relation_name]:
             self._update_relation_data(relation.id, {key: value})
 
-    def _update_mongos_hosts(self):
+    def update_mongos_hosts(self):
         """Updates the hosts for mongos on the relation data."""
         if not self.charm.is_role(Config.Role.CONFIG_SERVER):
             logger.info("Skipping, ShardingProvider is only be executed by config-server")
