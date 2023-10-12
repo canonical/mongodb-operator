@@ -1643,7 +1643,7 @@ class DatabaseRequires(DataRequires):
                 logger.debug("Alias %s was already assigned to relation %d", alias, relation.id)
                 available_aliases.remove(alias)
 
-        # Set the alias in the unit relation databag of the specific relation.
+        # Set the alias in the app relation databag of the specific relation.
         self.update_relation_data(relation_id, {"alias": available_aliases[0]})
 
     def _emit_aliased_event(self, event: RelationChangedEvent, event_name: str) -> None:

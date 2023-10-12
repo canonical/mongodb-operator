@@ -50,9 +50,6 @@ async def get_application_relation_data(
         relation_data = [v for v in relation_data if v["relation-id"] == relation_id]
 
     if relation_alias:
-        import pdb
-
-        pdb.set_trace()
         # Filter the data based on the cluster/relation alias.
         relation_data = [
             v
