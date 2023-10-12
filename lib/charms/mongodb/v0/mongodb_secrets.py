@@ -63,7 +63,7 @@ class CachedSecret:
                 "Secret is already defined with uri %s", self._secret_uri
             )
 
-        if scope == Config.APP_SCOPE:
+        if scope == Config.Relations.APP_SCOPE:
             secret = self.charm.app.add_secret(content, label=self.label)
         else:
             secret = self.charm.unit.add_secret(content, label=self.label)
