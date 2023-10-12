@@ -1643,10 +1643,7 @@ class DatabaseRequires(DataRequires):
                 logger.debug("Alias %s was already assigned to relation %d", alias, relation.id)
                 available_aliases.remove(alias)
 
-        # Set the alias in the unit relation databag of the specific relation.
-        relation = self.charm.model.get_relation(self.relation_name, relation_id)
-        if relation:
-            relation.data[self.local_unit].update({"alias": available_aliases[0]})
+        # Set the alias in app relation databag of the specific relation.
         self.update_relation_data(relation_id, {"alias": available_aliases[0]})
 
     def _emit_aliased_event(self, event: RelationChangedEvent, event_name: str) -> None:
