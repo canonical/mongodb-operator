@@ -50,21 +50,23 @@ jobs:
         run: python3 -m pip install tox
       - name: Run tests
         run: tox run -e unit
-
-  lib-check:
-    name: Check libraries
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - name: Check libs
-        uses: canonical/charming-actions/check-libraries@2.4.0
-        with:
-          credentials: "${{ secrets.CHARMHUB_TOKEN }}" # FIXME: current token will expire in 2023-07-04
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
+  # current lib check is incompatible with bumped APIs - perform this manually. After merge +
+  # publish. It should be possible to comment this back in and for the workflow to resume normally.
+  # see issue: https://github.com/canonical/charming-actions/issues/97
+  # lib-check:
+  #   name: Check libraries
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 5
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v3
+  #       with:
+  #         fetch-depth: 0
+  #     - name: Check libs
+  #       uses: canonical/charming-actions/check-libraries@2.4.0
+  #       with:
+  #         credentials: "${{ secrets.CHARMHUB_TOKEN }}" # FIXME: current token will expire in 2023-07-04
+  #         github-token: "${{ secrets.GITHUB_TOKEN }}"
 
   build:
     name: Build charms
