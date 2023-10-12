@@ -20,9 +20,9 @@ from charms.mongodb.v0.mongodb import (
 )
 from charms.mongodb.v0.mongos import (
     MongosConnection,
+    RemovePrimaryShardError,
     ShardNotInClusterError,
     ShardNotPlannedForRemovalError,
-    RemovePrimaryShardError,
 )
 from charms.mongodb.v0.users import MongoDBUser, OperatorUser
 from ops.charm import CharmBase, EventBase, RelationBrokenEvent
@@ -176,7 +176,7 @@ class ShardingProvider(Object):
                 "Attempt made to remove a primary shard, do not permit other hooks to execute."
             )
             logger.error(cannot_proceed)
-            raise (cannot_proceed)
+            raise
         except (PyMongoError, NotReadyError) as e:
             logger.error("Deferring _on_relation_event for shards interface since: error=%r", e)
             event.defer()

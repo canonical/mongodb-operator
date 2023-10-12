@@ -4,11 +4,11 @@
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, Optional, Set, List
+from typing import Dict, List, Optional, Set
 from urllib.parse import quote_plus
 
 from charms.mongodb.v0.mongodb import NotReadyError
-from pymongo import MongoClient
+from pymongo import MongoClient, collection
 
 from config import Config
 
@@ -174,6 +174,7 @@ class MongosConnection:
             RemovePrimaryShardError
         """
         sc_status = self.client.admin.command("listShards")
+
         # It is necessary to call removeShard multiple times on a shard to guarantee removal.
         # Allow re-removal of shards that are currently draining.
         if self._is_any_draining(sc_status, ignore_shard=shard_name):
@@ -185,7 +186,7 @@ class MongosConnection:
 
         if shard_name in self.get_primary_shards():
             database_names = self.get_databases_for_primary_shard(shard_name)
-            cannot_remove_primary_shard = f"These databases {database_names} use Shard {shard_name} is a primary shard, cannot remove shard."
+            cannot_remove_primary_shard = f"These databases: {', '.join(database_names)}, use Shard {shard_name} is a primary shard, cannot remove shard."
             logger.error(cannot_remove_primary_shard)
             raise RemovePrimaryShardError(cannot_remove_primary_shard)
 
@@ -193,21 +194,7 @@ class MongosConnection:
         removal_info = self.client.admin.command("removeShard", shard_name)
 
         # process removal status
-        remaining_chunks = (
-            removal_info["remaining"]["chunks"] if "remaining" in removal_info else "None"
-        )
-        dbs_to_move = (
-            removal_info["dbsToMove"]
-            if "dbsToMove" in removal_info and removal_info["dbsToMove"] != []
-            else ["None"]
-        )
-        logger.info(
-            "Shard %s is draining status is: %s. Remaining chunks: %s. DBs to move: %s.",
-            shard_name,
-            removal_info["state"],
-            str(remaining_chunks),
-            ",".join(dbs_to_move),
-        )
+        self._log_removal_info(removal_info)
 
     def _is_shard_draining(self, shard_name: str) -> bool:
         """Reports if a given shard is currently in the draining state.
@@ -237,28 +224,26 @@ class MongosConnection:
         1. There can be multiple primary shards in a cluster.
         2. Until there is data written to the cluster there is effectively no primary shard.
         """
-        config_db = self.client["config"]
-        if "databases" not in config_db.list_collection_names():
+        databases_collection = self._get_databases_collection()
+        if databases_collection is None:
             logger.info("No data written to sharded cluster yet, no primary shards.")
             return None
 
-        databases_collection = config_db["databases"]
         return databases_collection.distinct("primary")
 
     def get_databases_for_primary_shard(self, primary_shard) -> Optional[List[str]]:
         """Returns a list of databases using the given shard as a primary shard."""
+        databases_collection = self._get_databases_collection()
+        if databases_collection is None:
+            return
+
+        return databases_collection.distinct("_id", {"primary": primary_shard})
+
+    def _get_databases_collection(self) -> collection.Collection:
+        """Returns the database collection if present."""
         config_db = self.client["config"]
         if "databases" not in config_db.list_collection_names():
-            logger.info("No data written to sharded cluster yet, no primary shards.")
-            return None
-
-        databases_collection = config_db["databases"]
-        return databases_collection.distinct("primary")
-
-    def get_databases_in_sharded_cluster(self):
-        """Returns the databases in the sharded cluster."""
-        config_db = self.client["config"]
-        if "databases" not in config_db.list_collection_names():
+            logger.info("No data written to sharded cluster yet.")
             return None
 
         return config_db["databases"]
@@ -289,3 +274,21 @@ class MongosConnection:
         e.g. output: shard03
         """
         return hostname.split("/")[0]
+
+    def _log_removal_info(self, removal_info, shard_name):
+        """Logs removal information for a shard removal."""
+        remaining_chunks = (
+            removal_info["remaining"]["chunks"] if "remaining" in removal_info else "None"
+        )
+        dbs_to_move = (
+            removal_info["dbsToMove"]
+            if "dbsToMove" in removal_info and removal_info["dbsToMove"] != []
+            else ["None"]
+        )
+        logger.info(
+            "Shard %s is draining status is: %s. Remaining chunks: %s. DBs to move: %s.",
+            shard_name,
+            removal_info["state"],
+            str(remaining_chunks),
+            ",".join(dbs_to_move),
+        )
