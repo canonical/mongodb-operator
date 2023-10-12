@@ -184,9 +184,9 @@ class MongosConnection:
             logger.error(cannot_remove_shard)
             raise NotReadyError(cannot_remove_shard)
 
-        if shard_name in self.get_primary_shards():
-            database_names = self.get_databases_for_primary_shard(shard_name)
-            cannot_remove_primary_shard = f"These databases: {', '.join(database_names)}, use Shard {shard_name} is a primary shard, cannot remove shard."
+        databases_using_shard_as_primary = self.get_databases_for_shard(shard_name)
+        if databases_using_shard_as_primary:
+            cannot_remove_primary_shard = f"These databases: {', '.join(databases_using_shard_as_primary)}, use Shard {shard_name} is a primary shard, cannot remove shard."
             logger.error(cannot_remove_primary_shard)
             raise RemovePrimaryShardError(cannot_remove_primary_shard)
 
@@ -216,8 +216,8 @@ class MongosConnection:
             f"Shard {shard_name} not in cluster, could not retrieve draining status"
         )
 
-    def get_primary_shards(self) -> Optional[List[str]]:
-        """Returns the primary shards of the cluster.
+    def get_databases_for_shard(self, primary_shard) -> Optional[List[str]]:
+        """Returns a list of databases using the given shard as a primary shard.
 
         In Sharded MongoDB clusters, mongos selects the primary shard when creating a new database
         by picking the shard in the cluster that has the least amount of data. This means that:
@@ -226,21 +226,15 @@ class MongosConnection:
         """
         databases_collection = self._get_databases_collection()
         if databases_collection is None:
-            logger.info("No data written to sharded cluster yet, no primary shards.")
-            return None
-
-        return databases_collection.distinct("primary")
-
-    def get_databases_for_primary_shard(self, primary_shard) -> Optional[List[str]]:
-        """Returns a list of databases using the given shard as a primary shard."""
-        databases_collection = self._get_databases_collection()
-        if databases_collection is None:
             return
 
         return databases_collection.distinct("_id", {"primary": primary_shard})
 
     def _get_databases_collection(self) -> collection.Collection:
-        """Returns the database collection if present."""
+        """Returns the databases collection if present.
+
+        The collection `databases` only gets created once data is written to the sharded cluster.
+        """
         config_db = self.client["config"]
         if "databases" not in config_db.list_collection_names():
             logger.info("No data written to sharded cluster yet.")
