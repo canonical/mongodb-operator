@@ -4,7 +4,7 @@
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, Optional, Set
+from typing import Dict, Optional, Set, List
 from urllib.parse import quote_plus
 
 from charms.mongodb.v0.mongodb import NotReadyError
@@ -183,15 +183,9 @@ class MongosConnection:
             logger.error(cannot_remove_shard)
             raise NotReadyError(cannot_remove_shard)
 
-        # TODO Follow up PR, there is no MongoDB command to retrieve primary shard, this is
-        # possible with mongosh.
-        primary_shard = self.get_primary_shard()
-        if primary_shard:
-            # TODO Future PR, support removing Primary Shard if there are no unsharded collections
-            # on it. All sharded collections should perform `MovePrimary`
-            cannot_remove_primary_shard = (
-                f"Shard {shard_name} is the primary shard, cannot remove."
-            )
+        if shard_name in self.get_primary_shards():
+            database_names = self.get_databases_for_primary_shard(shard_name)
+            cannot_remove_primary_shard = f"These databases {database_names} use Shard {shard_name} is a primary shard, cannot remove shard."
             logger.error(cannot_remove_primary_shard)
             raise RemovePrimaryShardError(cannot_remove_primary_shard)
 
@@ -235,11 +229,39 @@ class MongosConnection:
             f"Shard {shard_name} not in cluster, could not retrieve draining status"
         )
 
-    def get_primary_shard(self) -> str:
-        """Processes sc_status and identifies the primary shard."""
-        # TODO Follow up PR, implement this function there is no MongoDB command to retrieve
-        # primary shard, this is possible with mongosh.
-        return False
+    def get_primary_shards(self) -> Optional[List[str]]:
+        """Returns the primary shards of the cluster.
+
+        In Sharded MongoDB clusters, mongos selects the primary shard when creating a new database
+        by picking the shard in the cluster that has the least amount of data. This means that:
+        1. There can be multiple primary shards in a cluster.
+        2. Until there is data written to the cluster there is effectively no primary shard.
+        """
+        config_db = self.client["config"]
+        if "databases" not in config_db.list_collection_names():
+            logger.info("No data written to sharded cluster yet, no primary shards.")
+            return None
+
+        databases_collection = config_db["databases"]
+        return databases_collection.distinct("primary")
+
+    def get_databases_for_primary_shard(self, primary_shard) -> Optional[List[str]]:
+        """Returns a list of databases using the given shard as a primary shard."""
+        config_db = self.client["config"]
+        if "databases" not in config_db.list_collection_names():
+            logger.info("No data written to sharded cluster yet, no primary shards.")
+            return None
+
+        databases_collection = config_db["databases"]
+        return databases_collection.distinct("primary")
+
+    def get_databases_in_sharded_cluster(self):
+        """Returns the databases in the sharded cluster."""
+        config_db = self.client["config"]
+        if "databases" not in config_db.list_collection_names():
+            return None
+
+        return config_db["databases"]
 
     @staticmethod
     def _is_any_draining(sc_status: Dict, ignore_shard: str = "") -> bool:
