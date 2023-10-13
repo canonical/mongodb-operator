@@ -4,7 +4,7 @@
 import unittest
 from unittest import mock
 
-from charms.mongodb.v0.helpers import get_mongod_args
+from charms.mongodb.v1.helpers import get_mongod_args
 
 
 class TestMongoDBHelpers(unittest.TestCase):

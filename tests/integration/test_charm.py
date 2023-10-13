@@ -9,7 +9,7 @@ import time
 from uuid import uuid4
 
 import pytest
-from charms.mongodb.v0.helpers import MONGO_SHELL
+from charms.mongodb.v1.helpers import MONGO_SHELL
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError, ServerSelectionTimeoutError
 from pytest_operator.plugin import OpsTest

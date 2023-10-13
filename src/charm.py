@@ -13,7 +13,15 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set
 
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
-from charms.mongodb.v0.helpers import (
+from charms.mongodb.v0.mongodb import (
+    MongoDBConfiguration,
+    MongoDBConnection,
+    NotReadyError,
+    PyMongoError,
+)
+from charms.mongodb.v0.mongodb_tls import MongoDBTLS
+from charms.mongodb.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
+from charms.mongodb.v1.helpers import (
     KEY_FILE,
     TLS_EXT_CA_FILE,
     TLS_EXT_PEM_FILE,
@@ -25,19 +33,11 @@ from charms.mongodb.v0.helpers import (
     generate_password,
     get_create_user_cmd,
 )
-from charms.mongodb.v0.mongodb import (
-    MongoDBConfiguration,
-    MongoDBConnection,
-    NotReadyError,
-    PyMongoError,
-)
-from charms.mongodb.v0.mongodb_backups import S3_RELATION, MongoDBBackups
-from charms.mongodb.v0.mongodb_provider import MongoDBProvider
-from charms.mongodb.v0.mongodb_tls import MongoDBTLS
-from charms.mongodb.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
-from charms.mongodb.v0.mongos import MongosConfiguration
-from charms.mongodb.v0.shards_interface import ConfigServerRequirer, ShardingProvider
-from charms.mongodb.v0.users import (
+from charms.mongodb.v1.mongodb_backups import S3_RELATION, MongoDBBackups
+from charms.mongodb.v1.mongodb_provider import MongoDBProvider
+from charms.mongodb.v1.mongos import MongosConfiguration
+from charms.mongodb.v1.shards_interface import ConfigServerRequirer, ShardingProvider
+from charms.mongodb.v1.users import (
     CHARM_USERS,
     BackupUser,
     MongoDBUser,

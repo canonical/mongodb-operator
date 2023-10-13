@@ -16,7 +16,7 @@ import time
 from typing import Dict, List, Optional, Union
 
 from charms.data_platform_libs.v0.s3 import CredentialsChangedEvent, S3Requirer
-from charms.mongodb.v0.helpers import current_pbm_op, process_pbm_status
+from charms.mongodb.v1.helpers import current_pbm_op, process_pbm_status
 from charms.operator_libs_linux.v1 import snap
 from ops.framework import Object
 from ops.model import BlockedStatus, MaintenanceStatus, StatusBase, WaitingStatus
@@ -36,11 +36,11 @@ from config import Config
 LIBID = "18c461132b824ace91af0d7abe85f40e"
 
 # Increment this major API version when introducing breaking changes
-LIBAPI = 0
+LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 7
+LIBPATCH = 0
 
 logger = logging.getLogger(__name__)
 
