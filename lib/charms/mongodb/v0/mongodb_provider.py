@@ -25,11 +25,11 @@ from pymongo.errors import PyMongoError
 LIBID = "4067879ef7dd4261bf6c164bc29d94b1"
 
 # Increment this major API version when introducing breaking changes
-LIBAPI = 0
+LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 5
+LIBPATCH = 0
 
 logger = logging.getLogger(__name__)
 REL_NAME = "database"
