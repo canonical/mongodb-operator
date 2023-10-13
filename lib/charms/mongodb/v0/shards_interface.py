@@ -133,8 +133,9 @@ class ShardingProvider(Object):
         # adding/removing shards while a backup/restore is in progress can be disastrous
         pbm_status = self.charm.backups.get_pbm_status()
         if isinstance(pbm_status, MaintenanceStatus):
-            event.defer("Cannot add/remove shards while a backup/restore is in progress.")
-            return
+            logger.info("Cannot add/remove shards while a backup/restore is in progress.")
+            event.defer()
+            return False
 
         return True
 
