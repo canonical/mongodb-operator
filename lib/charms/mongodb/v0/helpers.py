@@ -25,11 +25,11 @@ from config import Config
 LIBID = "b9a7fe0c38d8486a9d1ce94c27d4758e"
 
 # Increment this major API version when introducing breaking changes
-LIBAPI = 0
+LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 8
+LIBPATCH = 0
 
 # path to store mongodb ketFile
 KEY_FILE = "keyFile"
