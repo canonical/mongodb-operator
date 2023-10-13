@@ -4,11 +4,11 @@
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, Optional, Set
+from typing import Dict, List, Optional, Set
 from urllib.parse import quote_plus
 
 from charms.mongodb.v0.mongodb import NotReadyError
-from pymongo import MongoClient
+from pymongo import MongoClient, collection
 
 from config import Config
 
@@ -174,6 +174,7 @@ class MongosConnection:
             RemovePrimaryShardError
         """
         sc_status = self.client.admin.command("listShards")
+
         # It is necessary to call removeShard multiple times on a shard to guarantee removal.
         # Allow re-removal of shards that are currently draining.
         if self._is_any_draining(sc_status, ignore_shard=shard_name):
@@ -183,15 +184,9 @@ class MongosConnection:
             logger.error(cannot_remove_shard)
             raise NotReadyError(cannot_remove_shard)
 
-        # TODO Follow up PR, there is no MongoDB command to retrieve primary shard, this is
-        # possible with mongosh.
-        primary_shard = self.get_primary_shard()
-        if primary_shard:
-            # TODO Future PR, support removing Primary Shard if there are no unsharded collections
-            # on it. All sharded collections should perform `MovePrimary`
-            cannot_remove_primary_shard = (
-                f"Shard {shard_name} is the primary shard, cannot remove."
-            )
+        databases_using_shard_as_primary = self.get_databases_for_shard(shard_name)
+        if databases_using_shard_as_primary:
+            cannot_remove_primary_shard = f"These databases: {', '.join(databases_using_shard_as_primary)}, use Shard {shard_name} is a primary shard, cannot remove shard."
             logger.error(cannot_remove_primary_shard)
             raise RemovePrimaryShardError(cannot_remove_primary_shard)
 
@@ -199,21 +194,7 @@ class MongosConnection:
         removal_info = self.client.admin.command("removeShard", shard_name)
 
         # process removal status
-        remaining_chunks = (
-            removal_info["remaining"]["chunks"] if "remaining" in removal_info else "None"
-        )
-        dbs_to_move = (
-            removal_info["dbsToMove"]
-            if "dbsToMove" in removal_info and removal_info["dbsToMove"] != []
-            else ["None"]
-        )
-        logger.info(
-            "Shard %s is draining status is: %s. Remaining chunks: %s. DBs to move: %s.",
-            shard_name,
-            removal_info["state"],
-            str(remaining_chunks),
-            ",".join(dbs_to_move),
-        )
+        self._log_removal_info(removal_info)
 
     def _is_shard_draining(self, shard_name: str) -> bool:
         """Reports if a given shard is currently in the draining state.
@@ -235,11 +216,31 @@ class MongosConnection:
             f"Shard {shard_name} not in cluster, could not retrieve draining status"
         )
 
-    def get_primary_shard(self) -> str:
-        """Processes sc_status and identifies the primary shard."""
-        # TODO Follow up PR, implement this function there is no MongoDB command to retrieve
-        # primary shard, this is possible with mongosh.
-        return False
+    def get_databases_for_shard(self, primary_shard) -> Optional[List[str]]:
+        """Returns a list of databases using the given shard as a primary shard.
+
+        In Sharded MongoDB clusters, mongos selects the primary shard when creating a new database
+        by picking the shard in the cluster that has the least amount of data. This means that:
+        1. There can be multiple primary shards in a cluster.
+        2. Until there is data written to the cluster there is effectively no primary shard.
+        """
+        databases_collection = self._get_databases_collection()
+        if databases_collection is None:
+            return
+
+        return databases_collection.distinct("_id", {"primary": primary_shard})
+
+    def _get_databases_collection(self) -> collection.Collection:
+        """Returns the databases collection if present.
+
+        The collection `databases` only gets created once data is written to the sharded cluster.
+        """
+        config_db = self.client["config"]
+        if "databases" not in config_db.list_collection_names():
+            logger.info("No data written to sharded cluster yet.")
+            return None
+
+        return config_db["databases"]
 
     @staticmethod
     def _is_any_draining(sc_status: Dict, ignore_shard: str = "") -> bool:
@@ -267,3 +268,21 @@ class MongosConnection:
         e.g. output: shard03
         """
         return hostname.split("/")[0]
+
+    def _log_removal_info(self, removal_info, shard_name):
+        """Logs removal information for a shard removal."""
+        remaining_chunks = (
+            removal_info["remaining"]["chunks"] if "remaining" in removal_info else "None"
+        )
+        dbs_to_move = (
+            removal_info["dbsToMove"]
+            if "dbsToMove" in removal_info and removal_info["dbsToMove"] != []
+            else ["None"]
+        )
+        logger.info(
+            "Shard %s is draining status is: %s. Remaining chunks: %s. DBs to move: %s.",
+            shard_name,
+            removal_info["state"],
+            str(remaining_chunks),
+            ",".join(dbs_to_move),
+        )
