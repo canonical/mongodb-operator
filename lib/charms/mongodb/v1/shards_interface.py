@@ -73,6 +73,10 @@ class ShardingProvider(Object):
             charm.on[self.relation_name].relation_joined, self._on_relation_joined
         )
         self.framework.observe(
+            charm.on[self.relation_name].relation_departed,
+            self.charm.check_relation_broken_or_scale_down,
+        )
+        self.framework.observe(
             charm.on[self.relation_name].relation_changed, self._on_relation_event
         )
         self.framework.observe(
@@ -106,7 +110,7 @@ class ShardingProvider(Object):
     def pass_hook_checks(self, event: EventBase) -> bool:
         """Runs the pre-hooks checks for ShardingProvider, returns True if all pass."""
         if self.charm.is_role(Config.Role.REPLICATION):
-            self.unit.status = BlockedStatus("role replication does not support sharding")
+            self.charm.unit.status = BlockedStatus("role replication does not support sharding")
             logger.error(
                 "Skipping %s. Sharding interface not supported with config role=replication.",
                 type(event),
@@ -127,7 +131,36 @@ class ShardingProvider(Object):
             event.defer()
             return False
 
+        # adding/removing shards while a backup/restore is in progress can be disastrous
+        pbm_status = self.charm.backups.get_pbm_status()
+        if isinstance(pbm_status, MaintenanceStatus):
+            logger.info("Cannot add/remove shards while a backup/restore is in progress.")
+            event.defer()
+            return False
+
         return True
+
+    def _proceed_on_broken_event(self, event) -> int:
+        """Returns relation_id if relation broken event occurred due to a removed relation."""
+        departed_relation_id = None
+
+        # Only relation_deparated events can check if scaling down
+        departed_relation_id = event.relation.id
+        if not self.charm.has_departed_run(departed_relation_id):
+            logger.info(
+                "Deferring, must wait for relation departed hook to decide if relation should be removed."
+            )
+            event.defer()
+            return
+
+        # check if were scaling down and add a log message
+        if self.charm.is_scaling_down(event.relation.id):
+            logger.info(
+                "Relation broken event occurring due to scale down, do not proceed to remove users."
+            )
+            return
+
+        return departed_relation_id
 
     def _on_relation_event(self, event):
         """Handles adding and removing of shards.
@@ -138,15 +171,11 @@ class ShardingProvider(Object):
             logger.info("Skipping relation event: hook checks did not pass")
             return
 
-        # adding/removing shards while a backup/restore is in progress can be disastrous
-        pbm_status = self.charm.backups._get_pbm_status()
-        if isinstance(pbm_status, MaintenanceStatus):
-            event.defer("Cannot add/remove shards while a backup/restore is in progress.")
-            return
-
         departed_relation_id = None
-        if type(event) is RelationBrokenEvent:
-            departed_relation_id = event.relation.id
+        if isinstance(event, RelationBrokenEvent):
+            departed_relation_id = self._proceed_on_broken_event(event)
+            if not departed_relation_id:
+                return
 
         try:
             logger.info("Adding shards not present in cluster.")
@@ -236,7 +265,7 @@ class ShardingProvider(Object):
         for relation in self.charm.model.relations[self.relation_name]:
             self._update_relation_data(relation.id, {key: value})
 
-    def _update_mongos_hosts(self):
+    def update_mongos_hosts(self):
         """Updates the hosts for mongos on the relation data."""
         if not self.charm.is_role(Config.Role.CONFIG_SERVER):
             logger.info("Skipping, ShardingProvider is only be executed by config-server")
@@ -287,6 +316,14 @@ class ShardingProvider(Object):
         """Returns the name of a shard for a specified relation."""
         return relation.app.name
 
+    def has_shards(self) -> bool:
+        """Returns True if currently related to shards."""
+        return len(self.charm.model.relations[self.relation_name]) > 0
+
+    def get_related_shards(self) -> List[str]:
+        """Returns a list of related shards."""
+        return [rel.app.name for rel in self.charm.model.relations[self.relation_name]]
+
 
 class ConfigServerRequirer(Object):
     """Manage relations between the config server and the shard, on the shard's side."""
@@ -302,25 +339,20 @@ class ConfigServerRequirer(Object):
         self.framework.observe(
             charm.on[self.relation_name].relation_changed, self._on_relation_changed
         )
+
+        self.framework.observe(
+            charm.on[self.relation_name].relation_departed,
+            self.charm.check_relation_broken_or_scale_down,
+        )
+
         self.framework.observe(
             charm.on[self.relation_name].relation_broken, self._on_relation_broken
         )
 
     def _on_relation_changed(self, event):
         """Retrieves secrets from config-server and updates them within the shard."""
-        if self.charm.is_role(Config.Role.REPLICATION):
-            self.charm.unit.status = BlockedStatus("role replication does not support sharding")
-            logger.error("sharding interface not supported with config role=replication")
-            return
-
-        if not self.charm.is_role(Config.Role.SHARD):
-            logger.info(
-                "skipping relation changed event ShardingProvider is only be executed by shards"
-            )
-            return
-
-        if not self.charm.db_initialised:
-            event.defer()
+        if not self.pass_hook_checks(event):
+            logger.info("Skipping relation joined event: hook checks re not passed")
             return
 
         # shards rely on the config server for secrets
@@ -353,28 +385,59 @@ class ConfigServerRequirer(Object):
 
         # TODO future PR, leader unit verifies shard was added to cluster (update-status hook)
 
-    def _on_relation_broken(self, event) -> None:
-        """Waits for the shard to be fully drained from the cluster."""
+    def pass_hook_checks(self, event):
+        """Runs the pre-hooks checks for ConfigServerRequirer, returns True if all pass."""
         if self.charm.is_role(Config.Role.REPLICATION):
-            self.unit.status = BlockedStatus("role replication does not support sharding")
+            self.charm.unit.status = BlockedStatus("role replication does not support sharding")
             logger.error("sharding interface not supported with config role=replication")
-            return
+            return False
 
         if not self.charm.is_role(Config.Role.SHARD):
-            logger.info(
-                "skipping relation broken event ShardingProvider is only be executed by shards"
-            )
-            return
+            logger.info("skipping %s is only be executed by shards", type(event))
+            return False
 
         if not self.charm.db_initialised:
             event.defer()
+            return False
+
+        return True
+
+    def _on_relation_broken(self, event: RelationBrokenEvent) -> None:
+        """Waits for the shard to be fully drained from the cluster."""
+        if not self.pass_hook_checks(event):
+            logger.info("Skipping relation joined event: hook checks re not passed")
+            return
+
+        # Only relation_deparated events can check if scaling down
+        departed_relation_id = event.relation.id
+        if not self.charm.has_departed_run(departed_relation_id):
+            logger.info(
+                "Deferring, must wait for relation departed hook to decide if relation should be removed."
+            )
+            event.defer()
+            return
+
+        # check if were scaling down and add a log message
+        if self.charm.is_scaling_down(event.relation.id):
+            logger.info(
+                "Relation broken event occurring due to scale down, do not proceed to remove users."
+            )
             return
 
         self.charm.unit.status = MaintenanceStatus("Draining shard from cluster")
         # mongos hosts must be retrieved via relation data, as relation.units are not available in
         # broken
         mongos_hosts = json.loads(event.relation.data[event.relation.app].get(HOSTS_KEY))
+        self.wait_for_draining(mongos_hosts)
+
+        self.charm.unit.status = ActiveStatus("Shard drained from cluster, ready for removal")
+        # TODO future PR, leader unit displays this message in update-status hook
+        # TODO future PR, check for shard drainage when removing application
+
+    def wait_for_draining(self, mongos_hosts: List[str]):
+        """Waits for shards to be drained from sharded cluster."""
         drained = False
+
         while not drained:
             try:
                 # no need to continuously check and abuse resources while shard is draining
@@ -391,6 +454,7 @@ class ConfigServerRequirer(Object):
                 logger.info(
                     "Shard %s has not been identifies for removal. Must wait for mongos cluster-admin to remove shard."
                 )
+                self.charm.unit.status = WaitingStatus("Waiting for config-server to remove shard")
             except ShardNotInClusterError:
                 logger.info(
                     "Shard to remove is not in sharded cluster. It has been successfully removed."
@@ -399,10 +463,6 @@ class ConfigServerRequirer(Object):
                     self.charm.app_peer_data["drained"] = json.dumps(True)
 
                 break
-
-        self.charm.unit.status = ActiveStatus("Shard drained from cluster, ready for removal")
-        # TODO future PR, leader unit displays this message in update-status hook
-        # TODO future PR, check for shard drainage when removing application
 
     def drained(self, mongos_hosts: Set[str], shard_name: str) -> bool:
         """Returns whether a shard has been drained from the cluster.
@@ -508,3 +568,17 @@ class ConfigServerRequirer(Object):
             relation = self.charm.model.get_relation(self.relation_name, relation_id)
             if relation:
                 relation.data[self.charm.model.app].update(data)
+
+    def has_config_server(self) -> bool:
+        """Returns True if currently related to config server."""
+        return len(self.charm.model.relations[self.relation_name]) > 0
+
+    def get_related_config_server(self) -> List[str]:
+        """Returns the related config server."""
+        return [rel.app.name for rel in self.charm.model.relations[self.relation_name]]
+
+    def get_mongos_hosts(self) -> List[str]:
+        """Returns a list of IP addresses for the mongos hosts."""
+        # only one related config-server is possible
+        config_server_relation = self.charm.model.relations[self.relation_name][0]
+        return json.loads(config_server_relation.data[config_server_relation.app].get(HOSTS_KEY))

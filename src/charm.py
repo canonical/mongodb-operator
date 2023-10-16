@@ -127,8 +127,8 @@ class MongodbOperatorCharm(CharmBase):
         self.legacy_client_relations = MongoDBLegacyProvider(self)
         self.tls = MongoDBTLS(self, Config.Relations.PEERS, substrate=Config.SUBSTRATE)
         self.backups = MongoDBBackups(self)
-        self.shard_relations = ShardingProvider(self)
-        self.config_server_relations = ConfigServerRequirer(self)
+        self.config_server = ShardingProvider(self)
+        self.shard = ConfigServerRequirer(self)
 
         # relation events for Prometheus metrics are handled in the MetricsEndpointProvider
         self._grafana_agent = COSAgentProvider(
@@ -419,7 +419,7 @@ class MongodbOperatorCharm(CharmBase):
         # app relations should be made aware of the new set of hosts
         try:
             self.client_relations.update_app_relation_data()
-            self.shard_relations._update_mongos_hosts()
+            self.config_server.update_mongos_hosts()
         except PyMongoError as e:
             logger.error("Deferring on updating app relation data since: error: %r", e)
             event.defer()
@@ -482,7 +482,7 @@ class MongodbOperatorCharm(CharmBase):
         # app relations should be made aware of the new set of hosts
         try:
             self.client_relations.update_app_relation_data()
-            self.shard_relations._update_mongos_hosts()
+            self.config_server.update_mongos_hosts()
         except PyMongoError as e:
             logger.error("Deferring on updating app relation data since: error: %r", e)
             event.defer()
@@ -503,7 +503,7 @@ class MongodbOperatorCharm(CharmBase):
         # app relations should be made aware of the new set of hosts
         try:
             self.client_relations.update_app_relation_data()
-            self.shard_relations._update_mongos_hosts()
+            self.config_server.update_mongos_hosts()
         except PyMongoError as e:
             logger.error("Deferring on updating app relation data since: error: %r", e)
             event.defer()
@@ -515,12 +515,24 @@ class MongodbOperatorCharm(CharmBase):
         If the removing unit is primary also allow it to step down and elect another unit as
         primary while it still has access to its storage.
         """
-        # if we are removing the last replica it will not be able to step down as primary and we
-        # cannot reconfigure the replica set to have 0 members. To prevent retrying for 10 minutes
-        # set this flag to True. please note that planned_units will always be >=1. When planned
-        # units is 1 that means there are no other peers expected.
-        single_node_replica_set = self.app.planned_units() == 1 and len(self._peers.units) == 0
-        if single_node_replica_set:
+        # A single replica cannot step down as primary and we cannot reconfigure the replica set to
+        # have 0 members.
+        if self._is_removing_last_replica:
+            # removing config-server from a sharded cluster can be disaterous.
+            if self.is_role(Config.Role.CONFIG_SERVER) and self.config_server.has_shards():
+                current_shards = self.config_server.get_related_shards()
+                early_removal_message = f"Cannot remove config-server, still related to shards {', '.join(current_shards)}"
+                logger.error(early_removal_message)
+                raise EarlyRemovalOfConfigServerError(early_removal_message)
+
+            # cannot drain shard after storage detached.
+            if self.is_role(Config.Role.SHARD) and self.shard.has_config_server():
+                logger.info("Wait for shard to drain before detaching storage.")
+                self.unit.status = MaintenanceStatus("Draining shard from cluster")
+                mongos_hosts = self.shard.get_mongos_hosts()
+                self.shard.wait_for_draining(mongos_hosts)
+                logger.info("Shard successfully drained storage.")
+
             return
 
         try:
@@ -570,7 +582,7 @@ class MongodbOperatorCharm(CharmBase):
         # update the units status based on it's replica set config and backup status. An error in
         # the status of MongoDB takes precedence over pbm status.
         mongodb_status = build_unit_status(self.mongodb_config, self._unit_ip(self.unit))
-        pbm_status = self.backups._get_pbm_status()
+        pbm_status = self.backups.get_pbm_status()
         if (
             not isinstance(mongodb_status, ActiveStatus)
             or not self.model.get_relation(
@@ -631,7 +643,7 @@ class MongodbOperatorCharm(CharmBase):
         # rotate password to shards
         # TODO in the future support rotating passwords of pbm across shards
         if username == OperatorUser.get_username():
-            self.shard_relations.update_credentials(
+            self.config_server.update_credentials(
                 MongoDBUser.get_password_key_name_for_user(username),
                 new_password,
             )
@@ -827,7 +839,7 @@ class MongodbOperatorCharm(CharmBase):
             return
 
         # changing the backup password while a backup/restore is in progress can be disastrous
-        pbm_status = self.backups._get_pbm_status()
+        pbm_status = self.backups.get_pbm_status()
         if isinstance(pbm_status, MaintenanceStatus):
             event.fail("Cannot change password while a backup/restore is in progress.")
             return
@@ -900,7 +912,7 @@ class MongodbOperatorCharm(CharmBase):
         # app relations should be made aware of the new set of hosts
         try:
             self.client_relations.update_app_relation_data()
-            self.shard_relations._update_mongos_hosts()
+            self.config_server.update_mongos_hosts()
         except PyMongoError as e:
             logger.error("Deferring on updating app relation data since: error: %r", e)
             event.defer()
@@ -1442,6 +1454,11 @@ class MongodbOperatorCharm(CharmBase):
         """Generates the relation departed key for a specified relation id."""
         return f"relation_{rel_id}_departed"
 
+    @property
+    def _is_removing_last_replica(self) -> bool:
+        """Returns True if the last replica (juju unit) is getting removed."""
+        return self.app.planned_units() == 0 and len(self._peers.units) == 0
+
     # END: helper functions
 
 
@@ -1451,6 +1468,10 @@ class ShardingMigrationError(Exception):
 
 class SetPasswordError(Exception):
     """Raised on failure to set password for MongoDB user."""
+
+
+class EarlyRemovalOfConfigServerError(Exception):
+    """Raised when there is an attempt to remove a config-server, while related to a shard."""
 
 
 if __name__ == "__main__":
