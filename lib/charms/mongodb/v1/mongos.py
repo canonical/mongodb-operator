@@ -175,7 +175,7 @@ class MongosConnection:
 
         Raises:
             ConfigurationError, OperationFailure, NotReadyError,
-            RemovePrimaryShardError
+            RemovePrimaryShardError, NotEnoughSpaceError
         """
         sc_status = self.client.admin.command("listShards")
 
@@ -306,9 +306,6 @@ class MongosConnection:
             NotEnoughSpaceError, ConfigurationError, OperationFailure
         """
         for database_name in databases_to_move:
-            # From MongoDB Docs: After starting movePrimary, do not perform any read or write
-            # operations against any unsharded collection in that database until the command
-            # completes.
             db_size = self.get_db_size(database_name, old_primary)
             new_shard, avail_space = self.get_shard_with_most_available_space(
                 shard_to_ignore=old_primary
@@ -321,14 +318,23 @@ class MongosConnection:
                 logger.error(no_space_on_new_primary)
                 raise NotEnoughSpaceError(no_space_on_new_primary)
 
+            # From MongoDB Docs: After starting movePrimary, do not perform any read or write
+            # operations against any unsharded collection in that database until the command
+            # completes.
             logger.info(
                 "Moving primary on %s database to new primary: %s. Do NOT write to %s database.",
                 database_name,
                 new_shard,
                 database_name,
             )
-            # This command does not return until MongoDB completes moving all data.
+            # This command does not return until MongoDB completes moving all data. This can take
+            # a long time.
             self.client.admin.command("movePrimary", database_name, to=new_shard)
+            logger.info(
+                "Successfully moved primary on %s database to new primary: %s",
+                database_name,
+                new_shard,
+            )
 
     def get_db_size(self, database_name, primary_shard) -> int:
         """Returns the size of a DB on a given shard in bytes."""
