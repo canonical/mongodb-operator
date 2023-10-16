@@ -69,10 +69,6 @@ class NotEnoughSpaceError(Exception):
     """Raised when there isn't enough space to movePrimary."""
 
 
-class RemovePrimaryShardError(Exception):
-    """Raised when there is an attempt to remove the primary shard."""
-
-
 class ShardNotInClusterError(Exception):
     """Raised when shard is not present in cluster, but it is expected to be."""
 
@@ -175,7 +171,7 @@ class MongosConnection:
 
         Raises:
             ConfigurationError, OperationFailure, NotReadyError,
-            RemovePrimaryShardError, NotEnoughSpaceError
+            NotEnoughSpaceError
         """
         sc_status = self.client.admin.command("listShards")
 
