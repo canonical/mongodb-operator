@@ -177,7 +177,7 @@ class ShardingProvider(Object):
                 return
 
         try:
-            logger.info("Adding shards not present in cluster.")
+            logger.info("Adding/Removing shards not present in cluster.")
             self.add_shards(departed_relation_id)
             self.remove_shards(departed_relation_id)
         except NotDrainedError:
@@ -390,6 +390,7 @@ class ConfigServerRequirer(Object):
             return False
 
         if not self.charm.db_initialised:
+            logger.info("Deferring %s. db is not initialised.", type(event))
             event.defer()
             return False
 
@@ -413,7 +414,7 @@ class ConfigServerRequirer(Object):
         # check if were scaling down and add a log message
         if self.charm.is_scaling_down(event.relation.id):
             logger.info(
-                "Relation broken event occurring due to scale down, do not proceed to remove users."
+                "Relation broken event occurring due to scale down, do not proceed to remove shards."
             )
             return
 
