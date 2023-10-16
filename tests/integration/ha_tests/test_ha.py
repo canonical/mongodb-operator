@@ -96,7 +96,7 @@ async def test_storage_re_use(ops_test, continuous_writes):
     app = await helpers.app_name(ops_test)
     if helpers.storage_type(ops_test, app) == "rootfs":
         pytest.skip(
-            "re-use of storage can only be used on deployments with persistent storage not on rootfs deployments"
+            "reuse of storage can only be used on deployments with persistent storage not on rootfs deployments"
         )
 
     # removing the only replica can be disastrous
@@ -501,7 +501,7 @@ async def test_full_cluster_crash(ops_test: OpsTest, continuous_writes, reset_re
     )
 
     # This test serves to verify behavior when all replicas are down at the same time that when
-    # they come back online they operate as expected. This check verifies that we meet the criterea
+    # they come back online they operate as expected. This check verifies that we meet the criteria
     # of all replicas being down at the same time.
     assert await helpers.all_db_processes_down(ops_test), "Not all units down at the same time."
 
@@ -549,7 +549,7 @@ async def test_full_cluster_restart(ops_test: OpsTest, continuous_writes, reset_
     )
 
     # This test serves to verify behavior when all replicas are down at the same time that when
-    # they come back online they operate as expected. This check verifies that we meet the criterea
+    # they come back online they operate as expected. This check verifies that we meet the criteria
     # of all replicas being down at the same time.
     assert await helpers.all_db_processes_down(ops_test), "Not all units down at the same time."
 
