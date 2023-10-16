@@ -4,7 +4,7 @@
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 from urllib.parse import quote_plus
 
 from charms.mongodb.v0.mongodb import NotReadyError
@@ -184,17 +184,25 @@ class MongosConnection:
             logger.error(cannot_remove_shard)
             raise NotReadyError(cannot_remove_shard)
 
-        databases_using_shard_as_primary = self.get_databases_for_shard(shard_name)
-        if databases_using_shard_as_primary:
-            cannot_remove_primary_shard = f"These databases: {', '.join(databases_using_shard_as_primary)}, use Shard {shard_name} is a primary shard, cannot remove shard."
-            logger.error(cannot_remove_primary_shard)
-            raise RemovePrimaryShardError(cannot_remove_primary_shard)
-
+        # remove and process removal status
         logger.info("Attempting to remove shard %s", shard_name)
         removal_info = self.client.admin.command("removeShard", shard_name)
+        self._log_removal_info(removal_info, shard_name)
 
-        # process removal status
-        self._log_removal_info(removal_info)
+        # MongoDB docs says to movePrimary after drainage
+        databases_using_shard_as_primary = self.get_databases_for_shard(shard_name)
+        if databases_using_shard_as_primary:
+            logger.info(
+                "These databases: %s use Shard %s is a primary shard, moving primary.",
+                ", ".join(databases_using_shard_as_primary),
+                shard_name,
+            )
+            self._move_primary(databases_using_shard_as_primary, old_primary=shard_name)
+
+        # MongoDB docs says to re-run removeShard after running movePrimary
+        logger.info("Attempting to remove shard %s", shard_name)
+        removal_info = self.client.admin.command("removeShard", shard_name)
+        self._log_removal_info(removal_info, shard_name)
 
     def _is_shard_draining(self, shard_name: str) -> bool:
         """Reports if a given shard is currently in the draining state.
@@ -286,3 +294,37 @@ class MongosConnection:
             str(remaining_chunks),
             ",".join(dbs_to_move),
         )
+
+    def _move_primary(self, databases_to_move: List[str], old_primary: str) -> None:
+        """Moves all the provided databases to a new primary."""
+        for database_name in databases_to_move:
+            new_shard, space = self.get_shard_with_most_available_space(
+                shard_to_ignore=old_primary
+            )
+            # This command does not return until MongoDB completes moving all data.
+            self.client.admin.command("movePrimary", database_name, to=new_shard)
+            # todo find error code for not enough room
+
+    def get_shard_with_most_available_space(self, shard_to_ignore) -> Tuple[str, int]:
+        """Returns the shard in the cluster with the most available space and the space in bytes.
+
+        Algorithm used was similar to that used in mongo in `selectShardForNewDatabase`:
+        https://github.com/mongodb/mongo/blob/6/0/src/mongo/db/s/config/sharding_catalog_manager_database_operations.cpp#L68-L91
+        """
+        candidate_shard = None
+        candidate_free_space = -1
+        config_db = self.client["config"]
+        available_storage = config_db.command("dbStats", freeStorage=1)
+
+        for shard_name, shard_storage_info in available_storage["raw"].items():
+            # shard names are of the format `shard-one/10.61.64.212:27017`
+            shard_name = shard_name.split("/")[0]
+            if shard_name == shard_to_ignore:
+                continue
+
+            current_free_space = shard_storage_info["freeStorageSize"]
+            if current_free_space > candidate_free_space:
+                candidate_shard = shard_name
+                candidate_free_space = current_free_space
+
+        return (candidate_shard, candidate_free_space)
