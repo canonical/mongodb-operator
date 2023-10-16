@@ -65,6 +65,10 @@ class MongosConfiguration:
         )
 
 
+class NotEnoughSpaceError(Exception):
+    """Raised when there isn't enough space to movePrimary"""
+
+
 class RemovePrimaryShardError(Exception):
     """Raised when there is an attempt to remove the primary shard."""
 
@@ -296,14 +300,52 @@ class MongosConnection:
         )
 
     def _move_primary(self, databases_to_move: List[str], old_primary: str) -> None:
-        """Moves all the provided databases to a new primary."""
+        """Moves all the provided databases to a new primary.
+
+        Raises:
+            NotEnoughSpaceError, ConfigurationError, OperationFailure
+        """
         for database_name in databases_to_move:
-            new_shard, space = self.get_shard_with_most_available_space(
+            # From MongoDB Docs: After starting movePrimary, do not perform any read or write
+            # operations against any unsharded collection in that database until the command
+            # completes.
+            db_size = self.get_db_size(database_name, old_primary)
+            new_shard, avail_space = self.get_shard_with_most_available_space(
                 shard_to_ignore=old_primary
+            )
+            if db_size > avail_space:
+                no_space_on_new_primary = (
+                    f"Cannot move primary for database: {database_name}, new shard: {new_shard}",
+                    f"does not have enough space. {db_size} > {avail_space}",
+                )
+                logger.error(no_space_on_new_primary)
+                raise NotEnoughSpaceError(no_space_on_new_primary)
+
+            logger.info(
+                "Moving primary on %s database to new primary: %s. Do NOT write to %s database.",
+                database_name,
+                new_shard,
+                database_name,
             )
             # This command does not return until MongoDB completes moving all data.
             self.client.admin.command("movePrimary", database_name, to=new_shard)
-            # todo find error code for not enough room
+
+    def get_db_size(self, database_name, primary_shard) -> int:
+        """Returns the size of a DB on a given shard in bytes."""
+        database = self.client[database_name]
+        db_stats = database.command("dbStats", freeStorage=1)
+
+        # sharded databases are spread across multiple shards, find the amount of storage used on
+        # the primary shard
+        for shard_name, shard_storage_info in db_stats["raw"].items():
+            # shard names are of the format `shard-one/10.61.64.212:27017`
+            shard_name = shard_name.split("/")[0]
+            if shard_name != primary_shard:
+                continue
+
+            return shard_storage_info["storageSize"]
+
+        return 0
 
     def get_shard_with_most_available_space(self, shard_to_ignore) -> Tuple[str, int]:
         """Returns the shard in the cluster with the most available space and the space in bytes.
