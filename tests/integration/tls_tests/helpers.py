@@ -4,7 +4,7 @@
 from datetime import datetime
 
 import ops
-from charms.mongodb.v0.helpers import MONGO_SHELL
+from charms.mongodb.v1.helpers import MONGO_SHELL
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_attempt, wait_exponential
 

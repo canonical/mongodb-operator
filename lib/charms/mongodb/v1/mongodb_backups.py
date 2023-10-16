@@ -16,7 +16,7 @@ import time
 from typing import Dict, List, Optional, Union
 
 from charms.data_platform_libs.v0.s3 import CredentialsChangedEvent, S3Requirer
-from charms.mongodb.v0.helpers import current_pbm_op, process_pbm_status
+from charms.mongodb.v1.helpers import current_pbm_op, process_pbm_status
 from charms.operator_libs_linux.v1 import snap
 from ops.framework import Object
 from ops.model import BlockedStatus, MaintenanceStatus, StatusBase, WaitingStatus

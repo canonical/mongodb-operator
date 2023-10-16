@@ -11,20 +11,20 @@ import logging
 import time
 from typing import List, Optional, Set
 
-from charms.mongodb.v0.helpers import KEY_FILE
 from charms.mongodb.v0.mongodb import (
     MongoDBConnection,
     NotReadyError,
     OperationFailure,
     PyMongoError,
 )
-from charms.mongodb.v0.mongos import (
+from charms.mongodb.v1.helpers import KEY_FILE
+from charms.mongodb.v1.mongos import (
     MongosConnection,
     RemovePrimaryShardError,
     ShardNotInClusterError,
     ShardNotPlannedForRemovalError,
 )
-from charms.mongodb.v0.users import MongoDBUser, OperatorUser
+from charms.mongodb.v1.users import MongoDBUser, OperatorUser
 from ops.charm import CharmBase, EventBase, RelationBrokenEvent
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
