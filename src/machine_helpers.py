@@ -3,8 +3,8 @@
 # See LICENSE file for licensing details.
 import logging
 
-from charms.mongodb.v0.helpers import get_mongod_args, get_mongos_args
 from charms.mongodb.v0.mongodb import MongoDBConfiguration
+from charms.mongodb.v1.helpers import get_mongod_args, get_mongos_args
 
 from config import Config
 

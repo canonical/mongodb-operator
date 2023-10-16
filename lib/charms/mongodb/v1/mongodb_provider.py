@@ -14,8 +14,8 @@ from collections import namedtuple
 from typing import Optional, Set
 
 from charms.data_platform_libs.v0.data_interfaces import DatabaseProvides
-from charms.mongodb.v0.helpers import generate_password
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
+from charms.mongodb.v1.helpers import generate_password
 from ops.charm import CharmBase, RelationBrokenEvent, RelationChangedEvent
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, Relation
@@ -25,11 +25,11 @@ from pymongo.errors import PyMongoError
 LIBID = "4067879ef7dd4261bf6c164bc29d94b1"
 
 # Increment this major API version when introducing breaking changes
-LIBAPI = 0
+LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 5
+LIBPATCH = 0
 
 logger = logging.getLogger(__name__)
 REL_NAME = "database"

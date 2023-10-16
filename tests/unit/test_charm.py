@@ -320,7 +320,7 @@ class TestCharm(unittest.TestCase):
             self.assertTrue(isinstance(self.harness.charm.unit.status, WaitingStatus))
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charms.mongodb.v0.helpers.MongoDBConnection")
+    @patch("charms.mongodb.v1.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBBackups.get_pbm_status")
     @patch("charm.build_unit_status")
@@ -355,7 +355,7 @@ class TestCharm(unittest.TestCase):
                 self.assertEqual(self.harness.charm.unit.status, mongodb_status)
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charms.mongodb.v0.helpers.MongoDBConnection")
+    @patch("charms.mongodb.v1.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBBackups.get_pbm_status")
     @patch("charm.build_unit_status")
@@ -385,7 +385,7 @@ class TestCharm(unittest.TestCase):
                 self.assertEqual(self.harness.charm.unit.status, pbm_status)
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charms.mongodb.v0.helpers.MongoDBConnection")
+    @patch("charms.mongodb.v1.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBBackups.get_pbm_status")
     @patch("charm.build_unit_status")
@@ -407,7 +407,7 @@ class TestCharm(unittest.TestCase):
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus("mongodb"))
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charms.mongodb.v0.helpers.MongoDBConnection")
+    @patch("charms.mongodb.v1.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBBackups.get_pbm_status")
     @patch("charm.build_unit_status")
@@ -427,7 +427,7 @@ class TestCharm(unittest.TestCase):
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus("mongodb"))
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charms.mongodb.v0.helpers.MongoDBConnection")
+    @patch("charms.mongodb.v1.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBBackups.get_pbm_status")
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
@@ -447,7 +447,7 @@ class TestCharm(unittest.TestCase):
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus("Primary"))
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charms.mongodb.v0.helpers.MongoDBConnection")
+    @patch("charms.mongodb.v1.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBBackups.get_pbm_status")
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
@@ -467,7 +467,7 @@ class TestCharm(unittest.TestCase):
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus(""))
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charms.mongodb.v0.helpers.MongoDBConnection")
+    @patch("charms.mongodb.v1.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBBackups.get_pbm_status")
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
