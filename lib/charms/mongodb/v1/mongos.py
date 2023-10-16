@@ -66,7 +66,7 @@ class MongosConfiguration:
 
 
 class NotEnoughSpaceError(Exception):
-    """Raised when there isn't enough space to movePrimary"""
+    """Raised when there isn't enough space to movePrimary."""
 
 
 class RemovePrimaryShardError(Exception):
