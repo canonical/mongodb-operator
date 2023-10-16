@@ -177,10 +177,9 @@ class MongosConnection:
             ConfigurationError, OperationFailure, NotReadyError,
             NotEnoughSpaceError
         """
-        sc_status = self.client.admin.command("listShards")
-
         # It is necessary to call removeShard multiple times on a shard to guarantee removal.
         # Allow re-removal of shards that are currently draining.
+        sc_status = self.client.admin.command("listShards")
         if self._is_any_draining(sc_status, ignore_shard=shard_name):
             cannot_remove_shard = (
                 f"cannot remove shard {shard_name} from cluster, another shard is draining"
@@ -192,24 +191,23 @@ class MongosConnection:
         logger.info("Attempting to remove shard %s", shard_name)
         removal_info = self.client.admin.command("removeShard", shard_name)
         self._log_removal_info(removal_info, shard_name)
-
-        # MongoDB docs says to movePrimary after all chunks have been drained from the shard.
-        databases_using_shard_as_primary = self.get_databases_for_shard(shard_name)
         remaining_chunks = self._retrieve_remaining_chunks(removal_info)
-        if remaining_chunks and databases_using_shard_as_primary:
-            logger.info(
-                "Waiting for all chunks to be drained from %s, before moving primary.", shard_name
-            )
+        if remaining_chunks:
+            logger.info("Waiting for all chunks to be drained from %s.", shard_name)
             raise NotDrainedError()
 
+        # MongoDB docs says to movePrimary only after all chunks have been drained from the shard.
         logger.info("All chunks drained from shard: %s", shard_name)
-        if databases_using_shard_as_primary:
-            logger.info(
-                "These databases: %s use Shard %s is a primary shard, moving primary.",
-                ", ".join(databases_using_shard_as_primary),
-                shard_name,
-            )
-            self._move_primary(databases_using_shard_as_primary, old_primary=shard_name)
+        databases_using_shard_as_primary = self.get_databases_for_shard(shard_name)
+        if not databases_using_shard_as_primary:
+            return
+
+        logger.info(
+            "These databases: %s use Shard %s is a primary shard, moving primary.",
+            ", ".join(databases_using_shard_as_primary),
+            shard_name,
+        )
+        self._move_primary(databases_using_shard_as_primary, old_primary=shard_name)
 
         # MongoDB docs says to re-run removeShard after running movePrimary
         logger.info("removing shard: %s, after moving primary", shard_name)
@@ -349,7 +347,7 @@ class MongosConnection:
     def get_db_size(self, database_name, primary_shard) -> int:
         """Returns the size of a DB on a given shard in bytes."""
         database = self.client[database_name]
-        db_stats = database.command("dbStats", freeStorage=1)
+        db_stats = database.command("dbStats")
 
         # sharded databases are spread across multiple shards, find the amount of storage used on
         # the primary shard

@@ -243,12 +243,6 @@ class ShardingProvider(Object):
                 self.charm.unit.status = MaintenanceStatus(f"Draining shard {shard}")
                 logger.info("Attempting to removing shard: %s", shard)
                 mongo.remove_shard(shard)
-                logger.info("Shard: %s, is now draining", shard)
-
-                if shard in mongo.get_shard_members():
-                    shard_draining_message = f"shard {shard} still exists in cluster after removal, it is still draining."
-                    logger.info(shard_draining_message)
-                    raise NotDrainedError(shard_draining_message)
 
     def update_credentials(self, key: str, value: str) -> None:
         """Sends new credentials, for a key value pair across all shards."""
