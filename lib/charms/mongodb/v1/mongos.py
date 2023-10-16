@@ -77,6 +77,10 @@ class ShardNotPlannedForRemovalError(Exception):
     """Raised when it is expected that a shard is planned for removal, but it is not."""
 
 
+class NotDrainedError(Exception):
+    """Raised when a shard is still being drained."""
+
+
 class MongosConnection:
     """In this class we create connection object to Mongos.
 
@@ -189,8 +193,16 @@ class MongosConnection:
         removal_info = self.client.admin.command("removeShard", shard_name)
         self._log_removal_info(removal_info, shard_name)
 
-        # MongoDB docs says to movePrimary after drainage
+        # MongoDB docs says to movePrimary after all chunks have been drained from the shard.
         databases_using_shard_as_primary = self.get_databases_for_shard(shard_name)
+        remaining_chunks = self._retrieve_remaining_chunks(removal_info)
+        if remaining_chunks and databases_using_shard_as_primary:
+            logger.info(
+                "Waiting for all chunks to be drained from %s, before moving primary.", shard_name
+            )
+            raise NotDrainedError()
+
+        logger.info("All chunks drained from shard: %s", shard_name)
         if databases_using_shard_as_primary:
             logger.info(
                 "These databases: %s use Shard %s is a primary shard, moving primary.",
@@ -200,7 +212,7 @@ class MongosConnection:
             self._move_primary(databases_using_shard_as_primary, old_primary=shard_name)
 
         # MongoDB docs says to re-run removeShard after running movePrimary
-        logger.info("Attempting to remove shard %s", shard_name)
+        logger.info("removing shard: %s, after moving primary", shard_name)
         removal_info = self.client.admin.command("removeShard", shard_name)
         self._log_removal_info(removal_info, shard_name)
 
@@ -279,9 +291,7 @@ class MongosConnection:
 
     def _log_removal_info(self, removal_info, shard_name):
         """Logs removal information for a shard removal."""
-        remaining_chunks = (
-            removal_info["remaining"]["chunks"] if "remaining" in removal_info else "None"
-        )
+        remaining_chunks = self._retrieve_remaining_chunks(removal_info)
         dbs_to_move = (
             removal_info["dbsToMove"]
             if "dbsToMove" in removal_info and removal_info["dbsToMove"] != []
@@ -294,6 +304,10 @@ class MongosConnection:
             str(remaining_chunks),
             ",".join(dbs_to_move),
         )
+
+    def _retrieve_remaining_chunks(self, removal_info) -> int:
+        """Parses the remaining chunks to remove from removeShard command."""
+        return removal_info["remaining"]["chunks"] if "remaining" in removal_info else 0
 
     def _move_primary(self, databases_to_move: List[str], old_primary: str) -> None:
         """Moves all the provided databases to a new primary.
@@ -357,8 +371,7 @@ class MongosConnection:
         """
         candidate_shard = None
         candidate_free_space = -1
-        config_db = self.client["config"]
-        available_storage = config_db.command("dbStats", freeStorage=1)
+        available_storage = self.client.admin.command("dbStats", freeStorage=1)
 
         for shard_name, shard_storage_info in available_storage["raw"].items():
             # shard names are of the format `shard-one/10.61.64.212:27017`

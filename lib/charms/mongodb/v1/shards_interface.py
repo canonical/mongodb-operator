@@ -20,6 +20,7 @@ from charms.mongodb.v0.mongodb import (
 from charms.mongodb.v1.helpers import KEY_FILE
 from charms.mongodb.v1.mongos import (
     MongosConnection,
+    NotDrainedError,
     ShardNotInClusterError,
     ShardNotPlannedForRemovalError,
 )
@@ -51,10 +52,6 @@ FORBIDDEN_REMOVAL_ERR_CODE = 20
 
 class RemoveLastShardError(Exception):
     """Raised when there is an attempt to remove the last shard in the cluster."""
-
-
-class NotDrainedError(Exception):
-    """Raised when a shard is still in the cluster after removal."""
 
 
 class ShardingProvider(Object):
