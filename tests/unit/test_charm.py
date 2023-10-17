@@ -1,13 +1,17 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import logging
+import re
 import unittest
 from unittest import mock
-from unittest.mock import call, patch
+from unittest.mock import MagicMock, call, patch
 
+import pytest
 from charms.operator_libs_linux.v1 import snap
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from ops.testing import Harness
+from parameterized import parameterized
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
 from tenacity import stop_after_attempt
 
@@ -37,6 +41,15 @@ class TestCharm(unittest.TestCase):
         self.addCleanup(self.harness.cleanup)
         self.harness.begin()
         self.peer_rel_id = self.harness.add_relation("database-peers", "database-peers")
+
+    @pytest.fixture
+    def use_caplog(self, caplog):
+        self._caplog = caplog
+
+    def _setup_secrets(self):
+        self.harness.set_leader(True)
+        self.harness.charm._generate_secrets()
+        self.harness.set_leader(False)
 
     @patch("charm.MongodbOperatorCharm.get_secret")
     @patch_network_get(private_address="1.1.1.1")
@@ -696,6 +709,231 @@ class TestCharm(unittest.TestCase):
             # verify passwords are not updated.
             self.assertEqual(current_password, original_password)
             action_event.fail.assert_called()
+
+    def test_get_password(self):
+        self._setup_secrets()
+        assert isinstance(self.harness.charm.get_secret("app", "monitor-password"), str)
+        self.harness.charm.get_secret("app", "non-existing-secret") is None
+
+        self.harness.charm.set_secret("unit", "somekey", "bla")
+        assert isinstance(self.harness.charm.get_secret("unit", "somekey"), str)
+        self.harness.charm.get_secret("unit", "non-existing-secret") is None
+
+    def test_set_reset_existing_password_app(self):
+        """NOTE: currently ops.testing seems to allow for non-leader to set secrets too!"""
+        self._setup_secrets()
+
+        # Getting current password
+        self.harness.charm.set_secret("app", "monitor-password", "bla")
+        assert self.harness.charm.get_secret("app", "monitor-password") == "bla"
+
+        self.harness.charm.set_secret("app", "monitor-password", "blablabla")
+        assert self.harness.charm.get_secret("app", "monitor-password") == "blablabla"
+
+    @parameterized.expand([("app"), ("unit")])
+    def test_set_secret_returning_secret_id(self, scope):
+        secret_id = self.harness.charm.set_secret(scope, "somekey", "bla")
+        assert re.match(f"mongodb.{scope}", secret_id)
+
+    @parameterized.expand([("app"), ("unit")])
+    def test_set_reset_new_secret(self, scope):
+        """NOTE: currently ops.testing seems to allow for non-leader to set secrets too!"""
+        # Getting current password
+        self.harness.charm.set_secret(scope, "new-secret", "bla")
+        assert self.harness.charm.get_secret(scope, "new-secret") == "bla"
+
+        # Reset new secret
+        self.harness.charm.set_secret(scope, "new-secret", "blablabla")
+        assert self.harness.charm.get_secret(scope, "new-secret") == "blablabla"
+
+        # Set another new secret
+        self.harness.charm.set_secret(scope, "new-secret2", "blablabla")
+        assert self.harness.charm.get_secret(scope, "new-secret2") == "blablabla"
+
+    @parameterized.expand([("app"), ("unit")])
+    def test_invalid_secret(self, scope):
+        with self.assertRaises(TypeError):
+            self.harness.charm.set_secret("unit", "somekey", 1)
+
+        self.harness.charm.set_secret("unit", "somekey", "")
+        assert self.harness.charm.get_secret(scope, "somekey") is None
+
+    @pytest.mark.usefixtures("use_caplog")
+    def test_delete_password(self):
+        """NOTE: currently ops.testing seems to allow for non-leader to remove secrets too!"""
+        self._setup_secrets()
+
+        assert self.harness.charm.get_secret("app", "monitor-password")
+        self.harness.charm.remove_secret("app", "monitor-password")
+        assert self.harness.charm.get_secret("app", "monitor-password") is None
+
+        assert self.harness.charm.set_secret("unit", "somekey", "somesecret")
+        self.harness.charm.remove_secret("unit", "somekey")
+        assert self.harness.charm.get_secret("unit", "somekey") is None
+
+        with self._caplog.at_level(logging.ERROR):
+            self.harness.charm.remove_secret("app", "monitor-password")
+            assert (
+                "Non-existing secret app:monitor-password was attempted to be removed."
+                in self._caplog.text
+            )
+
+            self.harness.charm.remove_secret("unit", "somekey")
+            assert (
+                "Non-existing secret unit:somekey was attempted to be removed."
+                in self._caplog.text
+            )
+
+            self.harness.charm.remove_secret("app", "non-existing-secret")
+            assert (
+                "Non-existing secret app:non-existing-secret was attempted to be removed."
+                in self._caplog.text
+            )
+
+            self.harness.charm.remove_secret("unit", "non-existing-secret")
+            assert (
+                "Non-existing secret unit:non-existing-secret was attempted to be removed."
+                in self._caplog.text
+            )
+
+    @parameterized.expand([("app"), ("unit")])
+    @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
+    def test_on_secret_changed(self, scope, connect_exporter):
+        """NOTE: currently ops.testing seems to allow for non-leader to set secrets too!"""
+        secret_label = self.harness.charm.set_secret(scope, "new-secret", "bla")
+        secret = self.harness.charm.model.get_secret(label=secret_label)
+
+        event = mock.Mock()
+        event.secret = secret
+        secret_label = self.harness.charm._on_secret_changed(event)
+        connect_exporter.assert_called()
+
+    @parameterized.expand([("app"), ("unit")])
+    @pytest.mark.usefixtures("use_caplog")
+    @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
+    def test_on_other_secret_changed(self, scope, connect_exporter):
+        """NOTE: currently ops.testing seems to allow for non-leader to set secrets too!"""
+        # "Hack": creating a secret outside of the normal MongodbOperatorCharm.set_secret workflow
+        scope_obj = self.harness.charm._scope_obj(scope)
+        secret = scope_obj.add_secret({"key": "value"})
+
+        event = mock.Mock()
+        event.secret = secret
+
+        with self._caplog.at_level(logging.DEBUG):
+            self.harness.charm._on_secret_changed(event)
+            assert f"Secret {secret.id} changed, but it's unknown" in self._caplog.text
+
+        connect_exporter.assert_not_called()
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongoDBConnection")
+    @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
+    def test_connect_to_mongo_exporter_on_set_password(self, connect_exporter, connection):
+        """Test _connect_mongodb_exporter is called when the password is set for 'montior' user."""
+        # container = self.harness.model.unit.get_container("mongod")
+        # self.harness.set_can_connect(container, True)
+        # self.harness.charm.on.mongod_pebble_ready.emit(container)
+        self.harness.set_leader(True)
+
+        action_event = mock.Mock()
+        action_event.params = {"username": "monitor"}
+        self.harness.charm._on_set_password(action_event)
+        connect_exporter.assert_called()
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongoDBBackups.get_pbm_status")
+    @patch("charm.MongodbOperatorCharm.has_backup_service")
+    @patch("charm.MongoDBConnection")
+    @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
+    def test_event_set_password_secrets(
+        self, connect_exporter, connection, has_backup_service, get_pbm_status
+    ):
+        """Test _connect_mongodb_exporter is called when the password is set for 'montior' user.
+
+        Furthermore: in Juju 3.x we want to use secrets
+        """
+        pw = "bla"
+        has_backup_service.return_value = True
+        get_pbm_status.return_value = ActiveStatus()
+        self.harness.set_leader(True)
+
+        action_event = mock.Mock()
+        action_event.set_results = MagicMock()
+        action_event.params = {"username": "monitor", "password": pw}
+        self.harness.charm._on_set_password(action_event)
+        connect_exporter.assert_called()
+
+        action_event.set_results.assert_called()
+        args_pw_set = action_event.set_results.call_args.args[0]
+        assert "secret-id" in args_pw_set
+
+        action_event.params = {"username": "monitor"}
+        self.harness.charm._on_get_password(action_event)
+        args_pw = action_event.set_results.call_args.args[0]
+        assert "password" in args_pw
+        assert args_pw["password"] == pw
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongoDBBackups.get_pbm_status")
+    @patch("charm.MongodbOperatorCharm.has_backup_service")
+    @patch("charm.MongoDBConnection")
+    @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
+    def test_event_auto_reset_password_secrets_when_no_pw_value_shipped(
+        self, connect_exporter, connection, has_backup_service, get_pbm_status
+    ):
+        """Test _connect_mongodb_exporter is called when the password is set for 'montior' user.
+
+        Furthermore: in Juju 3.x we want to use secrets
+        """
+        has_backup_service.return_value = True
+        get_pbm_status.return_value = ActiveStatus()
+        self._setup_secrets()
+        self.harness.set_leader(True)
+
+        action_event = mock.Mock()
+        action_event.set_results = MagicMock()
+
+        # Getting current password
+        action_event.params = {"username": "monitor"}
+        self.harness.charm._on_get_password(action_event)
+        args_pw = action_event.set_results.call_args.args[0]
+        assert "password" in args_pw
+        pw1 = args_pw["password"]
+
+        # No password value was shipped
+        action_event.params = {"username": "monitor"}
+        self.harness.charm._on_set_password(action_event)
+        connect_exporter.assert_called()
+
+        # New password was generated
+        action_event.params = {"username": "monitor"}
+        self.harness.charm._on_get_password(action_event)
+        args_pw = action_event.set_results.call_args.args[0]
+        assert "password" in args_pw
+        pw2 = args_pw["password"]
+
+        # a new password was created
+        assert pw1 != pw2
+
+    @patch("charm.MongoDBConnection")
+    @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
+    def test_event_any_unit_can_get_password_secrets(self, connect_exporter, connection):
+        """Test _connect_mongodb_exporter is called when the password is set for 'montior' user.
+
+        Furthermore: in Juju 3.x we want to use secrets
+        """
+        self._setup_secrets()
+
+        action_event = mock.Mock()
+        action_event.set_results = MagicMock()
+
+        # Getting current password
+        action_event.params = {"username": "monitor"}
+        self.harness.charm._on_get_password(action_event)
+        args_pw = action_event.set_results.call_args.args[0]
+        assert "password" in args_pw
+        assert args_pw["password"]
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBBackups.get_pbm_status")
