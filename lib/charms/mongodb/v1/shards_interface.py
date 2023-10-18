@@ -480,7 +480,7 @@ class ConfigServerRequirer(Object):
             return None
 
         if not self.charm.db_initialised:
-            logger.info("No status for shard to report, waiting for db to be initalised.")
+            logger.info("No status for shard to report, waiting for db to be initialised.")
             return None
 
         if self.model.get_relation(LEGACY_REL_NAME):
@@ -620,8 +620,8 @@ class ConfigServerRequirer(Object):
         self.charm.remote_mongos_config(set(mongos_hosts))
         config = self.charm.remote_mongos_config(set(mongos_hosts))
 
-        # use a URI that is not dependent on the operator password, as we are not gauranteed that
-        # the shard has recieved the password yet.
+        # use a URI that is not dependent on the operator password, as we are not guaranteed that
+        # the shard has received the password yet.
         uri = f"mongodb://{','.join(mongos_hosts)}"
         with MongosConnection(config, uri) as mongo:
             return mongo.is_ready

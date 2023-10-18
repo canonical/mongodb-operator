@@ -32,6 +32,7 @@ from charms.mongodb.v1.helpers import (
     generate_keyfile,
     generate_password,
     get_create_user_cmd,
+    prioritise_statuses,
 )
 from charms.mongodb.v1.mongodb_backups import S3_RELATION, MongoDBBackups
 from charms.mongodb.v1.mongodb_provider import MongoDBProvider
@@ -574,20 +575,25 @@ class MongodbOperatorCharm(CharmBase):
         if self.unit.is_leader():
             self._handle_reconfigure(event)
 
-        # update the units status based on it's replica set config and backup status. An error in
-        # the status of MongoDB takes precedence over pbm status.
+        # retrieve statuses of different services running on Charmed MongoDB
         mongodb_status = build_unit_status(self.mongodb_config, self._unit_ip(self.unit))
-        pbm_status = self.backups.get_pbm_status()
-        if (
-            not isinstance(mongodb_status, ActiveStatus)
-            or not self.model.get_relation(
-                S3_RELATION
-            )  # if s3 relation doesn't exist only report MongoDB status
-            or isinstance(pbm_status, ActiveStatus)  # pbm is ready then report the MongoDB status
-        ):
-            self.unit.status = mongodb_status
-        else:
-            self.unit.status = pbm_status
+        shard_status = self.shard.get_shard_status() if self.is_role(Config.Role.SHARD) else None
+        config_server_status = (
+            self.config_server.get_config_server_status()
+            if self.is_role(Config.Role.CONFIG_SERVER)
+            else None
+        )
+        pbm_status = (
+            self.backups.get_pbm_status() if self.model.get_relation(S3_RELATION) else None
+        )
+
+        # prioritize the statuses of the different services running on Charmed MongoDB
+        self.unit.status = prioritise_statuses(
+            mongodb_status,
+            pbm_status,
+            shard_status,
+            config_server_status,
+        )
 
     def _on_get_primary_action(self, event: ActionEvent):
         event.set_results({"replica-set-primary": self._primary})
