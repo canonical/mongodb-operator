@@ -9,6 +9,7 @@ from urllib.parse import quote_plus
 
 from charms.mongodb.v0.mongodb import NotReadyError
 from pymongo import MongoClient, collection
+from tenacity import Retrying, stop_after_delay, wait_fixed
 
 from config import Config
 
@@ -79,6 +80,10 @@ class ShardNotPlannedForRemovalError(Exception):
 
 class NotDrainedError(Exception):
     """Raised when a shard is still being drained."""
+
+
+class BalancerNotEnabledError(Exception):
+    """Raised when balancer process is not enabled."""
 
 
 class MongosConnection:
@@ -170,13 +175,17 @@ class MongosConnection:
         logger.info("Adding shard %s", shard_name)
         self.client.admin.command("addShard", shard_url)
 
-    def remove_shard(self, shard_name: str) -> None:
-        """Removes shard from the cluster.
+    def pre_remove_checks(self, shard_name):
+        """Performs a series of checks for removing a shard from the cluster.
 
-        Raises:
-            ConfigurationError, OperationFailure, NotReadyError,
-            NotEnoughSpaceError
+        Raises
+            ConfigurationError, OperationFailure, NotReadyError, ShardNotInClusterError,
+            BalencerNotEnabledError
         """
+        if shard_name not in self.get_shard_members():
+            logger.info("Shard to remove is not in cluster.")
+            raise ShardNotInClusterError(f"Shard {shard_name} could not be removed")
+
         # It is necessary to call removeShard multiple times on a shard to guarantee removal.
         # Allow re-removal of shards that are currently draining.
         sc_status = self.client.admin.command("listShards")
@@ -187,7 +196,31 @@ class MongosConnection:
             logger.error(cannot_remove_shard)
             raise NotReadyError(cannot_remove_shard)
 
-        # remove and process removal status
+        # check if enabled sh.getBalancerState()
+        balancer_state = self.client.admin.command("balancerStatus")
+        if balancer_state["mode"] != "off":
+            logger.info("Balancer is enabled, ready to remove shard.")
+            return
+
+        # starting the balancer doesn't guarantee that is is running, wait until it starts up.
+        logger.info("Balancer process is not running, enabling it.")
+        self.client.admin.command("balancerStart")
+        for attempt in Retrying(stop=stop_after_delay(60), wait=wait_fixed(3), reraise=True):
+            with attempt:
+                balancer_state = self.client.admin.command("balancerStatus")
+                if balancer_state["mode"] == "off":
+                    raise BalancerNotEnabledError
+
+    def remove_shard(self, shard_name: str) -> None:
+        """Removes shard from the cluster.
+
+        Raises:
+            ConfigurationError, OperationFailure, NotReadyError, NotEnoughSpaceError,
+            ShardNotInClusterError, BalencerNotEnabledError
+        """
+        self.pre_remove_checks(shard_name)
+
+        # remove shard, process removal status, & check if fully removed
         logger.info("Attempting to remove shard %s", shard_name)
         removal_info = self.client.admin.command("removeShard", shard_name)
         self._log_removal_info(removal_info, shard_name)
@@ -200,14 +233,12 @@ class MongosConnection:
         logger.info("All chunks drained from shard: %s", shard_name)
         databases_using_shard_as_primary = self.get_databases_for_shard(shard_name)
         if not databases_using_shard_as_primary:
-            return
-
-        logger.info(
-            "These databases: %s use Shard %s is a primary shard, moving primary.",
-            ", ".join(databases_using_shard_as_primary),
-            shard_name,
-        )
-        self._move_primary(databases_using_shard_as_primary, old_primary=shard_name)
+            logger.info(
+                "These databases: %s use Shard %s is a primary shard, moving primary.",
+                ", ".join(databases_using_shard_as_primary),
+                shard_name,
+            )
+            self._move_primary(databases_using_shard_as_primary, old_primary=shard_name)
 
         # MongoDB docs says to re-run removeShard after running movePrimary
         logger.info("removing shard: %s, after moving primary", shard_name)

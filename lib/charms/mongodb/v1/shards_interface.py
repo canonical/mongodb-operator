@@ -19,6 +19,7 @@ from charms.mongodb.v0.mongodb import (
 )
 from charms.mongodb.v1.helpers import KEY_FILE
 from charms.mongodb.v1.mongos import (
+    BalancerNotEnabledError,
     MongosConnection,
     NotDrainedError,
     ShardNotInClusterError,
@@ -196,6 +197,10 @@ class ShardingProvider(Object):
 
             logger.error("Deferring _on_relation_event for shards interface since: error=%r", e)
             event.defer()
+        except BalancerNotEnabledError:
+            logger.error("Deferring on _relation_broken_event, balancer is not enabled.")
+            event.defer()
+            return
         except (PyMongoError, NotReadyError) as e:
             logger.error("Deferring _on_relation_event for shards interface since: error=%r", e)
             event.defer()
@@ -240,9 +245,14 @@ class ShardingProvider(Object):
             relation_shards = self._get_shards_from_relations(departed_shard_id)
 
             for shard in cluster_shards - relation_shards:
-                self.charm.unit.status = MaintenanceStatus(f"Draining shard {shard}")
-                logger.info("Attempting to removing shard: %s", shard)
-                mongo.remove_shard(shard)
+                try:
+                    self.charm.unit.status = MaintenanceStatus(f"Draining shard {shard}")
+                    logger.info("Attempting to removing shard: %s", shard)
+                    mongo.remove_shard(shard)
+                except ShardNotInClusterError:
+                    logger.info(
+                        "Shard to remove is not in sharded cluster. It has been successfully removed."
+                    )
 
     def update_credentials(self, key: str, value: str) -> None:
         """Sends new credentials, for a key value pair across all shards."""
