@@ -21,7 +21,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 0
+LIBPATCH = 1
 
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
@@ -232,7 +232,7 @@ class MongosConnection:
         # MongoDB docs says to movePrimary only after all chunks have been drained from the shard.
         logger.info("All chunks drained from shard: %s", shard_name)
         databases_using_shard_as_primary = self.get_databases_for_shard(shard_name)
-        if not databases_using_shard_as_primary:
+        if databases_using_shard_as_primary:
             logger.info(
                 "These databases: %s use Shard %s is a primary shard, moving primary.",
                 ", ".join(databases_using_shard_as_primary),
