@@ -451,6 +451,7 @@ class ConfigServerRequirer(Object):
                 # no need to continuously check and abuse resources while shard is draining
                 time.sleep(10)
                 drained = self.drained(mongos_hosts, self.charm.app.name)
+                self.charm.unit.status = MaintenanceStatus("Draining shard from cluster")
                 draining_status = (
                     "Shard is still draining" if not drained else "Shard is fully drained."
                 )

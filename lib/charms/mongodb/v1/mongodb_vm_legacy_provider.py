@@ -13,15 +13,17 @@ from charms.operator_libs_linux.v1 import snap, systemd
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
 
+from config import Config
+
 # The unique Charmhub library identifier, never change it
 LIBID = "896a48bc89b84d30839335bb37170509"
 
 # Increment this major API version when introducing breaking changes
-LIBAPI = 0
+LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 4
+LIBPATCH = 0
 logger = logging.getLogger(__name__)
 REL_NAME = "database"
 
@@ -61,6 +63,16 @@ class MongoDBLegacyProvider(Object):
             logger.error(
                 "Creating legacy relation would turn off auth effecting the new relations: %s",
                 relation_users,
+            )
+            return
+
+        if self.charm.is_role(Config.Role.SHARD) or self.charm.is_role(Config.Role.CONFIG_SERVER):
+            self.charm.unit.status = BlockedStatus(
+                "Sharding roles do not support mongodb_client interface."
+            )
+            logger.error(
+                "Charm is in sharding role: %s. Does not support mongodb_client interface.",
+                self.charm.role,
             )
             return
 

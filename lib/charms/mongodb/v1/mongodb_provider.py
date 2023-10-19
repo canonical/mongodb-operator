@@ -21,6 +21,8 @@ from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, Relation
 from pymongo.errors import PyMongoError
 
+from config import Config
+
 # The unique Charmhub library identifier, never change it
 LIBID = "4067879ef7dd4261bf6c164bc29d94b1"
 
@@ -82,6 +84,34 @@ class MongoDBProvider(Object):
             self.database_provides.on.database_requested, self._on_relation_event
         )
 
+    def pass_hook_checks(self) -> bool:
+        """Runs the pre-hooks checks for MongoDBProvider, returns True if all pass."""
+        if self.charm.is_role(Config.Role.SHARD) or self.charm.is_role(Config.Role.CONFIG_SERVER):
+            self.charm.unit.status = BlockedStatus(
+                "Sharding roles do not support mongodb_client interface."
+            )
+            logger.error(
+                "Charm is in sharding role: %s. Does not support mongodb_client interface.",
+                self.charm.role,
+            )
+            return False
+
+        # legacy relations have auth disabled, which new relations require
+        if self.model.get_relation(LEGACY_REL_NAME):
+            self.charm.unit.status = BlockedStatus("cannot have both legacy and new relations")
+            logger.error("Auth disabled due to existing connections to legacy relations")
+            return False
+
+        if not self.charm.unit.is_leader():
+            return False
+
+        # We shouldn't try to create or update users if the database is not
+        # initialised. We will create users as part of initialisation.
+        if not self.charm.db_initialised:
+            return False
+
+        return True
+
     def _on_relation_event(self, event):
         """Handle relation joined events.
 
@@ -90,17 +120,8 @@ class MongoDBProvider(Object):
         data. As a result, related charm gets credentials for accessing the
         MongoDB database.
         """
-        if not self.charm.unit.is_leader():
-            return
-        # We shouldn't try to create or update users if the database is not
-        # initialised. We will create users as part of initialisation.
-        if "db_initialised" not in self.charm.app_peer_data:
-            return
-
-        # legacy relations have auth disabled, which new relations require
-        if self.model.get_relation(LEGACY_REL_NAME):
-            self.charm.unit.status = BlockedStatus("cannot have both legacy and new relations")
-            logger.error("Auth disabled due to existing connections to legacy relations")
+        if not self.pass_hook_checks():
+            logger.info("Skipping %s: hook checks did not pass", type(event))
             return
 
         # If auth is disabled but there are no legacy relation users, this means that legacy
