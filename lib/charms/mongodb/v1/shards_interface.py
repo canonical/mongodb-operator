@@ -19,8 +19,9 @@ from charms.mongodb.v0.mongodb import (
 )
 from charms.mongodb.v1.helpers import KEY_FILE
 from charms.mongodb.v1.mongos import (
+    BalancerNotEnabledError,
     MongosConnection,
-    RemovePrimaryShardError,
+    NotDrainedError,
     ShardNotInClusterError,
     ShardNotPlannedForRemovalError,
 )
@@ -43,7 +44,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 0
+LIBPATCH = 1
 KEYFILE_KEY = "key-file"
 HOSTS_KEY = "host"
 OPERATOR_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username())
@@ -52,10 +53,6 @@ FORBIDDEN_REMOVAL_ERR_CODE = 20
 
 class RemoveLastShardError(Exception):
     """Raised when there is an attempt to remove the last shard in the cluster."""
-
-
-class NotDrainedError(Exception):
-    """Raised when a shard is still in the cluster after removal."""
 
 
 class ShardingProvider(Object):
@@ -178,7 +175,7 @@ class ShardingProvider(Object):
                 return
 
         try:
-            logger.info("Adding shards not present in cluster.")
+            logger.info("Adding/Removing shards not present in cluster.")
             self.add_shards(departed_relation_id)
             self.remove_shards(departed_relation_id)
         except NotDrainedError:
@@ -200,12 +197,10 @@ class ShardingProvider(Object):
 
             logger.error("Deferring _on_relation_event for shards interface since: error=%r", e)
             event.defer()
-        except RemovePrimaryShardError:
-            cannot_proceed = (
-                "Attempt made to remove a primary shard, do not permit other hooks to execute."
-            )
-            logger.error(cannot_proceed)
-            raise
+        except BalancerNotEnabledError:
+            logger.error("Deferring on _relation_broken_event, balancer is not enabled.")
+            event.defer()
+            return
         except (PyMongoError, NotReadyError) as e:
             logger.error("Deferring _on_relation_event for shards interface since: error=%r", e)
             event.defer()
@@ -250,15 +245,14 @@ class ShardingProvider(Object):
             relation_shards = self._get_shards_from_relations(departed_shard_id)
 
             for shard in cluster_shards - relation_shards:
-                self.charm.unit.status = MaintenanceStatus(f"Draining shard {shard}")
-                logger.info("Attempting to removing shard: %s", shard)
-                mongo.remove_shard(shard)
-                logger.info("Shard: %s, is now draining", shard)
-
-                if shard in mongo.get_shard_members():
-                    shard_draining_message = f"shard {shard} still exists in cluster after removal, it is still draining."
-                    logger.info(shard_draining_message)
-                    raise NotDrainedError(shard_draining_message)
+                try:
+                    self.charm.unit.status = MaintenanceStatus(f"Draining shard {shard}")
+                    logger.info("Attempting to removing shard: %s", shard)
+                    mongo.remove_shard(shard)
+                except ShardNotInClusterError:
+                    logger.info(
+                        "Shard to remove is not in sharded cluster. It has been successfully removed."
+                    )
 
     def update_credentials(self, key: str, value: str) -> None:
         """Sends new credentials, for a key value pair across all shards."""
@@ -397,6 +391,7 @@ class ConfigServerRequirer(Object):
             return False
 
         if not self.charm.db_initialised:
+            logger.info("Deferring %s. db is not initialised.", type(event))
             event.defer()
             return False
 
@@ -420,7 +415,7 @@ class ConfigServerRequirer(Object):
         # check if were scaling down and add a log message
         if self.charm.is_scaling_down(event.relation.id):
             logger.info(
-                "Relation broken event occurring due to scale down, do not proceed to remove users."
+                "Relation broken event occurring due to scale down, do not proceed to remove shards."
             )
             return
 
