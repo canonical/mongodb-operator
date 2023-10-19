@@ -4,7 +4,7 @@
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 from urllib.parse import quote_plus
 
 from charms.mongodb.v0.mongodb import NotReadyError
@@ -21,7 +21,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 2
 
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
@@ -66,8 +66,8 @@ class MongosConfiguration:
         )
 
 
-class RemovePrimaryShardError(Exception):
-    """Raised when there is an attempt to remove the primary shard."""
+class NotEnoughSpaceError(Exception):
+    """Raised when there isn't enough space to movePrimary."""
 
 
 class ShardNotInClusterError(Exception):
@@ -76,6 +76,14 @@ class ShardNotInClusterError(Exception):
 
 class ShardNotPlannedForRemovalError(Exception):
     """Raised when it is expected that a shard is planned for removal, but it is not."""
+
+
+class NotDrainedError(Exception):
+    """Raised when a shard is still being drained."""
+
+
+class BalancerNotEnabledError(Exception):
+    """Raised when balancer process is not enabled."""
 
 
 class MongosConnection:
@@ -167,17 +175,20 @@ class MongosConnection:
         logger.info("Adding shard %s", shard_name)
         self.client.admin.command("addShard", shard_url)
 
-    def remove_shard(self, shard_name: str) -> None:
-        """Removes shard from the cluster.
+    def pre_remove_checks(self, shard_name):
+        """Performs a series of checks for removing a shard from the cluster.
 
-        Raises:
-            ConfigurationError, OperationFailure, NotReadyError,
-            RemovePrimaryShardError
+        Raises
+            ConfigurationError, OperationFailure, NotReadyError, ShardNotInClusterError,
+            BalencerNotEnabledError
         """
-        sc_status = self.client.admin.command("listShards")
+        if shard_name not in self.get_shard_members():
+            logger.info("Shard to remove is not in cluster.")
+            raise ShardNotInClusterError(f"Shard {shard_name} could not be removed")
 
         # It is necessary to call removeShard multiple times on a shard to guarantee removal.
         # Allow re-removal of shards that are currently draining.
+        sc_status = self.client.admin.command("listShards")
         if self._is_any_draining(sc_status, ignore_shard=shard_name):
             cannot_remove_shard = (
                 f"cannot remove shard {shard_name} from cluster, another shard is draining"
@@ -185,16 +196,53 @@ class MongosConnection:
             logger.error(cannot_remove_shard)
             raise NotReadyError(cannot_remove_shard)
 
-        databases_using_shard_as_primary = self.get_databases_for_shard(shard_name)
-        if databases_using_shard_as_primary:
-            cannot_remove_primary_shard = f"These databases: {', '.join(databases_using_shard_as_primary)}, use Shard {shard_name} is a primary shard, cannot remove shard."
-            logger.error(cannot_remove_primary_shard)
-            raise RemovePrimaryShardError(cannot_remove_primary_shard)
+        # check if enabled sh.getBalancerState()
+        balancer_state = self.client.admin.command("balancerStatus")
+        if balancer_state["mode"] != "off":
+            logger.info("Balancer is enabled, ready to remove shard.")
+            return
 
+        # starting the balancer doesn't guarantee that is is running, wait until it starts up.
+        logger.info("Balancer process is not running, enabling it.")
+        self.client.admin.command("balancerStart")
+        for attempt in Retrying(stop=stop_after_delay(60), wait=wait_fixed(3), reraise=True):
+            with attempt:
+                balancer_state = self.client.admin.command("balancerStatus")
+                if balancer_state["mode"] == "off":
+                    raise BalancerNotEnabledError
+
+    def remove_shard(self, shard_name: str) -> None:
+        """Removes shard from the cluster.
+
+        Raises:
+            ConfigurationError, OperationFailure, NotReadyError, NotEnoughSpaceError,
+            ShardNotInClusterError, BalencerNotEnabledError
+        """
+        self.pre_remove_checks(shard_name)
+
+        # remove shard, process removal status, & check if fully removed
         logger.info("Attempting to remove shard %s", shard_name)
         removal_info = self.client.admin.command("removeShard", shard_name)
+        self._log_removal_info(removal_info, shard_name)
+        remaining_chunks = self._retrieve_remaining_chunks(removal_info)
+        if remaining_chunks:
+            logger.info("Waiting for all chunks to be drained from %s.", shard_name)
+            raise NotDrainedError()
 
-        # process removal status
+        # MongoDB docs says to movePrimary only after all chunks have been drained from the shard.
+        logger.info("All chunks drained from shard: %s", shard_name)
+        databases_using_shard_as_primary = self.get_databases_for_shard(shard_name)
+        if databases_using_shard_as_primary:
+            logger.info(
+                "These databases: %s use Shard %s is a primary shard, moving primary.",
+                ", ".join(databases_using_shard_as_primary),
+                shard_name,
+            )
+            self._move_primary(databases_using_shard_as_primary, old_primary=shard_name)
+
+        # MongoDB docs says to re-run removeShard after running movePrimary
+        logger.info("removing shard: %s, after moving primary", shard_name)
+        removal_info = self.client.admin.command("removeShard", shard_name)
         self._log_removal_info(removal_info, shard_name)
 
     def _is_shard_draining(self, shard_name: str) -> bool:
@@ -272,9 +320,7 @@ class MongosConnection:
 
     def _log_removal_info(self, removal_info, shard_name):
         """Logs removal information for a shard removal."""
-        remaining_chunks = (
-            removal_info["remaining"]["chunks"] if "remaining" in removal_info else "None"
-        )
+        remaining_chunks = self._retrieve_remaining_chunks(removal_info)
         dbs_to_move = (
             removal_info["dbsToMove"]
             if "dbsToMove" in removal_info and removal_info["dbsToMove"] != []
@@ -317,3 +363,84 @@ class MongosConnection:
                 return shard["state"] == 1
 
         return False
+
+    def _retrieve_remaining_chunks(self, removal_info) -> int:
+        """Parses the remaining chunks to remove from removeShard command."""
+        return removal_info["remaining"]["chunks"] if "remaining" in removal_info else 0
+
+    def _move_primary(self, databases_to_move: List[str], old_primary: str) -> None:
+        """Moves all the provided databases to a new primary.
+
+        Raises:
+            NotEnoughSpaceError, ConfigurationError, OperationFailure
+        """
+        for database_name in databases_to_move:
+            db_size = self.get_db_size(database_name, old_primary)
+            new_shard, avail_space = self.get_shard_with_most_available_space(
+                shard_to_ignore=old_primary
+            )
+            if db_size > avail_space:
+                no_space_on_new_primary = (
+                    f"Cannot move primary for database: {database_name}, new shard: {new_shard}",
+                    f"does not have enough space. {db_size} > {avail_space}",
+                )
+                logger.error(no_space_on_new_primary)
+                raise NotEnoughSpaceError(no_space_on_new_primary)
+
+            # From MongoDB Docs: After starting movePrimary, do not perform any read or write
+            # operations against any unsharded collection in that database until the command
+            # completes.
+            logger.info(
+                "Moving primary on %s database to new primary: %s. Do NOT write to %s database.",
+                database_name,
+                new_shard,
+                database_name,
+            )
+            # This command does not return until MongoDB completes moving all data. This can take
+            # a long time.
+            self.client.admin.command("movePrimary", database_name, to=new_shard)
+            logger.info(
+                "Successfully moved primary on %s database to new primary: %s",
+                database_name,
+                new_shard,
+            )
+
+    def get_db_size(self, database_name, primary_shard) -> int:
+        """Returns the size of a DB on a given shard in bytes."""
+        database = self.client[database_name]
+        db_stats = database.command("dbStats")
+
+        # sharded databases are spread across multiple shards, find the amount of storage used on
+        # the primary shard
+        for shard_name, shard_storage_info in db_stats["raw"].items():
+            # shard names are of the format `shard-one/10.61.64.212:27017`
+            shard_name = shard_name.split("/")[0]
+            if shard_name != primary_shard:
+                continue
+
+            return shard_storage_info["storageSize"]
+
+        return 0
+
+    def get_shard_with_most_available_space(self, shard_to_ignore) -> Tuple[str, int]:
+        """Returns the shard in the cluster with the most available space and the space in bytes.
+
+        Algorithm used was similar to that used in mongo in `selectShardForNewDatabase`:
+        https://github.com/mongodb/mongo/blob/6/0/src/mongo/db/s/config/sharding_catalog_manager_database_operations.cpp#L68-L91
+        """
+        candidate_shard = None
+        candidate_free_space = -1
+        available_storage = self.client.admin.command("dbStats", freeStorage=1)
+
+        for shard_name, shard_storage_info in available_storage["raw"].items():
+            # shard names are of the format `shard-one/10.61.64.212:27017`
+            shard_name = shard_name.split("/")[0]
+            if shard_name == shard_to_ignore:
+                continue
+
+            current_free_space = shard_storage_info["freeStorageSize"]
+            if current_free_space > candidate_free_space:
+                candidate_shard = shard_name
+                candidate_free_space = current_free_space
+
+        return (candidate_shard, candidate_free_space)
