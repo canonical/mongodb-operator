@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
-from pytest_operator.plugin import OpsTest
 from urllib.parse import quote_plus
+
+from pytest_operator.plugin import OpsTest
+
 from ..helpers import get_password
 
 MONGOS_PORT = 27018

@@ -4,6 +4,7 @@
 import pytest
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
+
 from .helpers import generate_connection_string
 
 SHARD_ONE_APP_NAME = "shard-one"
@@ -65,7 +66,7 @@ async def test_cluster_active(ops_test: OpsTest) -> None:
 
 
 async def test_sharding(ops_test: OpsTest) -> None:
-    """Tests writing data to mongos gets propogated to shards."""
+    """Tests writing data to mongos gets propagated to shards."""
     # write data to mongos router
     mongos_connection_string = await generate_connection_string(
         ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True
