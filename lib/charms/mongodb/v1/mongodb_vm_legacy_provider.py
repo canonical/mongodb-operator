@@ -68,7 +68,7 @@ class MongoDBLegacyProvider(Object):
 
         if self.charm.is_role(Config.Role.SHARD) or self.charm.is_role(Config.Role.CONFIG_SERVER):
             self.charm.unit.status = BlockedStatus(
-                "Sharding roles do not support mongodb_client interface."
+                "Sharding roles do not support mongodb interface."
             )
             logger.error(
                 "Charm is in sharding role: %s. Does not support mongodb_client interface.",
