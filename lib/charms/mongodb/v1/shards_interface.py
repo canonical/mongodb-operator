@@ -360,6 +360,8 @@ class ConfigServerRequirer(Object):
             logger.info("Skipping relation joined event: hook checks re not passed")
             return
 
+        # if re-using an old shard, re-set drained flag.
+        self.charm.app_peer_data["drained"] = json.dumps(False)
         self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
 
         # shards rely on the config server for secrets
@@ -388,7 +390,7 @@ class ConfigServerRequirer(Object):
             )
             return
 
-        # TODO future PR, leader unit verifies shard was added to cluster (update-status hook)
+        self.charm.app_peer_data["added_to_cluster"] = json.dumps(True)
 
     def pass_hook_checks(self, event):
         """Runs the pre-hooks checks for ConfigServerRequirer, returns True if all pass."""
@@ -436,8 +438,9 @@ class ConfigServerRequirer(Object):
         self.wait_for_draining(mongos_hosts)
 
         self.charm.unit.status = ActiveStatus("Shard drained from cluster, ready for removal")
-        # TODO future PR, leader unit displays this message in update-status hook
-        # TODO future PR, check for shard drainage when removing application
+
+        if self.charm.unit.is_leader():
+            self.charm.app_peer_data["added_to_cluster"] = json.dumps(False)
 
     def wait_for_draining(self, mongos_hosts: List[str]):
         """Waits for shards to be drained from sharded cluster."""
@@ -495,9 +498,11 @@ class ConfigServerRequirer(Object):
         if not self.model.get_relation(self.relation_name) and self.charm.drained:
             return ActiveStatus("Shard drained from cluster, ready for removal")
 
-        # todo this check will fail if trying to restart
         if not self._is_mongos_reachable():
             return BlockedStatus("Config server unreachable")
+
+        if not self._is_added_to_cluster():
+            self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
 
         if not self._is_shard_aware():
             return BlockedStatus("Shard is not yet shard aware")
@@ -625,6 +630,10 @@ class ConfigServerRequirer(Object):
         uri = f"mongodb://{','.join(mongos_hosts)}"
         with MongosConnection(config, uri) as mongo:
             return mongo.is_ready
+
+    def _is_added_to_cluster(self) -> bool:
+        """Returns True if the shard has been added to the cluster."""
+        return json.loads(self.charm.app_peer_data.get("added_to_cluster", "False"))
 
     def _is_shard_aware(self) -> bool:
         """Returns True if shard is in cluster and shard aware."""
