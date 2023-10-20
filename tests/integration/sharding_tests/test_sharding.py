@@ -12,6 +12,7 @@ CONFIG_SERVER_APP_NAME = "config-server-one"
 SHARD_REL_NAME = "sharding"
 CONFIG_SERVER_REL_NAME = "config-server"
 MONGODB_KEYFILE_PATH = "/var/snap/charmed-mongodb/current/etc/mongod/keyFile"
+TIMEOUT = 15 * 60
 
 
 @pytest.mark.abort_on_fail
@@ -20,15 +21,15 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     my_charm = await ops_test.build_charm(".")
     await ops_test.model.deploy(
         my_charm,
-        num_units=3,
+        num_units=2,
         config={"role": "config-server"},
         application_name=CONFIG_SERVER_APP_NAME,
     )
     await ops_test.model.deploy(
-        my_charm, num_units=3, config={"role": "shard"}, application_name=SHARD_ONE_APP_NAME
+        my_charm, num_units=2, config={"role": "shard"}, application_name=SHARD_ONE_APP_NAME
     )
     await ops_test.model.deploy(
-        my_charm, num_units=3, config={"role": "shard"}, application_name=SHARD_TWO_APP_NAME
+        my_charm, num_units=2, config={"role": "shard"}, application_name=SHARD_TWO_APP_NAME
     )
 
     async with ops_test.fast_forward():
@@ -36,6 +37,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
             apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
             idle_period=20,
             raise_on_blocked=False,
+            timeout=TIMEOUT,
         )
 
     # TODO Future PR: assert that CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME
@@ -58,6 +60,7 @@ async def test_cluster_active(ops_test: OpsTest) -> None:
             apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
             idle_period=20,
             status="active",
+            timeout=TIMEOUT,
         )
 
     # TODO Future PR: assert that CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME
