@@ -2,10 +2,9 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 import pytest
-from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 
-from .helpers import generate_connection_string
+from .helpers import generate_mongodb_client, verify_data_mongodb, write_data_to_mongodb
 
 SHARD_ONE_APP_NAME = "shard-one"
 SHARD_TWO_APP_NAME = "shard-two"
@@ -67,40 +66,51 @@ async def test_cluster_active(ops_test: OpsTest) -> None:
 
 async def test_sharding(ops_test: OpsTest) -> None:
     """Tests writing data to mongos gets propagated to shards."""
-    # write data to mongos router
-    mongos_connection_string = await generate_connection_string(
+    # write data to mongos on both shards.
+    mongos_client = await generate_mongodb_client(
         ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True
     )
-    client = MongoClient(mongos_connection_string)
 
-    db = client["animals_database_1"]
-    horses_collection = db["horses"]
-    unicorn = {"horse-breed": "unicorn", "real": True}
-    horses_collection.insert_one(unicorn)
-    client.admin.command("movePrimary", "animals_database_1", to=SHARD_ONE_APP_NAME)
+    # write data to shard one
+    write_data_to_mongodb(
+        mongos_client,
+        db_name="animals_database_1",
+        coll_name="horses",
+        content={"horse-breed": "unicorn", "real": True},
+    )
+    mongos_client.admin.command("movePrimary", "animals_database_1", to=SHARD_ONE_APP_NAME)
 
-    db = client["animals_database_2"]
-    horses_collection = db["horses"]
-    unicorn = {"horse-breed": "pegasus", "real": True}
-    horses_collection.insert_one(unicorn)
-    client.admin.command("movePrimary", "animals_database_2", to=SHARD_TWO_APP_NAME)
+    # write data to shard two
+    write_data_to_mongodb(
+        mongos_client,
+        db_name="animals_database_2",
+        coll_name="horses",
+        content={"horse-breed": "pegasus", "real": True},
+    )
+    mongos_client.admin.command("movePrimary", "animals_database_2", to=SHARD_TWO_APP_NAME)
 
-    # log into shard 1 verify its presence
-    shard_one_connection_string = await generate_connection_string(
+    # log into shard 1 verify data
+    shard_one_client = await generate_mongodb_client(
         ops_test, app_name=SHARD_ONE_APP_NAME, mongos=False
     )
-    client = MongoClient(shard_one_connection_string)
-    db = client["animals_database_1"]
-    test_collection = db["horses"]
-    query = test_collection.find({}, {"horse-breed": 1})
-    assert query[0]["horse-breed"] == "unicorn", "data not written to shard-one"
+    has_correct_data = verify_data_mongodb(
+        shard_one_client,
+        db_name="animals_database_1",
+        coll_name="horses",
+        key="horse-breed",
+        value="unicorn",
+    )
+    assert has_correct_data, "data not written to shard-one"
 
-    # log into shard 2 verify its presence
-    shard_two_connection_string = await generate_connection_string(
+    # log into shard 2 verify data
+    shard_two_client = await generate_mongodb_client(
         ops_test, app_name=SHARD_TWO_APP_NAME, mongos=False
     )
-    client = MongoClient(shard_two_connection_string)
-    db = client["animals_database_2"]
-    test_collection = db["horses"]
-    query = test_collection.find({}, {"horse-breed": 1})
-    assert query[0]["horse-breed"] == "pegasus", "data not written to shard-two"
+    has_correct_data = verify_data_mongodb(
+        shard_two_client,
+        db_name="animals_database_2",
+        coll_name="horses",
+        key="horse-breed",
+        value="pegasus",
+    )
+    assert has_correct_data, "data not written to shard-two"
