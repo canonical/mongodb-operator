@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
+from typing import List, Optional
 from urllib.parse import quote_plus
 
 from pymongo import MongoClient
@@ -43,3 +44,23 @@ def verify_data_mongodb(client, db_name, coll_name, key, value) -> bool:
     test_collection = db[coll_name]
     query = test_collection.find({}, {key: 1})
     return query[0][key] == value
+
+
+def get_cluster_shards(mongos_client) -> set:
+    """Returns a set of the shard members."""
+    shard_list = mongos_client.admin.command("listShards")
+    curr_members = [member["_id"] for member in shard_list["shards"]]
+    return set(curr_members)
+
+
+def get_databases_for_shard(mongos_client, shard_name) -> Optional[List[str]]:
+    config_db = mongos_client["config"]
+    if "databases" not in config_db.list_collection_names():
+        return None
+
+    databases_collection = config_db["databases"]
+
+    if databases_collection is None:
+        return
+
+    return databases_collection.distinct("_id", {"primary": shard_name})
