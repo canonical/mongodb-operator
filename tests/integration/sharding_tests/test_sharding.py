@@ -44,6 +44,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     # are blocked waiting for relaitons
 
 
+@pytest.mark.abort_on_fail
 async def test_cluster_active(ops_test: OpsTest) -> None:
     """Tests the integration of cluster components works without error."""
     await ops_test.model.integrate(
