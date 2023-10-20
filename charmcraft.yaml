@@ -9,6 +9,7 @@ bases:
     run-on:
       - name: "ubuntu"
         channel: "22.04"
+
 parts:
   charm:
     charm-binary-python-packages:
@@ -20,3 +21,6 @@ parts:
       - libssl-dev
       - rustc
       - cargo
+    # https://discourse.charmhub.io/t/charmcraft-launchpad-rust-ubuntu-lunar-weird-download-failures/12044
+    build-environment:
+      - CARGO_HTTP_MULTIPLEXING: "false"
