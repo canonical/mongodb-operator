@@ -21,7 +21,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 2
 
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
@@ -240,10 +240,14 @@ class MongosConnection:
             )
             self._move_primary(databases_using_shard_as_primary, old_primary=shard_name)
 
-        # MongoDB docs says to re-run removeShard after running movePrimary
-        logger.info("removing shard: %s, after moving primary", shard_name)
-        removal_info = self.client.admin.command("removeShard", shard_name)
-        self._log_removal_info(removal_info, shard_name)
+            # MongoDB docs says to re-run removeShard after running movePrimary
+            logger.info("removing shard: %s, after moving primary", shard_name)
+            removal_info = self.client.admin.command("removeShard", shard_name)
+            self._log_removal_info(removal_info, shard_name)
+
+        if shard_name in self.get_shard_members():
+            logger.info("Shard %s is still present in sharded cluster.", shard_name)
+            raise NotDrainedError()
 
     def _is_shard_draining(self, shard_name: str) -> bool:
         """Reports if a given shard is currently in the draining state.
@@ -336,6 +340,12 @@ class MongosConnection:
 
     def _retrieve_remaining_chunks(self, removal_info) -> int:
         """Parses the remaining chunks to remove from removeShard command."""
+        # when chunks have finished draining, remaining chunks is still in the removal info, but
+        # marked as 0. If "remaining" is not present, in removal_info then the shard is not yet
+        # draining
+        if "remaining" not in removal_info:
+            raise NotDrainedError()
+
         return removal_info["remaining"]["chunks"] if "remaining" in removal_info else 0
 
     def _move_primary(self, databases_to_move: List[str], old_primary: str) -> None:

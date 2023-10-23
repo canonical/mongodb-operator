@@ -249,10 +249,18 @@ class ShardingProvider(Object):
                     self.charm.unit.status = MaintenanceStatus(f"Draining shard {shard}")
                     logger.info("Attempting to removing shard: %s", shard)
                     mongo.remove_shard(shard)
+                except NotReadyError:
+                    logger.info("Unable to remove shard: %s another shard is draining", shard)
+                    # to gaurantee that shard that the currently draining shard, gets re-processed,
+                    # do not raise immediately, instead at the end of removal processing.
+                    retry_removal = True
                 except ShardNotInClusterError:
                     logger.info(
                         "Shard to remove is not in sharded cluster. It has been successfully removed."
                     )
+
+        if retry_removal:
+            raise ShardNotInClusterError
 
     def update_credentials(self, key: str, value: str) -> None:
         """Sends new credentials, for a key value pair across all shards."""
@@ -436,11 +444,12 @@ class ConfigServerRequirer(Object):
         while not drained:
             try:
                 # no need to continuously check and abuse resources while shard is draining
-                time.sleep(10)
+                time.sleep(60)
                 drained = self.drained(mongos_hosts, self.charm.app.name)
                 draining_status = (
                     "Shard is still draining" if not drained else "Shard is fully drained."
                 )
+                self.charm.unit.status = MaintenanceStatus("Draining shard from cluster")
                 logger.debug(draining_status)
             except PyMongoError as e:
                 logger.error("Error occurred while draining shard: %s", e)
