@@ -3,7 +3,7 @@ name: Release to latest/edge
 on:
   push:
     branches:
-      - main
+      - 5/edge
 
 jobs:
   ci-tests:
@@ -15,25 +15,22 @@ jobs:
       GCP_ACCESS_KEY: "${{ secrets.GCP_ACCESS_KEY }}"
       GCP_SECRET_KEY: "${{ secrets.GCP_SECRET_KEY }}"
 
-  release-to-charmhub:
-    name: Release to CharmHub
+  build:
+    name: Build charm
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm_without_cache.yaml@v5
+    with:
+      charmcraft-snap-channel: "latest/edge"
+
+  release:
+    name: Release charm
     needs:
       - ci-tests
-    runs-on: ubuntu-22.04
-    timeout-minutes: 60
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - name: Release any bumped charm libs
-        uses: canonical/charming-actions/release-libraries@2.2.2
-        with:
-          credentials: "${{ secrets.CHARMHUB_TOKEN }}"
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-      - name: Upload charm to charmhub
-        uses: canonical/charming-actions/upload-charm@2.2.2
-        with:
-          credentials: "${{ secrets.CHARMHUB_TOKEN }}"
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          channel: "5/edge"
+      - build
+    uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v5
+    with:
+      channel: 5/edge
+      artifact-name: ${{ needs.build.outputs.artifact-name }}
+    secrets:
+      charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
+    permissions:
+      contents: write # Needed to create GitHub release

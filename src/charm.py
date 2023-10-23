@@ -4,7 +4,6 @@
 # See LICENSE file for licensing details.
 import json
 import logging
-import re
 import subprocess
 import time
 from typing import Dict, List, Optional, Set
@@ -30,6 +29,7 @@ from charms.mongodb.v0.mongodb import (
 )
 from charms.mongodb.v0.mongodb_backups import S3_RELATION, MongoDBBackups
 from charms.mongodb.v0.mongodb_provider import MongoDBProvider
+from charms.mongodb.v0.mongodb_secrets import SecretCache, generate_secret_label
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.mongodb_vm_legacy_provider import MongoDBLegacyProvider
 from charms.mongodb.v0.users import (
@@ -61,18 +61,13 @@ from ops.model import (
     BlockedStatus,
     MaintenanceStatus,
     Relation,
-    SecretNotFoundError,
     Unit,
     WaitingStatus,
 )
 from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
 from config import Config
-from exceptions import (
-    AdminUserCreationError,
-    ApplicationHostNotFoundError,
-    SecretNotAddedError,
-)
+from exceptions import AdminUserCreationError, ApplicationHostNotFoundError
 from machine_helpers import (
     push_file_to_unit,
     remove_file_from_unit,
@@ -134,7 +129,7 @@ class MongodbOperatorCharm(CharmBase):
             log_slots=Config.Monitoring.LOG_SLOTS,
         )
 
-        self.secrets = {APP_SCOPE: {}, UNIT_SCOPE: {}}
+        self.secrets = SecretCache(self)
 
     # BEGIN: properties
 
@@ -586,19 +581,27 @@ class MongodbOperatorCharm(CharmBase):
         )
 
     def _on_secret_changed(self, event: SecretChangedEvent):
-        if self._compare_secret_ids(
-            event.secret.id, self.app_peer_data.get(Config.Secrets.SECRET_INTERNAL_LABEL)
-        ):
+        """Handles secrets changes event.
+
+        When user run set-password action, juju leader changes the password inside the database
+        and inside the secret object. This action runs the restart for monitoring tool and
+        for backup tool on non-leader units to keep them working with MongoDB. The same workflow
+        occurs on TLS certs change.
+        """
+        label = None
+        if generate_secret_label(self, Config.Relations.APP_SCOPE) == event.secret.label:
+            label = generate_secret_label(self, Config.Relations.APP_SCOPE)
             scope = APP_SCOPE
-        elif self._compare_secret_ids(
-            event.secret.id, self.unit_peer_data.get(Config.Secrets.SECRET_INTERNAL_LABEL)
-        ):
+        elif generate_secret_label(self, Config.Relations.UNIT_SCOPE) == event.secret.label:
+            label = generate_secret_label(self, Config.Relations.UNIT_SCOPE)
             scope = UNIT_SCOPE
         else:
             logging.debug("Secret %s changed, but it's unknown", event.secret.id)
             return
         logging.debug("Secret %s for scope %s changed, refreshing", event.secret.id, scope)
-        self._update_juju_secrets_cache(scope)
+
+        # Refreshing cache
+        self.secrets.get(label)
 
         # changed secrets means that the URIs used for PBM and mongodb_exporter are now out of date
         self._connect_mongodb_exporter()
@@ -987,15 +990,14 @@ class MongodbOperatorCharm(CharmBase):
 
     def get_secret(self, scope: str, key: str) -> Optional[str]:
         """Get secret from the secret storage."""
-        if self._juju_has_secrets:
-            return self._juju_secret_get(scope, key)
+        label = generate_secret_label(self, scope)
+        secret = self.secrets.get(label)
+        if not secret:
+            return
 
-        if scope == UNIT_SCOPE:
-            return self.unit_peer_data.get(key, None)
-        elif scope == APP_SCOPE:
-            return self.app_peer_data.get(key, None)
-        else:
-            raise RuntimeError("Unknown secret scope.")
+        value = secret.get_content().get(key)
+        if value != Config.Secrets.SECRET_DELETED_LABEL:
+            return value
 
     def set_secret(self, scope: str, key: str, value: Optional[str]) -> Optional[str]:
         """Set secret in the secret storage.
@@ -1003,23 +1005,35 @@ class MongodbOperatorCharm(CharmBase):
         Juju versions > 3.0 use `juju secrets`, this function first checks
           which secret store is being used before setting the secret.
         """
-        if self._juju_has_secrets:
-            if not value:
-                return self._juju_secret_remove(scope, key)
-            return self._juju_secret_set(scope, key, value)
+        if not value:
+            return self.remove_secret(scope, key)
 
-        if scope == UNIT_SCOPE:
-            if not value:
-                del self.unit_peer_data[key]
-                return
-            self.unit_peer_data.update({key: str(value)})
-        elif scope == APP_SCOPE:
-            if not value:
-                del self.app_peer_data[key]
-                return
-            self.app_peer_data.update({key: str(value)})
+        label = generate_secret_label(self, scope)
+        secret = self.secrets.get(label)
+        if not secret:
+            self.secrets.add(label, {key: value}, scope)
         else:
-            raise RuntimeError("Unknown secret scope.")
+            content = secret.get_content()
+            content.update({key: value})
+            secret.set_content(content)
+        return label
+
+    def remove_secret(self, scope, key) -> None:
+        """Removing a secret."""
+        label = generate_secret_label(self, scope)
+        secret = self.secrets.get(label)
+
+        if not secret:
+            return
+
+        content = secret.get_content()
+
+        if not content.get(key) or content[key] == Config.Secrets.SECRET_DELETED_LABEL:
+            logger.error(f"Non-existing secret {scope}:{key} was attempted to be removed.")
+            return
+
+        content[key] = Config.Secrets.SECRET_DELETED_LABEL
+        secret.set_content(content)
 
     def restart_mongod_service(self, auth=None):
         """Restarts the mongod service with its associated configuration."""
