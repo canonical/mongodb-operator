@@ -179,7 +179,7 @@ async def test_shard_removal(ops_test: OpsTest) -> None:
     balancer_state = mongos_client.admin.command("balancerStatus")
     assert balancer_state["mode"] == "off", "balancer was not successfully turned off"
 
-    # remove two shards at a time
+    # remove two shards at the same time
     await ops_test.model.applications[CONFIG_SERVER_APP_NAME].remove_relation(
         f"{SHARD_ONE_APP_NAME}:{SHARD_REL_NAME}",
         f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
@@ -189,13 +189,14 @@ async def test_shard_removal(ops_test: OpsTest) -> None:
         f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
     )
 
-    await ops_test.model.wait_for_idle(
-        apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
-        idle_period=20,
-        status="active",
-        timeout=TIMEOUT,
-        raise_on_error=False,  # checks on snaps can cause errors.
-    )
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
+            idle_period=20,
+            status="active",
+            timeout=TIMEOUT,
+            raise_on_error=False,  # checks on snaps can cause errors.
+        )
 
     # TODO future PR: assert statuses are correct
 
@@ -219,8 +220,8 @@ async def test_shard_removal(ops_test: OpsTest) -> None:
     ), "Not all databases on final shard"
 
 
-async def test_removal_of_shard_with_no_data(ops_test: OpsTest):
-    """todo"""
+async def test_removal_of_non_primary_shard(ops_test: OpsTest):
+    """Tests safe removal of a shard that is not primary."""
     # add back a shard so we can safely remove a shard.
     await ops_test.model.integrate(
         f"{SHARD_TWO_APP_NAME}:{SHARD_REL_NAME}",

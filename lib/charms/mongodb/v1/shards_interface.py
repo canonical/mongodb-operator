@@ -240,6 +240,7 @@ class ShardingProvider(Object):
 
         raises: PyMongoError, NotReadyError
         """
+        retry_removal = False
         with MongosConnection(self.charm.mongos_config) as mongo:
             cluster_shards = mongo.get_shard_members()
             relation_shards = self._get_shards_from_relations(departed_shard_id)
@@ -251,7 +252,7 @@ class ShardingProvider(Object):
                     mongo.remove_shard(shard)
                 except NotReadyError:
                     logger.info("Unable to remove shard: %s another shard is draining", shard)
-                    # to gaurantee that shard that the currently draining shard, gets re-processed,
+                    # to guarantee that shard that the currently draining shard, gets re-processed,
                     # do not raise immediately, instead at the end of removal processing.
                     retry_removal = True
                 except ShardNotInClusterError:
