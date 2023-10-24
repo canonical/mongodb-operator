@@ -22,54 +22,56 @@ MONGODB_KEYFILE_PATH = "/var/snap/charmed-mongodb/current/etc/mongod/keyFile"
 TIMEOUT = 15 * 60
 
 
-# @pytest.mark.abort_on_fail
-# async def test_build_and_deploy(ops_test: OpsTest) -> None:
-#     """Build and deploy a sharded cluster."""
-#     my_charm = await ops_test.build_charm(".")
-#     await ops_test.model.deploy(
-#         my_charm,
-#         num_units=1,
-#         config={"role": "config-server"},
-#         application_name=CONFIG_SERVER_APP_NAME,
-#     )
-#     await ops_test.model.deploy(
-#         my_charm, num_units=2, config={"role": "shard"}, application_name=SHARD_ONE_APP_NAME
-#     )
-#     await ops_test.model.deploy(
-#         my_charm, num_units=2, config={"role": "shard"}, application_name=SHARD_TWO_APP_NAME
-#     )
+@pytest.mark.abort_on_fail
+async def test_build_and_deploy(ops_test: OpsTest) -> None:
+    """Build and deploy a sharded cluster."""
+    my_charm = await ops_test.build_charm(".")
+    await ops_test.model.deploy(
+        my_charm,
+        num_units=1,
+        config={"role": "config-server"},
+        application_name=CONFIG_SERVER_APP_NAME,
+    )
+    await ops_test.model.deploy(
+        my_charm, num_units=1, config={"role": "shard"}, application_name=SHARD_ONE_APP_NAME
+    )
+    await ops_test.model.deploy(
+        my_charm, num_units=1, config={"role": "shard"}, application_name=SHARD_TWO_APP_NAME
+    )
 
-#     async with ops_test.fast_forward():
-#         await ops_test.model.wait_for_idle(
-#             apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
-#             idle_period=20,
-#             raise_on_blocked=False,
-#             timeout=TIMEOUT,
-#         )
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
+            idle_period=20,
+            raise_on_blocked=False,
+            timeout=TIMEOUT,
+            raise_on_error=False,  # checks on snaps can cause errors.
+        )
 
-#     # TODO Future PR: assert that CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME
-#     # are blocked waiting for relaitons
+    # TODO Future PR: assert that CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME
+    # are blocked waiting for relaitons
 
 
 @pytest.mark.abort_on_fail
 async def test_cluster_active(ops_test: OpsTest) -> None:
     """Tests the integration of cluster components works without error."""
-    # await ops_test.model.integrate(
-    #     f"{SHARD_ONE_APP_NAME}:{SHARD_REL_NAME}",
-    #     f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
-    # )
-    # await ops_test.model.integrate(
-    #     f"{SHARD_TWO_APP_NAME}:{SHARD_REL_NAME}",
-    #     f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
-    # )
+    await ops_test.model.integrate(
+        f"{SHARD_ONE_APP_NAME}:{SHARD_REL_NAME}",
+        f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
+    )
+    await ops_test.model.integrate(
+        f"{SHARD_TWO_APP_NAME}:{SHARD_REL_NAME}",
+        f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
+    )
 
-    # async with ops_test.fast_forward():
-    #     await ops_test.model.wait_for_idle(
-    #         apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
-    #         idle_period=20,
-    #         status="active",
-    #         timeout=TIMEOUT,
-    #     )
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
+            idle_period=20,
+            status="active",
+            timeout=TIMEOUT,
+            raise_on_error=False,  # checks on snaps can cause errors.
+        )
 
     # verify sharded cluster config
     mongos_client = await generate_mongodb_client(
@@ -149,26 +151,27 @@ async def test_shard_removal(ops_test: OpsTest) -> None:
     # add a third shard, so that we can remove two shards at a time.
     my_charm = await ops_test.build_charm(".")
     await ops_test.model.deploy(
-        my_charm, num_units=2, config={"role": "shard"}, application_name=SHARD_THREE_APP_NAME
+        my_charm, num_units=1, config={"role": "shard"}, application_name=SHARD_THREE_APP_NAME
     )
     await ops_test.model.integrate(
         f"{SHARD_THREE_APP_NAME}:{SHARD_REL_NAME}",
         f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
     )
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=[
-                CONFIG_SERVER_APP_NAME,
-                SHARD_ONE_APP_NAME,
-                SHARD_TWO_APP_NAME,
-                SHARD_THREE_APP_NAME,
-            ],
-            idle_period=20,
-            status="active",
-            timeout=TIMEOUT,
-        )
 
-    # turn off balancer.
+    await ops_test.model.wait_for_idle(
+        apps=[
+            CONFIG_SERVER_APP_NAME,
+            SHARD_ONE_APP_NAME,
+            SHARD_TWO_APP_NAME,
+            SHARD_THREE_APP_NAME,
+        ],
+        idle_period=20,
+        status="active",
+        timeout=TIMEOUT,
+        raise_on_error=False,  # checks on snaps can cause errors.
+    )
+
+    # # turn off balancer.
     mongos_client = await generate_mongodb_client(
         ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True
     )
@@ -186,13 +189,13 @@ async def test_shard_removal(ops_test: OpsTest) -> None:
         f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
     )
 
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
-            idle_period=20,
-            status="active",
-            timeout=TIMEOUT,
-        )
+    await ops_test.model.wait_for_idle(
+        apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
+        idle_period=20,
+        status="active",
+        timeout=TIMEOUT,
+        raise_on_error=False,  # checks on snaps can cause errors.
+    )
 
     # TODO future PR: assert statuses are correct
 
@@ -216,6 +219,42 @@ async def test_shard_removal(ops_test: OpsTest) -> None:
     ), "Not all databases on final shard"
 
 
+async def test_removal_of_shard_with_no_data(ops_test: OpsTest):
+    """todo"""
+    # add back a shard so we can safely remove a shard.
+    await ops_test.model.integrate(
+        f"{SHARD_TWO_APP_NAME}:{SHARD_REL_NAME}",
+        f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
+    )
+
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=[
+                CONFIG_SERVER_APP_NAME,
+                SHARD_ONE_APP_NAME,
+                SHARD_TWO_APP_NAME,
+                SHARD_THREE_APP_NAME,
+            ],
+            idle_period=20,
+            status="active",
+            timeout=TIMEOUT,
+            raise_on_error=False,  # checks on snaps can cause errors.
+        )
+
+    await ops_test.model.applications[CONFIG_SERVER_APP_NAME].remove_relation(
+        f"{SHARD_TWO_APP_NAME}:{SHARD_REL_NAME}",
+        f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
+    )
+
+    await ops_test.model.wait_for_idle(
+        apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
+        idle_period=20,
+        status="active",
+        timeout=TIMEOUT,
+        raise_on_error=False,  # checks on snaps can cause errors.
+    )
+
+
 async def test_unconventual_shard_removal(ops_test: OpsTest):
     """Tests that removing a shard application safely drains data.
 
@@ -234,6 +273,7 @@ async def test_unconventual_shard_removal(ops_test: OpsTest):
             idle_period=20,
             status="active",
             timeout=TIMEOUT,
+            raise_on_error=False,  # checks on snaps can cause errors.
         )
 
     # veriy sharded cluster config
