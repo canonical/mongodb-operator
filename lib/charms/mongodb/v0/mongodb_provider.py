@@ -62,16 +62,19 @@ class MongoDBProvider(Object):
         """
         self.relation_name = relation_name
         self.substrate = substrate
+        self.charm = charm
 
         super().__init__(charm, self.relation_name)
+        self.framework.observe(
+            charm.on[self.relation_name].relation_departed,
+            self.charm.check_relation_broken_or_scale_down,
+        )
         self.framework.observe(
             charm.on[self.relation_name].relation_broken, self._on_relation_event
         )
         self.framework.observe(
             charm.on[self.relation_name].relation_changed, self._on_relation_event
         )
-
-        self.charm = charm
 
         # Charm events defined in the database provides charm library.
         self.database_provides = DatabaseProvides(self.charm, relation_name=self.relation_name)
@@ -110,7 +113,25 @@ class MongoDBProvider(Object):
 
         departed_relation_id = None
         if type(event) is RelationBrokenEvent:
+            # Only relation_deparated events can check if scaling down
             departed_relation_id = event.relation.id
+            if not self.charm.has_departed_run(departed_relation_id):
+                logger.info(
+                    "Deferring, must wait for relation departed hook to decide if relation should be removed."
+                )
+                event.defer()
+                return
+
+            # check if were scaling down and add a log message
+            if self.charm.is_scaling_down(departed_relation_id):
+                logger.info(
+                    "Relation broken event occurring due to scale down, do not proceed to remove users."
+                )
+                return
+
+            logger.info(
+                "Relation broken event occurring due to relation removal, proceed to remove user."
+            )
 
         try:
             self.oversee_users(departed_relation_id, event)
@@ -186,6 +207,9 @@ class MongoDBProvider(Object):
             a Diff instance containing the added, deleted and changed
                 keys from the event relation databag.
         """
+        if not isinstance(event, RelationChangedEvent):
+            logger.info("Cannot compute diff of event type: %s", type(event))
+            return
         # TODO import marvelous unit tests in a future PR
         # Retrieve the old data from the data key in the application relation databag.
         old_data = json.loads(event.relation.data[self.charm.model.app].get("data", "{}"))

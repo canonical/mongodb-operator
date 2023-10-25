@@ -1119,6 +1119,41 @@ class MongodbOperatorCharm(CharmBase):
         scope_obj = self._scope_obj(scope)
         return self._peers.data[scope_obj]
 
+    def check_relation_broken_or_scale_down(self, event: RelationDepartedEvent) -> None:
+        """Checks relation departed event is the result of removed relation or scale down.
+
+        Relation departed and relation broken events occur during scaling down or during relation
+        removal, only relation departed events have access to metadata to determine which case.
+        """
+        self.set_scaling_down(event)
+
+        if self.is_scaling_down(event.relation.id):
+            logger.info(
+                "Scaling down the application, no need to process removed relation in broken hook."
+            )
+
+    def is_scaling_down(self, rel_id: int) -> bool:
+        """Returns True if the application is scaling down."""
+        rel_departed_key = self._generate_relation_departed_key(rel_id)
+        return json.loads(self.unit_peer_data[rel_departed_key])
+
+    def has_departed_run(self, rel_id: int) -> bool:
+        """Returns True if the relation departed event has run."""
+        rel_departed_key = self._generate_relation_departed_key(rel_id)
+        return rel_departed_key in self.unit_peer_data
+
+    def set_scaling_down(self, event: RelationDepartedEvent) -> None:
+        """Sets whether or not the current unit is scaling down."""
+        # check if relation departed is due to current unit being removed. (i.e. scaling down the
+        # application.)
+        rel_departed_key = self._generate_relation_departed_key(event.relation.id)
+        self.unit_peer_data[rel_departed_key] = json.dumps(event.departing_unit == self.unit)
+
+    @staticmethod
+    def _generate_relation_departed_key(rel_id: int) -> str:
+        """Generates the relation departed key for a specified relation id."""
+        return f"relation_{rel_id}_departed"
+
     # END: helper functions
 
 

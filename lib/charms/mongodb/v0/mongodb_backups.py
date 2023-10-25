@@ -636,7 +636,7 @@ class MongoDBBackups(Object):
         to contain the operation type (backup/restore) and the backup id.
         """
         if (
-            type(current_pbm_status) is type(previous_pbm_status)
+            isinstance(current_pbm_status, type(previous_pbm_status))
             and current_pbm_status.message == previous_pbm_status.message
         ):
             return f"Operation is still in progress: '{current_pbm_status.message}'"

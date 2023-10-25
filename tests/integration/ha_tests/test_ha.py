@@ -117,7 +117,7 @@ async def test_storage_re_use(ops_test, continuous_writes):
 
     assert await helpers.reused_storage(
         ops_test, new_unit.public_address, removal_time
-    ), "attached storage not properly re-used by MongoDB."
+    ), "attached storage not properly reused by MongoDB."
 
     # verify that the no writes were skipped
     total_expected_writes = await helpers.stop_continous_writes(ops_test)
