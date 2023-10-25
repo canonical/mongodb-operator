@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
+import logging
 from datetime import datetime
 
 import ops
@@ -19,6 +20,8 @@ MONGO_COMMON_DIR = "/var/snap/charmed-mongodb/common"
 EXTERNAL_CERT_PATH = f"{MONGOD_CONF_DIR}/external-ca.crt"
 INTERNAL_CERT_PATH = f"{MONGOD_CONF_DIR}/internal-ca.crt"
 EXTERNAL_PEM_PATH = f"{MONGOD_CONF_DIR}/external-cert.pem"
+
+logger = logging.getLogger(__name__)
 
 
 class ProcessError(Exception):
@@ -110,3 +113,22 @@ def process_systemctl_time(systemctl_output):
     time_as_str = "T".join(systemctl_output.split("=")[1].split(" ")[1:3])
     d = datetime.strptime(time_as_str, "%Y-%m-%dT%H:%M:%S")
     return d
+
+
+async def scp_file_preserve_ctime(ops_test: OpsTest, unit_name: str, path: str) -> int:
+    """Returns the unix timestamp of when a file was created on a specified unit."""
+    # Retrieving the file
+    filename = path.split("/")[-1]
+    complete_command = f"scp --container mongod {unit_name}:{path} {filename}"
+    return_code, scp_output, stderr = await ops_test.juju(*complete_command.split())
+
+    if return_code != 0:
+        logger.error(stderr)
+        raise ProcessError(
+            "Expected command %s to succeed instead it failed: %s; %s",
+            complete_command,
+            return_code,
+            stderr,
+        )
+
+    return f"{filename}"
