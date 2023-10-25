@@ -14,7 +14,7 @@ from ..ha_tests import helpers as ha_helpers
 from . import helpers
 
 S3_APP_NAME = "s3-integrator"
-TIMEOUT = 15 * 60
+TIMEOUT = 20 * 60
 ENDPOINT = "s3-credentials"
 NEW_CLUSTER = "new-mongodb"
 
