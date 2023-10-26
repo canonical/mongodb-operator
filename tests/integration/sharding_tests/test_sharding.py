@@ -174,7 +174,7 @@ async def test_shard_removal(ops_test: OpsTest) -> None:
         raise_on_error=False,
     )
 
-    # # turn off balancer.
+    # turn off balancer.
     mongos_client = await generate_mongodb_client(
         ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True
     )
