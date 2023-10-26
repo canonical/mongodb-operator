@@ -4,6 +4,7 @@
 import pytest
 from pytest_operator.plugin import OpsTest
 
+<<<<<<< HEAD
 from .helpers import (
     generate_mongodb_client,
     get_cluster_shards,
@@ -15,14 +16,24 @@ from .helpers import (
 SHARD_ONE_APP_NAME = "shard-one"
 SHARD_TWO_APP_NAME = "shard-two"
 SHARD_THREE_APP_NAME = "shard-three"
+=======
+from .helpers import generate_mongodb_client, verify_data_mongodb, write_data_to_mongodb
+
+SHARD_ONE_APP_NAME = "shard-one"
+SHARD_TWO_APP_NAME = "shard-two"
+>>>>>>> 6/edge
 CONFIG_SERVER_APP_NAME = "config-server-one"
 SHARD_REL_NAME = "sharding"
 CONFIG_SERVER_REL_NAME = "config-server"
 MONGODB_KEYFILE_PATH = "/var/snap/charmed-mongodb/current/etc/mongod/keyFile"
+<<<<<<< HEAD
 # for now we have a large timeout due to the slow drainage of the `config.system.sessions`
 # collection. More info here:
 # https://stackoverflow.com/questions/77364840/mongodb-slow-chunk-migration-for-collection-config-system-sessions-with-remov
 TIMEOUT = 30 * 60
+=======
+TIMEOUT = 15 * 60
+>>>>>>> 6/edge
 
 
 @pytest.mark.abort_on_fail
@@ -31,15 +42,26 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     my_charm = await ops_test.build_charm(".")
     await ops_test.model.deploy(
         my_charm,
+<<<<<<< HEAD
         num_units=1,
+=======
+        num_units=2,
+>>>>>>> 6/edge
         config={"role": "config-server"},
         application_name=CONFIG_SERVER_APP_NAME,
     )
     await ops_test.model.deploy(
+<<<<<<< HEAD
         my_charm, num_units=1, config={"role": "shard"}, application_name=SHARD_ONE_APP_NAME
     )
     await ops_test.model.deploy(
         my_charm, num_units=1, config={"role": "shard"}, application_name=SHARD_TWO_APP_NAME
+=======
+        my_charm, num_units=2, config={"role": "shard"}, application_name=SHARD_ONE_APP_NAME
+    )
+    await ops_test.model.deploy(
+        my_charm, num_units=2, config={"role": "shard"}, application_name=SHARD_TWO_APP_NAME
+>>>>>>> 6/edge
     )
 
     async with ops_test.fast_forward():
@@ -48,7 +70,10 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
             idle_period=20,
             raise_on_blocked=False,
             timeout=TIMEOUT,
+<<<<<<< HEAD
             raise_on_error=False,  # checks on snaps can cause errors.
+=======
+>>>>>>> 6/edge
         )
 
     # TODO Future PR: assert that CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME
@@ -73,6 +98,7 @@ async def test_cluster_active(ops_test: OpsTest) -> None:
             idle_period=20,
             status="active",
             timeout=TIMEOUT,
+<<<<<<< HEAD
             raise_on_error=False,  # checks on snaps can cause errors.
         )
 
@@ -86,11 +112,18 @@ async def test_cluster_active(ops_test: OpsTest) -> None:
         expected_shard_names
     ), "Config server did not process config properly"
 
+=======
+        )
+
+>>>>>>> 6/edge
     # TODO Future PR: assert that CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME
     # have the correct active statuses.
 
 
+<<<<<<< HEAD
 @pytest.mark.abort_on_fail
+=======
+>>>>>>> 6/edge
 async def test_sharding(ops_test: OpsTest) -> None:
     """Tests writing data to mongos gets propagated to shards."""
     # write data to mongos on both shards.
@@ -141,6 +174,7 @@ async def test_sharding(ops_test: OpsTest) -> None:
         value="pegasus",
     )
     assert has_correct_data, "data not written to shard-two"
+<<<<<<< HEAD
 
 
 async def test_shard_removal(ops_test: OpsTest) -> None:
@@ -299,3 +333,5 @@ async def test_unconventual_shard_removal(ops_test: OpsTest):
     assert set(databases_on_shard) == set(
         expected_databases_on_shard
     ), "Not all databases on final shard"
+=======
+>>>>>>> 6/edge
