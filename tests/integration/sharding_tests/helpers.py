@@ -54,6 +54,7 @@ def get_cluster_shards(mongos_client) -> set:
 
 
 def get_databases_for_shard(mongos_client, shard_name) -> Optional[List[str]]:
+    """Returns the databases hosted on the given shard."""
     config_db = mongos_client["config"]
     if "databases" not in config_db.list_collection_names():
         return None
