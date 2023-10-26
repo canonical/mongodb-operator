@@ -19,7 +19,7 @@ jobs:
     name: Build charm
     uses: canonical/data-platform-workflows/.github/workflows/build_charm_without_cache.yaml@v5
     with:
-      charmcraft-snap-channel: "latest/edge"
+      charmcraft-snap-channel: "latest/stable"
 
   release:
     name: Release charm
