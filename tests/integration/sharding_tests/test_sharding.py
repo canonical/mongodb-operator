@@ -19,7 +19,10 @@ CONFIG_SERVER_APP_NAME = "config-server-one"
 SHARD_REL_NAME = "sharding"
 CONFIG_SERVER_REL_NAME = "config-server"
 MONGODB_KEYFILE_PATH = "/var/snap/charmed-mongodb/current/etc/mongod/keyFile"
-TIMEOUT = 15 * 60
+# for now we have a large timeout due to the slow drainage of the `config.system.sessions`
+# collection. More info here:
+# https://stackoverflow.com/questions/77364840/mongodb-slow-chunk-migration-for-collection-config-system-sessions-with-remov
+TIMEOUT = 30 * 60
 
 
 @pytest.mark.abort_on_fail
@@ -277,18 +280,20 @@ async def test_unconventual_shard_removal(ops_test: OpsTest):
             raise_on_error=False,  # checks on snaps can cause errors.
         )
 
+    ops_test.model.remove_application(SHARD_TWO_APP_NAME, block_until_done=True)
+
     # veriy sharded cluster config
     mongos_client = await generate_mongodb_client(
         ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True
     )
     shard_names = get_cluster_shards(mongos_client)
-    expected_shard_names = [SHARD_TWO_APP_NAME]
+    expected_shard_names = [SHARD_THREE_APP_NAME]
     assert shard_names == set(
         expected_shard_names
     ), "Config server did not process config properly"
 
     # verify no data lost
-    databases_on_shard = get_databases_for_shard(mongos_client, shard_name=SHARD_TWO_APP_NAME)
+    databases_on_shard = get_databases_for_shard(mongos_client, shard_name=SHARD_THREE_APP_NAME)
     expected_databases_on_shard = ["animals_database_1", "animals_database_2"]
     assert databases_on_shard, "No databases on the final shard."
     assert set(databases_on_shard) == set(
