@@ -49,7 +49,7 @@ def verify_data_mongodb(client, db_name, coll_name, key, value) -> bool:
 def get_cluster_shards(mongos_client) -> set:
     """Returns a set of the shard members."""
     shard_list = mongos_client.admin.command("listShards")
-    curr_members = [member["_id"] for member in shard_list["shards"]]
+    curr_members = [member["host"].split("/")[0] for member in shard_list["shards"]]
     return set(curr_members)
 
 

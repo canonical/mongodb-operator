@@ -278,16 +278,16 @@ async def test_unconventual_shard_removal(ops_test: OpsTest):
         f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
     )
 
+    await ops_test.model.remove_application(SHARD_TWO_APP_NAME, block_until_done=True)
+
     async with ops_test.fast_forward():
         await ops_test.model.wait_for_idle(
-            apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
+            apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME],
             idle_period=20,
             status="active",
             timeout=TIMEOUT,
             raise_on_error=False,
         )
-
-    ops_test.model.remove_application(SHARD_TWO_APP_NAME, block_until_done=True)
 
     mongos_client = await generate_mongodb_client(
         ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True
