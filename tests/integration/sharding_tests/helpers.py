@@ -65,3 +65,17 @@ def get_databases_for_shard(mongos_client, shard_name) -> Optional[List[str]]:
         return
 
     return databases_collection.distinct("_id", {"primary": shard_name})
+
+
+def has_correct_shards(mongos_client, expected_shards: List[str]) -> bool:
+    """Returns true if the cluster config has the expected shards."""
+    shard_names = get_cluster_shards(mongos_client)
+    return shard_names == set(expected_shards)
+
+
+def shard_has_databases(
+    mongos_client, shard_name: str, expected_databases_on_shard: List[str]
+) -> bool:
+    """Returns true if the provided shard is a primary for the provided databases."""
+    databases_on_shard = get_databases_for_shard(mongos_client, shard_name=shard_name)
+    return set(databases_on_shard) == set(expected_databases_on_shard)
