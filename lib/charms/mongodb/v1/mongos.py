@@ -163,11 +163,6 @@ class MongosConnection:
         shard_hosts = [f"{host}:{shard_port}" for host in shard_hosts]
         shard_hosts = ",".join(shard_hosts)
         shard_url = f"{shard_name}/{shard_hosts}"
-        # TODO Future PR raise error when number of shards currently adding are higher than the
-        # number of secondaries on the primary shard. This will be challenging, as there is no
-        # MongoDB command to retrieve the primary shard. Will likely need to be done via
-        # mongosh
-
         if shard_name in self.get_shard_members():
             logger.info("Skipping adding shard %s, shard is already in cluster", shard_name)
             return
@@ -444,3 +439,13 @@ class MongosConnection:
                 candidate_free_space = current_free_space
 
         return (candidate_shard, candidate_free_space)
+
+    def get_draining_shards(self) -> List[str]:
+        """Returns a list of the shards currently draining."""
+        sc_status = self.client.admin.command("listShards")
+        draining_shards = []
+        for shard in sc_status["shards"]:
+            if shard.get("draining", False):
+                draining_shards.append(shard["_id"])
+
+        return draining_shards
