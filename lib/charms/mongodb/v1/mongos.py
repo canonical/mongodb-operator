@@ -9,7 +9,7 @@ from urllib.parse import quote_plus
 
 from charms.mongodb.v0.mongodb import NotReadyError
 from pymongo import MongoClient, collection
-from tenacity import Retrying, stop_after_delay, wait_fixed
+from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from config import Config
 
@@ -21,7 +21,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 2
 
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
@@ -333,6 +333,36 @@ class MongosConnection:
             str(remaining_chunks),
             ",".join(dbs_to_move),
         )
+
+    @property
+    def is_ready(self) -> bool:
+        """Is mongos ready for services requests.
+
+        Returns:
+            True if services is ready False otherwise. Retries over a period of 60 seconds times to
+            allow server time to start up.
+
+        Raises:
+            ConfigurationError, ConfigurationError, OperationFailure
+        """
+        try:
+            for attempt in Retrying(stop=stop_after_delay(60), wait=wait_fixed(3)):
+                with attempt:
+                    # The ping command is cheap and does not require auth.
+                    self.client.admin.command("ping")
+        except RetryError:
+            return False
+
+        return True
+
+    def is_shard_aware(self, shard_name: str) -> bool:
+        """Returns True if provided shard is shard aware."""
+        sc_status = self.client.admin.command("listShards")
+        for shard in sc_status["shards"]:
+            if shard["_id"] == shard_name:
+                return shard["state"] == 1
+
+        return False
 
     def _retrieve_remaining_chunks(self, removal_info) -> int:
         """Parses the remaining chunks to remove from removeShard command."""
