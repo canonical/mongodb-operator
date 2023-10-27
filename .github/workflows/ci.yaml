@@ -68,7 +68,7 @@ jobs:
 
   build:
     name: Build charms
-    uses: canonical/data-platform-workflows/.github/workflows/build_charms_with_cache.yaml@v2
+    uses: canonical/data-platform-workflows/.github/workflows/build_charms_with_cache.yaml@v5.1.2
 
   integration-test:
     strategy:
@@ -104,7 +104,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: ${{ needs.build.outputs.artifact-name }}
-      
+
       - name: Free up disk space
         run: |
           # From https://github.com/actions/runner-images/issues/2840#issuecomment-790492173
