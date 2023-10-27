@@ -469,7 +469,7 @@ class ConfigServerRequirer(Object):
 
                 break
 
-    def get_shard_status(self) -> StatusBase:
+    def get_shard_status(self) -> Optional[StatusBase]:
         """Returns the current status of the shard.
 
         Note: No need to report if currently draining, since that check block other hooks from
