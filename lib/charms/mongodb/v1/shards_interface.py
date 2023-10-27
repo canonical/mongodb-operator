@@ -357,7 +357,9 @@ class ConfigServerRequirer(Object):
             return
 
         # if re-using an old shard, re-set drained flag.
-        self.charm.app_peer_data["drained"] = json.dumps(False)
+        if self.charm.unit.is_leader():
+            self.charm.app_peer_data["drained"] = json.dumps(False)
+
         self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
 
         # shards rely on the config server for secrets
