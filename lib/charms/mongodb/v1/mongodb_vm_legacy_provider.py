@@ -13,8 +13,6 @@ from charms.operator_libs_linux.v1 import snap, systemd
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
 
-from config import Config
-
 # The unique Charmhub library identifier, never change it
 LIBID = "896a48bc89b84d30839335bb37170509"
 
@@ -43,6 +41,7 @@ class MongoDBLegacyProvider(Object):
         """Manager of MongoDB client relations."""
         super().__init__(charm, "client-relations")
         self.charm = charm
+        self.relation_name = LEGACY_REL_NAME
         self.framework.observe(
             self.charm.on[LEGACY_REL_NAME].relation_created, self._on_legacy_relation_created
         )
@@ -66,14 +65,8 @@ class MongoDBLegacyProvider(Object):
             )
             return
 
-        if self.charm.is_role(Config.Role.SHARD) or self.charm.is_role(Config.Role.CONFIG_SERVER):
-            self.charm.unit.status = BlockedStatus(
-                "Sharding roles do not support mongodb interface."
-            )
-            logger.error(
-                "Charm is in sharding role: %s. Does not support mongodb_client interface.",
-                self.charm.role,
-            )
+        if not self.charm.is_relation_feasible(self.relation_name):
+            logger.info("Skipping code for legacy relations.")
             return
 
         # If auth is already disabled its likely it has a connection with another legacy relation

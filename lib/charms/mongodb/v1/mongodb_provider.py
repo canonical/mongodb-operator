@@ -21,8 +21,6 @@ from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, Relation
 from pymongo.errors import PyMongoError
 
-from config import Config
-
 # The unique Charmhub library identifier, never change it
 LIBID = "4067879ef7dd4261bf6c164bc29d94b1"
 
@@ -86,14 +84,8 @@ class MongoDBProvider(Object):
 
     def pass_hook_checks(self) -> bool:
         """Runs the pre-hooks checks for MongoDBProvider, returns True if all pass."""
-        if self.charm.is_role(Config.Role.SHARD) or self.charm.is_role(Config.Role.CONFIG_SERVER):
-            self.charm.unit.status = BlockedStatus(
-                "Sharding roles do not support mongodb_client interface."
-            )
-            logger.error(
-                "Charm is in sharding role: %s. Does not support mongodb_client interface.",
-                self.charm.role,
-            )
+        if not self.charm.is_relation_feasible(self.relation_name):
+            logger.info("Skipping code for relations.")
             return False
 
         # legacy relations have auth disabled, which new relations require

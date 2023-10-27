@@ -29,7 +29,13 @@ from charms.mongodb.v1.mongos import (
 from charms.mongodb.v1.users import MongoDBUser, OperatorUser
 from ops.charm import CharmBase, EventBase, RelationBrokenEvent
 from ops.framework import Object
-from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
+from ops.model import (
+    ActiveStatus,
+    BlockedStatus,
+    MaintenanceStatus,
+    StatusBase,
+    WaitingStatus,
+)
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from config import Config
@@ -107,12 +113,8 @@ class ShardingProvider(Object):
 
     def pass_hook_checks(self, event: EventBase) -> bool:
         """Runs the pre-hooks checks for ShardingProvider, returns True if all pass."""
-        if self.charm.is_role(Config.Role.REPLICATION):
-            self.charm.unit.status = BlockedStatus("role replication does not support sharding")
-            logger.error(
-                "Skipping %s. Sharding interface not supported with config role=replication.",
-                type(event),
-            )
+        if not self.charm.is_relation_feasible(self.relation_name):
+            logger.info("Skipping event %s , relation not feasible.", type(event))
             return False
 
         if not self.charm.is_role(Config.Role.CONFIG_SERVER):
@@ -388,9 +390,8 @@ class ConfigServerRequirer(Object):
 
     def pass_hook_checks(self, event):
         """Runs the pre-hooks checks for ConfigServerRequirer, returns True if all pass."""
-        if self.charm.is_role(Config.Role.REPLICATION):
-            self.charm.unit.status = BlockedStatus("role replication does not support sharding")
-            logger.error("sharding interface not supported with config role=replication")
+        if not self.charm.is_relation_feasible(self.relation_name):
+            logger.info("Skipping event %s , relation not feasible.", type(event))
             return False
 
         if not self.charm.is_role(Config.Role.SHARD):
@@ -468,7 +469,7 @@ class ConfigServerRequirer(Object):
 
                 break
 
-    def get_shard_status(self):
+    def get_shard_status(self) -> StatusBase:
         """Returns the current status of the shard.
 
         Note: No need to report if currently draining, since that check block other hooks from
@@ -498,7 +499,7 @@ class ConfigServerRequirer(Object):
             return BlockedStatus("Config server unreachable")
 
         if not self._is_added_to_cluster():
-            self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
+            return MaintenanceStatus("Adding shard to config-server")
 
         if not self._is_shard_aware():
             return BlockedStatus("Shard is not yet shard aware")
@@ -618,6 +619,9 @@ class ConfigServerRequirer(Object):
             return False
 
         mongos_hosts = self.get_mongos_hosts()
+        if not mongos_hosts:
+            return False
+
         self.charm.remote_mongos_config(set(mongos_hosts))
         config = self.charm.remote_mongos_config(set(mongos_hosts))
 
@@ -649,13 +653,17 @@ class ConfigServerRequirer(Object):
 
     def get_related_config_server(self) -> str:
         """Returns the related config server."""
-        config_server = [rel.app.name for rel in self.charm.model.relations[self.relation_name]]
+        if self.relation_name not in self.charm.model.relations:
+            return None
 
         # metadata.yaml prevents having multiple config servers
-        return config_server[0]
+        return self.charm.model.relations[self.relation_name][0].app.name
 
     def get_mongos_hosts(self) -> List[str]:
         """Returns a list of IP addresses for the mongos hosts."""
         # only one related config-server is possible
         config_server_relation = self.charm.model.relations[self.relation_name][0]
+        if HOSTS_KEY not in config_server_relation.data[config_server_relation.app]:
+            return
+
         return json.loads(config_server_relation.data[config_server_relation.app].get(HOSTS_KEY))

@@ -29,7 +29,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 0
 
 # path to store mongodb ketFile
 KEY_FILE = "keyFile"
@@ -199,35 +199,6 @@ def generate_keyfile() -> str:
     """
     choices = string.ascii_letters + string.digits
     return "".join([secrets.choice(choices) for _ in range(1024)])
-
-
-def prioritise_statuses(mongodb_status, pbm_status, shard_status, config_server_status):
-    """Returns the status with the highest priority of the given statuses.
-
-    Note: it will never be the case that shard_status and config_server_status are both present
-    since the mongodb app can either be a shard or a config server, but not both.
-    """
-    # failure in mongodb takes precedence over sharding and config server
-    if not isinstance(mongodb_status, ActiveStatus):
-        return mongodb_status
-
-    if shard_status and not isinstance(shard_status, ActiveStatus):
-        return shard_status
-
-    if config_server_status and not isinstance(config_server_status, ActiveStatus):
-        return config_server_status
-
-    if pbm_status and not isinstance(pbm_status, ActiveStatus):
-        return pbm_status
-
-    # if all statuses are active report sharding statuses over mongodb status
-    if isinstance(shard_status, ActiveStatus):
-        return shard_status
-
-    if isinstance(config_server_status, ActiveStatus):
-        return config_server_status
-
-    return mongodb_status
 
 
 def build_unit_status(mongodb_config: MongoDBConfiguration, unit_ip: str) -> StatusBase:

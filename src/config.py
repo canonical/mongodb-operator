@@ -76,6 +76,7 @@ class Config:
         CONFIG_SERVER_RELATIONS_NAME = "config-server"
         APP_SCOPE = "app"
         UNIT_SCOPE = "unit"
+        DB_RELATIONS = [OBSOLETE_RELATIONS_NAME, NAME]
         Scopes = Literal[APP_SCOPE, UNIT_SCOPE]
 
     class Secrets:

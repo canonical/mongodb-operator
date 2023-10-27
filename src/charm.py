@@ -31,7 +31,6 @@ from charms.mongodb.v1.helpers import (
     generate_keyfile,
     generate_password,
     get_create_user_cmd,
-    prioritise_statuses,
 )
 from charms.mongodb.v1.mongodb_backups import S3_RELATION, MongoDBBackups
 from charms.mongodb.v1.mongodb_provider import MongoDBProvider
@@ -67,6 +66,7 @@ from ops.model import (
     BlockedStatus,
     MaintenanceStatus,
     Relation,
+    StatusBase,
     Unit,
     WaitingStatus,
 )
@@ -575,25 +575,7 @@ class MongodbOperatorCharm(CharmBase):
         if self.unit.is_leader():
             self._handle_reconfigure(event)
 
-        # retrieve statuses of different services running on Charmed MongoDB
-        mongodb_status = build_unit_status(self.mongodb_config, self._unit_ip(self.unit))
-        shard_status = self.shard.get_shard_status() if self.is_role(Config.Role.SHARD) else None
-        config_server_status = (
-            self.config_server.get_config_server_status()
-            if self.is_role(Config.Role.CONFIG_SERVER)
-            else None
-        )
-        pbm_status = (
-            self.backups.get_pbm_status() if self.model.get_relation(S3_RELATION) else None
-        )
-
-        # prioritize the statuses of the different services running on Charmed MongoDB
-        self.unit.status = prioritise_statuses(
-            mongodb_status,
-            pbm_status,
-            shard_status,
-            config_server_status,
-        )
+        self.unit.status = self.get_status()
 
     def _on_get_primary_action(self, event: ActionEvent):
         event.set_results({"replica-set-primary": self._primary})
@@ -1366,6 +1348,77 @@ class MongodbOperatorCharm(CharmBase):
     def _is_removing_last_replica(self) -> bool:
         """Returns True if the last replica (juju unit) is getting removed."""
         return self.app.planned_units() == 0 and len(self._peers.units) == 0
+
+    def get_status(self) -> StatusBase:
+        """Returns the status with the highest priority from backups, sharding, and mongod.
+
+        Note: it will never be the case that shard_status and config_server_status are both present
+        since the mongodb app can either be a shard or a config server, but not both.
+        """
+        # retrieve statuses of different services running on Charmed MongoDB
+        mongodb_status = build_unit_status(self.mongodb_config, self._unit_ip(self.unit))
+        shard_status = self.shard.get_shard_status() if self.is_role(Config.Role.SHARD) else None
+        config_server_status = (
+            self.config_server.get_config_server_status()
+            if self.is_role(Config.Role.CONFIG_SERVER)
+            else None
+        )
+        pbm_status = (
+            self.backups.get_pbm_status() if self.model.get_relation(S3_RELATION) else None
+        )
+
+        # failure in mongodb takes precedence over sharding and config server
+        if not isinstance(mongodb_status, ActiveStatus):
+            return mongodb_status
+
+        if shard_status and not isinstance(shard_status, ActiveStatus):
+            return shard_status
+
+        if config_server_status and not isinstance(config_server_status, ActiveStatus):
+            return config_server_status
+
+        if pbm_status and not isinstance(pbm_status, ActiveStatus):
+            return pbm_status
+
+        # if all statuses are active report sharding statuses over mongodb status
+        if isinstance(shard_status, ActiveStatus):
+            return shard_status
+
+        if isinstance(config_server_status, ActiveStatus):
+            return config_server_status
+
+        return mongodb_status
+
+    def is_relation_feasible(self, rel_interface) -> bool:
+        """Returns true if the proposed relation is feasible."""
+        if self.is_sharding_component() and rel_interface in Config.Relations.DB_RELATIONS:
+            self.unit.status = BlockedStatus(
+                f"Sharding roles do not support {rel_interface} interface."
+            )
+            logger.error(
+                "Charm is in sharding role: %s. Does not support %s interface.",
+                rel_interface,
+                self.role,
+            )
+            return False
+
+        if (
+            not self.is_sharding_component()
+            and rel_interface != Config.Relations.SHARDING_RELATIONS_NAME
+        ):
+            self.unit.status = BlockedStatus("role replication does not support sharding")
+            logger.error(
+                "Charm is in sharding role: %s. Does not support %s interface.",
+                self.role,
+                rel_interface,
+            )
+            return False
+
+        return True
+
+    def is_sharding_component(self) -> bool:
+        """Returns true if charm is running as a sharded component."""
+        return self.is_role(Config.Role.SHARD) or self.is_role(Config.Role.CONFIG_SERVER)
 
     # END: helper functions
 
