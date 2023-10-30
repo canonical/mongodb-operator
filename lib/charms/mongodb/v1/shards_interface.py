@@ -376,7 +376,7 @@ class ShardingProvider(Object):
     def is_mongos_running(self) -> bool:
         """Returns true if mongos service is running."""
         mongos_hosts = ",".join(self.charm._unit_ips)
-        uri = f"mongodb://{','.join(mongos_hosts)}"
+        uri = f"mongodb://{mongos_hosts}"
         with MongosConnection(None, uri) as mongo:
             return mongo.is_ready
 
