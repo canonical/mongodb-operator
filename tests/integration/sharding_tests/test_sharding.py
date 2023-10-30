@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
+import asyncio
+
 import pytest
 from pytest_operator.plugin import OpsTest
 
@@ -15,6 +17,7 @@ from .helpers import (
 SHARD_ONE_APP_NAME = "shard-one"
 SHARD_TWO_APP_NAME = "shard-two"
 SHARD_THREE_APP_NAME = "shard-three"
+SHARD_APPS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME]
 CONFIG_SERVER_APP_NAME = "config-server-one"
 SHARD_REL_NAME = "sharding"
 CONFIG_SERVER_REL_NAME = "config-server"
@@ -54,8 +57,26 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
             raise_on_error=False,
         )
 
-    # TODO Future PR: assert that CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME
-    # are blocked waiting for relaitons
+    # verify that Charmed MongoDB is blocked and reports incorrect credentials
+    await asyncio.gather(
+        ops_test.model.wait_for_idle(
+            apps=[CONFIG_SERVER_APP_NAME],
+            status="active",
+            idle_period=20,
+            timeout=TIMEOUT,
+        ),
+        ops_test.model.wait_for_idle(
+            apps=[SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
+            status="blocked",
+            idle_period=20,
+            timeout=TIMEOUT,
+        ),
+    )
+
+    # TODO Future PR: assert statuses for config-server
+    for shard_app_name in SHARD_APPS:
+        shard_unit = ops_test.model.applications[shard_app_name].units[0]
+        assert shard_unit.workload_status_message == "missing relation to config server"
 
 
 @pytest.mark.abort_on_fail
@@ -98,8 +119,13 @@ async def test_cluster_active(ops_test: OpsTest) -> None:
         expected_shards=[SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME, SHARD_THREE_APP_NAME],
     ), "Config server did not process config properly"
 
-    # TODO Future PR: assert that CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME
-    # have the correct active statuses.
+    # TODO Future PR: assert statuses for config-server
+    for shard_app_name in SHARD_APPS:
+        shard_unit = ops_test.model.applications[shard_app_name].units[0]
+        assert (
+            shard_unit.workload_status_message
+            == f"Shard connected to config-server: {CONFIG_SERVER_APP_NAME}"
+        )
 
 
 @pytest.mark.abort_on_fail

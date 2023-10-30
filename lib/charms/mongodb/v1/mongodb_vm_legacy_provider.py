@@ -17,11 +17,11 @@ from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
 LIBID = "896a48bc89b84d30839335bb37170509"
 
 # Increment this major API version when introducing breaking changes
-LIBAPI = 0
+LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 4
+LIBPATCH = 0
 logger = logging.getLogger(__name__)
 REL_NAME = "database"
 
@@ -41,6 +41,7 @@ class MongoDBLegacyProvider(Object):
         """Manager of MongoDB client relations."""
         super().__init__(charm, "client-relations")
         self.charm = charm
+        self.relation_name = LEGACY_REL_NAME
         self.framework.observe(
             self.charm.on[LEGACY_REL_NAME].relation_created, self._on_legacy_relation_created
         )
@@ -62,6 +63,10 @@ class MongoDBLegacyProvider(Object):
                 "Creating legacy relation would turn off auth effecting the new relations: %s",
                 relation_users,
             )
+            return
+
+        if not self.charm.is_relation_feasible(self.relation_name):
+            logger.info("Skipping code for legacy relations.")
             return
 
         # If auth is already disabled its likely it has a connection with another legacy relation
