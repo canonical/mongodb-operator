@@ -2,7 +2,7 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 import asyncio
-
+import re
 import pytest
 from pytest_operator.plugin import OpsTest
 
@@ -62,7 +62,9 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         ),
     )
 
-    # TODO Future PR: assert statuses for config-server
+    config_server_unit = ops_test.model.applications[CONFIG_SERVER_APP_NAME].units[0]
+    assert config_server_unit.workload_status_message == "missing relation to shard(s)"
+
     for shard_app_name in SHARD_APPS:
         shard_unit = ops_test.model.applications[shard_app_name].units[0]
         assert shard_unit.workload_status_message == "missing relation to config server"
@@ -88,7 +90,10 @@ async def test_cluster_active(ops_test: OpsTest) -> None:
             timeout=TIMEOUT,
         )
 
-    # TODO Future PR: assert statuses for config-server
+    config_server_unit = ops_test.model.applications[CONFIG_SERVER_APP_NAME].units[0]
+    correct_pattern = r"config-server connected to (shard-one, shard-two|shard-two, shard-one)"
+    assert re.match(correct_pattern, config_server_unit.workload_status_messag)
+
     for shard_app_name in SHARD_APPS:
         shard_unit = ops_test.model.applications[shard_app_name].units[0]
         assert (
