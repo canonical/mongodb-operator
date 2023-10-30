@@ -649,18 +649,12 @@ class ConfigServerRequirer(Object):
         # match what is on the machine.
         current_key_file = self.charm.get_keyfile_contents()
         if not key_file_contents or key_file_contents == current_key_file:
-            logger.info(f"Skipping update. proposed keyfile {key_file_contents}")
-            logger.info(f"Skipping update. current keyfile {current_key_file}")
             return
 
         # put keyfile on the machine with appropriate permissions
         self.charm.push_file_to_unit(
             parent_dir=Config.MONGOD_CONF_DIR, file_name=KEY_FILE, file_contents=key_file_contents
         )
-
-        logger.info(f"Updated keyfile from {current_key_file} to {key_file_contents}")
-        current_key_file = self.charm.get_keyfile_contents()
-        logger.info(f"Now {current_key_file}")
 
         # when the contents of the keyfile change, we must restart the service
         self.charm.restart_mongod_service()
