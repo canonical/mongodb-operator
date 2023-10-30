@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
+import asyncio
+
 import pytest
 from pytest_operator.plugin import OpsTest
 
@@ -8,11 +10,15 @@ from .helpers import generate_mongodb_client, verify_data_mongodb, write_data_to
 
 SHARD_ONE_APP_NAME = "shard-one"
 SHARD_TWO_APP_NAME = "shard-two"
+SHARD_APPS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME]
 CONFIG_SERVER_APP_NAME = "config-server-one"
 SHARD_REL_NAME = "sharding"
 CONFIG_SERVER_REL_NAME = "config-server"
 MONGODB_KEYFILE_PATH = "/var/snap/charmed-mongodb/current/etc/mongod/keyFile"
-TIMEOUT = 15 * 60
+# for now we have a large timeout due to the slow drainage of the `config.system.sessions`
+# collection. More info here:
+# https://stackoverflow.com/questions/77364840/mongodb-slow-chunk-migration-for-collection-config-system-sessions-with-remov
+TIMEOUT = 30 * 60
 
 
 @pytest.mark.abort_on_fail
@@ -40,8 +46,26 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
             timeout=TIMEOUT,
         )
 
-    # TODO Future PR: assert that CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME
-    # are blocked waiting for relaitons
+    # verify that Charmed MongoDB is blocked and reports incorrect credentials
+    await asyncio.gather(
+        ops_test.model.wait_for_idle(
+            apps=[CONFIG_SERVER_APP_NAME],
+            status="active",
+            idle_period=20,
+            timeout=TIMEOUT,
+        ),
+        ops_test.model.wait_for_idle(
+            apps=[SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
+            status="blocked",
+            idle_period=20,
+            timeout=TIMEOUT,
+        ),
+    )
+
+    # TODO Future PR: assert statuses for config-server
+    for shard_app_name in SHARD_APPS:
+        shard_unit = ops_test.model.applications[shard_app_name].units[0]
+        assert shard_unit.workload_status_message == "missing relation to config server"
 
 
 @pytest.mark.abort_on_fail
@@ -64,8 +88,13 @@ async def test_cluster_active(ops_test: OpsTest) -> None:
             timeout=TIMEOUT,
         )
 
-    # TODO Future PR: assert that CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME
-    # have the correct active statuses.
+    # TODO Future PR: assert statuses for config-server
+    for shard_app_name in SHARD_APPS:
+        shard_unit = ops_test.model.applications[shard_app_name].units[0]
+        assert (
+            shard_unit.workload_status_message
+            == f"Shard connected to config-server: {CONFIG_SERVER_APP_NAME}"
+        )
 
 
 async def test_sharding(ops_test: OpsTest) -> None:
