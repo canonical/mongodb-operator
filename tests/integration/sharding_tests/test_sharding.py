@@ -3,6 +3,7 @@
 # See LICENSE file for licensing details.
 import asyncio
 import re
+
 import pytest
 from pytest_operator.plugin import OpsTest
 
@@ -50,7 +51,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await asyncio.gather(
         ops_test.model.wait_for_idle(
             apps=[CONFIG_SERVER_APP_NAME],
-            status="active",
+            status="blocked",
             idle_period=20,
             timeout=TIMEOUT,
         ),
@@ -92,7 +93,7 @@ async def test_cluster_active(ops_test: OpsTest) -> None:
 
     config_server_unit = ops_test.model.applications[CONFIG_SERVER_APP_NAME].units[0]
     correct_pattern = r"config-server connected to (shard-one, shard-two|shard-two, shard-one)"
-    assert re.match(correct_pattern, config_server_unit.workload_status_messag)
+    assert re.match(correct_pattern, config_server_unit.workload_status_message)
 
     for shard_app_name in SHARD_APPS:
         shard_unit = ops_test.model.applications[shard_app_name].units[0]

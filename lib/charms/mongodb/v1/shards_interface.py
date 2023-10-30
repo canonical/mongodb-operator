@@ -366,8 +366,8 @@ class ShardingProvider(Object):
             if not shard_hosts:
                 return False
 
-            # use a URI that is not dependent on the operator password, as we are not guaranteed that
-            # the shard has received the password yet.
+            # use a URI that is not dependent on the operator password, as we are not guaranteed
+            # that the shard has received the password yet.
             uri = f"mongodb://{','.join(shard_hosts)}"
             with MongoDBConnection(None, uri) as mongo:
                 if not mongo.is_ready:
@@ -386,7 +386,7 @@ class ShardingProvider(Object):
             draining_shards = mongo.get_draining_shards()
 
             # in theory, this should always be a list of one. But if something has gone wrong we
-            # shoould take note and log it
+            # should take note and log it
             if len(draining_shards) > 1:
                 logger.error("Multiple shards draining at the same time.")
 
@@ -649,12 +649,18 @@ class ConfigServerRequirer(Object):
         # match what is on the machine.
         current_key_file = self.charm.get_keyfile_contents()
         if not key_file_contents or key_file_contents == current_key_file:
+            logger.info(f"Skipping update. proposed keyfile {key_file_contents}")
+            logger.info(f"Skipping update. current keyfile {current_key_file}")
             return
 
         # put keyfile on the machine with appropriate permissions
         self.charm.push_file_to_unit(
             parent_dir=Config.MONGOD_CONF_DIR, file_name=KEY_FILE, file_contents=key_file_contents
         )
+
+        logger.info(f"Updated keyfile from {current_key_file} to {key_file_contents}")
+        current_key_file = self.charm.get_keyfile_contents()
+        logger.info(f"Now {current_key_file}")
 
         # when the contents of the keyfile change, we must restart the service
         self.charm.restart_mongod_service()
