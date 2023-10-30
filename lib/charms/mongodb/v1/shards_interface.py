@@ -386,6 +386,7 @@ class ConfigServerRequirer(Object):
             logger.error(
                 "Shard could not be added to config server, failed to set operator password."
             )
+            event.defer()
             return
 
         self.charm.app_peer_data["added_to_cluster"] = json.dumps(True)
