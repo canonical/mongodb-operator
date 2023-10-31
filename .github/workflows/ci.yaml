@@ -75,7 +75,7 @@ jobs:
     uses: canonical/data-platform-workflows/.github/workflows/build_charm_without_cache.yaml@v5.1.2
     with:
       charmcraft-snap-channel: "latest/edge"
-      path-to-charm-directory: ${{matrix.charms}}
+      path-to-charm-directory: ${{ matrix.charm }}
 
   integration-test:
     strategy:
