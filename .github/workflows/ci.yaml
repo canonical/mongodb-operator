@@ -70,7 +70,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        charms: [".", "tests/integration/relation_tests/application-charm"]
+        charms: [".", "tests/integration/relation_tests/new_relations/application-charm"]
     name: Build ${{matrix.charms}} charm
     uses: canonical/data-platform-workflows/.github/workflows/build_charm_without_cache.yaml@v5.1.2
     with:
