@@ -17,20 +17,30 @@ jobs:
 
   build:
     name: Build charm
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm_without_cache.yaml@v5
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm_without_cache.yaml@v5.1.2
     with:
       charmcraft-snap-channel: "latest/edge"
 
   release:
-    name: Release charm
     needs:
       - ci-tests
       - build
-    uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v5
-    with:
-      channel: 5/edge
-      artifact-name: ${{ needs.build.outputs.artifact-name }}
-    secrets:
-      charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
-    permissions:
-      contents: write # Needed to create GitHub release
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v3
+          with:
+            fetch-depth: 0
+        - name: Release any bumped charm libs
+          uses: canonical/charming-actions/release-libraries@2.2.2
+          with:
+            credentials: "${{ secrets.CHARMHUB_TOKEN }}"
+            github-token: "${{ secrets.GITHUB_TOKEN }}"
+        - name: Release charm
+          uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v5
+          with:
+            channel: 5/edge
+            artifact-name: ${{ needs.build.outputs.artifact-name }}
+          secrets:
+            charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
+          permissions:
+            contents: write # Needed to create GitHub release
