@@ -373,6 +373,11 @@ class ConfigServerRequirer(Object):
 
         # shards rely on the config server for secrets
         relation_data = event.relation.data[event.app]
+        if not relation_data.get(KEYFILE_KEY):
+            event.defer()
+            self.charm.unit.status = WaitingStatus("Waiting for secrets from config-server")
+            return
+
         self.update_keyfile(key_file_contents=relation_data.get(KEYFILE_KEY))
 
         # restart on high loaded databases can be very slow (e.g. up to 10-20 minutes).
@@ -387,6 +392,10 @@ class ConfigServerRequirer(Object):
             return
 
         # TODO Future work, see if needed to check for all units restarted / primary elected
+        if not relation_data.get(OPERATOR_PASSWORD_KEY):
+            event.defer()
+            self.charm.unit.status = WaitingStatus("Waiting for secrets from config-server")
+            return
 
         try:
             self.update_operator_password(new_password=relation_data.get(OPERATOR_PASSWORD_KEY))
@@ -646,7 +655,10 @@ class ConfigServerRequirer(Object):
 
     def _is_added_to_cluster(self) -> bool:
         """Returns True if the shard has been added to the cluster."""
-        return json.loads(self.charm.app_peer_data.get("added_to_cluster", "False"))
+        if "added_to_cluster" not in self.charm.app_peer_data:
+            return False
+
+        return json.loads(self.charm.app_peer_data.get("added_to_cluster"))
 
     def _is_shard_aware(self) -> bool:
         """Returns True if shard is in cluster and shard aware."""
