@@ -50,7 +50,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await asyncio.gather(
         ops_test.model.wait_for_idle(
             apps=[CONFIG_SERVER_APP_NAME],
-            status="active",
+            status="blocked",
             idle_period=20,
             timeout=TIMEOUT,
         ),
@@ -62,7 +62,9 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         ),
     )
 
-    # TODO Future PR: assert statuses for config-server
+    config_server_unit = ops_test.model.applications[CONFIG_SERVER_APP_NAME].units[0]
+    assert config_server_unit.workload_status_message == "missing relation to shard(s)"
+
     for shard_app_name in SHARD_APPS:
         shard_unit = ops_test.model.applications[shard_app_name].units[0]
         assert shard_unit.workload_status_message == "missing relation to config server"
@@ -86,14 +88,6 @@ async def test_cluster_active(ops_test: OpsTest) -> None:
             idle_period=20,
             status="active",
             timeout=TIMEOUT,
-        )
-
-    # TODO Future PR: assert statuses for config-server
-    for shard_app_name in SHARD_APPS:
-        shard_unit = ops_test.model.applications[shard_app_name].units[0]
-        assert (
-            shard_unit.workload_status_message
-            == f"Shard connected to config-server: {CONFIG_SERVER_APP_NAME}"
         )
 
 

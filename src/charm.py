@@ -1380,13 +1380,7 @@ class MongodbOperatorCharm(CharmBase):
         if pbm_status and not isinstance(pbm_status, ActiveStatus):
             return pbm_status
 
-        # if all statuses are active report sharding statuses over mongodb status
-        if isinstance(shard_status, ActiveStatus):
-            return shard_status
-
-        if isinstance(config_server_status, ActiveStatus):
-            return config_server_status
-
+        # if all statuses are active report mongodb status over sharding status
         return mongodb_status
 
     def is_relation_feasible(self, rel_interface) -> bool:
