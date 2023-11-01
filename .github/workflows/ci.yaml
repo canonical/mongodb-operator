@@ -71,7 +71,7 @@ jobs:
       fail-fast: true
       matrix:
         charm: [".", "tests/integration/relation_tests/new_relations/application-charm"]
-    name: Build ${{matrix.charms}} charm
+    name: Build ${{ matrix.charm }} charm
     uses: canonical/data-platform-workflows/.github/workflows/build_charm_without_cache.yaml@v5.1.2
     with:
       charmcraft-snap-channel: "latest/edge"
