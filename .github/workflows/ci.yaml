@@ -67,10 +67,15 @@ jobs:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 
   build:
-    name: Build charms
-    uses: canonical/data-platform-workflows/.github/workflows/build_charms_with_cache.yaml@v5
+    strategy:
+      fail-fast: true
+      matrix:
+        charm: [".", "tests/integration/relation_tests/new_relations/application-charm"]
+    name: Build ${{ matrix.charm }} charm
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm_without_cache.yaml@v5.1.2
     with:
       charmcraft-snap-channel: "latest/edge"
+      path-to-charm-directory: ${{ matrix.charm }}
 
   integration-test:
     strategy:
