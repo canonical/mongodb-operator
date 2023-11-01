@@ -32,6 +32,7 @@ from ops.framework import Object
 from ops.model import (
     ActiveStatus,
     BlockedStatus,
+    ErrorStatus,
     MaintenanceStatus,
     StatusBase,
     WaitingStatus,
@@ -268,7 +269,7 @@ class ShardingProvider(Object):
         for relation in self.charm.model.relations[self.relation_name]:
             self._update_relation_data(relation.id, {HOSTS_KEY: json.dumps(self.charm._unit_ips)})
 
-    def get_config_server_status(self):
+    def get_config_server_status(self) -> Optional[StatusBase]:
         """Returns the current status of the config-server."""
         if not self.charm.is_role(Config.Role.CONFIG_SERVER):
             logger.info("skipping status check, charm is not running as a shard")
@@ -285,7 +286,7 @@ class ShardingProvider(Object):
             return BlockedStatus(f"relation {REL_NAME} to shard not supported.")
 
         if not self.is_mongos_running():
-            return BlockedStatus("Internal mongos is not running.")
+            return ErrorStatus("Internal mongos is not running.")
 
         shard_draining = self.get_draining_shards()
         if shard_draining:
@@ -297,12 +298,10 @@ class ShardingProvider(Object):
 
         unreachable_shards = self.get_unreachable_shards()
         if unreachable_shards:
-            unreachable_shards = "".join(unreachable_shards)
-            return BlockedStatus(f"Shards {unreachable_shards} are unreachable.")
+            unreachable_shards = ", ".join(unreachable_shards)
+            return ErrorStatus(f"Shards {unreachable_shards} are unreachable.")
 
-        shards = self.get_related_shards()
-        shards = ", ".join(shards) if len(shards) < 5 else f"{len(shards)} shards"
-        return ActiveStatus(f"config-server connected to {shards}")
+        return ActiveStatus()
 
     def _update_relation_data(self, relation_id: int, data: dict) -> None:
         """Updates a set of key-value pairs in the relation.
@@ -356,15 +355,15 @@ class ShardingProvider(Object):
 
     def get_unreachable_shards(self) -> List[str]:
         """Returns a list of unreable shard hosts."""
+        unreachable_hosts = []
         if not self.model.relations[self.relation_name]:
             logger.info("shards are not reachable, none related to config-sever")
-            return False
+            return unreachable_hosts
 
-        unreachable_hosts = []
         for shard_name in self.get_related_shards():
             shard_hosts = self._get_shard_hosts(shard_name)
             if not shard_hosts:
-                return False
+                return unreachable_hosts
 
             # use a URI that is not dependent on the operator password, as we are not guaranteed
             # that the shard has received the password yet.
@@ -372,6 +371,8 @@ class ShardingProvider(Object):
             with MongoDBConnection(None, uri) as mongo:
                 if not mongo.is_ready:
                     unreachable_hosts.append(shard_name)
+
+        return unreachable_hosts
 
     def is_mongos_running(self) -> bool:
         """Returns true if mongos service is running."""
@@ -566,7 +567,7 @@ class ConfigServerRequirer(Object):
             return ActiveStatus("Shard drained from cluster, ready for removal")
 
         if not self._is_mongos_reachable():
-            return BlockedStatus("Config server unreachable")
+            return ErrorStatus("Config server unreachable")
 
         if not self._is_added_to_cluster():
             return MaintenanceStatus("Adding shard to config-server")
@@ -574,8 +575,7 @@ class ConfigServerRequirer(Object):
         if not self._is_shard_aware():
             return BlockedStatus("Shard is not yet shard aware")
 
-        config_server_name = self.get_related_config_server()
-        return ActiveStatus(f"Shard connected to config-server: {config_server_name}")
+        return ActiveStatus()
 
     def drained(self, mongos_hosts: Set[str], shard_name: str) -> bool:
         """Returns whether a shard has been drained from the cluster.

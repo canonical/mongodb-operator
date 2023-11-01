@@ -2,7 +2,6 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 import asyncio
-import re
 
 import pytest
 from pytest_operator.plugin import OpsTest
@@ -89,17 +88,6 @@ async def test_cluster_active(ops_test: OpsTest) -> None:
             idle_period=20,
             status="active",
             timeout=TIMEOUT,
-        )
-
-    config_server_unit = ops_test.model.applications[CONFIG_SERVER_APP_NAME].units[0]
-    correct_pattern = r"config-server connected to (shard-one, shard-two|shard-two, shard-one)"
-    assert re.match(correct_pattern, config_server_unit.workload_status_message)
-
-    for shard_app_name in SHARD_APPS:
-        shard_unit = ops_test.model.applications[shard_app_name].units[0]
-        assert (
-            shard_unit.workload_status_message
-            == f"Shard connected to config-server: {CONFIG_SERVER_APP_NAME}"
         )
 
 
