@@ -48,20 +48,19 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         my_charm, num_units=2, config={"role": "shard"}, application_name=SHARD_THREE_APP_NAME
     )
 
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_THREE_APP_NAME],
-            idle_period=20,
-            raise_on_blocked=False,
-            timeout=TIMEOUT,
-            raise_on_error=False,
-        )
+    await ops_test.model.wait_for_idle(
+        apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_THREE_APP_NAME],
+        idle_period=20,
+        raise_on_blocked=False,
+        timeout=TIMEOUT,
+        raise_on_error=False,
+    )
 
     # verify that Charmed MongoDB is blocked and reports incorrect credentials
     await asyncio.gather(
         ops_test.model.wait_for_idle(
             apps=[CONFIG_SERVER_APP_NAME],
-            status="active",
+            status="blocked",
             idle_period=20,
             timeout=TIMEOUT,
         ),
@@ -73,7 +72,9 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         ),
     )
 
-    # TODO Future PR: assert statuses for config-server
+    config_server_unit = ops_test.model.applications[CONFIG_SERVER_APP_NAME].units[0]
+    assert config_server_unit.workload_status_message == "missing relation to shard(s)"
+
     for shard_app_name in SHARD_APPS:
         shard_unit = ops_test.model.applications[shard_app_name].units[0]
         assert shard_unit.workload_status_message == "missing relation to config server"
@@ -95,19 +96,18 @@ async def test_cluster_active(ops_test: OpsTest) -> None:
         f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
     )
 
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=[
-                CONFIG_SERVER_APP_NAME,
-                SHARD_ONE_APP_NAME,
-                SHARD_TWO_APP_NAME,
-                SHARD_THREE_APP_NAME,
-            ],
-            idle_period=20,
-            status="active",
-            timeout=TIMEOUT,
-            raise_on_error=False,
-        )
+    await ops_test.model.wait_for_idle(
+        apps=[
+            CONFIG_SERVER_APP_NAME,
+            SHARD_ONE_APP_NAME,
+            SHARD_TWO_APP_NAME,
+            SHARD_THREE_APP_NAME,
+        ],
+        idle_period=20,
+        status="active",
+        timeout=TIMEOUT,
+        raise_on_error=False,
+    )
 
     mongos_client = await generate_mongodb_client(
         ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True
@@ -118,14 +118,6 @@ async def test_cluster_active(ops_test: OpsTest) -> None:
         mongos_client,
         expected_shards=[SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME, SHARD_THREE_APP_NAME],
     ), "Config server did not process config properly"
-
-    # TODO Future PR: assert statuses for config-server
-    for shard_app_name in SHARD_APPS:
-        shard_unit = ops_test.model.applications[shard_app_name].units[0]
-        assert (
-            shard_unit.workload_status_message
-            == f"Shard connected to config-server: {CONFIG_SERVER_APP_NAME}"
-        )
 
 
 @pytest.mark.abort_on_fail
@@ -207,19 +199,18 @@ async def test_shard_removal(ops_test: OpsTest) -> None:
         f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
     )
 
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=[
-                CONFIG_SERVER_APP_NAME,
-                SHARD_ONE_APP_NAME,
-                SHARD_TWO_APP_NAME,
-                SHARD_THREE_APP_NAME,
-            ],
-            idle_period=20,
-            status="active",
-            timeout=TIMEOUT,
-            raise_on_error=False,
-        )
+    await ops_test.model.wait_for_idle(
+        apps=[
+            CONFIG_SERVER_APP_NAME,
+            SHARD_ONE_APP_NAME,
+            SHARD_TWO_APP_NAME,
+            SHARD_THREE_APP_NAME,
+        ],
+        idle_period=20,
+        status="active",
+        timeout=TIMEOUT,
+        raise_on_error=False,
+    )
 
     # TODO future PR: assert statuses are correct
 
@@ -248,19 +239,18 @@ async def test_removal_of_non_primary_shard(ops_test: OpsTest):
         f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
     )
 
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=[
-                CONFIG_SERVER_APP_NAME,
-                SHARD_ONE_APP_NAME,
-                SHARD_TWO_APP_NAME,
-                SHARD_THREE_APP_NAME,
-            ],
-            idle_period=20,
-            status="active",
-            timeout=TIMEOUT,
-            raise_on_error=False,
-        )
+    await ops_test.model.wait_for_idle(
+        apps=[
+            CONFIG_SERVER_APP_NAME,
+            SHARD_ONE_APP_NAME,
+            SHARD_TWO_APP_NAME,
+            SHARD_THREE_APP_NAME,
+        ],
+        idle_period=20,
+        status="active",
+        timeout=TIMEOUT,
+        raise_on_error=False,
+    )
 
     await ops_test.model.applications[CONFIG_SERVER_APP_NAME].remove_relation(
         f"{SHARD_TWO_APP_NAME}:{SHARD_REL_NAME}",
@@ -305,25 +295,23 @@ async def test_unconventual_shard_removal(ops_test: OpsTest):
     )
 
     await ops_test.model.applications[SHARD_TWO_APP_NAME].destroy_units(f"{SHARD_TWO_APP_NAME}/0")
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=[SHARD_TWO_APP_NAME],
-            idle_period=20,
-            status="active",
-            timeout=TIMEOUT,
-            raise_on_error=False,
-        )
+    await ops_test.model.wait_for_idle(
+        apps=[SHARD_TWO_APP_NAME],
+        idle_period=20,
+        status="active",
+        timeout=TIMEOUT,
+        raise_on_error=False,
+    )
 
     await ops_test.model.remove_application(SHARD_TWO_APP_NAME, block_until_done=True)
 
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME],
-            idle_period=20,
-            status="active",
-            timeout=TIMEOUT,
-            raise_on_error=False,
-        )
+    await ops_test.model.wait_for_idle(
+        apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME],
+        idle_period=20,
+        status="active",
+        timeout=TIMEOUT,
+        raise_on_error=False,
+    )
 
     mongos_client = await generate_mongodb_client(
         ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True
