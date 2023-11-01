@@ -34,18 +34,18 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     my_charm = await ops_test.build_charm(".")
     await ops_test.model.deploy(
         my_charm,
-        num_units=1,
+        num_units=2,
         config={"role": "config-server"},
         application_name=CONFIG_SERVER_APP_NAME,
     )
     await ops_test.model.deploy(
-        my_charm, num_units=1, config={"role": "shard"}, application_name=SHARD_ONE_APP_NAME
+        my_charm, num_units=2, config={"role": "shard"}, application_name=SHARD_ONE_APP_NAME
     )
     await ops_test.model.deploy(
-        my_charm, num_units=1, config={"role": "shard"}, application_name=SHARD_TWO_APP_NAME
+        my_charm, num_units=2, config={"role": "shard"}, application_name=SHARD_TWO_APP_NAME
     )
     await ops_test.model.deploy(
-        my_charm, num_units=1, config={"role": "shard"}, application_name=SHARD_THREE_APP_NAME
+        my_charm, num_units=2, config={"role": "shard"}, application_name=SHARD_THREE_APP_NAME
     )
 
     async with ops_test.fast_forward():
