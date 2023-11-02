@@ -11,6 +11,8 @@ CONFIG_SERVER_TWO_APP_NAME = "config-server-two"
 APP_CHARM_NAME = "application"
 LEGACY_APP_CHARM_NAME = "legacy-application"
 
+SHARDING_COMPONENTS = [SHARD_ONE_APP_NAME, CONFIG_SERVER_ONE_APP_NAME]
+
 CONFIG_SERVER_REL_NAME = "config-server"
 SHARD_REL_NAME = "sharding"
 DATABASE_REL_NAME = "first-database"
@@ -76,31 +78,32 @@ async def test_only_one_config_server_relation(ops_test: OpsTest) -> None:
 
 
 async def test_cannot_use_db_relation(ops_test: OpsTest) -> None:
-    """Verify that a shard cannot use the DB relation."""
-    await ops_test.model.integrate(
-        f"{APP_CHARM_NAME}:{DATABASE_REL_NAME}",
-        SHARD_ONE_APP_NAME,
-    )
+    """Verify that a shard components cannot use the DB relation."""
+    for sharded_component in SHARDING_COMPONENTS:
+        await ops_test.model.integrate(f"{APP_CHARM_NAME}:{DATABASE_REL_NAME}", sharded_component)
 
     await ops_test.model.wait_for_idle(
-        apps=[SHARD_ONE_APP_NAME],
+        apps=SHARDING_COMPONENTS,
         idle_period=20,
         raise_on_blocked=False,
         timeout=TIMEOUT,
     )
 
-    shard_unit = ops_test.model.applications[SHARD_ONE_APP_NAME].units[0]
-    assert (
-        shard_unit.workload_status_message == "Sharding roles do not support database interface."
-    ), "Shard cannot be related using the database relation"
+    for sharded_component in SHARDING_COMPONENTS:
+        sharded_component_unit = ops_test.model.applications[sharded_component].units[0]
+        assert (
+            sharded_component_unit.workload_status_message
+            == "Sharding roles do not support database interface."
+        ), f"{sharded_component} cannot be related using the database relation"
 
-    await ops_test.model.applications[SHARD_ONE_APP_NAME].remove_relation(
-        f"{APP_CHARM_NAME}:{DATABASE_REL_NAME}",
-        SHARD_ONE_APP_NAME,
-    )
+    for sharded_component in SHARDING_COMPONENTS:
+        await ops_test.model.applications[sharded_component].remove_relation(
+            f"{APP_CHARM_NAME}:{DATABASE_REL_NAME}",
+            sharded_component,
+        )
 
     await ops_test.model.wait_for_idle(
-        apps=[SHARD_ONE_APP_NAME],
+        apps=SHARDING_COMPONENTS,
         idle_period=20,
         raise_on_blocked=False,
         timeout=TIMEOUT,
@@ -108,31 +111,32 @@ async def test_cannot_use_db_relation(ops_test: OpsTest) -> None:
 
 
 async def test_cannot_use_legacy_db_relation(ops_test: OpsTest) -> None:
-    """Verify that a shard cannot use the DB relation."""
-    await ops_test.model.integrate(
-        LEGACY_APP_CHARM_NAME,
-        SHARD_ONE_APP_NAME,
-    )
+    """Verify that sharding components cannot use the DB relation."""
+    for sharded_component in SHARDING_COMPONENTS:
+        await ops_test.model.integrate(LEGACY_APP_CHARM_NAME, sharded_component)
 
     await ops_test.model.wait_for_idle(
-        apps=[SHARD_ONE_APP_NAME],
+        apps=SHARDING_COMPONENTS,
         idle_period=20,
         raise_on_blocked=False,
         timeout=TIMEOUT,
     )
 
-    shard_unit = ops_test.model.applications[SHARD_ONE_APP_NAME].units[0]
-    assert (
-        shard_unit.workload_status_message == "Sharding roles do not support obsolete interface."
-    ), "Shard cannot be related using the mongodb relation"
+    for sharded_component in SHARDING_COMPONENTS:
+        sharded_component_unit = ops_test.model.applications[sharded_component].units[0]
+        assert (
+            sharded_component_unit.workload_status_message
+            == "Sharding roles do not support obsolete interface."
+        ), f"{sharded_component} cannot be related using the mongodb relation"
 
-    await ops_test.model.applications[SHARD_ONE_APP_NAME].remove_relation(
-        f"{SHARD_ONE_APP_NAME}:{LEGACY_RELATION_NAME}",
-        f"{LEGACY_APP_CHARM_NAME}:{LEGACY_RELATION_NAME}",
-    )
+    for sharded_component in SHARDING_COMPONENTS:
+        await ops_test.model.applications[sharded_component].remove_relation(
+            f"{sharded_component}:{LEGACY_RELATION_NAME}",
+            f"{LEGACY_APP_CHARM_NAME}:{LEGACY_RELATION_NAME}",
+        )
 
     await ops_test.model.wait_for_idle(
-        apps=[SHARD_ONE_APP_NAME],
+        apps=SHARDING_COMPONENTS,
         idle_period=20,
         raise_on_blocked=False,
         timeout=TIMEOUT,
