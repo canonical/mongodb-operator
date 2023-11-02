@@ -52,7 +52,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 2
+LIBPATCH = 3
 KEYFILE_KEY = "key-file"
 HOSTS_KEY = "host"
 OPERATOR_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username())
@@ -241,6 +241,7 @@ class ShardingProvider(Object):
 
         raises: PyMongoError, NotReadyError
         """
+        retry_removal = False
         with MongosConnection(self.charm.mongos_config) as mongo:
             cluster_shards = mongo.get_shard_members()
             relation_shards = self._get_shards_from_relations(departed_shard_id)
@@ -250,10 +251,18 @@ class ShardingProvider(Object):
                     self.charm.unit.status = MaintenanceStatus(f"Draining shard {shard}")
                     logger.info("Attempting to removing shard: %s", shard)
                     mongo.remove_shard(shard)
+                except NotReadyError:
+                    logger.info("Unable to remove shard: %s another shard is draining", shard)
+                    # to guarantee that shard that the currently draining shard, gets re-processed,
+                    # do not raise immediately, instead at the end of removal processing.
+                    retry_removal = True
                 except ShardNotInClusterError:
                     logger.info(
                         "Shard to remove is not in sharded cluster. It has been successfully removed."
                     )
+
+        if retry_removal:
+            raise ShardNotInClusterError
 
     def update_credentials(self, key: str, value: str) -> None:
         """Sends new credentials, for a key value pair across all shards."""
@@ -432,6 +441,11 @@ class ConfigServerRequirer(Object):
 
         # shards rely on the config server for secrets
         relation_data = event.relation.data[event.app]
+        if not relation_data.get(KEYFILE_KEY):
+            event.defer()
+            self.charm.unit.status = WaitingStatus("Waiting for secrets from config-server")
+            return
+
         self.update_keyfile(key_file_contents=relation_data.get(KEYFILE_KEY))
 
         # restart on high loaded databases can be very slow (e.g. up to 10-20 minutes).
@@ -446,6 +460,10 @@ class ConfigServerRequirer(Object):
             return
 
         # TODO Future work, see if needed to check for all units restarted / primary elected
+        if not relation_data.get(OPERATOR_PASSWORD_KEY):
+            event.defer()
+            self.charm.unit.status = WaitingStatus("Waiting for secrets from config-server")
+            return
 
         try:
             self.update_operator_password(new_password=relation_data.get(OPERATOR_PASSWORD_KEY))
@@ -516,12 +534,13 @@ class ConfigServerRequirer(Object):
         while not drained:
             try:
                 # no need to continuously check and abuse resources while shard is draining
-                time.sleep(10)
+                time.sleep(60)
                 drained = self.drained(mongos_hosts, self.charm.app.name)
                 self.charm.unit.status = MaintenanceStatus("Draining shard from cluster")
                 draining_status = (
                     "Shard is still draining" if not drained else "Shard is fully drained."
                 )
+                self.charm.unit.status = MaintenanceStatus("Draining shard from cluster")
                 logger.debug(draining_status)
             except PyMongoError as e:
                 logger.error("Error occurred while draining shard: %s", e)
