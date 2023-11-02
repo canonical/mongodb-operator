@@ -21,7 +21,7 @@ jobs:
     with:
       charmcraft-snap-channel: "latest/stable"
 
-  release:
+  release-charm:
     name: Release charm
     needs:
       - ci-tests
