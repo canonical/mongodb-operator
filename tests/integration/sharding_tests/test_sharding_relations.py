@@ -16,6 +16,7 @@ SHARD_REL_NAME = "sharding"
 DATABASE_REL_NAME = "first-database"
 LEGACY_RELATION_NAME = "obsolete"
 
+RELATION_LIMIT_MESSAGE = 'cannot add relation "shard-one:sharding config-server-two:config-server": establishing a new relation for shard-one:sharding would exceed its maximum relation limit of 1'
 # for now we have a large timeout due to the slow drainage of the `config.system.sessions`
 # collection. More info here:
 # https://stackoverflow.com/questions/77364840/mongodb-slow-chunk-migration-for-collection-config-system-sessions-with-remov
@@ -62,17 +63,15 @@ async def test_only_one_config_server_relation(ops_test: OpsTest) -> None:
         f"{CONFIG_SERVER_ONE_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
     )
 
-    multiple_config_server_rels_allowed = True
-    try:
+    with pytest.raises(JujuAPIError) as juju_error:
         await ops_test.model.integrate(
             f"{SHARD_ONE_APP_NAME}:{SHARD_REL_NAME}",
             f"{CONFIG_SERVER_TWO_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
         )
-    except JujuAPIError as e:
-        if e.error_code == "quota limit exceeded":
-            multiple_config_server_rels_allowed = False
 
-    assert not multiple_config_server_rels_allowed, "Shard can relate to multiple config servers."
+    assert (
+        juju_error.value.args[0] == RELATION_LIMIT_MESSAGE
+    ), "Shard can relate to multiple config servers."
 
 
 async def test_cannot_use_db_relation(ops_test: OpsTest) -> None:
@@ -94,6 +93,7 @@ async def test_cannot_use_db_relation(ops_test: OpsTest) -> None:
         shard_unit.workload_status_message == "Sharding roles do not support database interface."
     ), "Shard cannot be related using the database relation"
 
+    # clean up relation
     await ops_test.model.applications[SHARD_ONE_APP_NAME].remove_relation(
         f"{APP_CHARM_NAME}:{DATABASE_REL_NAME}",
         SHARD_ONE_APP_NAME,
@@ -108,7 +108,7 @@ async def test_cannot_use_db_relation(ops_test: OpsTest) -> None:
 
 
 async def test_cannot_use_legacy_db_relation(ops_test: OpsTest) -> None:
-    """Verify that a shard cannot use the DB relation."""
+    """Verify that a shard cannot use the legcy DB relation."""
     await ops_test.model.integrate(
         LEGACY_APP_CHARM_NAME,
         SHARD_ONE_APP_NAME,
@@ -126,6 +126,7 @@ async def test_cannot_use_legacy_db_relation(ops_test: OpsTest) -> None:
         shard_unit.workload_status_message == "Sharding roles do not support obsolete interface."
     ), "Shard cannot be related using the mongodb relation"
 
+    # clean up relation
     await ops_test.model.applications[SHARD_ONE_APP_NAME].remove_relation(
         f"{SHARD_ONE_APP_NAME}:{LEGACY_RELATION_NAME}",
         f"{LEGACY_APP_CHARM_NAME}:{LEGACY_RELATION_NAME}",
