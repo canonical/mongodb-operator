@@ -32,6 +32,7 @@ from ops.framework import Object
 from ops.model import (
     ActiveStatus,
     BlockedStatus,
+    ErrorStatus,
     MaintenanceStatus,
     StatusBase,
     WaitingStatus,
@@ -51,7 +52,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 2
+LIBPATCH = 3
 KEYFILE_KEY = "key-file"
 HOSTS_KEY = "host"
 OPERATOR_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username())
@@ -217,9 +218,6 @@ class ShardingProvider(Object):
         with MongosConnection(self.charm.mongos_config) as mongo:
             cluster_shards = mongo.get_shard_members()
             relation_shards = self._get_shards_from_relations(departed_shard_id)
-
-            # TODO Future PR, limit number of shards add at a time, based on the number of
-            # replicas in the primary shard
             for shard in relation_shards - cluster_shards:
                 try:
                     shard_hosts = self._get_shard_hosts(shard)
@@ -243,6 +241,7 @@ class ShardingProvider(Object):
 
         raises: PyMongoError, NotReadyError
         """
+        retry_removal = False
         with MongosConnection(self.charm.mongos_config) as mongo:
             cluster_shards = mongo.get_shard_members()
             relation_shards = self._get_shards_from_relations(departed_shard_id)
@@ -252,10 +251,18 @@ class ShardingProvider(Object):
                     self.charm.unit.status = MaintenanceStatus(f"Draining shard {shard}")
                     logger.info("Attempting to removing shard: %s", shard)
                     mongo.remove_shard(shard)
+                except NotReadyError:
+                    logger.info("Unable to remove shard: %s another shard is draining", shard)
+                    # to guarantee that shard that the currently draining shard, gets re-processed,
+                    # do not raise immediately, instead at the end of removal processing.
+                    retry_removal = True
                 except ShardNotInClusterError:
                     logger.info(
                         "Shard to remove is not in sharded cluster. It has been successfully removed."
                     )
+
+        if retry_removal:
+            raise ShardNotInClusterError
 
     def update_credentials(self, key: str, value: str) -> None:
         """Sends new credentials, for a key value pair across all shards."""
@@ -271,9 +278,39 @@ class ShardingProvider(Object):
         for relation in self.charm.model.relations[self.relation_name]:
             self._update_relation_data(relation.id, {HOSTS_KEY: json.dumps(self.charm._unit_ips)})
 
-    def get_config_server_status(self):
-        """TODO: Implement this function in a separate PR."""
-        return None
+    def get_config_server_status(self) -> Optional[StatusBase]:
+        """Returns the current status of the config-server."""
+        if not self.charm.is_role(Config.Role.CONFIG_SERVER):
+            logger.info("skipping status check, charm is not running as a shard")
+            return None
+
+        if not self.charm.db_initialised:
+            logger.info("No status for shard to report, waiting for db to be initialised.")
+            return None
+
+        if self.model.relations[LEGACY_REL_NAME]:
+            return BlockedStatus(f"relation {LEGACY_REL_NAME} to shard not supported.")
+
+        if self.model.relations[REL_NAME]:
+            return BlockedStatus(f"relation {REL_NAME} to shard not supported.")
+
+        if not self.is_mongos_running():
+            return ErrorStatus("Internal mongos is not running.")
+
+        shard_draining = self.get_draining_shards()
+        if shard_draining:
+            shard_draining = ",".join(shard_draining)
+            return MaintenanceStatus(f"Draining shard {shard_draining}")
+
+        if not self.model.relations[self.relation_name]:
+            return BlockedStatus("missing relation to shard(s)")
+
+        unreachable_shards = self.get_unreachable_shards()
+        if unreachable_shards:
+            unreachable_shards = ", ".join(unreachable_shards)
+            return ErrorStatus(f"Shards {unreachable_shards} are unreachable.")
+
+        return ActiveStatus()
 
     def _update_relation_data(self, relation_id: int, data: dict) -> None:
         """Updates a set of key-value pairs in the relation.
@@ -325,6 +362,46 @@ class ShardingProvider(Object):
         """Returns a list of related shards."""
         return [rel.app.name for rel in self.charm.model.relations[self.relation_name]]
 
+    def get_unreachable_shards(self) -> List[str]:
+        """Returns a list of unreable shard hosts."""
+        unreachable_hosts = []
+        if not self.model.relations[self.relation_name]:
+            logger.info("shards are not reachable, none related to config-sever")
+            return unreachable_hosts
+
+        for shard_name in self.get_related_shards():
+            shard_hosts = self._get_shard_hosts(shard_name)
+            if not shard_hosts:
+                return unreachable_hosts
+
+            # use a URI that is not dependent on the operator password, as we are not guaranteed
+            # that the shard has received the password yet.
+            uri = f"mongodb://{','.join(shard_hosts)}"
+            with MongoDBConnection(None, uri) as mongo:
+                if not mongo.is_ready:
+                    unreachable_hosts.append(shard_name)
+
+        return unreachable_hosts
+
+    def is_mongos_running(self) -> bool:
+        """Returns true if mongos service is running."""
+        mongos_hosts = ",".join(self.charm._unit_ips)
+        uri = f"mongodb://{mongos_hosts}"
+        with MongosConnection(None, uri) as mongo:
+            return mongo.is_ready
+
+    def get_draining_shards(self) -> List[str]:
+        """Returns the shard that is currently draining."""
+        with MongosConnection(self.charm.mongos_config) as mongo:
+            draining_shards = mongo.get_draining_shards()
+
+            # in theory, this should always be a list of one. But if something has gone wrong we
+            # should take note and log it
+            if len(draining_shards) > 1:
+                logger.error("Multiple shards draining at the same time.")
+
+            return draining_shards
+
 
 class ConfigServerRequirer(Object):
     """Manage relations between the config server and the shard, on the shard's side."""
@@ -364,6 +441,11 @@ class ConfigServerRequirer(Object):
 
         # shards rely on the config server for secrets
         relation_data = event.relation.data[event.app]
+        if not relation_data.get(KEYFILE_KEY):
+            event.defer()
+            self.charm.unit.status = WaitingStatus("Waiting for secrets from config-server")
+            return
+
         self.update_keyfile(key_file_contents=relation_data.get(KEYFILE_KEY))
 
         # restart on high loaded databases can be very slow (e.g. up to 10-20 minutes).
@@ -378,6 +460,10 @@ class ConfigServerRequirer(Object):
             return
 
         # TODO Future work, see if needed to check for all units restarted / primary elected
+        if not relation_data.get(OPERATOR_PASSWORD_KEY):
+            event.defer()
+            self.charm.unit.status = WaitingStatus("Waiting for secrets from config-server")
+            return
 
         try:
             self.update_operator_password(new_password=relation_data.get(OPERATOR_PASSWORD_KEY))
@@ -448,12 +534,13 @@ class ConfigServerRequirer(Object):
         while not drained:
             try:
                 # no need to continuously check and abuse resources while shard is draining
-                time.sleep(10)
+                time.sleep(60)
                 drained = self.drained(mongos_hosts, self.charm.app.name)
                 self.charm.unit.status = MaintenanceStatus("Draining shard from cluster")
                 draining_status = (
                     "Shard is still draining" if not drained else "Shard is fully drained."
                 )
+                self.charm.unit.status = MaintenanceStatus("Draining shard from cluster")
                 logger.debug(draining_status)
             except PyMongoError as e:
                 logger.error("Error occurred while draining shard: %s", e)
@@ -499,7 +586,7 @@ class ConfigServerRequirer(Object):
             return ActiveStatus("Shard drained from cluster, ready for removal")
 
         if not self._is_mongos_reachable():
-            return BlockedStatus("Config server unreachable")
+            return ErrorStatus("Config server unreachable")
 
         if not self._is_added_to_cluster():
             return MaintenanceStatus("Adding shard to config-server")
@@ -507,8 +594,7 @@ class ConfigServerRequirer(Object):
         if not self._is_shard_aware():
             return BlockedStatus("Shard is not yet shard aware")
 
-        config_server_name = self.get_related_config_server()
-        return ActiveStatus(f"Shard connected to config-server: {config_server_name}")
+        return ActiveStatus()
 
     def drained(self, mongos_hosts: Set[str], shard_name: str) -> bool:
         """Returns whether a shard has been drained from the cluster.
@@ -625,7 +711,6 @@ class ConfigServerRequirer(Object):
         if not mongos_hosts:
             return False
 
-        self.charm.remote_mongos_config(set(mongos_hosts))
         config = self.charm.remote_mongos_config(set(mongos_hosts))
 
         # use a URI that is not dependent on the operator password, as we are not guaranteed that
@@ -636,7 +721,10 @@ class ConfigServerRequirer(Object):
 
     def _is_added_to_cluster(self) -> bool:
         """Returns True if the shard has been added to the cluster."""
-        return json.loads(self.charm.app_peer_data.get("added_to_cluster", "False"))
+        if "added_to_cluster" not in self.charm.app_peer_data:
+            return False
+
+        return json.loads(self.charm.app_peer_data.get("added_to_cluster"))
 
     def _is_shard_aware(self) -> bool:
         """Returns True if shard is in cluster and shard aware."""
