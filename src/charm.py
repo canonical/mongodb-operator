@@ -1357,12 +1357,8 @@ class MongodbOperatorCharm(CharmBase):
         """
         # retrieve statuses of different services running on Charmed MongoDB
         mongodb_status = build_unit_status(self.mongodb_config, self._unit_ip(self.unit))
-        shard_status = self.shard.get_shard_status() if self.is_role(Config.Role.SHARD) else None
-        config_server_status = (
-            self.config_server.get_config_server_status()
-            if self.is_role(Config.Role.CONFIG_SERVER)
-            else None
-        )
+        shard_status = self.shard.get_shard_status()
+        config_server_status = self.config_server.get_config_server_status()
         pbm_status = (
             self.backups.get_pbm_status() if self.model.get_relation(S3_RELATION) else None
         )

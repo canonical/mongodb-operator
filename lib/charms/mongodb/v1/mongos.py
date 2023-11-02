@@ -204,7 +204,7 @@ class MongosConnection:
             with attempt:
                 balancer_state = self.client.admin.command("balancerStatus")
                 if balancer_state["mode"] == "off":
-                    raise BalancerNotEnabledError
+                    raise BalancerNotEnabledError("balancer is not enabled.")
 
     def remove_shard(self, shard_name: str) -> None:
         """Removes shard from the cluster.

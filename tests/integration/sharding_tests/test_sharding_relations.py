@@ -2,8 +2,8 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 import pytest
-from pytest_operator.plugin import OpsTest
 from juju.errors import JujuAPIError
+from pytest_operator.plugin import OpsTest
 
 SHARD_ONE_APP_NAME = "shard-one"
 CONFIG_SERVER_ONE_APP_NAME = "config-server-one"
