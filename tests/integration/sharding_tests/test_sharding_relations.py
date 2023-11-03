@@ -77,7 +77,7 @@ async def test_only_one_config_server_relation(ops_test: OpsTest) -> None:
 
 
 async def test_cannot_use_db_relation(ops_test: OpsTest) -> None:
-    """Verify that a shard components cannot use the DB relation."""
+    """Verify that sharding components cannot use the DB relation."""
     for sharded_component in SHARDING_COMPONENTS:
         await ops_test.model.integrate(f"{APP_CHARM_NAME}:{DATABASE_REL_NAME}", sharded_component)
 
