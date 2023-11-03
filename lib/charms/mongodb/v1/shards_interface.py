@@ -257,6 +257,7 @@ class ShardingProvider(Object):
             raise ShardAuthError(shard)
 
         logger.error(f"Failed to add {shard} to cluster")
+        raise error
 
     def remove_shards(self, departed_shard_id):
         """Removes shards from cluster.
