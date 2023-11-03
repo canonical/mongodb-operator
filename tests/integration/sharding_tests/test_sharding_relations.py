@@ -111,7 +111,7 @@ async def test_cannot_use_db_relation(ops_test: OpsTest) -> None:
 
 
 async def test_cannot_use_legacy_db_relation(ops_test: OpsTest) -> None:
-    """Verify that sharding components cannot use the DB relation."""
+    """Verify that sharding components cannot use the legacy DB relation."""
     for sharded_component in SHARDING_COMPONENTS:
         await ops_test.model.integrate(LEGACY_APP_CHARM_NAME, sharded_component)
 
