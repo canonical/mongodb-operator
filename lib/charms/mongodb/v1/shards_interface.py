@@ -52,7 +52,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 3
+LIBPATCH = 4
 KEYFILE_KEY = "key-file"
 HOSTS_KEY = "host"
 OPERATOR_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username())
@@ -434,8 +434,7 @@ class ConfigServerRequirer(Object):
             return
 
         # if re-using an old shard, re-set drained flag.
-        if self.charm.unit.is_leader():
-            self.charm.app_peer_data["drained"] = json.dumps(False)
+        self.charm.unit_peer_data["drained"] = json.dumps(False)
 
         self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
 
@@ -475,7 +474,7 @@ class ConfigServerRequirer(Object):
             event.defer()
             return
 
-        self.charm.app_peer_data["added_to_cluster"] = json.dumps(True)
+        self.charm.app_peer_data["mongos_hosts"] = json.dumps(self.get_mongos_hosts())
 
     def pass_hook_checks(self, event):
         """Runs the pre-hooks checks for ConfigServerRequirer, returns True if all pass."""
@@ -517,15 +516,10 @@ class ConfigServerRequirer(Object):
             return
 
         self.charm.unit.status = MaintenanceStatus("Draining shard from cluster")
-        # mongos hosts must be retrieved via relation data, as relation.units are not available in
-        # broken
-        mongos_hosts = json.loads(event.relation.data[event.relation.app].get(HOSTS_KEY))
+        mongos_hosts = json.loads(self.charm.app_peer_data["mongos_hosts"])
         self.wait_for_draining(mongos_hosts)
 
         self.charm.unit.status = ActiveStatus("Shard drained from cluster, ready for removal")
-
-        if self.charm.unit.is_leader():
-            self.charm.app_peer_data["added_to_cluster"] = json.dumps(False)
 
     def wait_for_draining(self, mongos_hosts: List[str]):
         """Waits for shards to be drained from sharded cluster."""
@@ -554,8 +548,7 @@ class ConfigServerRequirer(Object):
                 logger.info(
                     "Shard to remove is not in sharded cluster. It has been successfully removed."
                 )
-                if self.charm.unit.is_leader():
-                    self.charm.app_peer_data["drained"] = json.dumps(True)
+                self.charm.unit_peer_data["drained"] = json.dumps(True)
 
                 break
 
@@ -607,16 +600,12 @@ class ConfigServerRequirer(Object):
             logger.info("Component %s is not a shard, has no draining status.", self.charm.role)
             return False
 
-        if not self.charm.unit.is_leader():
-            # if "drained" hasn't been set by leader, then assume it hasn't be drained.
-            return json.dumps(self.charm.app_peer_data.get("drained", False))
-
         with MongosConnection(self.charm.remote_mongos_config(set(mongos_hosts))) as mongo:
             # a shard is "drained" if it is NO LONGER draining.
             draining = mongo._is_shard_draining(shard_name)
             drained = not draining
 
-            self.charm.app_peer_data["drained"] = json.dumps(drained)
+            self.charm.unit_peer_data["drained"] = json.dumps(drained)
             return drained
 
     def update_operator_password(self, new_password: str) -> None:
@@ -721,10 +710,16 @@ class ConfigServerRequirer(Object):
 
     def _is_added_to_cluster(self) -> bool:
         """Returns True if the shard has been added to the cluster."""
-        if "added_to_cluster" not in self.charm.app_peer_data:
-            return False
+        try:
+            mongos_hosts = self.get_mongos_hosts()
+            with MongosConnection(self.charm.remote_mongos_config(set(mongos_hosts))) as mongo:
+                cluster_shards = mongo.get_shard_members()
+                return self.charm.app.name in cluster_shards
+        except OperationFailure as e:
+            if e.code == 13:  # Unauthorized, we are not yet connected to mongos
+                return False
 
-        return json.loads(self.charm.app_peer_data.get("added_to_cluster"))
+            raise
 
     def _is_shard_aware(self) -> bool:
         """Returns True if shard is in cluster and shard aware."""
