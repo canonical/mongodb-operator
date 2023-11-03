@@ -1396,7 +1396,7 @@ class MongodbOperatorCharm(CharmBase):
             not self.is_sharding_component()
             and rel_interface == Config.Relations.SHARDING_RELATIONS_NAME
         ):
-            self.unit.status = BlockedStatus("role replication does not support sharding")
+            self.unit.status = BlockedStatus("sharding interface cannot be used by replicas")
             logger.error(
                 "Charm is in sharding role: %s. Does not support %s interface.",
                 self.role,

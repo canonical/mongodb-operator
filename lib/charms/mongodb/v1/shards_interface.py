@@ -309,7 +309,7 @@ class ShardingProvider(Object):
             self.charm.is_role(Config.Role.REPLICATION)
             and self.model.relations[Config.Relations.CONFIG_SERVER_RELATIONS_NAME]
         ):
-            return BlockedStatus("Sharding interface cannot be used by replicas")
+            return BlockedStatus("sharding interface cannot be used by replicas")
 
         if self.model.relations[LEGACY_REL_NAME]:
             return BlockedStatus(f"relation {LEGACY_REL_NAME} to shard not supported.")
@@ -331,7 +331,7 @@ class ShardingProvider(Object):
         unreachable_shards = self.get_unreachable_shards()
         if unreachable_shards:
             unreachable_shards = ", ".join(unreachable_shards)
-            return BlockedStatus(f"Shards {unreachable_shards} are unreachable.")
+            return BlockedStatus(f"shards {unreachable_shards} are unreachable.")
 
         return ActiveStatus()
 
@@ -343,6 +343,12 @@ class ShardingProvider(Object):
 
         if not self.charm.db_initialised:
             logger.info("No status for shard to report, waiting for db to be initialised.")
+            return True
+
+        if (
+            self.charm.is_role(Config.Role.REPLICATION)
+            and not self.model.relations[Config.Relations.CONFIG_SERVER_RELATIONS_NAME]
+        ):
             return True
 
         return False
@@ -527,6 +533,11 @@ class ConfigServerRequirer(Object):
             event.defer()
             return False
 
+        mongos_hosts = event.relation.data[event.relation.app].get(HOSTS_KEY, None)
+        if isinstance(event, RelationBrokenEvent) and not mongos_hosts:
+            logger.info("Config-server relation never set up, no need to process broken event.")
+            return False
+
         return True
 
     def _on_relation_broken(self, event: RelationBrokenEvent) -> None:
@@ -607,7 +618,7 @@ class ConfigServerRequirer(Object):
             self.charm.is_role(Config.Role.REPLICATION)
             and self.model.relations[Config.Relations.CONFIG_SERVER_RELATIONS_NAME]
         ):
-            return BlockedStatus("Sharding interface cannot be used by replicas")
+            return BlockedStatus("sharding interface cannot be used by replicas")
 
         if self.model.get_relation(LEGACY_REL_NAME):
             return BlockedStatus(f"relation {LEGACY_REL_NAME} to shard not supported.")
@@ -640,6 +651,12 @@ class ConfigServerRequirer(Object):
 
         if not self.charm.db_initialised:
             logger.info("No status for shard to report, waiting for db to be initialised.")
+            return True
+
+        if (
+            self.charm.is_role(Config.Role.REPLICATION)
+            and not self.model.relations[Config.Relations.CONFIG_SERVER_RELATIONS_NAME]
+        ):
             return True
 
         return False
