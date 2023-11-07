@@ -426,6 +426,10 @@ class MongoDBBackups(Object):
         if not self.charm.has_backup_service():
             return WaitingStatus("waiting for pbm to start")
 
+        if not self.model.get_relation(S3_RELATION):
+            logger.info("No configurations for backups, not relation to s3-charm.")
+            return BlockedStatus("Backups require relation to s3-integrator")
+
         try:
             previous_pbm_status = self.charm.unit.status
             pbm_status = self.charm.run_pbm_command(PBM_STATUS_CMD)
