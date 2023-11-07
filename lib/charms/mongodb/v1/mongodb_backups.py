@@ -40,7 +40,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 2
 
 logger = logging.getLogger(__name__)
 
@@ -421,15 +421,14 @@ class MongoDBBackups(Object):
                 except ExecError as e:
                     self.charm.unit.status = BlockedStatus(self.process_pbm_error(e.stdout))
 
-    def get_pbm_status(self) -> StatusBase:
+    def get_pbm_status(self) -> Optional[StatusBase]:
         """Retrieve pbm status."""
         if not self.charm.has_backup_service():
             return WaitingStatus("waiting for pbm to start")
 
         if not self.model.get_relation(S3_RELATION):
             logger.info("No configurations for backups, not relation to s3-charm.")
-            return BlockedStatus("Backups require relation to s3-integrator")
-
+            return None
         try:
             previous_pbm_status = self.charm.unit.status
             pbm_status = self.charm.run_pbm_command(PBM_STATUS_CMD)
