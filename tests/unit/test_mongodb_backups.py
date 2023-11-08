@@ -45,6 +45,9 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.MongodbOperatorCharm.run_pbm_command")
     def test_get_pbm_status_snap_not_present(self, pbm_command, service):
         """Tests that when the snap is not present pbm is in blocked state."""
+        relation_id = self.harness.add_relation(RELATION_NAME, "s3-integrator")
+        self.harness.add_relation_unit(relation_id, "s3-integrator/0")
+
         pbm_command.side_effect = ModelError("service pbm-agent not found")
         self.assertTrue(isinstance(self.harness.charm.backups._get_pbm_status(), BlockedStatus))
 
@@ -52,6 +55,9 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.MongodbOperatorCharm.run_pbm_command")
     def test_get_pbm_status_resync(self, pbm_command, service):
         """Tests that when pbm is resyncing that pbm is in waiting state."""
+        relation_id = self.harness.add_relation(RELATION_NAME, "s3-integrator")
+        self.harness.add_relation_unit(relation_id, "s3-integrator/0")
+
         service.return_value = True
         pbm_command.return_value = (
             '{"running":{"type":"resync","opID":"64f5cc22a73b330c3880e3b2"}}'
@@ -62,6 +68,9 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.MongodbOperatorCharm.run_pbm_command")
     def test_get_pbm_status_running(self, pbm_command, service):
         """Tests that when pbm not running an op that pbm is in active state."""
+        relation_id = self.harness.add_relation(RELATION_NAME, "s3-integrator")
+        self.harness.add_relation_unit(relation_id, "s3-integrator/0")
+
         service.return_value = True
         pbm_command.return_value = '{"running":{}}'
         self.assertTrue(isinstance(self.harness.charm.backups._get_pbm_status(), ActiveStatus))
@@ -70,6 +79,9 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.MongodbOperatorCharm.run_pbm_command")
     def test_get_pbm_status_incorrect_cred(self, pbm_command, service):
         """Tests that when pbm has incorrect credentials that pbm is in blocked state."""
+        relation_id = self.harness.add_relation(RELATION_NAME, "s3-integrator")
+        self.harness.add_relation_unit(relation_id, "s3-integrator/0")
+
         service.return_value = True
         pbm_command.side_effect = ExecError(
             command=["/usr/bin/pbm", "status"], exit_code=1, stdout="status code: 403", stderr=""
@@ -80,11 +92,20 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.MongodbOperatorCharm.run_pbm_command")
     def test_get_pbm_status_incorrect_conf(self, pbm_command, service):
         """Tests that when pbm has incorrect configs that pbm is in blocked state."""
+        relation_id = self.harness.add_relation(RELATION_NAME, "s3-integrator")
+        self.harness.add_relation_unit(relation_id, "s3-integrator/0")
+
         service.return_value = True
         pbm_command.side_effect = ExecError(
             command=["/usr/bin/pbm", "status"], exit_code=1, stdout="status code: 404", stderr=""
         )
         self.assertTrue(isinstance(self.harness.charm.backups._get_pbm_status(), BlockedStatus))
+
+    @patch("charm.MongodbOperatorCharm.has_backup_service")
+    @patch("charm.MongodbOperatorCharm.run_pbm_command")
+    def test_get_pbm_status_no_config(self, pbm_command, service):
+        """Tests when configurations for pbm are not given through S3 there is no status."""
+        self.assertTrue(self.harness.charm.backups._get_pbm_status() is None)
 
     @patch("charm.snap.SnapCache")
     @patch("charms.mongodb.v0.mongodb_backups.wait_fixed")
@@ -645,6 +666,9 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.MongodbOperatorCharm.run_pbm_command")
     def test_get_pbm_status_backup(self, run_pbm_command, service):
         """Tests that when pbm running a backup that pbm is in maintenance state."""
+        relation_id = self.harness.add_relation(RELATION_NAME, "s3-integrator")
+        self.harness.add_relation_unit(relation_id, "s3-integrator/0")
+
         service.return_value = "pbm"
         run_pbm_command.return_value = '{"running":{"type":"backup","name":"2023-09-04T12:15:58Z","startTS":1693829759,"status":"oplog backup","opID":"64f5ca7e777e294530289465"}}'
         self.assertTrue(
