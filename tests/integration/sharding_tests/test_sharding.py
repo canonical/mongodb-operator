@@ -294,6 +294,14 @@ async def test_unconventual_shard_removal(ops_test: OpsTest):
         f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
     )
 
+    await ops_test.model.wait_for_idle(
+        apps=[SHARD_TWO_APP_NAME],
+        idle_period=20,
+        status="active",
+        timeout=TIMEOUT,
+        raise_on_error=False,
+    )
+
     await ops_test.model.applications[SHARD_TWO_APP_NAME].destroy_units(f"{SHARD_TWO_APP_NAME}/0")
     await ops_test.model.wait_for_idle(
         apps=[SHARD_TWO_APP_NAME],
