@@ -1359,10 +1359,7 @@ class MongodbOperatorCharm(CharmBase):
         mongodb_status = build_unit_status(self.mongodb_config, self._unit_ip(self.unit))
         shard_status = self.shard.get_shard_status()
         config_server_status = self.config_server.get_config_server_status()
-        pbm_status = (
-            self.backups.get_pbm_status()
-        )
-
+        pbm_status = self.backups.get_pbm_status()
 
         # failure in mongodb takes precedence over sharding and config server
         if not isinstance(mongodb_status, ActiveStatus):
