@@ -422,19 +422,19 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charms.mongodb.v1.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
-    @patch("charm.MongoDBBackups.get_pbm_status")
     @patch("charm.build_unit_status")
+    @patch("charm.MongodbOperatorCharm.has_backup_service")
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
     def test_update_status_no_s3(
-        self, _, get_mongodb_status, get_pbm_status, connection, status_connection
+        self, _, has_backup_service, get_mongodb_status, connection, status_connection
     ):
         """Tests when the s3 relation isn't present that the MongoDB status is reported."""
         # assume leader has already initialised the replica set
         self.harness.set_leader(True)
         self.harness.charm.app_peer_data["db_initialised"] = "True"
         connection.return_value.__enter__.return_value.is_ready = True
+        has_backup_service.return_value = True
 
-        get_pbm_status.return_value = BlockedStatus("pbm")
         get_mongodb_status.return_value = ActiveStatus("mongodb")
         self.harness.charm.on.update_status.emit()
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus("mongodb"))

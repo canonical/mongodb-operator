@@ -32,7 +32,7 @@ from charms.mongodb.v1.helpers import (
     generate_password,
     get_create_user_cmd,
 )
-from charms.mongodb.v1.mongodb_backups import S3_RELATION, MongoDBBackups
+from charms.mongodb.v1.mongodb_backups import MongoDBBackups
 from charms.mongodb.v1.mongodb_provider import MongoDBProvider
 from charms.mongodb.v1.mongodb_vm_legacy_provider import MongoDBLegacyProvider
 from charms.mongodb.v1.mongos import MongosConfiguration
@@ -1360,8 +1360,9 @@ class MongodbOperatorCharm(CharmBase):
         shard_status = self.shard.get_shard_status()
         config_server_status = self.config_server.get_config_server_status()
         pbm_status = (
-            self.backups.get_pbm_status() if self.model.get_relation(S3_RELATION) else None
+            self.backups.get_pbm_status()
         )
+
 
         # failure in mongodb takes precedence over sharding and config server
         if not isinstance(mongodb_status, ActiveStatus):
