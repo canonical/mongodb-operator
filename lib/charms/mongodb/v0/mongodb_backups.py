@@ -13,7 +13,7 @@ import logging
 import re
 import subprocess
 import time
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from charms.data_platform_libs.v0.s3 import CredentialsChangedEvent, S3Requirer
 from charms.mongodb.v0.helpers import (
@@ -42,7 +42,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 6
+LIBPATCH = 7
 
 logger = logging.getLogger(__name__)
 
@@ -420,10 +420,14 @@ class MongoDBBackups(Object):
                 except ExecError as e:
                     self.charm.unit.status = BlockedStatus(process_pbm_error(e.stdout))
 
-    def _get_pbm_status(self) -> StatusBase:
+    def _get_pbm_status(self) -> Optional[StatusBase]:
         """Retrieve pbm status."""
         if not self.charm.has_backup_service():
             return WaitingStatus("waiting for pbm to start")
+
+        if not self.model.get_relation(S3_RELATION):
+            logger.info("No configurations for backups, not relation to s3-charm.")
+            return None
 
         try:
             previous_pbm_status = self.charm.unit.status
