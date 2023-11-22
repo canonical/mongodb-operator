@@ -21,7 +21,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 3
+LIBPATCH = 4
 
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
@@ -204,7 +204,7 @@ class MongosConnection:
             with attempt:
                 balancer_state = self.client.admin.command("balancerStatus")
                 if balancer_state["mode"] == "off":
-                    raise BalancerNotEnabledError
+                    raise BalancerNotEnabledError("balancer is not enabled.")
 
     def remove_shard(self, shard_name: str) -> None:
         """Removes shard from the cluster.

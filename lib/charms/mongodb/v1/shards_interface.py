@@ -32,7 +32,6 @@ from ops.framework import Object
 from ops.model import (
     ActiveStatus,
     BlockedStatus,
-    ErrorStatus,
     MaintenanceStatus,
     StatusBase,
     WaitingStatus,
@@ -57,6 +56,14 @@ KEYFILE_KEY = "key-file"
 HOSTS_KEY = "host"
 OPERATOR_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username())
 FORBIDDEN_REMOVAL_ERR_CODE = 20
+AUTH_FAILED_CODE = 18
+
+
+class ShardAuthError(Exception):
+    """Raised when a shard doesn't have the same auth as the config server."""
+
+    def __init__(self, shard: str):
+        self.shard = shard
 
 
 class RemoveLastShardError(Exception):
@@ -201,11 +208,11 @@ class ShardingProvider(Object):
 
             logger.error("Deferring _on_relation_event for shards interface since: error=%r", e)
             event.defer()
-        except BalancerNotEnabledError:
-            logger.error("Deferring on _relation_broken_event, balancer is not enabled.")
+        except ShardAuthError as e:
+            self.charm.unit.status = WaitingStatus(f"Waiting for {e.shard} to sync credentials.")
             event.defer()
             return
-        except (PyMongoError, NotReadyError) as e:
+        except (PyMongoError, NotReadyError, BalancerNotEnabledError) as e:
             logger.error("Deferring _on_relation_event for shards interface since: error=%r", e)
             event.defer()
             return
@@ -215,6 +222,7 @@ class ShardingProvider(Object):
 
         raises: PyMongoError
         """
+        failed_to_add_shard = None
         with MongosConnection(self.charm.mongos_config) as mongo:
             cluster_shards = mongo.get_shard_members()
             relation_shards = self._get_shards_from_relations(departed_shard_id)
@@ -231,10 +239,25 @@ class ShardingProvider(Object):
                     logger.info("Adding shard: %s ", shard)
                     mongo.add_shard(shard, shard_hosts)
                 except PyMongoError as e:
+                    # raise exception after trying to add the remaining shards, as to not prevent
+                    # adding other shards
                     logger.error("Failed to add shard %s to the config server, error=%r", shard, e)
-                    raise
+                    failed_to_add_shard = (e, shard)
 
-        self.charm.unit.status = ActiveStatus("")
+        if not failed_to_add_shard:
+            self.charm.unit.status = ActiveStatus("")
+            return
+
+        (error, shard) = failed_to_add_shard
+
+        # Sometimes it can take up to 20 minutes for the shard to be restarted with the same auth
+        # as the config server.
+        if error.code == AUTH_FAILED_CODE:
+            logger.error(f"{shard} shard does not have the same auth as the config server.")
+            raise ShardAuthError(shard)
+
+        logger.error(f"Failed to add {shard} to cluster")
+        raise error
 
     def remove_shards(self, departed_shard_id):
         """Removes shards from cluster.
@@ -280,13 +303,14 @@ class ShardingProvider(Object):
 
     def get_config_server_status(self) -> Optional[StatusBase]:
         """Returns the current status of the config-server."""
-        if not self.charm.is_role(Config.Role.CONFIG_SERVER):
-            logger.info("skipping status check, charm is not running as a shard")
+        if self.skip_config_server_status():
             return None
 
-        if not self.charm.db_initialised:
-            logger.info("No status for shard to report, waiting for db to be initialised.")
-            return None
+        if (
+            self.charm.is_role(Config.Role.REPLICATION)
+            and self.model.relations[Config.Relations.CONFIG_SERVER_RELATIONS_NAME]
+        ):
+            return BlockedStatus("sharding interface cannot be used by replicas")
 
         if self.model.relations[LEGACY_REL_NAME]:
             return BlockedStatus(f"relation {LEGACY_REL_NAME} to shard not supported.")
@@ -295,7 +319,7 @@ class ShardingProvider(Object):
             return BlockedStatus(f"relation {REL_NAME} to shard not supported.")
 
         if not self.is_mongos_running():
-            return ErrorStatus("Internal mongos is not running.")
+            return BlockedStatus("Internal mongos is not running.")
 
         shard_draining = self.get_draining_shards()
         if shard_draining:
@@ -308,9 +332,27 @@ class ShardingProvider(Object):
         unreachable_shards = self.get_unreachable_shards()
         if unreachable_shards:
             unreachable_shards = ", ".join(unreachable_shards)
-            return ErrorStatus(f"Shards {unreachable_shards} are unreachable.")
+            return BlockedStatus(f"shards {unreachable_shards} are unreachable.")
 
         return ActiveStatus()
+
+    def skip_config_server_status(self) -> bool:
+        """Returns true if the status check should be skipped."""
+        if self.charm.is_role(Config.Role.SHARD):
+            logger.info("skipping config server status check, charm is  running as a shard")
+            return True
+
+        if not self.charm.db_initialised:
+            logger.info("No status for shard to report, waiting for db to be initialised.")
+            return True
+
+        if (
+            self.charm.is_role(Config.Role.REPLICATION)
+            and not self.model.relations[Config.Relations.CONFIG_SERVER_RELATIONS_NAME]
+        ):
+            return True
+
+        return False
 
     def _update_relation_data(self, relation_id: int, data: dict) -> None:
         """Updates a set of key-value pairs in the relation.
@@ -491,6 +533,11 @@ class ConfigServerRequirer(Object):
             event.defer()
             return False
 
+        mongos_hosts = event.relation.data[event.relation.app].get(HOSTS_KEY, None)
+        if isinstance(event, RelationBrokenEvent) and not mongos_hosts:
+            logger.info("Config-server relation never set up, no need to process broken event.")
+            return False
+
         return True
 
     def _on_relation_broken(self, event: RelationBrokenEvent) -> None:
@@ -558,13 +605,14 @@ class ConfigServerRequirer(Object):
         Note: No need to report if currently draining, since that check block other hooks from
         executing.
         """
-        if not self.charm.is_role(Config.Role.SHARD):
-            logger.info("skipping status check, charm is not running as a shard")
+        if self.skip_shard_status():
             return None
 
-        if not self.charm.db_initialised:
-            logger.info("No status for shard to report, waiting for db to be initialised.")
-            return None
+        if (
+            self.charm.is_role(Config.Role.REPLICATION)
+            and self.model.relations[Config.Relations.CONFIG_SERVER_RELATIONS_NAME]
+        ):
+            return BlockedStatus("sharding interface cannot be used by replicas")
 
         if self.model.get_relation(LEGACY_REL_NAME):
             return BlockedStatus(f"relation {LEGACY_REL_NAME} to shard not supported.")
@@ -579,7 +627,7 @@ class ConfigServerRequirer(Object):
             return ActiveStatus("Shard drained from cluster, ready for removal")
 
         if not self._is_mongos_reachable():
-            return ErrorStatus("Config server unreachable")
+            return BlockedStatus("Config server unreachable")
 
         if not self._is_added_to_cluster():
             return MaintenanceStatus("Adding shard to config-server")
@@ -588,6 +636,24 @@ class ConfigServerRequirer(Object):
             return BlockedStatus("Shard is not yet shard aware")
 
         return ActiveStatus()
+
+    def skip_shard_status(self) -> bool:
+        """Returns true if the status check should be skipped."""
+        if self.charm.is_role(Config.Role.CONFIG_SERVER):
+            logger.info("skipping status check, charm is running as config-server")
+            return True
+
+        if not self.charm.db_initialised:
+            logger.info("No status for shard to report, waiting for db to be initialised.")
+            return True
+
+        if (
+            self.charm.is_role(Config.Role.REPLICATION)
+            and not self.model.relations[Config.Relations.CONFIG_SERVER_RELATIONS_NAME]
+        ):
+            return True
+
+        return False
 
     def drained(self, mongos_hosts: Set[str], shard_name: str) -> bool:
         """Returns whether a shard has been drained from the cluster.

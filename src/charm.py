@@ -1357,12 +1357,8 @@ class MongodbOperatorCharm(CharmBase):
         """
         # retrieve statuses of different services running on Charmed MongoDB
         mongodb_status = build_unit_status(self.mongodb_config, self._unit_ip(self.unit))
-        shard_status = self.shard.get_shard_status() if self.is_role(Config.Role.SHARD) else None
-        config_server_status = (
-            self.config_server.get_config_server_status()
-            if self.is_role(Config.Role.CONFIG_SERVER)
-            else None
-        )
+        shard_status = self.shard.get_shard_status()
+        config_server_status = self.config_server.get_config_server_status()
         pbm_status = self.backups.get_pbm_status()
 
         # failure in mongodb takes precedence over sharding and config server
@@ -1398,7 +1394,7 @@ class MongodbOperatorCharm(CharmBase):
             not self.is_sharding_component()
             and rel_interface == Config.Relations.SHARDING_RELATIONS_NAME
         ):
-            self.unit.status = BlockedStatus("role replication does not support sharding")
+            self.unit.status = BlockedStatus("sharding interface cannot be used by replicas")
             logger.error(
                 "Charm is in sharding role: %s. Does not support %s interface.",
                 self.role,
