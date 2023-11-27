@@ -37,6 +37,8 @@ from charms.mongodb.v1.mongodb_provider import MongoDBProvider
 from charms.mongodb.v1.mongodb_vm_legacy_provider import MongoDBLegacyProvider
 from charms.mongodb.v1.mongos import MongosConfiguration
 from charms.mongodb.v1.shards_interface import ConfigServerRequirer, ShardingProvider
+from charms.mongodb.v1.config_server_interface import ClusterProvider
+
 from charms.mongodb.v1.users import (
     CHARM_USERS,
     BackupUser,
@@ -124,6 +126,7 @@ class MongodbOperatorCharm(CharmBase):
         self.tls = MongoDBTLS(self, Config.Relations.PEERS, substrate=Config.SUBSTRATE)
         self.backups = MongoDBBackups(self)
         self.config_server = ShardingProvider(self)
+        self.cluster = ClusterProvider(self)
         self.shard = ConfigServerRequirer(self)
 
         # relation events for Prometheus metrics are handled in the MetricsEndpointProvider

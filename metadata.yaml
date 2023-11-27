@@ -27,6 +27,8 @@ provides:
     interface: cos_agent
   config-server:
     interface: shards
+  cluster:
+    interface: config-server
 
 storage:
   mongodb:
