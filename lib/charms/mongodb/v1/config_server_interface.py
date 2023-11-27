@@ -6,20 +6,13 @@
 This class handles the sharing of secrets between sharded components, adding shards, and removing
 shards.
 """
-import json
 import logging
-
-from charms.operator_libs_linux.v1 import snap
-
-from charms.mongodb.v1.mongos import MongosConnection
 
 from ops.charm import CharmBase, EventBase
 from ops.framework import Object
+from ops.model import WaitingStatus
 
 from config import Config
-from charms.mongodb.v1.helpers import get_mongos_args, add_args_to_env
-
-from ops.model import BlockedStatus, WaitingStatus
 
 logger = logging.getLogger(__name__)
 KEYFILE_KEY = "key-file"
@@ -83,7 +76,7 @@ class ClusterProvider(Object):
             logger.info("Skipping relation joined event: hook checks did not pass")
             return
 
-        # TODO Future PR, sync tls secrets and PBM password
+        # TODO Future PR, provide URI
         # TODO Future PR, use secrets
         self._update_relation_data(
             event.relation.id,
@@ -129,7 +122,6 @@ class ClusterRequirer(Object):
 
     def _on_relation_changed(self, event):
         """Starts/restarts monogs with config server information."""
-
         relation_data = event.relation.data[event.app]
         if not relation_data.get(KEYFILE_KEY):
             event.defer()
@@ -138,32 +130,7 @@ class ClusterRequirer(Object):
 
         self.update_keyfile(key_file_contents=relation_data.get(KEYFILE_KEY))
 
-        # relation_data = event.relation.data[event.app]
-        # if not relation_data.get(CONFIG_SERVER_URI_KEY):
-        #     event.defer()
-        #     self.charm.unit.status = WaitingStatus("Waiting for secrets from config-server")
-        #     return
-
-        # mongos_start_args = get_mongos_args(self.charm.mongos_config, snap_install=True, get_mongos_args=)
-        # add_args_to_env("MONGOS_ARGS", mongos_start_args)
-
-        # snap_cache = snap.SnapCache()
-        # mongodb_snap = snap_cache["charmed-mongodb"]
-
-        # try:
-        #     mongodb_snap.start(services=["mongos"], enable=True)
-        # except snap.SnapError as e:
-        #     logger.error("An exception occurred when starting mongos agent, error: %s.", str(e))
-        #     self.unit.status = BlockedStatus("couldn't start mongos")
-        #     return
-
-        # mongos_hosts = ",".join(self.charm._unit_ips)
-        # uri = f"mongodb://{mongos_hosts}"
-        # with MongosConnection(None, uri) as mongo:
-        #     if not mongo.is_ready:
-        #         self.unit.status = BlockedStatus("couldn't start mongos")
-        #         return
-
+        # TODO: Follow up PR. Start mongos with the config-server URI
         # TODO: Follow up PR. Add a user for mongos once it has been started
 
     def update_keyfile(self, key_file_contents: str) -> None:

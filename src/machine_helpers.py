@@ -4,7 +4,7 @@
 import logging
 
 from charms.mongodb.v0.mongodb import MongoDBConfiguration
-from charms.mongodb.v1.helpers import get_mongod_args, get_mongos_args, add_args_to_env
+from charms.mongodb.v1.helpers import add_args_to_env, get_mongod_args, get_mongos_args
 
 from config import Config
 
