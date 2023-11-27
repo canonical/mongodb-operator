@@ -8,6 +8,7 @@ shards.
 """
 import logging
 
+
 from ops.charm import CharmBase, EventBase
 from ops.framework import Object
 from ops.model import WaitingStatus
@@ -50,10 +51,6 @@ class ClusterProvider(Object):
 
     def pass_hook_checks(self, event: EventBase) -> bool:
         """Runs the pre-hooks checks for ClusterProvider, returns True if all pass."""
-        if not self.charm.is_relation_feasible(self.relation_name):
-            logger.info("Skipping event %s , relation not feasible.", type(event))
-            return False
-
         if not self.charm.is_role(Config.Role.CONFIG_SERVER):
             logger.info(
                 "Skipping %s. ShardingProvider is only be executed by config-server", type(event)
