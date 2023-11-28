@@ -1315,9 +1315,9 @@ class MongodbOperatorCharm(CharmBase):
         Relation departed and relation broken events occur during scaling down or during relation
         removal, only relation departed events have access to metadata to determine which case.
         """
-        self.set_scaling_down(event)
+        scaling_down = self.set_scaling_down(event)
 
-        if self.is_scaling_down(event.relation.id):
+        if scaling_down:
             logger.info(
                 "Scaling down the application, no need to process removed relation in broken hook."
             )
@@ -1332,12 +1332,14 @@ class MongodbOperatorCharm(CharmBase):
         rel_departed_key = self._generate_relation_departed_key(rel_id)
         return rel_departed_key in self.unit_peer_data
 
-    def set_scaling_down(self, event: RelationDepartedEvent) -> None:
+    def set_scaling_down(self, event: RelationDepartedEvent) -> bool:
         """Sets whether or not the current unit is scaling down."""
         # check if relation departed is due to current unit being removed. (i.e. scaling down the
         # application.)
         rel_departed_key = self._generate_relation_departed_key(event.relation.id)
-        self.unit_peer_data[rel_departed_key] = json.dumps(event.departing_unit == self.unit)
+        scaling_down = json.dumps(event.departing_unit == self.unit)
+        self.unit_peer_data[rel_departed_key] = scaling_down
+        return scaling_down
 
     @staticmethod
     def _generate_relation_departed_key(rel_id: int) -> str:
