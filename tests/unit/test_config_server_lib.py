@@ -3,7 +3,6 @@
 import unittest
 from unittest.mock import patch
 
-from ops.model import BlockedStatus, ModelError
 from ops.testing import Harness
 
 from charm import MongodbOperatorCharm
@@ -27,13 +26,14 @@ class TestConfigServerInterface(unittest.TestCase):
     def test_on_relation_joined_failed_hook_checks(self, _update_relation_data):
         """Tests that no relation data is set when cluster joining conditions are not met."""
 
-        def is_role_mock_call(*args):
+        def is_not_config_mock_call(*args):
             assert args == ("config-server",)
             return False
 
         self.harness.charm.app_peer_data["db_initialised"] = "True"
 
         # fails due to being run on non-config-server
+        self.harness.charm.is_role = is_not_config_mock_call
         relation_id = self.harness.add_relation("cluster", "mongos")
         self.harness.add_relation_unit(relation_id, "mongos/0")
         _update_relation_data.assert_not_called()
@@ -41,11 +41,11 @@ class TestConfigServerInterface(unittest.TestCase):
         # fails because db has not been initialized
         del self.harness.charm.app_peer_data["db_initialised"]
 
-        def is_role_mock_call(*args):
+        def is_config_mock_call(*args):
             assert args == ("config-server",)
             return True
 
-        self.harness.charm.is_role = is_role_mock_call
+        self.harness.charm.is_role = is_config_mock_call
         self.harness.add_relation_unit(relation_id, "mongos/1")
         _update_relation_data.assert_not_called()
 

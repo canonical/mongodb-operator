@@ -8,7 +8,6 @@ shards.
 """
 import logging
 
-
 from ops.charm import CharmBase, EventBase
 from ops.framework import Object
 from ops.model import WaitingStatus
@@ -22,14 +21,14 @@ HOSTS_KEY = "host"
 CONFIG_SERVER_URI_KEY = "config-server-uri"
 
 # The unique Charmhub library identifier, never change it
-LIBID = "55fee8fa73364fb0a2dc16a954b2fd4a"
+LIBID = "58ad1ccca4974932ba22b97781b9b2a0"
 
 # Increment this major API version when introducing breaking changes
-LIBAPI = 1
+LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 4
+LIBPATCH = 1
 
 
 class ClusterProvider(Object):

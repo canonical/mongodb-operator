@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set
 
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
+from charms.mongodb.v0.config_server_interface import ClusterProvider
 from charms.mongodb.v0.mongodb import (
     MongoDBConfiguration,
     MongoDBConnection,
@@ -20,7 +21,6 @@ from charms.mongodb.v0.mongodb import (
 )
 from charms.mongodb.v0.mongodb_secrets import SecretCache, generate_secret_label
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
-from charms.mongodb.v1.config_server_interface import ClusterProvider
 from charms.mongodb.v1.helpers import (
     KEY_FILE,
     TLS_EXT_CA_FILE,
