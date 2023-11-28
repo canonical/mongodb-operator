@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set
 
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
+from charms.mongodb.v0.config_server_interface import ClusterProvider
 from charms.mongodb.v0.mongodb import (
     MongoDBConfiguration,
     MongoDBConnection,
@@ -124,6 +125,7 @@ class MongodbOperatorCharm(CharmBase):
         self.tls = MongoDBTLS(self, Config.Relations.PEERS, substrate=Config.SUBSTRATE)
         self.backups = MongoDBBackups(self)
         self.config_server = ShardingProvider(self)
+        self.cluster = ClusterProvider(self)
         self.shard = ConfigServerRequirer(self)
 
         # relation events for Prometheus metrics are handled in the MetricsEndpointProvider
