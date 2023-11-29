@@ -6,15 +6,14 @@
 This class handles the sharing of secrets between sharded components, adding shards, and removing
 shards.
 """
-import logging
 import json
+import logging
 
+from charms.mongodb.v1.helpers import add_args_to_env, get_mongos_args
+from charms.mongodb.v1.mongos import MongosConnection
 from ops.charm import CharmBase, EventBase
 from ops.framework import Object
-from ops.model import WaitingStatus, MaintenanceStatus, ActiveStatus
-
-from charms.mongodb.v1.helpers import get_mongos_args, add_args_to_env
-from charms.mongodb.v1.mongos import MongosConnection
+from ops.model import ActiveStatus, MaintenanceStatus, WaitingStatus
 
 from config import Config
 
@@ -51,7 +50,7 @@ class ClusterProvider(Object):
         )
 
         # TODO Future PRs handle scale down
-        # TODO Future PRs handle changing of units/passwords to be propogated to mongos
+        # TODO Future PRs handle changing of units/passwords to be propagated to mongos
 
     def pass_hook_checks(self, event: EventBase) -> bool:
         """Runs the pre-hooks checks for ClusterProvider, returns True if all pass."""
@@ -71,7 +70,7 @@ class ClusterProvider(Object):
 
         return True
 
-    def _on_relation_joined(self, event):
+    def _on_relation_joined(self, event) -> None:
         """Handles providing mongos with KeyFile and hosts."""
         if not self.pass_hook_checks(event):
             logger.info("Skipping relation joined event: hook checks did not pass")
@@ -133,7 +132,7 @@ class ClusterRequirer(Object):
         )
         # TODO Future PRs handle scale down
 
-    def _on_relation_changed(self, event):
+    def _on_relation_changed(self, event) -> None:
         """Starts/restarts monogs with config server information."""
         relation_data = event.relation.data[event.app]
         if not relation_data.get(KEYFILE_KEY) or not relation_data.get(CONFIG_SERVER_DB_KEY):
@@ -158,7 +157,7 @@ class ClusterRequirer(Object):
 
         # restart on high loaded databases can be very slow (e.g. up to 10-20 minutes).
         if not self.is_mongos_running():
-            logger.info("mongos has not started, deferfing")
+            logger.info("mongos has not started, deferring")
             self.charm.unit.status = WaitingStatus("Waiting for mongos to start")
             event.defer()
             return
