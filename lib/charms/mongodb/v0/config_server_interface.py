@@ -162,6 +162,7 @@ class ClusterRequirer(Object):
             event.defer()
             return
 
+        # TODO: Follow up PR. Create an "operator" user for this mongos
         # TODO: Follow up PR. Add a user for mongos once it has been started
         self.charm.unit_peer_data["mongos_initialised"] = json.dumps(True)
         self.charm.unit.status = ActiveStatus()
