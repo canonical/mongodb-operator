@@ -81,8 +81,9 @@ def get_create_user_cmd(config: MongoDBConfiguration, mongo_path=MONGO_SHELL) ->
 
 
 def get_mongos_args(
-    config: MongoDBConfiguration,
+    config,
     snap_install: bool = False,
+    config_server_db: str = None,
 ) -> str:
     """Returns the arguments used for starting mongos on a config-server side application.
 
@@ -91,14 +92,14 @@ def get_mongos_args(
     """
     # mongos running on the config server communicates through localhost
     # use constant for port
-    config_server_uri = f"{config.replset}/localhost:27017"
+    config_server_db = config_server_db or f"{config.replset}/localhost:27017"
 
     full_conf_dir = f"{MONGODB_SNAP_DATA_DIR}{CONF_DIR}" if snap_install else CONF_DIR
     cmd = [
         # mongos on config server side should run on 0.0.0.0 so it can be accessed by other units
         # in the sharded cluster
         "--bind_ip_all",
-        f"--configdb {config_server_uri}",
+        f"--configdb {config_server_db}",
         # config server is already using 27017
         f"--port {Config.MONGOS_PORT}",
         f"--keyFile={full_conf_dir}/{KEY_FILE}",
