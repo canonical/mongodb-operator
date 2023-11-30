@@ -90,15 +90,21 @@ def get_mongos_args(
     Returns:
         A string representing the arguments to be passed to mongos.
     """
+    # suborinate charm which provides its own config_server_db, should only use unix domain socket
+    binding_ips = (
+        f"--bind_ip {MONGODB_COMMON_DIR}/var/mongodb-27018.sock"
+        if config_server_db
+        else "--bind_ip_all"
+    )
+
     # mongos running on the config server communicates through localhost
-    # use constant for port
-    config_server_db = config_server_db or f"{config.replset}/localhost:27017"
+    config_server_db = config_server_db or f"{config.replset}/localhost:{Config.MONGODB_PORT}"
 
     full_conf_dir = f"{MONGODB_SNAP_DATA_DIR}{CONF_DIR}" if snap_install else CONF_DIR
     cmd = [
         # mongos on config server side should run on 0.0.0.0 so it can be accessed by other units
         # in the sharded cluster
-        "--bind_ip_all",
+        binding_ips,
         f"--configdb {config_server_db}",
         # config server is already using 27017
         f"--port {Config.MONGOS_PORT}",
