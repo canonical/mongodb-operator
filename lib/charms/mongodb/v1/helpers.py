@@ -29,7 +29,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 0
+LIBPATCH = 1
 
 # path to store mongodb ketFile
 KEY_FILE = "keyFile"
@@ -81,24 +81,31 @@ def get_create_user_cmd(config: MongoDBConfiguration, mongo_path=MONGO_SHELL) ->
 
 
 def get_mongos_args(
-    config: MongoDBConfiguration,
+    config,
     snap_install: bool = False,
+    config_server_db: str = None,
 ) -> str:
     """Returns the arguments used for starting mongos on a config-server side application.
 
     Returns:
         A string representing the arguments to be passed to mongos.
     """
+    # suborinate charm which provides its own config_server_db, should only use unix domain socket
+    binding_ips = (
+        f"--bind_ip {MONGODB_COMMON_DIR}/var/mongodb-27018.sock"
+        if config_server_db
+        else "--bind_ip_all"
+    )
+
     # mongos running on the config server communicates through localhost
-    # use constant for port
-    config_server_uri = f"{config.replset}/localhost:27017"
+    config_server_db = config_server_db or f"{config.replset}/localhost:{Config.MONGODB_PORT}"
 
     full_conf_dir = f"{MONGODB_SNAP_DATA_DIR}{CONF_DIR}" if snap_install else CONF_DIR
     cmd = [
         # mongos on config server side should run on 0.0.0.0 so it can be accessed by other units
         # in the sharded cluster
-        "--bind_ip_all",
-        f"--configdb {config_server_uri}",
+        binding_ips,
+        f"--configdb {config_server_db}",
         # config server is already using 27017
         f"--port {Config.MONGOS_PORT}",
         f"--keyFile={full_conf_dir}/{KEY_FILE}",
