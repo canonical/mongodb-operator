@@ -11,7 +11,9 @@ import json
 import logging
 import re
 from collections import namedtuple
-from typing import Optional, Set
+from typing import Optional, Set, List
+
+from config import Config
 
 from charms.data_platform_libs.v0.data_interfaces import DatabaseProvides
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
@@ -35,6 +37,7 @@ logger = logging.getLogger(__name__)
 REL_NAME = "database"
 
 LEGACY_REL_NAME = "obsolete"
+MONGOS_RELATIONS = "cluster"
 
 # We expect the MongoDB container to use the default ports
 MONGODB_PORT = 27017
@@ -191,6 +194,8 @@ class MongoDBProvider(Object):
                     # set the database name into the relation.
                     continue
                 logger.info("Create relation user: %s on %s", config.username, config.database)
+
+                # TODO add extra roles for mongos users
                 mongo.create_user(config)
                 self._set_relation(config)
 
@@ -259,7 +264,7 @@ class MongoDBProvider(Object):
         with MongoDBConnection(self.charm.mongodb_config) as mongo:
             database_users = mongo.get_users()
 
-        for relation in self.charm.model.relations[REL_NAME]:
+        for relation in self._get_relations(rel=REL_NAME):
             username = self._get_username_from_relation_id(relation.id)
             password = self._get_or_set_password(relation)
             config = self._get_config(username, password)
@@ -334,7 +339,7 @@ class MongoDBProvider(Object):
 
     def _get_users_from_relations(self, departed_relation_id: Optional[int], rel=REL_NAME):
         """Return usernames for all relations except departed relation."""
-        relations = self.model.relations[rel]
+        relations = self._get_relations(rel)
         return set(
             [
                 self._get_username_from_relation_id(relation.id)
@@ -351,7 +356,7 @@ class MongoDBProvider(Object):
                 except for those databases that belong to the departing
                 relation specified.
         """
-        relations = self.model.relations[REL_NAME]
+        relations = self._get_relations(rel=REL_NAME)
         databases = set()
         for relation in relations:
             if relation.id == departed_relation_id:
@@ -370,7 +375,19 @@ class MongoDBProvider(Object):
         assert match is not None, "No relation match"
         relation_id = int(match.group(1))
         logger.debug("Relation ID: %s", relation_id)
-        return self.model.get_relation(REL_NAME, relation_id)
+        relation_name = MONGOS_RELATIONS if self.is_role(Config.Role.CONFIG_SERVER) else REL_NAME
+        return self.model.get_relation(relation_name, relation_id)
+
+    def _get_relations(self, rel=REL_NAME) -> List[Relation]:
+        """Return the set of relations for users.
+
+        We create users for either direct relations to charm or for relations through the mongos
+        charm."""
+        return (
+            self.model.relations[MONGOS_RELATIONS]
+            if self.is_role(Config.Role.CONFIG_SERVER)
+            else self.model.relations[rel]
+        )
 
     @staticmethod
     def _get_database_from_relation(relation: Relation) -> Optional[str]:
@@ -383,6 +400,7 @@ class MongoDBProvider(Object):
     @staticmethod
     def _get_roles_from_relation(relation: Relation) -> Set[str]:
         """Return additional user roles from relation if specified or return None."""
+        # TODO change this for integration with mongos
         roles = relation.data[relation.app].get("extra-user-roles", None)
         if roles is not None:
             return set(roles.split(","))

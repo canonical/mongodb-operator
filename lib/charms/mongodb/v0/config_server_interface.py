@@ -79,6 +79,9 @@ class ClusterProvider(Object):
 
         config_server_db = self.generate_config_server_db()
 
+        # create user and set secrets for mongos relation
+        self.charm.client_relations.oversee_users(None, None)
+
         # TODO Future PR, use secrets
         self._update_relation_data(
             event.relation.id,
