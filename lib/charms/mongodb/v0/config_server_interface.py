@@ -6,7 +6,6 @@
 This class handles the sharing of secrets between sharded components, adding shards, and removing
 shards.
 """
-import json
 import logging
 
 from charms.mongodb.v1.helpers import add_args_to_env, get_mongos_args
@@ -201,7 +200,6 @@ class ClusterRequirer(Object):
             mongos_config, snap_install=True, config_server_db=config_server_db
         )
         add_args_to_env("MONGOS_ARGS", mongos_start_args)
-        self.charm.unit_peer_data["config_server_db"] = json.dumps(config_server_db)
         return True
 
     def update_keyfile(self, key_file_contents: str) -> bool:
