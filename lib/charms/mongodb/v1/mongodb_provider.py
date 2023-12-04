@@ -11,9 +11,7 @@ import json
 import logging
 import re
 from collections import namedtuple
-from typing import Optional, Set, List
-
-from config import Config
+from typing import List, Optional, Set
 
 from charms.data_platform_libs.v0.data_interfaces import DatabaseProvides
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
@@ -22,6 +20,8 @@ from ops.charm import CharmBase, RelationBrokenEvent, RelationChangedEvent
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, Relation
 from pymongo.errors import PyMongoError
+
+from config import Config
 
 # The unique Charmhub library identifier, never change it
 LIBID = "4067879ef7dd4261bf6c164bc29d94b1"
@@ -195,7 +195,6 @@ class MongoDBProvider(Object):
                     continue
                 logger.info("Create relation user: %s on %s", config.username, config.database)
 
-                # TODO add extra roles for mongos users
                 mongo.create_user(config)
                 self._set_relation(config)
 
@@ -300,9 +299,11 @@ class MongoDBProvider(Object):
         if not password:
             password = self._get_or_set_password(relation)
 
+        database_name = self._get_database_from_relation(relation)
+
         return MongoDBConfiguration(
             replset=self.charm.app.name,
-            database=self._get_database_from_relation(relation),
+            database=database_name,
             username=username,
             password=password,
             hosts=self.charm.mongodb_config.hosts,
@@ -319,6 +320,11 @@ class MongoDBProvider(Object):
 
         self.database_provides.set_credentials(relation.id, config.username, config.password)
         self.database_provides.set_database(relation.id, config.database)
+
+        # relations with the mongos server should not connect though the config-server directly
+        if self.charm.is_role(Config.Role.CONFIG_SERVER):
+            return
+
         self.database_provides.set_endpoints(
             relation.id,
             ",".join(config.hosts),
@@ -375,17 +381,20 @@ class MongoDBProvider(Object):
         assert match is not None, "No relation match"
         relation_id = int(match.group(1))
         logger.debug("Relation ID: %s", relation_id)
-        relation_name = MONGOS_RELATIONS if self.is_role(Config.Role.CONFIG_SERVER) else REL_NAME
+        relation_name = (
+            MONGOS_RELATIONS if self.charm.is_role(Config.Role.CONFIG_SERVER) else REL_NAME
+        )
         return self.model.get_relation(relation_name, relation_id)
 
     def _get_relations(self, rel=REL_NAME) -> List[Relation]:
         """Return the set of relations for users.
 
         We create users for either direct relations to charm or for relations through the mongos
-        charm."""
+        charm.
+        """
         return (
             self.model.relations[MONGOS_RELATIONS]
-            if self.is_role(Config.Role.CONFIG_SERVER)
+            if self.charm.is_role(Config.Role.CONFIG_SERVER) and rel != LEGACY_REL_NAME
             else self.model.relations[rel]
         )
 
@@ -393,14 +402,11 @@ class MongoDBProvider(Object):
     def _get_database_from_relation(relation: Relation) -> Optional[str]:
         """Return database name from relation."""
         database = relation.data[relation.app].get("database", None)
-        if database is not None:
-            return database
-        return None
+        return database
 
     @staticmethod
     def _get_roles_from_relation(relation: Relation) -> Set[str]:
         """Return additional user roles from relation if specified or return None."""
-        # TODO change this for integration with mongos
         roles = relation.data[relation.app].get("extra-user-roles", None)
         if roles is not None:
             return set(roles.split(","))
