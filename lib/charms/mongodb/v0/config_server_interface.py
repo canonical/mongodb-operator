@@ -31,7 +31,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 2
+LIBPATCH = 3
 
 
 class ClusterProvider(Object):
@@ -82,7 +82,7 @@ class ClusterProvider(Object):
         self.charm.client_relations.oversee_users(None, None)
 
         # TODO Future PR, use secrets
-        self._update_relation_data(
+        self.update_relation_data(
             event.relation.id,
             {
                 KEYFILE_KEY: self.charm.get_secret(
@@ -92,7 +92,7 @@ class ClusterProvider(Object):
             },
         )
 
-    def _update_relation_data(self, relation_id: int, data: dict) -> None:
+    def update_relation_data(self, relation_id: int, data: dict) -> None:
         """Updates a set of key-value pairs in the relation.
 
         This function writes in the application data bag, therefore, only the leader unit can call
@@ -140,16 +140,19 @@ class ClusterRequirer(Object):
 
     def _on_relation_created_event(self, event):
         """Sets database and extra user roles in the relation."""
-        # TODO future work, enable a relation listener for mongos-application to update role/db
-
         if not self.charm.unit.is_leader():
+            return
+
+        if not self.charm.database:
+            logger.info("Waiting for database from application")
+            event.defer()
             return
 
         rel_data = {"database": self.charm.database}
         if self.charm.extra_user_roles:
             rel_data["extra-user-roles"] = str(self.charm.extra_user_roles)
 
-        self._update_relation_data(event.relation.id, rel_data)
+        self.update_relation_data(event.relation.id, rel_data)
 
     def _on_relation_changed(self, event) -> None:
         """Starts/restarts monogs with config server information."""
@@ -222,7 +225,7 @@ class ClusterRequirer(Object):
 
         return True
 
-    def _update_relation_data(self, relation_id: int, data: dict) -> None:
+    def update_relation_data(self, relation_id: int, data: dict) -> None:
         """Updates a set of key-value pairs in the relation.
 
         This function writes in the application data bag, therefore, only the leader unit can call
