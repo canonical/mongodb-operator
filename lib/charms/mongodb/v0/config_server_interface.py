@@ -8,6 +8,10 @@ shards.
 """
 import logging
 
+from charms.data_platform_libs.v0.data_interfaces import (
+    DatabaseProvides,
+    DatabaseRequires,
+)
 from charms.mongodb.v1.helpers import add_args_to_env, get_mongos_args
 from charms.mongodb.v1.mongos import MongosConnection
 from ops.charm import CharmBase, EventBase
@@ -31,7 +35,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 3
+LIBPATCH = 4
 
 
 class ClusterProvider(Object):
@@ -43,6 +47,7 @@ class ClusterProvider(Object):
         """Constructor for ShardingProvider object."""
         self.relation_name = relation_name
         self.charm = charm
+        self.database_provides = DatabaseProvides(self.charm, relation_name=self.relation_name)
 
         super().__init__(charm, self.relation_name)
         self.framework.observe(
@@ -104,9 +109,7 @@ class ClusterProvider(Object):
                 that should be updated in the relation.
         """
         if self.charm.unit.is_leader():
-            relation = self.charm.model.get_relation(self.relation_name, relation_id)
-            if relation:
-                relation.data[self.charm.model.app].update(data)
+            self.database_provides.update_relation_data(relation_id, data)
 
     def generate_config_server_db(self) -> str:
         """Generates the config server database for mongos to connect to."""
@@ -128,6 +131,12 @@ class ClusterRequirer(Object):
         """Constructor for ShardingProvider object."""
         self.relation_name = relation_name
         self.charm = charm
+        self.database_requires = DatabaseRequires(
+            self.charm,
+            relation_name=self.relation_name,
+            database_name=self.charm.database,
+            extra_user_roles=self.charm.extra_user_roles,
+        )
 
         super().__init__(charm, self.relation_name)
         self.framework.observe(
@@ -237,8 +246,6 @@ class ClusterRequirer(Object):
                 that should be updated in the relation.
         """
         if self.charm.unit.is_leader():
-            relation = self.charm.model.get_relation(self.relation_name, relation_id)
-            if relation:
-                relation.data[self.charm.model.app].update(data)
+            self.database_requires.update_relation_data(relation_id, data)
 
     # END: helper functions
