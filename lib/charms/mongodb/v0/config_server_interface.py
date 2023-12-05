@@ -6,9 +6,12 @@
 This class handles the sharing of secrets between sharded components, adding shards, and removing
 shards.
 """
-import json
 import logging
 
+from charms.data_platform_libs.v0.data_interfaces import (
+    DatabaseProvides,
+    DatabaseRequires,
+)
 from charms.mongodb.v1.helpers import add_args_to_env, get_mongos_args
 from charms.mongodb.v1.mongos import MongosConnection
 from ops.charm import CharmBase, EventBase
@@ -32,7 +35,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 2
+LIBPATCH = 4
 
 
 class ClusterProvider(Object):
@@ -44,10 +47,11 @@ class ClusterProvider(Object):
         """Constructor for ShardingProvider object."""
         self.relation_name = relation_name
         self.charm = charm
+        self.database_provides = DatabaseProvides(self.charm, relation_name=self.relation_name)
 
         super().__init__(charm, self.relation_name)
         self.framework.observe(
-            charm.on[self.relation_name].relation_joined, self._on_relation_joined
+            charm.on[self.relation_name].relation_changed, self._on_relation_changed
         )
 
         # TODO Future PRs handle scale down
@@ -71,7 +75,7 @@ class ClusterProvider(Object):
 
         return True
 
-    def _on_relation_joined(self, event) -> None:
+    def _on_relation_changed(self, event) -> None:
         """Handles providing mongos with KeyFile and hosts."""
         if not self.pass_hook_checks(event):
             logger.info("Skipping relation joined event: hook checks did not pass")
@@ -79,8 +83,11 @@ class ClusterProvider(Object):
 
         config_server_db = self.generate_config_server_db()
 
+        # create user and set secrets for mongos relation
+        self.charm.client_relations.oversee_users(None, None)
+
         # TODO Future PR, use secrets
-        self._update_relation_data(
+        self.update_relation_data(
             event.relation.id,
             {
                 KEYFILE_KEY: self.charm.get_secret(
@@ -90,7 +97,7 @@ class ClusterProvider(Object):
             },
         )
 
-    def _update_relation_data(self, relation_id: int, data: dict) -> None:
+    def update_relation_data(self, relation_id: int, data: dict) -> None:
         """Updates a set of key-value pairs in the relation.
 
         This function writes in the application data bag, therefore, only the leader unit can call
@@ -102,9 +109,7 @@ class ClusterProvider(Object):
                 that should be updated in the relation.
         """
         if self.charm.unit.is_leader():
-            relation = self.charm.model.get_relation(self.relation_name, relation_id)
-            if relation:
-                relation.data[self.charm.model.app].update(data)
+            self.database_provides.update_relation_data(relation_id, data)
 
     def generate_config_server_db(self) -> str:
         """Generates the config server database for mongos to connect to."""
@@ -126,12 +131,37 @@ class ClusterRequirer(Object):
         """Constructor for ShardingProvider object."""
         self.relation_name = relation_name
         self.charm = charm
+        self.database_requires = DatabaseRequires(
+            self.charm,
+            relation_name=self.relation_name,
+            database_name=self.charm.database,
+            extra_user_roles=self.charm.extra_user_roles,
+        )
 
         super().__init__(charm, self.relation_name)
+        self.framework.observe(
+            charm.on[self.relation_name].relation_created, self._on_relation_created_event
+        )
         self.framework.observe(
             charm.on[self.relation_name].relation_changed, self._on_relation_changed
         )
         # TODO Future PRs handle scale down
+
+    def _on_relation_created_event(self, event):
+        """Sets database and extra user roles in the relation."""
+        if not self.charm.unit.is_leader():
+            return
+
+        if not self.charm.database:
+            logger.info("Waiting for database from application")
+            event.defer()
+            return
+
+        rel_data = {"database": self.charm.database}
+        if self.charm.extra_user_roles:
+            rel_data["extra-user-roles"] = str(self.charm.extra_user_roles)
+
+        self.update_relation_data(event.relation.id, rel_data)
 
     def _on_relation_changed(self, event) -> None:
         """Starts/restarts monogs with config server information."""
@@ -162,8 +192,10 @@ class ClusterRequirer(Object):
             event.defer()
             return
 
-        # TODO: Follow up PR. Add a user for mongos once it has been started
+        self.charm.share_uri()
         self.charm.unit.status = ActiveStatus()
+
+    # BEGIN: helper functions
 
     def is_mongos_running(self) -> bool:
         """Returns true if mongos service is running."""
@@ -180,7 +212,6 @@ class ClusterRequirer(Object):
             mongos_config, snap_install=True, config_server_db=config_server_db
         )
         add_args_to_env("MONGOS_ARGS", mongos_start_args)
-        self.charm.unit_peer_data["config_server_db"] = json.dumps(config_server_db)
         return True
 
     def update_keyfile(self, key_file_contents: str) -> bool:
@@ -202,3 +233,19 @@ class ClusterRequirer(Object):
             )
 
         return True
+
+    def update_relation_data(self, relation_id: int, data: dict) -> None:
+        """Updates a set of key-value pairs in the relation.
+
+        This function writes in the application data bag, therefore, only the leader unit can call
+        it.
+
+        Args:
+            relation_id: the identifier for a particular relation.
+            data: dict containing the key-value pairs
+                that should be updated in the relation.
+        """
+        if self.charm.unit.is_leader():
+            self.database_requires.update_relation_data(relation_id, data)
+
+    # END: helper functions

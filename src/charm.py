@@ -1119,8 +1119,8 @@ class MongodbOperatorCharm(CharmBase):
                 self._init_backup_user()
                 self._init_monitor_user()
 
-                # in sharding, user management is handled by mongos subordinate charm
-                if self.is_role(Config.Role.REPLICATION):
+                # Bare replicas can create users or config-servers for related mongos apps
+                if not self.is_role(Config.Role.SHARD):
                     logger.info("Manage user")
                     self.client_relations.oversee_users(None, None)
 
