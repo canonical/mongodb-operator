@@ -1,7 +1,7 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 import unittest
-from unittest.mock import patch
+from unittest import mock
 
 from ops.testing import Harness
 
@@ -22,8 +22,7 @@ class TestConfigServerInterface(unittest.TestCase):
         self.charm = self.harness.charm
         self.addCleanup(self.harness.cleanup)
 
-    @patch("charm.ClusterProvider.update_relation_data")
-    def test_on_relation_joined_failed_hook_checks(self, update_relation_data):
+    def test_on_relation_joined_failed_hook_checks(self):
         """Tests that no relation data is set when cluster joining conditions are not met."""
 
         def is_not_config_mock_call(*args):
@@ -36,7 +35,8 @@ class TestConfigServerInterface(unittest.TestCase):
         self.harness.charm.is_role = is_not_config_mock_call
         relation_id = self.harness.add_relation("cluster", "mongos")
         self.harness.add_relation_unit(relation_id, "mongos/0")
-        update_relation_data.assert_not_called()
+        self.harness.charm.cluster.database_provides.update_relation_data = mock.Mock()
+        self.harness.charm.cluster.database_provides.update_relation_data.assert_not_called()
 
         # fails because db has not been initialized
         del self.harness.charm.app_peer_data["db_initialised"]
@@ -47,9 +47,9 @@ class TestConfigServerInterface(unittest.TestCase):
 
         self.harness.charm.is_role = is_config_mock_call
         self.harness.add_relation_unit(relation_id, "mongos/1")
-        update_relation_data.assert_not_called()
+        self.harness.charm.cluster.database_provides.update_relation_data.assert_not_called()
 
         # fails because not leader
         self.harness.set_leader(False)
         self.harness.add_relation_unit(relation_id, "mongos/2")
-        update_relation_data.assert_not_called()
+        self.harness.charm.cluster.database_provides.update_relation_data.assert_not_called()
