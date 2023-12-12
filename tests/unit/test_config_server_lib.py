@@ -55,7 +55,7 @@ class TestConfigServerInterface(unittest.TestCase):
         self.harness.charm.cluster.database_provides.update_relation_data.assert_not_called()
 
     def test_update_rel_data_failed_hook_checks(self):
-        """Tests that no relation data is set when cluster joining conditions are not met."""
+        """Tests that no relation data is set when the cluster is not ready."""
 
         def is_not_config_mock_call(*args):
             assert args == ("config-server",)
