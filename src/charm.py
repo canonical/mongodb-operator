@@ -414,14 +414,7 @@ class MongodbOperatorCharm(CharmBase):
 
         self._on_relation_handler(event)
 
-        # app relations should be made aware of the new set of hosts
-        try:
-            self.client_relations.update_app_relation_data()
-            self.config_server.update_mongos_hosts()
-        except PyMongoError as e:
-            logger.error("Deferring on updating app relation data since: error: %r", e)
-            event.defer()
-            return
+        self._update_related_hosts(event)
 
     def _on_relation_handler(self, event: RelationEvent) -> None:
         """Adds the unit as a replica to the MongoDB replica set.
@@ -477,15 +470,6 @@ class MongodbOperatorCharm(CharmBase):
 
         self._update_hosts(event)
 
-        # app relations should be made aware of the new set of hosts
-        try:
-            self.client_relations.update_app_relation_data()
-            self.config_server.update_mongos_hosts()
-        except PyMongoError as e:
-            logger.error("Deferring on updating app relation data since: error: %r", e)
-            event.defer()
-            return
-
     def _on_relation_departed(self, event: RelationDepartedEvent) -> None:
         """Remove peer from replica set if it wasn't able to remove itself.
 
@@ -497,15 +481,6 @@ class MongodbOperatorCharm(CharmBase):
             return
 
         self._update_hosts(event)
-
-        # app relations should be made aware of the new set of hosts
-        try:
-            self.client_relations.update_app_relation_data()
-            self.config_server.update_mongos_hosts()
-        except PyMongoError as e:
-            logger.error("Deferring on updating app relation data since: error: %r", e)
-            event.defer()
-            return
 
     def _on_storage_detaching(self, event: StorageDetachingEvent) -> None:
         """Before storage detaches, allow removing unit to remove itself from the set.
@@ -869,6 +844,19 @@ class MongodbOperatorCharm(CharmBase):
         self.process_unremoved_units(event)
         self.app_peer_data["replica_set_hosts"] = json.dumps(self._unit_ips)
 
+        self._update_related_hosts(event)
+
+    def _update_related_hosts(self, event) -> None:
+        # app relations should be made aware of the new set of hosts
+        try:
+            self.client_relations.update_app_relation_data()
+            self.config_server.update_mongos_hosts()
+            self.cluster.update_config_server_db(event)
+        except PyMongoError as e:
+            logger.error("Deferring on updating app relation data since: error: %r", e)
+            event.defer()
+            return
+
     def process_unremoved_units(self, event: LeaderElectedEvent) -> None:
         """Removes replica set members that are no longer running as a juju hosts."""
         with MongoDBConnection(self.mongodb_config) as mongo:
@@ -897,19 +885,11 @@ class MongodbOperatorCharm(CharmBase):
 
         # remove any IPs that are no longer juju hosts & update app data.
         self._update_hosts(event)
+
         # Add in any new IPs to the replica set. Relation handlers require a reference to
         # a unit.
         event.unit = self.unit
         self._on_relation_handler(event)
-
-        # app relations should be made aware of the new set of hosts
-        try:
-            self.client_relations.update_app_relation_data()
-            self.config_server.update_mongos_hosts()
-        except PyMongoError as e:
-            logger.error("Deferring on updating app relation data since: error: %r", e)
-            event.defer()
-            return
 
     def _open_ports_tcp(self, ports: int) -> None:
         """Open the given port.
