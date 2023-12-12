@@ -31,7 +31,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 2
+LIBPATCH = 3
 
 logger = logging.getLogger(__name__)
 REL_NAME = "database"
@@ -267,6 +267,10 @@ class MongoDBProvider(Object):
             username = self._get_username_from_relation_id(relation.id)
             password = self._get_or_set_password(relation)
             config = self._get_config(username, password)
+            # relations with the mongos server should not connect though the config-server directly
+            if self.charm.is_role(Config.Role.CONFIG_SERVER):
+                continue
+
             if username in database_users:
                 self.database_provides.set_endpoints(
                     relation.id,

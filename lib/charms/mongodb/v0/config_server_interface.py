@@ -35,7 +35,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 4
+LIBPATCH = 5
 
 
 class ClusterProvider(Object):
@@ -87,29 +87,16 @@ class ClusterProvider(Object):
         self.charm.client_relations.oversee_users(None, None)
 
         # TODO Future PR, use secrets
-        self.update_relation_data(
-            event.relation.id,
-            {
-                KEYFILE_KEY: self.charm.get_secret(
-                    Config.Relations.APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME
-                ),
-                CONFIG_SERVER_DB_KEY: config_server_db,
-            },
-        )
-
-    def update_relation_data(self, relation_id: int, data: dict) -> None:
-        """Updates a set of key-value pairs in the relation.
-
-        This function writes in the application data bag, therefore, only the leader unit can call
-        it.
-
-        Args:
-            relation_id: the identifier for a particular relation.
-            data: dict containing the key-value pairs
-                that should be updated in the relation.
-        """
         if self.charm.unit.is_leader():
-            self.database_provides.update_relation_data(relation_id, data)
+            self.database_provides.update_relation_data(
+                event.relation.id,
+                {
+                    KEYFILE_KEY: self.charm.get_secret(
+                        Config.Relations.APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME
+                    ),
+                    CONFIG_SERVER_DB_KEY: config_server_db,
+                },
+            )
 
     def generate_config_server_db(self) -> str:
         """Generates the config server database for mongos to connect to."""
@@ -136,45 +123,34 @@ class ClusterRequirer(Object):
             relation_name=self.relation_name,
             database_name=self.charm.database,
             extra_user_roles=self.charm.extra_user_roles,
+            additional_secret_fields=[KEYFILE_KEY],
         )
 
         super().__init__(charm, self.relation_name)
         self.framework.observe(
-            charm.on[self.relation_name].relation_created, self._on_relation_created_event
+            charm.on[self.relation_name].relation_created,
+            self.database_requires._on_relation_created_event,
         )
         self.framework.observe(
             charm.on[self.relation_name].relation_changed, self._on_relation_changed
         )
         # TODO Future PRs handle scale down
 
-    def _on_relation_created_event(self, event):
-        """Sets database and extra user roles in the relation."""
-        if not self.charm.unit.is_leader():
-            return
-
-        if not self.charm.database:
-            logger.info("Waiting for database from application")
-            event.defer()
-            return
-
-        rel_data = {"database": self.charm.database}
-        if self.charm.extra_user_roles:
-            rel_data["extra-user-roles"] = str(self.charm.extra_user_roles)
-
-        self.update_relation_data(event.relation.id, rel_data)
-
     def _on_relation_changed(self, event) -> None:
         """Starts/restarts monogs with config server information."""
-        relation_data = event.relation.data[event.app]
-        if not relation_data.get(KEYFILE_KEY) or not relation_data.get(CONFIG_SERVER_DB_KEY):
+        key_file_contents = self.database_requires.fetch_relation_field(
+            event.relation.id, KEYFILE_KEY
+        )
+        config_server_db = self.database_requires.fetch_relation_field(
+            event.relation.id, CONFIG_SERVER_DB_KEY
+        )
+        if not key_file_contents or not config_server_db:
             event.defer()
             self.charm.unit.status = WaitingStatus("Waiting for secrets from config-server")
             return
 
-        updated_keyfile = self.update_keyfile(key_file_contents=relation_data.get(KEYFILE_KEY))
-        updated_config = self.update_config_server_db(
-            config_server_db=relation_data.get(CONFIG_SERVER_DB_KEY)
-        )
+        updated_keyfile = self.update_keyfile(key_file_contents=key_file_contents)
+        updated_config = self.update_config_server_db(config_server_db=config_server_db)
 
         # avoid restarting mongos when possible
         if not updated_keyfile and not updated_config and self.is_mongos_running():
@@ -233,19 +209,5 @@ class ClusterRequirer(Object):
             )
 
         return True
-
-    def update_relation_data(self, relation_id: int, data: dict) -> None:
-        """Updates a set of key-value pairs in the relation.
-
-        This function writes in the application data bag, therefore, only the leader unit can call
-        it.
-
-        Args:
-            relation_id: the identifier for a particular relation.
-            data: dict containing the key-value pairs
-                that should be updated in the relation.
-        """
-        if self.charm.unit.is_leader():
-            self.database_requires.update_relation_data(relation_id, data)
 
     # END: helper functions
