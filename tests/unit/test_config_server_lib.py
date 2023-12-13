@@ -53,3 +53,34 @@ class TestConfigServerInterface(unittest.TestCase):
         self.harness.set_leader(False)
         self.harness.add_relation_unit(relation_id, "mongos/2")
         self.harness.charm.cluster.database_provides.update_relation_data.assert_not_called()
+
+    def test_update_rel_data_failed_hook_checks(self):
+        """Tests that no relation data is set when the cluster is not ready."""
+
+        def is_not_config_mock_call(*args):
+            assert args == ("config-server",)
+            return False
+
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
+
+        # fails due to being run on non-config-server
+        self.harness.charm.is_role = is_not_config_mock_call
+        self.harness.charm.cluster.update_config_server_db(mock.Mock())
+        self.harness.charm.cluster.database_provides.update_relation_data = mock.Mock()
+        self.harness.charm.cluster.database_provides.update_relation_data.assert_not_called()
+
+        # fails because db has not been initialized
+        del self.harness.charm.app_peer_data["db_initialised"]
+
+        def is_config_mock_call(*args):
+            assert args == ("config-server",)
+            return True
+
+        self.harness.charm.is_role = is_config_mock_call
+        self.harness.charm.cluster.update_config_server_db(mock.Mock())
+        self.harness.charm.cluster.database_provides.update_relation_data.assert_not_called()
+
+        # fails because not leader
+        self.harness.set_leader(False)
+        self.harness.charm.cluster.update_config_server_db(mock.Mock())
+        self.harness.charm.cluster.database_provides.update_relation_data.assert_not_called()

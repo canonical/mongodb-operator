@@ -35,7 +35,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 5
+LIBPATCH = 6
 
 
 class ClusterProvider(Object):
@@ -86,7 +86,6 @@ class ClusterProvider(Object):
         # create user and set secrets for mongos relation
         self.charm.client_relations.oversee_users(None, None)
 
-        # TODO Future PR, use secrets
         if self.charm.unit.is_leader():
             self.database_provides.update_relation_data(
                 event.relation.id,
@@ -94,6 +93,25 @@ class ClusterProvider(Object):
                     KEYFILE_KEY: self.charm.get_secret(
                         Config.Relations.APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME
                     ),
+                    CONFIG_SERVER_DB_KEY: config_server_db,
+                },
+            )
+
+    def update_config_server_db(self, event):
+        """Provides related mongos applications with new config server db."""
+        if not self.pass_hook_checks(event):
+            logger.info("Skipping update_config_server_db: hook checks did not pass")
+            return
+
+        config_server_db = self.generate_config_server_db()
+
+        if not self.charm.unit.is_leader():
+            return
+
+        for relation in self.charm.model.relations[self.relation_name]:
+            self.database_provides.update_relation_data(
+                relation.id,
+                {
                     CONFIG_SERVER_DB_KEY: config_server_db,
                 },
             )
