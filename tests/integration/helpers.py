@@ -11,6 +11,8 @@ from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 from tenacity import retry, retry_if_result, stop_after_attempt, wait_exponential
 
+from .ha_tests.helpers import app_name
+
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 PORT = 27017
 APP_NAME = METADATA["name"]
@@ -29,12 +31,14 @@ def unit_uri(ip_address: str, password, app=APP_NAME) -> str:
     return f"mongodb://operator:" f"{password}@" f"{ip_address}:{PORT}/admin?replicaSet={app}"
 
 
-async def get_password(ops_test: OpsTest, app=APP_NAME, username="operator") -> str:
+async def get_password(ops_test: OpsTest, username="operator") -> str:
     """Use the charm action to retrieve the password from provided unit.
 
     Returns:
         String with the password stored on the peer relation databag.
     """
+    app = await app_name(ops_test)
+
     # can retrieve from any unit running unit so we pick the first
     unit_name = ops_test.model.applications[app].units[0].name
     unit_id = unit_name.split("/")[1]
@@ -51,18 +55,19 @@ async def get_password(ops_test: OpsTest, app=APP_NAME, username="operator") -> 
     stop=stop_after_attempt(5),
     wait=wait_exponential(multiplier=1, min=2, max=30),
 )
-def count_primaries(ops_test: OpsTest, password: str) -> int:
+async def count_primaries(ops_test: OpsTest, password: str) -> int:
     """Counts the number of primaries in a replica set.
 
     Will retry counting when the number of primaries is 0 at most 5 times.
     """
+    app = await app_name(ops_test)
     number_of_primaries = 0
     for unit_id in UNIT_IDS:
         # get unit
-        unit = ops_test.model.applications[APP_NAME].units[unit_id]
+        unit = ops_test.model.applications[app].units[unit_id]
 
         # connect to mongod
-        client = MongoClient(unit_uri(unit.public_address, password), directConnection=True)
+        client = MongoClient(unit_uri(unit.public_address, password, app), directConnection=True)
 
         # check primary status
         if client.is_primary:
@@ -71,8 +76,9 @@ def count_primaries(ops_test: OpsTest, password: str) -> int:
     return number_of_primaries
 
 
-async def find_unit(ops_test: OpsTest, leader: bool, app=APP_NAME) -> ops.model.Unit:
+async def find_unit(ops_test: OpsTest, leader: bool) -> ops.model.Unit:
     """Helper function identifies the a unit, based on need for leader or non-leader."""
+    app = await app_name(ops_test)
     ret_unit = None
     for unit in ops_test.model.applications[app].units:
         if await unit.is_leader_from_status() == leader:
@@ -83,7 +89,8 @@ async def find_unit(ops_test: OpsTest, leader: bool, app=APP_NAME) -> ops.model.
 
 async def get_leader_id(ops_test: OpsTest) -> int:
     """Returns the unit number of the juju leader unit."""
-    for unit in ops_test.model.applications[APP_NAME].units:
+    app = await app_name(ops_test)
+    for unit in ops_test.model.applications[app].units:
         if await unit.is_leader_from_status():
             return int(unit.name.split("/")[1])
     return -1
@@ -97,7 +104,8 @@ async def set_password(
     Returns:
     String with the password stored on the peer relation databag.
     """
-    action = await ops_test.model.units.get(f"{APP_NAME}/{unit_id}").run_action(
+    app = await app_name(ops_test)
+    action = await ops_test.model.units.get(f"{app}/{unit_id}").run_action(
         "set-password", **{"username": username, "password": password}
     )
     action = await action.wait()

@@ -80,7 +80,7 @@ async def test_unit_is_running_as_replica_set(ops_test: OpsTest, unit_id: int) -
     user_app_name = await app_name(ops_test)
     unit = ops_test.model.applications[user_app_name].units[unit_id]
     connection = unit.public_address + ":" + str(PORT)
-    client = MongoClient(connection, replicaset="mongodb")
+    client = MongoClient(connection, replicaset=user_app_name)
 
     # check mongo replica set is ready
     try:
@@ -102,7 +102,10 @@ async def test_leader_is_primary_on_deployment(ops_test: OpsTest) -> None:
 
     # connect to mongod
     password = await get_password(ops_test)
-    client = MongoClient(unit_uri(leader_unit.public_address, password), directConnection=True)
+    user_app_name = await app_name(ops_test)
+    client = MongoClient(
+        unit_uri(leader_unit.public_address, password, user_app_name), directConnection=True
+    )
 
     # verify primary status
     assert client.is_primary, "Leader is not primary"
@@ -113,7 +116,7 @@ async def test_exactly_one_primary(ops_test: OpsTest) -> None:
     """Tests that there is exactly one primary in the deployed units."""
     try:
         password = await get_password(ops_test)
-        number_of_primaries = count_primaries(ops_test, password)
+        number_of_primaries = await count_primaries(ops_test, password)
     except RetryError:
         number_of_primaries = 0
 
@@ -131,7 +134,9 @@ async def test_get_primary_action(ops_test: OpsTest) -> None:
     for unit in ops_test.model.applications[user_app_name].units:
         # connect to mongod
         password = await get_password(ops_test)
-        client = MongoClient(unit_uri(unit.public_address, password), directConnection=True)
+        client = MongoClient(
+            unit_uri(unit.public_address, password, user_app_name), directConnection=True
+        )
 
         # check primary status
         if client.is_primary:
@@ -164,10 +169,13 @@ async def test_set_password_action(ops_test: OpsTest) -> None:
     assert new_password != old_password
     new_password_reported = await get_password(ops_test)
     assert new_password == new_password_reported
+    user_app_name = await app_name(ops_test)
 
     # verify that the password is updated in mongod by inserting into the collection.
     try:
-        client = MongoClient(unit_uri(unit.public_address, new_password), directConnection=True)
+        client = MongoClient(
+            unit_uri(unit.public_address, new_password, user_app_name), directConnection=True
+        )
         client["new-db"].list_collection_names()
     except PyMongoError as e:
         assert False, f"Failed to access collection with new password, error: {e}"
@@ -185,7 +193,9 @@ async def test_set_password_action(ops_test: OpsTest) -> None:
 
     # verify that the password is updated in mongod by inserting into the collection.
     try:
-        client = MongoClient(unit_uri(unit.public_address, "safe_pass"), directConnection=True)
+        client = MongoClient(
+            unit_uri(unit.public_address, "safe_pass", user_app_name), directConnection=True
+        )
         client["new-db"].list_collection_names()
     except PyMongoError as e:
         assert False, f"Failed to access collection with new password, error: {e}"
@@ -197,12 +207,12 @@ async def test_monitor_user(ops_test: OpsTest) -> None:
     """Test verifies that the monitor user can perform operations such as 'rs.conf()'."""
     user_app_name = await app_name(ops_test)
     unit = ops_test.model.applications[user_app_name].units[0]
-    password = await get_password(ops_test, "mongodb", "monitor")
+    password = await get_password(ops_test, "monitor")
     replica_set_hosts = [
-        unit.public_address for unit in ops_test.model.applications["mongodb"].units
+        unit.public_address for unit in ops_test.model.applications[user_app_name].units
     ]
     hosts = ",".join(replica_set_hosts)
-    replica_set_uri = f"mongodb://monitor:{password}@{hosts}/admin?replicaSet=mongodb"
+    replica_set_uri = f"mongodb://monitor:{password}@{hosts}/admin?replicaSet={user_app_name}"
 
     admin_mongod_cmd = f"{MONGO_SHELL} '{replica_set_uri}'  --eval 'rs.conf()'"
     check_monitor_cmd = f"exec --unit {unit.name} -- {admin_mongod_cmd}"
