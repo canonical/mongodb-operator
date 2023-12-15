@@ -34,6 +34,9 @@ LIBPATCH = 7
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
 
+# List of system usernames needed for correct work on the charm.
+CHARM_USERS = ["operator", "backup", "monitor"]
+
 
 @dataclass
 class MongoDBConfiguration:
@@ -308,7 +311,7 @@ class MongoDBConnection:
 
         Args:
             role_name: name of the role to be added.
-            privileges: privileges to be associated with the role.
+            privileges: privledges to be associated with the role.
             roles: List of roles from which this role inherits privileges.
         """
         try:
