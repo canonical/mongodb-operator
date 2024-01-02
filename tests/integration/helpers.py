@@ -11,16 +11,13 @@ from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 from tenacity import retry, retry_if_result, stop_after_attempt, wait_exponential
 
-from .ha_tests.helpers import app_name
-
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 PORT = 27017
-APP_NAME = METADATA["name"]
 UNIT_IDS = [0, 1, 2]
 SERIES = "jammy"
 
 
-def unit_uri(ip_address: str, password, app=APP_NAME) -> str:
+def unit_uri(ip_address: str, password, app) -> str:
     """Generates URI that is used by MongoDB to connect to a single replica.
 
     Args:
@@ -37,13 +34,13 @@ async def get_password(ops_test: OpsTest, username="operator") -> str:
     Returns:
         String with the password stored on the peer relation databag.
     """
-    app = await app_name(ops_test)
+    app_name = await get_app_name(ops_test)
 
     # can retrieve from any unit running unit so we pick the first
-    unit_name = ops_test.model.applications[app].units[0].name
+    unit_name = ops_test.model.applications[app_name].units[0].name
     unit_id = unit_name.split("/")[1]
 
-    action = await ops_test.model.units.get(f"{app}/{unit_id}").run_action(
+    action = await ops_test.model.units.get(f"{app_name}/{unit_id}").run_action(
         "get-password", **{"username": username}
     )
     action = await action.wait()
@@ -60,14 +57,16 @@ async def count_primaries(ops_test: OpsTest, password: str) -> int:
 
     Will retry counting when the number of primaries is 0 at most 5 times.
     """
-    app = await app_name(ops_test)
+    app_name = await get_app_name(ops_test)
     number_of_primaries = 0
     for unit_id in UNIT_IDS:
         # get unit
-        unit = ops_test.model.applications[app].units[unit_id]
+        unit = ops_test.model.applications[app_name].units[unit_id]
 
         # connect to mongod
-        client = MongoClient(unit_uri(unit.public_address, password, app), directConnection=True)
+        client = MongoClient(
+            unit_uri(unit.public_address, password, app_name), directConnection=True
+        )
 
         # check primary status
         if client.is_primary:
@@ -78,9 +77,9 @@ async def count_primaries(ops_test: OpsTest, password: str) -> int:
 
 async def find_unit(ops_test: OpsTest, leader: bool) -> ops.model.Unit:
     """Helper function identifies the a unit, based on need for leader or non-leader."""
-    app = await app_name(ops_test)
+    app_name = await get_app_name(ops_test)
     ret_unit = None
-    for unit in ops_test.model.applications[app].units:
+    for unit in ops_test.model.applications[app_name].units:
         if await unit.is_leader_from_status() == leader:
             ret_unit = unit
 
@@ -89,8 +88,8 @@ async def find_unit(ops_test: OpsTest, leader: bool) -> ops.model.Unit:
 
 async def get_leader_id(ops_test: OpsTest) -> int:
     """Returns the unit number of the juju leader unit."""
-    app = await app_name(ops_test)
-    for unit in ops_test.model.applications[app].units:
+    app_name = await get_app_name(ops_test)
+    for unit in ops_test.model.applications[app_name].units:
         if await unit.is_leader_from_status():
             return int(unit.name.split("/")[1])
     return -1
@@ -104,8 +103,8 @@ async def set_password(
     Returns:
     String with the password stored on the peer relation databag.
     """
-    app = await app_name(ops_test)
-    action = await ops_test.model.units.get(f"{app}/{unit_id}").run_action(
+    app_name = await get_app_name(ops_test)
+    action = await ops_test.model.units.get(f"{app_name}/{unit_id}").run_action(
         "set-password", **{"username": username, "password": password}
     )
     action = await action.wait()
@@ -197,3 +196,85 @@ async def get_secret_content(ops_test, secret_id) -> Dict[str, str]:
     _, stdout, _ = await ops_test.juju(*complete_command.split())
     data = json.loads(stdout)
     return data[secret_id]["content"]["Data"]
+
+
+async def check_or_scale_app(ops_test: OpsTest, user_app_name: str, required_units: int) -> None:
+    """A helper function that scales existing cluster if necessary"""
+    # check if we need to scale
+    current_units = len(ops_test.model.applications[user_app_name].units)
+
+    if current_units > required_units:
+        for i in range(0, current_units):
+            unit_to_remove = [ops_test.model.applications[user_app_name].units[i].name]
+            await ops_test.model.destroy_units(*unit_to_remove)
+            await ops_test.model.wait_for_idle()
+
+    units_to_add = required_units - current_units
+    await ops_test.model.applications[user_app_name].add_unit(count=units_to_add)
+    await ops_test.model.wait_for_idle()
+
+
+async def get_app_name(ops_test: OpsTest) -> str:
+    """Returns the name of the cluster running MongoDB.
+
+    This is important since not all deployments of the MongoDB charm have the application name
+    "mongodb".
+
+    Note: if multiple clusters are running MongoDB this will return the one first found.
+    """
+    status = await ops_test.model.get_status()
+    for app in ops_test.model.applications:
+        # note that format of the charm field is not exactly "mongodb" but instead takes the form
+        # of `local:focal/mongodb-6`
+        if "mongodb" in status["applications"][app]["charm"]:
+            return app
+
+    return None
+
+
+async def unit_hostname(ops_test: OpsTest, unit_name: str) -> str:
+    """Get hostname for a unit.
+
+    Args:
+        ops_test: The ops test object passed into every test case
+        unit_name: The name of the unit to be tested
+
+    Returns:
+        The machine/container hostname
+    """
+    _, raw_hostname, _ = await ops_test.juju("ssh", unit_name, "hostname")
+    return raw_hostname.strip()
+
+
+def instance_ip(model: str, instance: str) -> str:
+    """Translate juju instance name to IP.
+
+    Args:
+        model: The name of the model
+        instance: The name of the instance
+
+    Returns:
+        The (str) IP address of the instance
+    """
+    output = subprocess.check_output(f"juju machines --model {model}".split())
+
+    for line in output.decode("utf8").splitlines():
+        if instance in line:
+            return line.split()[2]
+
+
+async def get_unit_ip(ops_test: OpsTest, unit_name: str) -> str:
+    """Wrapper for getting unit ip.
+
+    Juju incorrectly reports the IP addresses after the network is restored this is reported as a
+    bug here: https://github.com/juju/python-libjuju/issues/738 . Once this bug is resolved use of
+    `get_unit_ip` should be replaced with `.public_address`
+
+    Args:
+        ops_test: The ops test object passed into every test case
+        unit_name: The name of the unit to be tested
+
+    Returns:
+        The (str) ip of the unit
+    """
+    return instance_ip(ops_test.model.info.name, await unit_hostname(ops_test, unit_name))

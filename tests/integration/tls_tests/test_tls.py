@@ -2,89 +2,47 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-import json
+import os
 
 import pytest
-from ops import Unit
 from pytest_operator.plugin import OpsTest
 
-from ..helpers import get_application_relation_data, get_secret_content, get_secret_id
-from .helpers import (
+from tests.integration.tls_tests.tls_helpers import (
     EXTERNAL_CERT_PATH,
     INTERNAL_CERT_PATH,
+    check_certs_correctly_distributed,
     check_tls,
-    scp_file_preserve_ctime,
     time_file_created,
     time_process_started,
 )
 
-MONGO_COMMON_DIR = "/var/snap/charmed-mongodb/common"
+from ..helpers import UNIT_IDS, check_or_scale_app, get_app_name
+
 TLS_CERTIFICATES_APP_NAME = "tls-certificates-operator"
-TLS_RELATION_NAME = "certificates"
+
 DATABASE_APP_NAME = "mongodb"
 TLS_TEST_DATA = "tests/integration/tls_tests/data"
 DB_SERVICE = "snap.charmed-mongodb.mongod.service"
 
 
-async def check_certs_correctly_distributed(ops_test: OpsTest, unit: Unit) -> None:
-    """Comparing expected vs distributed certificates.
-
-    Verifying certificates downloaded on the charm against the ones distributed by the TLS operator
-    """
-    app_secret_id = await get_secret_id(ops_test, DATABASE_APP_NAME)
-    unit_secret_id = await get_secret_id(ops_test, unit.name)
-    app_secret_content = await get_secret_content(ops_test, app_secret_id)
-    unit_secret_content = await get_secret_content(ops_test, unit_secret_id)
-    app_current_crt = app_secret_content["csr-secret"]
-    unit_current_crt = unit_secret_content["csr-secret"]
-
-    # Get the values for certs from the relation, as provided by TLS Charm
-    certificates_raw_data = await get_application_relation_data(
-        ops_test, DATABASE_APP_NAME, TLS_RELATION_NAME, "certificates"
-    )
-    certificates_data = json.loads(certificates_raw_data)
-
-    external_item = [
-        data
-        for data in certificates_data
-        if data["certificate_signing_request"].rstrip() == unit_current_crt.rstrip()
-    ][0]
-    internal_item = [
-        data
-        for data in certificates_data
-        if data["certificate_signing_request"].rstrip() == app_current_crt.rstrip()
-    ][0]
-
-    # Get a local copy of the external cert
-    external_copy_path = await scp_file_preserve_ctime(ops_test, unit.name, EXTERNAL_CERT_PATH)
-
-    # Get the external cert value from the relation
-    relation_external_cert = "\n".join(external_item["chain"])
-
-    # CHECK: Compare if they are the same
-    with open(external_copy_path) as f:
-        external_contents_file = f.read()
-        assert relation_external_cert == external_contents_file
-
-    # Get a local copy of the internal cert
-    internal_copy_path = await scp_file_preserve_ctime(ops_test, unit.name, INTERNAL_CERT_PATH)
-
-    # Get the external cert value from the relation
-    relation_internal_cert = "\n".join(internal_item["chain"])
-
-    # CHECK: Compare if they are the same
-    with open(internal_copy_path) as f:
-        internal_contents_file = f.read()
-        assert relation_internal_cert == internal_contents_file
-
-
+@pytest.mark.skipif(
+    os.environ.get("PYTEST_SKIP_DEPLOY", False),
+    reason="skipping deploy, model expected to be provided.",
+)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy one unit of MongoDB and one unit of TLS."""
+    # it is possible for users to provide their own cluster for testing. Hence check if there
+    # is a pre-existing cluster.
+    app_name = await get_app_name(ops_test)
+    if app_name:
+        return check_or_scale_app(ops_test, app_name, len(UNIT_IDS))
+
+    app_name = DATABASE_APP_NAME
     async with ops_test.fast_forward():
         my_charm = await ops_test.build_charm(".")
         await ops_test.model.deploy(my_charm, num_units=3)
-        await ops_test.model.wait_for_idle(apps=[DATABASE_APP_NAME], status="active")
+        await ops_test.model.wait_for_idle(apps=[app_name], status="active")
 
         config = {"generate-self-signed-certificates": "true", "ca-common-name": "Test CA"}
         await ops_test.model.deploy(TLS_CERTIFICATES_APP_NAME, channel="stable", config=config)
@@ -95,13 +53,14 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 
 async def test_enable_tls(ops_test: OpsTest) -> None:
     """Verify each unit has TLS enabled after relating to the TLS application."""
-    # Relate it to the PostgreSQL to enable TLS.
-    await ops_test.model.relate(DATABASE_APP_NAME, TLS_CERTIFICATES_APP_NAME)
+    # Relate it to the MongoDB to enable TLS.
+    app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
+    await ops_test.model.relate(app_name, TLS_CERTIFICATES_APP_NAME)
 
     await ops_test.model.wait_for_idle(status="active", timeout=1000, idle_period=60)
 
     # Wait for all units enabling TLS.
-    for unit in ops_test.model.applications[DATABASE_APP_NAME].units:
+    for unit in ops_test.model.applications[app_name].units:
         assert await check_tls(ops_test, unit, enabled=True)
 
 
@@ -114,7 +73,10 @@ async def test_rotate_tls_key(ops_test: OpsTest) -> None:
     # private keys these certificates should be updated and the mongod service should be
     # restarted
     original_tls_times = {}
-    for unit in ops_test.model.applications[DATABASE_APP_NAME].units:
+
+    app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
+
+    for unit in ops_test.model.applications[app_name].units:
         original_tls_times[unit.name] = {}
         original_tls_times[unit.name]["external_cert"] = await time_file_created(
             ops_test, unit.name, EXTERNAL_CERT_PATH
@@ -128,7 +90,7 @@ async def test_rotate_tls_key(ops_test: OpsTest) -> None:
         check_certs_correctly_distributed(ops_test, unit)
 
     # set external and internal key using auto-generated key for each unit
-    for unit in ops_test.model.applications[DATABASE_APP_NAME].units:
+    for unit in ops_test.model.applications[app_name].units:
         action = await unit.run_action(action_name="set-tls-private-key")
         action = await action.wait()
         assert action.status == "completed", "setting external and internal key failed."
@@ -136,12 +98,12 @@ async def test_rotate_tls_key(ops_test: OpsTest) -> None:
     # wait for certificate to be available and processed. Can get receive two certificate
     # available events and restart twice so we want to ensure we are idle for at least 1 minute
     await ops_test.model.wait_for_idle(
-        apps=[DATABASE_APP_NAME], status="active", timeout=1000, idle_period=60
+        apps=[app_name], status="active", timeout=1000, idle_period=60
     )
 
     # After updating both the external key and the internal key a new certificate request will be
     # made; then the certificates should be available and updated.
-    for unit in ops_test.model.applications[DATABASE_APP_NAME].units:
+    for unit in ops_test.model.applications[app_name].units:
         new_external_cert_time = await time_file_created(ops_test, unit.name, EXTERNAL_CERT_PATH)
         new_internal_cert_time = await time_file_created(ops_test, unit.name, INTERNAL_CERT_PATH)
         new_mongod_service_time = await time_process_started(ops_test, unit.name, DB_SERVICE)
@@ -162,7 +124,7 @@ async def test_rotate_tls_key(ops_test: OpsTest) -> None:
         ), f"mongod service for {unit.name} was not restarted."
 
     # Verify that TLS is functioning on all units.
-    for unit in ops_test.model.applications[DATABASE_APP_NAME].units:
+    for unit in ops_test.model.applications[app_name].units:
         assert await check_tls(
             ops_test, unit, enabled=True
         ), f"tls is not enabled for {unit.name}."
@@ -177,7 +139,8 @@ async def test_set_tls_key(ops_test: OpsTest) -> None:
     # private keys these certificates should be updated and the mongod service should be
     # restarted
     original_tls_times = {}
-    for unit in ops_test.model.applications[DATABASE_APP_NAME].units:
+    app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
+    for unit in ops_test.model.applications[app_name].units:
         original_tls_times[unit.name] = {}
         original_tls_times[unit.name]["external_cert"] = await time_file_created(
             ops_test, unit.name, EXTERNAL_CERT_PATH
@@ -194,8 +157,8 @@ async def test_set_tls_key(ops_test: OpsTest) -> None:
         internal_key_contents = "".join(internal_key_contents)
 
     # set external and internal key for each unit
-    for unit_id in range(len(ops_test.model.applications[DATABASE_APP_NAME].units)):
-        unit = ops_test.model.applications[DATABASE_APP_NAME].units[unit_id]
+    for unit_id in range(len(ops_test.model.applications[app_name].units)):
+        unit = ops_test.model.applications[app_name].units[unit_id]
 
         with open(f"{TLS_TEST_DATA}/external-key-{unit_id}.pem") as f:
             external_key_contents = f.readlines()
@@ -216,12 +179,12 @@ async def test_set_tls_key(ops_test: OpsTest) -> None:
     # wait for certificate to be available and processed. Can get receive two certificate
     # available events and restart twice so we want to ensure we are idle for at least 1 minute
     await ops_test.model.wait_for_idle(
-        apps=[DATABASE_APP_NAME], status="active", timeout=1000, idle_period=60
+        apps=[app_name], status="active", timeout=1000, idle_period=60
     )
 
     # After updating both the external key and the internal key a new certificate request will be
     # made; then the certificates should be available and updated.
-    for unit in ops_test.model.applications[DATABASE_APP_NAME].units:
+    for unit in ops_test.model.applications[app_name].units:
         new_external_cert_time = await time_file_created(ops_test, unit.name, EXTERNAL_CERT_PATH)
         new_internal_cert_time = await time_file_created(ops_test, unit.name, INTERNAL_CERT_PATH)
         new_mongod_service_time = await time_process_started(ops_test, unit.name, DB_SERVICE)
@@ -242,7 +205,7 @@ async def test_set_tls_key(ops_test: OpsTest) -> None:
         ), f"mongod service for {unit.name} was not restarted."
 
     # Verify that TLS is functioning on all units.
-    for unit in ops_test.model.applications[DATABASE_APP_NAME].units:
+    for unit in ops_test.model.applications[app_name].units:
         assert await check_tls(
             ops_test, unit, enabled=True
         ), f"tls is not enabled for {unit.name}."
@@ -251,14 +214,15 @@ async def test_set_tls_key(ops_test: OpsTest) -> None:
 async def test_disable_tls(ops_test: OpsTest) -> None:
     """Verify each unit has TLS disabled after removing relation to the TLS application."""
     # Remove the relation.
-    await ops_test.model.applications[DATABASE_APP_NAME].remove_relation(
-        f"{DATABASE_APP_NAME}:certificates", f"{TLS_CERTIFICATES_APP_NAME}:certificates"
+    app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
+    await ops_test.model.applications[app_name].remove_relation(
+        f"{app_name}:certificates", f"{TLS_CERTIFICATES_APP_NAME}:certificates"
     )
 
     await ops_test.model.wait_for_idle(
-        apps=[DATABASE_APP_NAME], status="active", timeout=1000, idle_period=60
+        apps=[app_name], status="active", timeout=1000, idle_period=60
     )
 
     # Wait for all units disabling TLS.
-    for unit in ops_test.model.applications[DATABASE_APP_NAME].units:
+    for unit in ops_test.model.applications[app_name].units:
         assert await check_tls(ops_test, unit, enabled=False)

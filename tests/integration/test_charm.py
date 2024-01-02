@@ -15,12 +15,14 @@ from pymongo.errors import PyMongoError, ServerSelectionTimeoutError
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError
 
-from .ha_tests.helpers import app_name, kill_unit_process
+from .ha_tests.helpers import kill_unit_process
 from .helpers import (
     PORT,
     UNIT_IDS,
+    check_or_scale_app,
     count_primaries,
     find_unit,
+    get_app_name,
     get_leader_id,
     get_password,
     set_password,
@@ -29,7 +31,6 @@ from .helpers import (
 
 logger = logging.getLogger(__name__)
 
-ANOTHER_DATABASE_APP_NAME = "another-database-a"
 
 MEDIAN_REELECTION_TIME = 12
 
@@ -43,22 +44,9 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy one unit of MongoDB."""
     # it is possible for users to provide their own cluster for testing. Hence check if there
     # is a pre-existing cluster.
-    user_app_name = await app_name(ops_test)
+    user_app_name = await get_app_name(ops_test)
     if user_app_name:
-        # check if we need to scale
-        current_units = len(ops_test.model.applications[user_app_name].units)
-
-        if current_units > len(UNIT_IDS):
-            for i in range(0, current_units):
-                unit_to_remove = [ops_test.model.applications[user_app_name].units[i].name]
-                await ops_test.model.destroy_units(*unit_to_remove)
-                await ops_test.model.wait_for_idle()
-
-        units_to_add = len(UNIT_IDS) - current_units
-        await ops_test.model.applications[user_app_name].add_unit(count=units_to_add)
-        await ops_test.model.wait_for_idle()
-
-        return
+        return check_or_scale_app(ops_test, user_app_name, len(UNIT_IDS))
 
     my_charm = await ops_test.build_charm(".")
     await ops_test.model.deploy(my_charm, num_units=len(UNIT_IDS))
@@ -68,7 +56,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 @pytest.mark.abort_on_fail
 async def test_status(ops_test: OpsTest) -> None:
     """Verifies that the application and unit are active."""
-    user_app_name = await app_name(ops_test)
+    user_app_name = await get_app_name(ops_test)
     await ops_test.model.wait_for_idle(apps=[user_app_name], status="active", timeout=1000)
     assert len(ops_test.model.applications[user_app_name].units) == len(UNIT_IDS)
 
@@ -77,7 +65,7 @@ async def test_status(ops_test: OpsTest) -> None:
 async def test_unit_is_running_as_replica_set(ops_test: OpsTest, unit_id: int) -> None:
     """Tests that mongodb is running as a replica set for the application unit."""
     # connect to mongo replica set
-    user_app_name = await app_name(ops_test)
+    user_app_name = await get_app_name(ops_test)
     unit = ops_test.model.applications[user_app_name].units[unit_id]
     connection = unit.public_address + ":" + str(PORT)
     client = MongoClient(connection, replicaset=user_app_name)
@@ -102,7 +90,7 @@ async def test_leader_is_primary_on_deployment(ops_test: OpsTest) -> None:
 
     # connect to mongod
     password = await get_password(ops_test)
-    user_app_name = await app_name(ops_test)
+    user_app_name = await get_app_name(ops_test)
     client = MongoClient(
         unit_uri(leader_unit.public_address, password, user_app_name), directConnection=True
     )
@@ -129,7 +117,7 @@ async def test_exactly_one_primary(ops_test: OpsTest) -> None:
 async def test_get_primary_action(ops_test: OpsTest) -> None:
     """Tests that action get-primary outputs the correct unit with the primary replica."""
     # determine which unit is the primary
-    user_app_name = await app_name(ops_test)
+    user_app_name = await get_app_name(ops_test)
     expected_primary = None
     for unit in ops_test.model.applications[user_app_name].units:
         # connect to mongod
@@ -169,7 +157,7 @@ async def test_set_password_action(ops_test: OpsTest) -> None:
     assert new_password != old_password
     new_password_reported = await get_password(ops_test)
     assert new_password == new_password_reported
-    user_app_name = await app_name(ops_test)
+    user_app_name = await get_app_name(ops_test)
 
     # verify that the password is updated in mongod by inserting into the collection.
     try:
@@ -205,7 +193,7 @@ async def test_set_password_action(ops_test: OpsTest) -> None:
 
 async def test_monitor_user(ops_test: OpsTest) -> None:
     """Test verifies that the monitor user can perform operations such as 'rs.conf()'."""
-    user_app_name = await app_name(ops_test)
+    user_app_name = await get_app_name(ops_test)
     unit = ops_test.model.applications[user_app_name].units[0]
     password = await get_password(ops_test, "monitor")
     replica_set_hosts = [
@@ -302,7 +290,7 @@ async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
 
     async def get_unit_messages():
         """Collects unit status messages."""
-        app = await app_name(ops_test)
+        app = await get_app_name(ops_test)
         unit_messages = {}
 
         async with ops_test.fast_forward():
