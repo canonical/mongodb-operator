@@ -35,7 +35,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 2
 
 
 class ClusterProvider(Object):
@@ -139,6 +139,7 @@ class ClusterRequirer(Object):
         self.database_requires = DatabaseRequires(
             self.charm,
             relation_name=self.relation_name,
+            relations_aliases=[self.relation_name],
             database_name=self.charm.database,
             extra_user_roles=self.charm.extra_user_roles,
             additional_secret_fields=[KEYFILE_KEY],
@@ -149,10 +150,23 @@ class ClusterRequirer(Object):
             charm.on[self.relation_name].relation_created,
             self.database_requires._on_relation_created_event,
         )
+
+        self.framework.observe(
+            self.database_requires.on.database_created, self._on_database_created
+        )
         self.framework.observe(
             charm.on[self.relation_name].relation_changed, self._on_relation_changed
         )
         # TODO Future PRs handle scale down
+
+    def _on_database_created(self, event) -> None:
+        if not self.charm.unit.is_leader():
+            return
+
+        logger.info("Database and user created for mongos application")
+        self.charm.set_secret(Config.Relations.APP_SCOPE, Config.Secrets.USERNAME, event.username)
+        self.charm.set_secret(Config.Relations.APP_SCOPE, Config.Secrets.PASSWORD, event.password)
+        self.charm.share_connection_info()
 
     def _on_relation_changed(self, event) -> None:
         """Starts/restarts monogs with config server information."""
@@ -186,7 +200,6 @@ class ClusterRequirer(Object):
             event.defer()
             return
 
-        self.charm.share_uri()
         self.charm.unit.status = ActiveStatus()
 
     # BEGIN: helper functions

@@ -52,8 +52,11 @@ class MongosConfiguration:
     @property
     def uri(self):
         """Return URI concatenated from fields."""
-        hosts = [f"{host}:{self.port}" for host in self.hosts]
-        hosts = ",".join(hosts)
+        # mongos using Unix Domain Socket to communicate do not use port
+        if self.port:
+            self.hosts = [f"{host}:{self.port}" for host in self.hosts]
+
+        hosts = ",".join(self.hosts)
         # Auth DB should be specified while user connects to application DB.
         auth_source = ""
         if self.database != "admin":
