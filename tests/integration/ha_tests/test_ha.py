@@ -34,6 +34,9 @@ from .helpers import (
     fetch_replica_set_members,
     find_unit,
     get_controller_machine,
+)
+from .helpers import get_password as get_password_ha  # TODO remove this duplication
+from .helpers import (
     insert_focal_to_cluster,
     is_machine_reachable_from,
     kill_unit_process,
@@ -55,7 +58,6 @@ from .helpers import (
     update_service_logging,
     verify_replica_set_configuration,
     wait_network_restore,
-    get_password as get_password_ha # TODO remove this duplication 
 )
 
 ANOTHER_DATABASE_APP_NAME = "another-database-a"
