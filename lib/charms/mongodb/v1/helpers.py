@@ -29,7 +29,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 2
 
 # path to store mongodb ketFile
 KEY_FILE = "keyFile"
@@ -172,7 +172,6 @@ def get_mongod_args(
         cmd.extend(
             [
                 "--clusterAuthMode=x509",
-                "--tlsAllowInvalidCertificates",
                 f"--tlsClusterCAFile={full_conf_dir}/{TLS_INT_CA_FILE}",
                 f"--tlsClusterFile={full_conf_dir}/{TLS_INT_PEM_FILE}",
             ]
