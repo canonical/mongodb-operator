@@ -58,7 +58,7 @@ def replica_set_client(replica_ips: List[str], password: str, app_name=APP_NAME)
     Args:
         replica_ips: list of ips hosting the replica set.
         password: password of database.
-        app: name of application which hosts the cluster.
+        app_name: name of application which hosts the cluster.
     """
     hosts = ["{}:{}".format(replica_ip, PORT) for replica_ip in replica_ips]
     hosts = ",".join(hosts)
@@ -98,7 +98,7 @@ def unit_uri(ip_address: str, password, app_name=APP_NAME) -> str:
     Args:
         ip_address: ip address of replica/unit
         password: password of database.
-        app: name of application which has the cluster.
+        app_name: name of application which has the cluster.
     """
     return f"mongodb://operator:" f"{password}@" f"{ip_address}:{PORT}/admin?replicaSet={app_name}"
 

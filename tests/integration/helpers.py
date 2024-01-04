@@ -200,7 +200,7 @@ async def get_secret_content(ops_test, secret_id) -> Dict[str, str]:
 
 
 async def check_or_scale_app(ops_test: OpsTest, user_app_name: str, required_units: int) -> None:
-    """A helper function that scales existing cluster if necessary"""
+    """A helper function that scales existing cluster if necessary."""
     # check if we need to scale
     current_units = len(ops_test.model.applications[user_app_name].units)
 
