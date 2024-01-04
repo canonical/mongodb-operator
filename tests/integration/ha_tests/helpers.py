@@ -2,6 +2,7 @@
 # See LICENSE file for licensing details.
 
 import json
+import logging
 import subprocess
 import time
 from datetime import datetime
@@ -25,6 +26,9 @@ from tenacity import (
     wait_fixed,
 )
 
+from ..helpers import get_app_name, get_unit_ip, instance_ip
+
+# TODO move these to a separate file for constants \ config
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 PORT = 27017
 APP_NAME = METADATA["name"]
@@ -37,6 +41,8 @@ LOGGING_OPTIONS = f"--logpath={MONGO_COMMON_DIR}/var/log/mongodb/mongodb.log --l
 EXPORTER_PROC = "/usr/bin/mongodb_exporter"
 GREP_PROC = "grep"
 
+logger = logging.getLogger(__name__)
+
 
 class ProcessError(Exception):
     """Raised when a process fails."""
@@ -46,7 +52,7 @@ class ProcessRunningError(Exception):
     """Raised when a process is running when it is not expected to be."""
 
 
-def replica_set_client(replica_ips: List[str], password: str, app=APP_NAME) -> MongoClient:
+def replica_set_client(replica_ips: List[str], password: str, app_name=APP_NAME) -> MongoClient:
     """Generates the replica set URI for multiple IP addresses.
 
     Args:
@@ -57,7 +63,7 @@ def replica_set_client(replica_ips: List[str], password: str, app=APP_NAME) -> M
     hosts = ["{}:{}".format(replica_ip, PORT) for replica_ip in replica_ips]
     hosts = ",".join(hosts)
 
-    replica_set_uri = f"mongodb://operator:" f"{password}@" f"{hosts}/admin?replicaSet={app}"
+    replica_set_uri = f"mongodb://operator:" f"{password}@" f"{hosts}/admin?replicaSet={app_name}"
     return MongoClient(replica_set_uri)
 
 
@@ -70,9 +76,9 @@ async def fetch_replica_set_members(replica_ips: List[str], ops_test: OpsTest):
         app: name of application which has the cluster.
     """
     # connect to replica set uri
-    app = await app_name(ops_test)
-    password = await get_password(ops_test, app)
-    client = replica_set_client(replica_ips, password, app)
+    app_name = await get_app_name(ops_test)
+    password = await get_password(ops_test, app_name)
+    client = replica_set_client(replica_ips, password, app_name)
 
     # get ips from MongoDB replica set configuration
     rs_config = client.admin.command("replSetGetConfig")
@@ -86,7 +92,7 @@ async def fetch_replica_set_members(replica_ips: List[str], ops_test: OpsTest):
     return member_ips
 
 
-def unit_uri(ip_address: str, password, app=APP_NAME) -> str:
+def unit_uri(ip_address: str, password, app_name=APP_NAME) -> str:
     """Generates URI that is used by MongoDB to connect to a single replica.
 
     Args:
@@ -94,35 +100,36 @@ def unit_uri(ip_address: str, password, app=APP_NAME) -> str:
         password: password of database.
         app: name of application which has the cluster.
     """
-    return f"mongodb://operator:" f"{password}@" f"{ip_address}:{PORT}/admin?replicaSet={app}"
+    return f"mongodb://operator:" f"{password}@" f"{ip_address}:{PORT}/admin?replicaSet={app_name}"
 
 
-async def get_password(ops_test: OpsTest, app, down_unit=None) -> str:
+# TODO remove this duplicate with helpers.py
+async def get_password(ops_test: OpsTest, app_name, down_unit=None) -> str:
     """Use the charm action to retrieve the password from provided unit.
 
     Returns:
         String with the password stored on the peer relation databag.
     """
     # some tests disable the network for units, so find a unit that is available
-    for unit in ops_test.model.applications[app].units:
+    for unit in ops_test.model.applications[app_name].units:
         if not unit.name == down_unit:
             unit_id = unit.name.split("/")[1]
             break
 
-    action = await ops_test.model.units.get(f"{app}/{unit_id}").run_action("get-password")
+    action = await ops_test.model.units.get(f"{app_name}/{unit_id}").run_action("get-password")
     action = await action.wait()
     return action.results["password"]
 
 
 async def fetch_primary(
-    replica_set_hosts: List[str], ops_test: OpsTest, down_unit=None, app=None
+    replica_set_hosts: List[str], ops_test: OpsTest, down_unit=None, app_name=None
 ) -> str:
     """Returns IP address of current replica set primary."""
     # connect to MongoDB client
-    app = app or await app_name(ops_test)
+    app_name = app_name or await get_app_name(ops_test)
 
-    password = await get_password(ops_test, app, down_unit)
-    client = replica_set_client(replica_set_hosts, password, app)
+    password = await get_password(ops_test, app_name, down_unit)
+    client = replica_set_client(replica_set_hosts, password, app_name)
 
     # grab the replica set status
     try:
@@ -146,10 +153,12 @@ async def fetch_primary(
 async def count_primaries(ops_test: OpsTest) -> int:
     """Returns the number of primaries in a replica set."""
     # connect to MongoDB client
-    app = await app_name(ops_test)
-    password = await get_password(ops_test, app)
-    replica_set_hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
-    client = replica_set_client(replica_set_hosts, password, app)
+    app_name = await get_app_name(ops_test)
+    password = await get_password(ops_test, app_name)
+    replica_set_hosts = [
+        unit.public_address for unit in ops_test.model.applications[app_name].units
+    ]
+    client = replica_set_client(replica_set_hosts, password, app_name)
 
     # grab the replica set status
     try:
@@ -178,29 +187,29 @@ async def replica_set_primary(
     replica_set_hosts: List[str],
     ops_test: OpsTest,
     down_unit=None,
-    app=None,
+    app_name=None,
 ) -> Optional[ops.model.Unit]:
     """Returns the primary of the replica set.
 
     Retrying 5 times to give the replica set time to elect a new primary, also checks against the
     valid_ips to verify that the primary is not outdated.
     """
-    app = app or await app_name(ops_test)
-    primary_ip = await fetch_primary(replica_set_hosts, ops_test, down_unit, app)
+    app_name = app_name or await get_app_name(ops_test)
+    primary_ip = await fetch_primary(replica_set_hosts, ops_test, down_unit, app_name)
     # return None if primary is no longer in the replica set
     if primary_ip is not None and primary_ip not in replica_set_hosts:
         return None
 
-    for unit in ops_test.model.applications[app].units:
+    for unit in ops_test.model.applications[app_name].units:
         if unit.public_address == str(primary_ip):
             return unit
 
 
-async def retrieve_entries(ops_test, app, db_name, collection_name, query_field):
+async def retrieve_entries(ops_test, app_name, db_name, collection_name, query_field):
     """Retries entries from a specified collection within a specified database."""
-    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
-    password = await get_password(ops_test, app)
-    client = replica_set_client(ip_addresses, password, app)
+    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app_name].units]
+    password = await get_password(ops_test, app_name)
+    client = replica_set_client(ip_addresses, password, app_name)
 
     db = client[db_name]
     test_collection = db[collection_name]
@@ -218,30 +227,12 @@ async def retrieve_entries(ops_test, app, db_name, collection_name, query_field)
 async def find_unit(ops_test: OpsTest, leader: bool) -> ops.model.Unit:
     """Helper function identifies the a unit, based on need for leader or non-leader."""
     ret_unit = None
-    app = await app_name(ops_test)
-    for unit in ops_test.model.applications[app].units:
+    app_name = await get_app_name(ops_test)
+    for unit in ops_test.model.applications[app_name].units:
         if await unit.is_leader_from_status() == leader:
             ret_unit = unit
 
     return ret_unit
-
-
-async def app_name(ops_test: OpsTest) -> str:
-    """Returns the name of the cluster running MongoDB.
-
-    This is important since not all deployments of the MongoDB charm have the application name
-    "mongodb".
-
-    Note: if multiple clusters are running MongoDB this will return the one first found.
-    """
-    status = await ops_test.model.get_status()
-    for app in ops_test.model.applications:
-        # note that format of the charm field is not exactly "mongodb" but instead takes the form
-        # of `local:focal/mongodb-6`
-        if "mongodb" in status["applications"][app]["charm"]:
-            return app
-
-    return None
 
 
 async def clear_db_writes(ops_test: OpsTest) -> bool:
@@ -249,11 +240,11 @@ async def clear_db_writes(ops_test: OpsTest) -> bool:
     await stop_continous_writes(ops_test)
 
     # remove collection from database
-    app = await app_name(ops_test)
-    password = await get_password(ops_test, app)
-    hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
+    app_name = await get_app_name(ops_test)
+    password = await get_password(ops_test, app_name)
+    hosts = [unit.public_address for unit in ops_test.model.applications[app_name].units]
     hosts = ",".join(hosts)
-    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app}"
+    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app_name}"
 
     client = MongoClient(connection_string)
     db = client["new-db"]
@@ -274,11 +265,11 @@ async def start_continous_writes(ops_test: OpsTest, starting_number: int) -> Non
 
     In the future this should be put in a dummy charm.
     """
-    app = await app_name(ops_test)
-    password = await get_password(ops_test, app)
-    hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
+    app_name = await get_app_name(ops_test)
+    password = await get_password(ops_test, app_name)
+    hosts = [unit.public_address for unit in ops_test.model.applications[app_name].units]
     hosts = ",".join(hosts)
-    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app}"
+    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app_name}"
 
     # run continuous writes in the background.
     subprocess.Popen(
@@ -302,11 +293,11 @@ async def stop_continous_writes(ops_test: OpsTest, down_unit=None) -> int:
     # wait for process to be killed
     proc.communicate()
 
-    app = await app_name(ops_test)
-    password = await get_password(ops_test, app, down_unit)
-    hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
+    app_name = await get_app_name(ops_test)
+    password = await get_password(ops_test, app_name, down_unit)
+    hosts = [unit.public_address for unit in ops_test.model.applications[app_name].units]
     hosts = ",".join(hosts)
-    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app}"
+    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app_name}"
 
     client = MongoClient(connection_string)
     db = client["new-db"]
@@ -320,11 +311,11 @@ async def stop_continous_writes(ops_test: OpsTest, down_unit=None) -> int:
 
 async def count_writes(ops_test: OpsTest, down_unit=None) -> int:
     """New versions of pymongo no longer support the count operation, instead find is used."""
-    app = await app_name(ops_test)
-    password = await get_password(ops_test, app, down_unit)
-    hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
+    app_name = await get_app_name(ops_test)
+    password = await get_password(ops_test, app_name, down_unit)
+    hosts = [unit.public_address for unit in ops_test.model.applications[app_name].units]
     hosts = ",".join(hosts)
-    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app}"
+    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app_name}"
 
     client = MongoClient(connection_string)
     db = client["new-db"]
@@ -339,8 +330,8 @@ async def secondary_up_to_date(ops_test: OpsTest, unit_ip, expected_writes) -> b
 
     Retries over the period of one minute to give secondary adequate time to copy over data.
     """
-    app = await app_name(ops_test)
-    password = await get_password(ops_test, app)
+    app_name = await get_app_name(ops_test)
+    password = await get_password(ops_test, app_name)
     connection_string = f"mongodb://operator:{password}@{unit_ip}:{PORT}/admin?"
     client = MongoClient(connection_string, directConnection=True)
 
@@ -469,11 +460,11 @@ async def reused_storage(ops_test: OpsTest, unit_name, removal_time) -> bool:
 
 async def insert_focal_to_cluster(ops_test: OpsTest) -> None:
     """Inserts the Focal Fossa data into the MongoDB cluster via primary replica."""
-    app = await app_name(ops_test)
-    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
+    app_name = await get_app_name(ops_test)
+    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app_name].units]
     primary = (await replica_set_primary(ip_addresses, ops_test)).public_address
-    password = await get_password(ops_test, app)
-    client = MongoClient(unit_uri(primary, password, app), directConnection=True)
+    password = await get_password(ops_test, app_name)
+    client = MongoClient(unit_uri(primary, password, app_name), directConnection=True)
     db = client["new-db"]
     test_collection = db["test_ubuntu_collection"]
     test_collection.insert_one({"release_name": "Focal Fossa", "version": 20.04, "LTS": True})
@@ -483,10 +474,10 @@ async def insert_focal_to_cluster(ops_test: OpsTest) -> None:
 async def kill_unit_process(ops_test: OpsTest, unit_name: str, kill_code: str):
     """Kills the DB process on the unit according to the provided kill code."""
     # killing the only replica can be disastrous
-    app = await app_name(ops_test)
-    if len(ops_test.model.applications[app].units) < 2:
-        await ops_test.model.applications[app].add_unit(count=1)
-        await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
+    app_name = await get_app_name(ops_test)
+    if len(ops_test.model.applications[app_name].units) < 2:
+        await ops_test.model.applications[app_name].add_unit(count=1)
+        await ops_test.model.wait_for_idle(apps=[app_name], status="active", timeout=1000)
     kill_cmd = f"exec --unit {unit_name} -- pkill --signal {kill_code} -f {DB_PROCESS}"
     return_code, _, _ = await ops_test.juju(*kill_cmd.split())
 
@@ -498,9 +489,9 @@ async def kill_unit_process(ops_test: OpsTest, unit_name: str, kill_code: str):
 
 async def mongod_ready(ops_test, unit_ip) -> bool:
     """Verifies replica is running and available."""
-    app = await app_name(ops_test)
-    password = await get_password(ops_test, app)
-    client = MongoClient(unit_uri(unit_ip, password, app), directConnection=True)
+    app_name = await get_app_name(ops_test)
+    password = await get_password(ops_test, app_name)
+    client = MongoClient(unit_uri(unit_ip, password, app_name), directConnection=True)
     try:
         for attempt in Retrying(stop=stop_after_delay(60 * 5), wait=wait_fixed(3)):
             with attempt:
@@ -516,8 +507,8 @@ async def mongod_ready(ops_test, unit_ip) -> bool:
 
 async def db_step_down(ops_test: OpsTest, old_primary_unit: str, sigterm_time: int):
     # loop through all units that aren't the old primary
-    app = await app_name(ops_test)
-    for unit in ops_test.model.applications[app].units:
+    app_name = await get_app_name(ops_test)
+    for unit in ops_test.model.applications[app_name].units:
         # verify log file exists on this machine
         search_file = f"exec --unit {unit.name} ls {MONGODB_LOG_PATH}"
         return_code, _, _ = await ops_test.juju(*search_file.split())
@@ -551,12 +542,12 @@ async def db_step_down(ops_test: OpsTest, old_primary_unit: str, sigterm_time: i
 
 async def all_db_processes_down(ops_test: OpsTest) -> bool:
     """Verifies that all units of the charm do not have the DB process running."""
-    app = await app_name(ops_test)
+    app_name = await get_app_name(ops_test)
 
     try:
         for attempt in Retrying(stop=stop_after_attempt(60), wait=wait_fixed(3)):
             with attempt:
-                for unit in ops_test.model.applications[app].units:
+                for unit in ops_test.model.applications[app_name].units:
                     search_db_process = f"exec --unit {unit.name} pgrep -x mongod"
                     _, processes, _ = await ops_test.juju(*search_db_process.split())
                     # splitting processes by "\n" results in one or more empty lines, hence we
@@ -666,13 +657,14 @@ async def start_mongod(ops_test: OpsTest, unit) -> None:
 @retry(stop=stop_after_attempt(8), wait=wait_fixed(15))
 async def verify_replica_set_configuration(ops_test: OpsTest) -> None:
     """Verifies presence of primary, replica set members, and number of primaries."""
-    app = await app_name(ops_test)
+    app_name = await get_app_name(ops_test)
     # `get_unit_ip` is used instead of `.public_address` because of a bug in python-libjuju that
     # incorrectly reports the IP addresses after the network is restored this is reported as a
     # bug here: https://github.com/juju/python-libjuju/issues/738 . Once this bug is resolved use
     # of `get_unit_ip` should be replaced with `.public_address`
     ip_addresses = [
-        await get_unit_ip(ops_test, unit.name) for unit in ops_test.model.applications[app].units
+        await get_unit_ip(ops_test, unit.name)
+        for unit in ops_test.model.applications[app_name].units
     ]
 
     # verify presence of primary
@@ -750,37 +742,6 @@ def is_machine_reachable_from(origin_machine: str, target_machine: str) -> bool:
         return False
 
 
-async def unit_hostname(ops_test: OpsTest, unit_name: str) -> str:
-    """Get hostname for a unit.
-
-    Args:
-        ops_test: The ops test object passed into every test case
-        unit_name: The name of the unit to be tested
-
-    Returns:
-        The machine/container hostname
-    """
-    _, raw_hostname, _ = await ops_test.juju("ssh", unit_name, "hostname")
-    return raw_hostname.strip()
-
-
-def instance_ip(model: str, instance: str) -> str:
-    """Translate juju instance name to IP.
-
-    Args:
-        model: The name of the model
-        instance: The name of the instance
-
-    Returns:
-        The (str) IP address of the instance
-    """
-    output = subprocess.check_output(f"juju machines --model {model}".split())
-
-    for line in output.decode("utf8").splitlines():
-        if instance in line:
-            return line.split()[2]
-
-
 @retry(stop=stop_after_attempt(60), wait=wait_fixed(15))
 def wait_network_restore(model_name: str, hostname: str, old_ip: str) -> None:
     """Wait until network is restored.
@@ -794,18 +755,44 @@ def wait_network_restore(model_name: str, hostname: str, old_ip: str) -> None:
         raise Exception("Network not restored, IP address has not changed yet.")
 
 
-async def get_unit_ip(ops_test: OpsTest, unit_name: str) -> str:
-    """Wrapper for getting unit ip.
+async def scale_and_verify(ops_test: OpsTest, count: int, remove_leader: bool = False):
+    if count == 0:
+        logger.warning("Skipping scale up/down by 0")
+        return
 
-    Juju incorrectly reports the IP addresses after the network is restored this is reported as a
-    bug here: https://github.com/juju/python-libjuju/issues/738 . Once this bug is resolved use of
-    `get_unit_ip` should be replaced with `.public_address`
+    app_name = await get_app_name(ops_test)
 
-    Args:
-        ops_test: The ops test object passed into every test case
-        unit_name: The name of the unit to be tested
+    if count > 0:
+        logger.info(f"Scaling up by {count} units")
+        await ops_test.model.applications[app_name].add_units(count)
+    else:
+        logger.info(f"Scaling down by {abs(count)} units")
+        # find leader unit
+        leader_unit = await find_unit(ops_test, leader=True)
+        units_to_remove = []
+        for unit in ops_test.model.applications[app_name].units:
+            if not remove_leader and unit.name == leader_unit.name:
+                continue
+            if len(units_to_remove) < abs(count):
+                units_to_remove.append(unit.name)
 
-    Returns:
-        The (str) ip of the unit
-    """
-    return instance_ip(ops_test.model.info.name, await unit_hostname(ops_test, unit_name))
+        logger.info(f"Units to remove {units_to_remove}")
+        await ops_test.model.applications[app_name].destroy_units(*units_to_remove)
+    logger.info("Waiting for idle")
+    await ops_test.model.wait_for_idle(
+        apps=[app_name],
+        status="active",
+        timeout=1000,
+    )
+    logger.info("Validating replica set has primary")
+    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app_name].units]
+    primary = await replica_set_primary(ip_addresses, ops_test, app_name=app_name)
+
+    assert primary is not None, "Replica set has no primary"
+
+
+async def _verify_writes(ops_test: OpsTest):
+    # verify that no writes to the db were missed
+    total_expected_writes = await stop_continous_writes(ops_test)
+    actual_writes = await count_writes(ops_test)
+    assert total_expected_writes["number"] == actual_writes, "writes to the db were missed."
