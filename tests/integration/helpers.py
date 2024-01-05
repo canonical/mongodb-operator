@@ -51,7 +51,7 @@ async def get_password(ops_test: OpsTest, username="operator") -> str:
     try:
         password = action.results["password"]
         return password
-    except KeyError as e:
+    except KeyError:
         logger.error("Failed to get passworf. Action %s. Results %s", action, action.results)
         return None
 
