@@ -84,7 +84,7 @@ async def test_database_relation_with_charm_libraries(ops_test: OpsTest):
     """Test basic functionality of database relation interface."""
     # Relate the charms and wait for them exchanging some connection data.
     db_app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
-    await ops_test.model.add_relation(
+    await ops_test.model.integrate(
         f"{APPLICATION_APP_NAME}:{FIRST_DATABASE_RELATION_NAME}", db_app_name
     )
     await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active")
@@ -273,7 +273,7 @@ async def test_two_applications_doesnt_share_the_same_relation_data(
     db_app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
     # Relate the new application with the database
     # and wait for them exchanging some connection data.
-    await ops_test.model.add_relation(
+    await ops_test.model.integrate(
         f"{another_application_app_name}:{FIRST_DATABASE_RELATION_NAME}", db_app_name
     )
     await ops_test.model.wait_for_idle(apps=all_app_names, status="active")
@@ -294,10 +294,10 @@ async def test_an_application_can_connect_to_multiple_database_clusters(ops_test
     # Relate the application with both database clusters
     # and wait for them exchanging some connection data.
     db_app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
-    first_cluster_relation = await ops_test.model.add_relation(
+    first_cluster_relation = await ops_test.model.integrate(
         f"{APPLICATION_APP_NAME}:{MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME}", db_app_name
     )
-    second_cluster_relation = await ops_test.model.add_relation(
+    second_cluster_relation = await ops_test.model.integrate(
         f"{APPLICATION_APP_NAME}:{MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME}",
         ANOTHER_DATABASE_APP_NAME,
     )
@@ -330,11 +330,11 @@ async def test_an_application_can_connect_to_multiple_aliased_database_clusters(
     # and wait for them exchanging some connection data.
     db_app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
     await asyncio.gather(
-        ops_test.model.add_relation(
+        ops_test.model.integrate(
             f"{APPLICATION_APP_NAME}:{ALIASED_MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME}",
             db_app_name,
         ),
-        ops_test.model.add_relation(
+        ops_test.model.integrate(
             f"{APPLICATION_APP_NAME}:{ALIASED_MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME}",
             ANOTHER_DATABASE_APP_NAME,
         ),
@@ -365,7 +365,7 @@ async def test_an_application_can_request_multiple_databases(ops_test: OpsTest, 
     """Test that an application can request additional databases using the same interface."""
     # Relate the charms using another relation and wait for them exchanging some connection data.
     db_app_name = await get_app_name(ops_test)
-    await ops_test.model.add_relation(
+    await ops_test.model.integrate(
         f"{APPLICATION_APP_NAME}:{SECOND_DATABASE_RELATION_NAME}", db_app_name
     )
     await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active")
