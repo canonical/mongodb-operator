@@ -2,6 +2,7 @@
 # See LICENSE file for licensing details.
 
 import json
+import logging
 import subprocess
 from pathlib import Path
 from typing import Dict, Optional
@@ -16,6 +17,8 @@ METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 PORT = 27017
 UNIT_IDS = [0, 1, 2]
 SERIES = "jammy"
+
+logger = logging.getLogger(__name__)
 
 
 def unit_uri(ip_address: str, password, app) -> str:
@@ -45,7 +48,12 @@ async def get_password(ops_test: OpsTest, username="operator") -> str:
         "get-password", **{"username": username}
     )
     action = await action.wait()
-    return action.results["password"]
+    try:
+        password = action.results["password"]
+        return password
+    except KeyError as e:
+        logger.error("Failed to get passworf. Action %s. Results %s", action, action.results)
+        return None
 
 
 @retry(
