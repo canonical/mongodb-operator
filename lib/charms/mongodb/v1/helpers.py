@@ -163,7 +163,7 @@ def get_mongod_args(
                 f"--tlsCAFile={full_conf_dir}/{TLS_EXT_CA_FILE}",
                 f"--tlsCertificateKeyFile={full_conf_dir}/{TLS_EXT_PEM_FILE}",
                 # allow non-TLS connections
-                "--tlsMode=preferTLS",
+                "--tlsMode=requireTLS",
             ]
         )
 
