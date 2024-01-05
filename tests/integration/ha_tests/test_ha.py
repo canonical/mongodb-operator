@@ -15,7 +15,6 @@ from ..helpers import (
     check_or_scale_app,
     count_primaries,
     get_app_name,
-    get_password,
     get_unit_ip,
     instance_ip,
     unit_hostname,
@@ -34,8 +33,9 @@ from .helpers import (
     fetch_replica_set_members,
     find_unit,
     get_controller_machine,
+    get_password as get_password_ha # TODO remove this duplication
 )
-from .helpers import get_password as get_password_ha  # TODO remove this duplication
+
 from .helpers import (
     insert_focal_to_cluster,
     is_machine_reachable_from,
@@ -239,7 +239,7 @@ async def test_replication_across_members(ops_test: OpsTest, continuous_writes) 
     app_name = await get_app_name(ops_test)
     ip_addresses = [unit.public_address for unit in ops_test.model.applications[app_name].units]
     primary = await replica_set_primary(ip_addresses, ops_test)
-    password = await get_password(ops_test, app_name)
+    password = await get_password_ha(ops_test, app_name)
 
     secondaries = set(ip_addresses) - set([primary.public_address])
     for secondary in secondaries:
@@ -327,7 +327,7 @@ async def test_replication_member_scaling(ops_test: OpsTest, continuous_writes) 
         unit.public_address for unit in ops_test.model.applications[app_name].units
     ]
     new_member_ip = list(set(new_ip_addresses) - set(original_ip_addresses))[0]
-    password = await get_password(ops_test, app_name)
+    password = await get_password_ha(ops_test, app_name)
     client = MongoClient(unit_uri(new_member_ip, password, app_name), directConnection=True)
 
     # check for replicated data while retrying to give time for replica to copy over data.
@@ -389,7 +389,7 @@ async def test_kill_db_process(ops_test, continuous_writes):
 async def test_freeze_db_process(ops_test, continuous_writes):
     # locate primary unit
     app_name = await get_app_name(ops_test)
-    password = await get_password(ops_test, app_name)
+    password = await get_password_ha(ops_test, app_name)
     ip_addresses = [unit.public_address for unit in ops_test.model.applications[app_name].units]
     primary = await replica_set_primary(ip_addresses, ops_test)
     await kill_unit_process(ops_test, primary.name, kill_code="SIGSTOP")
