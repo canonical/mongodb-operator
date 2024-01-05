@@ -33,9 +33,8 @@ from .helpers import (
     fetch_replica_set_members,
     find_unit,
     get_controller_machine,
-    get_password as get_password_ha # TODO remove this duplication
 )
-
+from .helpers import get_password as get_password_ha  # TODO remove this duplication
 from .helpers import (
     insert_focal_to_cluster,
     is_machine_reachable_from,

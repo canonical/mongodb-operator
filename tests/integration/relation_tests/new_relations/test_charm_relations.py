@@ -12,9 +12,8 @@ from pymongo.errors import OperationFailure
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError
 
-
-from ...helpers import check_or_scale_app, get_app_name
 from ...ha_tests.helpers import replica_set_primary
+from ...helpers import check_or_scale_app, get_app_name
 from .helpers import (
     get_application_relation_data,
     get_connection_string,
@@ -75,7 +74,9 @@ async def test_deploy_charms(ops_test: OpsTest, application_charm, database_char
         APP_NAMES.append(app_name)
     else:
         APP_NAMES.append(DATABASE_APP_NAME)
-    await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active", wait_for_at_least_units=required_units)
+    await ops_test.model.wait_for_idle(
+        apps=APP_NAMES, status="active", wait_for_at_least_units=required_units
+    )
 
 
 @pytest.mark.abort_on_fail
@@ -268,7 +269,7 @@ async def test_two_applications_doesnt_share_the_same_relation_data(
         application_name=another_application_app_name,
     )
     await ops_test.model.wait_for_idle(apps=all_app_names, status="active")
-    
+
     db_app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
     # Relate the new application with the database
     # and wait for them exchanging some connection data.

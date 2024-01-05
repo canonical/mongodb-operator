@@ -3,8 +3,10 @@
 # See LICENSE file for licensing details.
 
 import os
+from pathlib import Path
 
 import pytest
+import yaml
 from pytest_operator.plugin import OpsTest
 
 from ..helpers import UNIT_IDS, check_or_scale_app, get_app_name
@@ -19,7 +21,9 @@ from .helpers import (
 
 TLS_CERTIFICATES_APP_NAME = "tls-certificates-operator"
 
-DATABASE_APP_NAME = "mongodb"
+DATABASE_METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
+PORT = 27017
+DATABASE_APP_NAME = DATABASE_METADATA["name"]
 TLS_TEST_DATA = "tests/integration/tls_tests/data"
 DB_SERVICE = "snap.charmed-mongodb.mongod.service"
 
