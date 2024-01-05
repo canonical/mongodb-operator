@@ -364,7 +364,7 @@ async def test_an_application_can_connect_to_multiple_aliased_database_clusters(
 async def test_an_application_can_request_multiple_databases(ops_test: OpsTest, application_charm):
     """Test that an application can request additional databases using the same interface."""
     # Relate the charms using another relation and wait for them exchanging some connection data.
-    db_app_name = await get_app_name(ops_test)
+    db_app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
     await ops_test.model.integrate(
         f"{APPLICATION_APP_NAME}:{SECOND_DATABASE_RELATION_NAME}", db_app_name
     )
