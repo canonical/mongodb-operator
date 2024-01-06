@@ -39,32 +39,32 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     # is a pre-existing cluster.
     app_name = await get_app_name(ops_test)
     if app_name:
-        return check_or_scale_app(ops_test, app_name, len(UNIT_IDS))
+        check_or_scale_app(ops_test, app_name, len(UNIT_IDS))
+    else:
+        app_name = DATABASE_APP_NAME
+        async with ops_test.fast_forward():
+            my_charm = await ops_test.build_charm(".")
+            await ops_test.model.deploy(my_charm, num_units=3)
+            await ops_test.model.wait_for_idle(apps=[app_name], status="active")
 
-    app_name = DATABASE_APP_NAME
-    async with ops_test.fast_forward():
-        my_charm = await ops_test.build_charm(".")
-        await ops_test.model.deploy(my_charm, num_units=3)
-        await ops_test.model.wait_for_idle(apps=[app_name], status="active")
-
-        config = {"generate-self-signed-certificates": "true", "ca-common-name": "Test CA"}
-        await ops_test.model.deploy(TLS_CERTIFICATES_APP_NAME, channel="stable", config=config)
-        await ops_test.model.wait_for_idle(
-            apps=[TLS_CERTIFICATES_APP_NAME], status="active", timeout=1000
-        )
+    config = {"generate-self-signed-certificates": "true", "ca-common-name": "Test CA"}
+    await ops_test.model.deploy(TLS_CERTIFICATES_APP_NAME, channel="stable", config=config)
+    await ops_test.model.wait_for_idle(
+        apps=[TLS_CERTIFICATES_APP_NAME], status="active", timeout=1000
+    )
 
 
 async def test_enable_tls(ops_test: OpsTest) -> None:
     """Verify each unit has TLS enabled after relating to the TLS application."""
     # Relate it to the MongoDB to enable TLS.
     app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
-    await ops_test.model.relate(app_name, TLS_CERTIFICATES_APP_NAME)
+    await ops_test.model.integrate(app_name, TLS_CERTIFICATES_APP_NAME)
 
     await ops_test.model.wait_for_idle(status="active", timeout=1000, idle_period=60)
 
     # Wait for all units enabling TLS.
     for unit in ops_test.model.applications[app_name].units:
-        assert await check_tls(ops_test, unit, enabled=True)
+        assert await check_tls(ops_test, unit, enabled=True, app_name=app_name)
 
 
 async def test_rotate_tls_key(ops_test: OpsTest) -> None:
@@ -111,7 +111,7 @@ async def test_rotate_tls_key(ops_test: OpsTest) -> None:
         new_internal_cert_time = await time_file_created(ops_test, unit.name, INTERNAL_CERT_PATH)
         new_mongod_service_time = await time_process_started(ops_test, unit.name, DB_SERVICE)
 
-        check_certs_correctly_distributed(ops_test, unit)
+        check_certs_correctly_distributed(ops_test, unit, app_name=app_name)
 
         assert (
             new_external_cert_time > original_tls_times[unit.name]["external_cert"]
@@ -129,7 +129,7 @@ async def test_rotate_tls_key(ops_test: OpsTest) -> None:
     # Verify that TLS is functioning on all units.
     for unit in ops_test.model.applications[app_name].units:
         assert await check_tls(
-            ops_test, unit, enabled=True
+            ops_test, unit, enabled=True, app_name=app_name
         ), f"tls is not enabled for {unit.name}."
 
 
@@ -192,7 +192,7 @@ async def test_set_tls_key(ops_test: OpsTest) -> None:
         new_internal_cert_time = await time_file_created(ops_test, unit.name, INTERNAL_CERT_PATH)
         new_mongod_service_time = await time_process_started(ops_test, unit.name, DB_SERVICE)
 
-        check_certs_correctly_distributed(ops_test, unit)
+        check_certs_correctly_distributed(ops_test, unit, app_name=app_name)
 
         assert (
             new_external_cert_time > original_tls_times[unit.name]["external_cert"]
@@ -210,7 +210,7 @@ async def test_set_tls_key(ops_test: OpsTest) -> None:
     # Verify that TLS is functioning on all units.
     for unit in ops_test.model.applications[app_name].units:
         assert await check_tls(
-            ops_test, unit, enabled=True
+            ops_test, unit, enabled=True, app_name=app_name
         ), f"tls is not enabled for {unit.name}."
 
 
@@ -228,4 +228,4 @@ async def test_disable_tls(ops_test: OpsTest) -> None:
 
     # Wait for all units disabling TLS.
     for unit in ops_test.model.applications[app_name].units:
-        assert await check_tls(ops_test, unit, enabled=False)
+        assert await check_tls(ops_test, unit, enabled=False, app_name=app_name)

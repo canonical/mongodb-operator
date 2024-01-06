@@ -195,7 +195,7 @@ async def test_monitor_user(ops_test: OpsTest) -> None:
     """Test verifies that the monitor user can perform operations such as 'rs.conf()'."""
     app_name = await get_app_name(ops_test)
     unit = ops_test.model.applications[app_name].units[0]
-    password = await get_password(ops_test, "monitor")
+    password = await get_password(ops_test, username="monitor")
     replica_set_hosts = [
         unit.public_address for unit in ops_test.model.applications[app_name].units
     ]

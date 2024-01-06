@@ -37,13 +37,13 @@ class ProcessError(Exception):
     """Raised when a process fails."""
 
 
-async def mongo_tls_command(ops_test: OpsTest) -> str:
+async def mongo_tls_command(ops_test: OpsTest, app_name=None) -> str:
     """Generates a command which verifies TLS status."""
-    app_name = await get_app_name(ops_test)
+    app_name = app_name or await get_app_name(ops_test)
     replica_set_hosts = [
         unit.public_address for unit in ops_test.model.applications[app_name].units
     ]
-    password = await get_password(ops_test, app_name)
+    password = await get_password(ops_test, app_name=app_name)
     hosts = ",".join(replica_set_hosts)
     replica_set_uri = f"mongodb://operator:" f"{password}@" f"{hosts}/admin?replicaSet={app_name}"
 
@@ -54,7 +54,7 @@ async def mongo_tls_command(ops_test: OpsTest) -> str:
     )
 
 
-async def check_tls(ops_test: OpsTest, unit: ops.model.Unit, enabled: bool) -> bool:
+async def check_tls(ops_test: OpsTest, unit: ops.model.Unit, enabled: bool, app_name=None) -> bool:
     """Returns whether TLS is enabled on the specific PostgreSQL instance.
 
     Args:
@@ -70,7 +70,7 @@ async def check_tls(ops_test: OpsTest, unit: ops.model.Unit, enabled: bool) -> b
             stop=stop_after_attempt(10), wait=wait_exponential(multiplier=1, min=2, max=30)
         ):
             with attempt:
-                mongod_tls_check = await mongo_tls_command(ops_test)
+                mongod_tls_check = await mongo_tls_command(ops_test, app_name=app_name)
                 check_tls_cmd = f"exec --unit {unit.name} -- {mongod_tls_check}"
                 return_code, _, _ = await ops_test.juju(*check_tls_cmd.split())
                 tls_enabled = return_code == 0
@@ -145,12 +145,14 @@ async def scp_file_preserve_ctime(ops_test: OpsTest, unit_name: str, path: str) 
     return f"{filename}"
 
 
-async def check_certs_correctly_distributed(ops_test: OpsTest, unit: ops.Unit) -> None:
+async def check_certs_correctly_distributed(
+    ops_test: OpsTest, unit: ops.Unit, app_name=None
+) -> None:
     """Comparing expected vs distributed certificates.
 
     Verifying certificates downloaded on the charm against the ones distributed by the TLS operator
     """
-    app_name = await get_app_name(ops_test)
+    app_name = app_name or await get_app_name(ops_test)
     app_secret_id = await get_secret_id(ops_test, app_name)
     unit_secret_id = await get_secret_id(ops_test, unit.name)
     app_secret_content = await get_secret_content(ops_test, app_secret_id)

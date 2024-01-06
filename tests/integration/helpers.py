@@ -52,7 +52,7 @@ async def get_password(ops_test: OpsTest, username="operator", app_name=None) ->
         password = action.results["password"]
         return password
     except KeyError:
-        logger.error("Failed to get passworf. Action %s. Results %s", action, action.results)
+        logger.error("Failed to get password. Action %s. Results %s", action, action.results)
         return None
 
 
@@ -236,6 +236,7 @@ async def get_app_name(ops_test: OpsTest) -> str:
         # note that format of the charm field is not exactly "mongodb" but instead takes the form
         # of `local:focal/mongodb-6`
         if "mongodb" in status["applications"][app]["charm"]:
+            logger.debug("Found mongodb app named '%s'", app)
             return app
 
     return None
