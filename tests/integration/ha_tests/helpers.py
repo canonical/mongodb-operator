@@ -73,7 +73,7 @@ async def fetch_replica_set_members(replica_ips: List[str], ops_test: OpsTest, a
     Args:
         replica_ips: list of ips hosting the replica set.
         ops_test: reference to deployment.
-        app: name of application which has the cluster.
+        app_name: name of application which has the cluster.
     """
     # connect to replica set uri
     app_name = app_name or await get_app_name(ops_test)
@@ -151,11 +151,11 @@ async def fetch_primary(
 
 
 # TODO remove duplication with common helpers
-async def count_primaries(ops_test: OpsTest, app_name=None) -> int:
+async def count_primaries(ops_test: OpsTest, password: str = None, app_name: str = None) -> int:
     """Returns the number of primaries in a replica set."""
     # connect to MongoDB client
     app_name = app_name or await get_app_name(ops_test)
-    password = await get_password(ops_test, app_name)
+    password = password or await get_password(ops_test, app_name)
     replica_set_hosts = [
         unit.public_address for unit in ops_test.model.applications[app_name].units
     ]

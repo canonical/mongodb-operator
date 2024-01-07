@@ -82,17 +82,17 @@ async def test_unit_is_running_as_replica_set(ops_test: OpsTest, unit_id: int) -
 
 async def test_leader_is_primary_on_deployment(ops_test: OpsTest) -> None:
     """Tests that right after deployment that the primary unit is the leader."""
+    app_name = await get_app_name(ops_test)
     # grab leader unit
-    leader_unit = await find_unit(ops_test, leader=True)
+    leader_unit = await find_unit(ops_test, leader=True, app_name=app_name)
 
     # verify that we have a leader
     assert leader_unit is not None, "No unit is leader"
 
     # connect to mongod
-    password = await get_password(ops_test)
-    user_app_name = await get_app_name(ops_test)
+    password = await get_password(ops_test, app_name=app_name)
     client = MongoClient(
-        unit_uri(leader_unit.public_address, password, user_app_name), directConnection=True
+        unit_uri(leader_unit.public_address, password, app_name), directConnection=True
     )
 
     # verify primary status
@@ -102,9 +102,10 @@ async def test_leader_is_primary_on_deployment(ops_test: OpsTest) -> None:
 
 async def test_exactly_one_primary(ops_test: OpsTest) -> None:
     """Tests that there is exactly one primary in the deployed units."""
+    app_name = await get_app_name(ops_test)
     try:
-        password = await get_password(ops_test)
-        number_of_primaries = await count_primaries(ops_test, password)
+        password = await get_password(ops_test, app_name=app_name)
+        number_of_primaries = await count_primaries(ops_test, password, app_name=app_name)
     except RetryError:
         number_of_primaries = 0
 

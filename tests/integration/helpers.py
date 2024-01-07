@@ -61,12 +61,12 @@ async def get_password(ops_test: OpsTest, username="operator", app_name=None) ->
     stop=stop_after_attempt(5),
     wait=wait_exponential(multiplier=1, min=2, max=30),
 )
-async def count_primaries(ops_test: OpsTest, password: str) -> int:
+async def count_primaries(ops_test: OpsTest, password: str, app_name=None) -> int:
     """Counts the number of primaries in a replica set.
 
     Will retry counting when the number of primaries is 0 at most 5 times.
     """
-    app_name = await get_app_name(ops_test)
+    app_name = app_name or await get_app_name(ops_test)
     number_of_primaries = 0
     for unit_id in UNIT_IDS:
         # get unit
@@ -84,9 +84,9 @@ async def count_primaries(ops_test: OpsTest, password: str) -> int:
     return number_of_primaries
 
 
-async def find_unit(ops_test: OpsTest, leader: bool) -> ops.model.Unit:
+async def find_unit(ops_test: OpsTest, leader: bool, app_name=None) -> ops.model.Unit:
     """Helper function identifies the a unit, based on need for leader or non-leader."""
-    app_name = await get_app_name(ops_test)
+    app_name = app_name or await get_app_name(ops_test)
     ret_unit = None
     for unit in ops_test.model.applications[app_name].units:
         if await unit.is_leader_from_status() == leader:
