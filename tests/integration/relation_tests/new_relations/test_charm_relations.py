@@ -196,7 +196,7 @@ async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
     )
     ip_addresses = endpoints_str.split(",")
     try:
-        primary = await replica_set_primary(ip_addresses, ops_test)
+        primary = await replica_set_primary(ip_addresses, ops_test, app_name=db_app_name)
     except RetryError:
         assert False, "replica set has no primary"
 
