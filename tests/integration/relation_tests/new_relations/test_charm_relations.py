@@ -40,6 +40,11 @@ async def test_deploy_charms(ops_test: OpsTest, application_charm, database_char
     # set data in the relation application databag using only the leader unit).
     required_units = 2
     app_name = await get_app_name(ops_test)
+    if app_name == ANOTHER_DATABASE_APP_NAME:
+        assert (
+            False
+        ), f"provided MongoDB application, cannot be named {ANOTHER_DATABASE_APP_NAME}, this name is reserved for this test."
+
     if app_name:
         await asyncio.gather(
             ops_test.model.deploy(
@@ -83,7 +88,10 @@ async def test_deploy_charms(ops_test: OpsTest, application_charm, database_char
 async def test_database_relation_with_charm_libraries(ops_test: OpsTest):
     """Test basic functionality of database relation interface."""
     # Relate the charms and wait for them exchanging some connection data.
-    db_app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
+    db_app_name = (
+        await get_app_name(ops_test, test_deployments=[ANOTHER_DATABASE_APP_NAME])
+        or DATABASE_APP_NAME
+    )
     await ops_test.model.integrate(
         f"{APPLICATION_APP_NAME}:{FIRST_DATABASE_RELATION_NAME}", db_app_name
     )
@@ -130,7 +138,10 @@ async def test_database_relation_with_charm_libraries(ops_test: OpsTest):
 async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
     """Verifies that the app metadata changes with db relation joined and departed events."""
     # verify application metadata is correct before adding/removing units.
-    db_app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
+    db_app_name = (
+        await get_app_name(ops_test, test_deployments=[ANOTHER_DATABASE_APP_NAME])
+        or DATABASE_APP_NAME
+    )
     try:
         await verify_application_data(
             ops_test, APPLICATION_APP_NAME, db_app_name, FIRST_DATABASE_RELATION_NAME
@@ -270,7 +281,10 @@ async def test_two_applications_doesnt_share_the_same_relation_data(
     )
     await ops_test.model.wait_for_idle(apps=all_app_names, status="active")
 
-    db_app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
+    db_app_name = (
+        await get_app_name(ops_test, test_deployments=[ANOTHER_DATABASE_APP_NAME])
+        or DATABASE_APP_NAME
+    )
     # Relate the new application with the database
     # and wait for them exchanging some connection data.
     await ops_test.model.integrate(
@@ -293,7 +307,10 @@ async def test_an_application_can_connect_to_multiple_database_clusters(ops_test
     """Test that an application can connect to different clusters of the same database."""
     # Relate the application with both database clusters
     # and wait for them exchanging some connection data.
-    db_app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
+    db_app_name = (
+        await get_app_name(ops_test, test_deployments=[ANOTHER_DATABASE_APP_NAME])
+        or DATABASE_APP_NAME
+    )
     first_cluster_relation = await ops_test.model.integrate(
         f"{APPLICATION_APP_NAME}:{MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME}", db_app_name
     )
@@ -328,7 +345,10 @@ async def test_an_application_can_connect_to_multiple_aliased_database_clusters(
     #     """Test that an application can connect to different clusters of the same database."""
     # Relate the application with both database clusters
     # and wait for them exchanging some connection data.
-    db_app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
+    db_app_name = (
+        await get_app_name(ops_test, test_deployments=[ANOTHER_DATABASE_APP_NAME])
+        or DATABASE_APP_NAME
+    )
     await asyncio.gather(
         ops_test.model.integrate(
             f"{APPLICATION_APP_NAME}:{ALIASED_MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME}",
@@ -364,7 +384,10 @@ async def test_an_application_can_connect_to_multiple_aliased_database_clusters(
 async def test_an_application_can_request_multiple_databases(ops_test: OpsTest, application_charm):
     """Test that an application can request additional databases using the same interface."""
     # Relate the charms using another relation and wait for them exchanging some connection data.
-    db_app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
+    db_app_name = (
+        await get_app_name(ops_test, test_deployments=[ANOTHER_DATABASE_APP_NAME])
+        or DATABASE_APP_NAME
+    )
     await ops_test.model.integrate(
         f"{APPLICATION_APP_NAME}:{SECOND_DATABASE_RELATION_NAME}", db_app_name
     )
@@ -388,7 +411,10 @@ async def test_removed_relation_no_longer_has_access(ops_test: OpsTest):
     connection_string = await get_connection_string(
         ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME
     )
-    db_app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
+    db_app_name = (
+        await get_app_name(ops_test, test_deployments=[ANOTHER_DATABASE_APP_NAME])
+        or DATABASE_APP_NAME
+    )
     await ops_test.model.applications[db_app_name].remove_relation(
         f"{APPLICATION_APP_NAME}:{FIRST_DATABASE_RELATION_NAME}", f"{db_app_name}:database"
     )

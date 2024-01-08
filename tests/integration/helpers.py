@@ -5,7 +5,7 @@ import json
 import logging
 import subprocess
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 import ops
 import yaml
@@ -223,7 +223,7 @@ async def check_or_scale_app(ops_test: OpsTest, user_app_name: str, required_uni
     await ops_test.model.wait_for_idle()
 
 
-async def get_app_name(ops_test: OpsTest) -> str:
+async def get_app_name(ops_test: OpsTest, test_deployments: List[str] = []) -> str:
     """Returns the name of the cluster running MongoDB.
 
     This is important since not all deployments of the MongoDB charm have the application name
@@ -237,6 +237,11 @@ async def get_app_name(ops_test: OpsTest) -> str:
         # of `local:focal/mongodb-6`
         if "mongodb" in status["applications"][app]["charm"]:
             logger.debug("Found mongodb app named '%s'", app)
+
+            if app in test_deployments:
+                logger.debug("mongodb app named '%s', was deployed by the test, not by user", app)
+                continue
+
             return app
 
     return None

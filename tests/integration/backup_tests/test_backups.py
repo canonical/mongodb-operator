@@ -21,7 +21,6 @@ TIMEOUT = 15 * 60
 ENDPOINT = "s3-credentials"
 NEW_CLUSTER = "new-mongodb"
 
-
 logger = logging.getLogger(__name__)
 
 
