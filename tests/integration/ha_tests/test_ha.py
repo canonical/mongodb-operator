@@ -590,8 +590,8 @@ async def test_network_cut(ops_test, continuous_writes):
     all_units = ops_test.model.applications[app_name].units
     model_name = ops_test.model.info.name
 
-    primary_hostname = await unit_hostname(ops_test, primary.name, app_name=app_name)
-    primary_unit_ip = await get_unit_ip(ops_test, primary.name, app_name=app_name)
+    primary_hostname = await unit_hostname(ops_test, primary.name)
+    primary_unit_ip = await get_unit_ip(ops_test, primary.name)
 
     # before cutting network verify that connection is possible
     assert await mongod_ready(
