@@ -8,9 +8,8 @@ from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_attempt, wait_fixed
 
-from  ..helpers import get_app_name
-
 from ..ha_tests import helpers as ha_helpers
+from ..helpers import get_app_name
 
 S3_APP_NAME = "s3-integrator"
 TIMEOUT = 10 * 60

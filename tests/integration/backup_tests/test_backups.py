@@ -2,6 +2,7 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 import asyncio
+import logging
 import secrets
 import string
 import time
@@ -19,8 +20,10 @@ S3_APP_NAME = "s3-integrator"
 TIMEOUT = 15 * 60
 ENDPOINT = "s3-credentials"
 NEW_CLUSTER = "new-mongodb"
-import logging
+
+
 logger = logging.getLogger(__name__)
+
 
 @pytest.fixture()
 async def continuous_writes_to_db(ops_test: OpsTest):
@@ -83,6 +86,7 @@ async def test_blocked_incorrect_creds(ops_test: OpsTest) -> None:
     db_unit = ops_test.model.applications[db_app_name].units[0]
 
     assert db_unit.workload_status_message == "s3 credentials are incorrect."
+
 
 @pytest.mark.skip("skip")
 @pytest.mark.abort_on_fail
@@ -155,6 +159,7 @@ async def test_create_and_list_backups(ops_test: OpsTest) -> None:
                 assert backups == 1
     except RetryError:
         assert backups == 1, "Backup not created."
+
 
 @pytest.mark.skip("skip")
 @pytest.mark.abort_on_fail
