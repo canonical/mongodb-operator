@@ -314,3 +314,16 @@ async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
 
     # cleanup, remove killed unit
     await ops_test.model.destroy_unit(target_unit)
+
+
+async def test_audit_log(ops_test: OpsTest) -> None:
+    """Test that audit log was created and contains actual audit data."""
+    leader_unit = await find_unit(ops_test, leader=True)
+    TMP_SERVICE_PATH = "tests/integration//audit.json.tmp"
+    AUDIT_LOG_SNAP_PATH = "/var/snap/charmed-mongodb/common/var/lib/mongodb/audit.json"
+    await leader_unit.scp_from(source=AUDIT_LOG_SNAP_PATH, destination=TMP_SERVICE_PATH)
+    with open(TMP_SERVICE_PATH, "r") as mongodb_service_file:
+        audit_log = mongodb_service_file.readlines()
+    # validate is not empty
+    assert len(audit_log) > 0
+    os.remove(TMP_SERVICE_PATH)
