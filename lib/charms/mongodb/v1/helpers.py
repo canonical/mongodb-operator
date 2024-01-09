@@ -143,6 +143,9 @@ def get_mongod_args(
         # for simplicity we run the mongod daemon on shards, configsvrs, and replicas on the same
         # port
         f"--port={Config.MONGODB_PORT}",
+        "--auditDestination file",
+        f"--auditFormat={Config.AuditLog.FORMAT}",
+        f"--auditPath={full_data_dir}/{Config.AuditLog.FILE_NAME}",
         logging_options,
     ]
     if auth:
