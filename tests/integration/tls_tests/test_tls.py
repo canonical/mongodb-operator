@@ -39,7 +39,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     # is a pre-existing cluster.
     app_name = await get_app_name(ops_test)
     if app_name:
-        check_or_scale_app(ops_test, app_name, len(UNIT_IDS))
+        await check_or_scale_app(ops_test, app_name, len(UNIT_IDS))
     else:
         app_name = DATABASE_APP_NAME
         async with ops_test.fast_forward():

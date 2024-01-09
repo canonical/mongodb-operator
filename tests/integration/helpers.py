@@ -155,7 +155,6 @@ async def get_application_relation_data(
 
     # Filter the data based on the relation name.
     relation_data = [v for v in data[unit_name]["relation-info"] if v["endpoint"] == relation_name]
-
     if relation_id:
         # Filter the data based on the relation id.
         relation_data = [v for v in relation_data if v["relation-id"] == relation_id]
@@ -212,13 +211,15 @@ async def check_or_scale_app(ops_test: OpsTest, user_app_name: str, required_uni
     # check if we need to scale
     current_units = len(ops_test.model.applications[user_app_name].units)
 
-    if current_units > required_units:
+    if current_units == required_units:
+        return
+    elif current_units > required_units:
         for i in range(0, current_units):
             unit_to_remove = [ops_test.model.applications[user_app_name].units[i].name]
             await ops_test.model.destroy_units(*unit_to_remove)
             await ops_test.model.wait_for_idle()
-
-    units_to_add = required_units - current_units
+    else:
+        units_to_add = required_units - current_units
     await ops_test.model.applications[user_app_name].add_unit(count=units_to_add)
     await ops_test.model.wait_for_idle()
 

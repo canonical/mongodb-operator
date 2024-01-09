@@ -32,7 +32,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy one unit of MongoDB."""
     app_name = await get_app_name(ops_test)
     if app_name:
-        return check_or_scale_app(ops_test, app_name, len(UNIT_IDS))
+        return await check_or_scale_app(ops_test, app_name, len(UNIT_IDS))
     if await get_app_name(ops_test):
         return
 

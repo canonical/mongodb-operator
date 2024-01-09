@@ -46,7 +46,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     # is a pre-existing cluster.
     app_name = await get_app_name(ops_test)
     if app_name:
-        return check_or_scale_app(ops_test, app_name, len(UNIT_IDS))
+        return await check_or_scale_app(ops_test, app_name, len(UNIT_IDS))
 
     my_charm = await ops_test.build_charm(".")
     await ops_test.model.deploy(my_charm, num_units=len(UNIT_IDS))
