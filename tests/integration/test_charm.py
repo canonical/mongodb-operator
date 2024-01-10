@@ -5,9 +5,9 @@
 import json
 import logging
 import os
-from subprocess import check_output
 import subprocess
 import time
+from subprocess import check_output
 from uuid import uuid4
 
 import pytest
@@ -329,4 +329,3 @@ async def test_audit_log(ops_test: OpsTest) -> None:
         universal_newlines=True,
     )
     assert len(audit_log) > 0
-
