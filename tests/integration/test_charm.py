@@ -22,6 +22,7 @@ from .helpers import (
     APP_NAME,
     PORT,
     UNIT_IDS,
+    aduit_log_line_sanity_check,
     count_primaries,
     find_unit,
     get_leader_id,
@@ -335,12 +336,3 @@ async def test_audit_log(ops_test: OpsTest) -> None:
         item = json.loads(line)
         # basic sanity check
         assert aduit_log_line_sanity_check(item), "Audit sanity log check failed for first line"
-
-
-def aduit_log_line_sanity_check(entry) -> bool:
-    fields = ["atype", "ts", "local", "remote", "users", "roles", "param", "result"]
-    for field in fields:
-        if entry.get(field) is None:
-            logger.error("Field '%s' not found in audit log entry \"%s\"", field, entry)
-            return False
-    return True
