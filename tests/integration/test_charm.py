@@ -208,7 +208,6 @@ async def test_only_leader_can_set_while_all_can_read_password_secret(ops_test: 
         assert password2 == password
 
 
-@pytest.mark.skip("skip")
 async def test_reset_and_get_password_secret_same_as_cli(ops_test: OpsTest) -> None:
     """Test verifies that we can set and retrieve the correct password using Juju 3.x secrets."""
     new_password = str(uuid4())
@@ -243,7 +242,6 @@ async def test_reset_and_get_password_secret_same_as_cli(ops_test: OpsTest) -> N
     assert data[secret_id]["content"]["Data"]["monitor-password"] == password
 
 
-@pytest.mark.skip("skip")
 async def test_empty_password(ops_test: OpsTest) -> None:
     """Test that the password can't be set to an empty string."""
     leader_id = await get_leader_id(ops_test)
@@ -256,7 +254,6 @@ async def test_empty_password(ops_test: OpsTest) -> None:
     assert password1 == password2
 
 
-@pytest.mark.skip("skip")
 async def test_no_password_change_on_invalid_password(ops_test: OpsTest) -> None:
     """Test that in general, there is no change when password validation fails."""
     leader_id = await get_leader_id(ops_test)
@@ -270,7 +267,6 @@ async def test_no_password_change_on_invalid_password(ops_test: OpsTest) -> None
     assert password1 == password2
 
 
-@pytest.mark.skip("skip")
 async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
     """Tests that there is exactly one replica set primary unit reported by juju."""
 
