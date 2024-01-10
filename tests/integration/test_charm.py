@@ -5,6 +5,8 @@
 import json
 import logging
 import os
+from subprocess import check_output
+import subprocess
 import time
 from uuid import uuid4
 
@@ -319,11 +321,12 @@ async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
 async def test_audit_log(ops_test: OpsTest) -> None:
     """Test that audit log was created and contains actual audit data."""
     leader_unit = await find_unit(ops_test, leader=True)
-    tmp_service_path = "tests/integration//audit.json.tmp"
     audit_log_snap_path = "/var/snap/charmed-mongodb/common/var/lib/mongodb/audit.json"
-    await leader_unit.scp_from(source=audit_log_snap_path, destination=tmp_service_path)
-    with open(tmp_service_path, "r") as mongodb_service_file:
-        audit_log = mongodb_service_file.readlines()
-    # validate is not empty
+    audit_log = check_output(
+        f"JUJU_MODEL={ops_test.model_full_name} juju ssh {leader_unit.name} 'sudo cat {audit_log_snap_path}'",
+        stderr=subprocess.PIPE,
+        shell=True,
+        universal_newlines=True,
+    )
     assert len(audit_log) > 0
-    os.remove(tmp_service_path)
+
