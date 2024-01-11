@@ -14,14 +14,17 @@ from pytest_operator.plugin import OpsTest
 from tenacity import retry, retry_if_result, stop_after_attempt, wait_exponential
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
+APP_NAME = METADATA["name"]
 PORT = 27017
 UNIT_IDS = [0, 1, 2]
 SERIES = "jammy"
 
 logger = logging.getLogger(__name__)
 
+logger = logging.getLogger(__name__)
 
-def unit_uri(ip_address: str, password, app) -> str:
+
+def unit_uri(ip_address: str, password, app=APP_NAME) -> str:
     """Generates URI that is used by MongoDB to connect to a single replica.
 
     Args:
@@ -294,3 +297,12 @@ async def get_unit_ip(ops_test: OpsTest, unit_name: str) -> str:
         The (str) ip of the unit
     """
     return instance_ip(ops_test.model.info.name, await unit_hostname(ops_test, unit_name))
+
+
+def audit_log_line_sanity_check(entry) -> bool:
+    fields = ["atype", "ts", "local", "remote", "users", "roles", "param", "result"]
+    for field in fields:
+        if entry.get(field) is None:
+            logger.error("Field '%s' not found in audit log entry \"%s\"", field, entry)
+            return False
+    return True

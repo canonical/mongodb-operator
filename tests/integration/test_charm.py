@@ -5,7 +5,9 @@
 import json
 import logging
 import os
+import subprocess
 import time
+from subprocess import check_output
 from uuid import uuid4
 
 import pytest
@@ -19,6 +21,7 @@ from .ha_tests.helpers import kill_unit_process
 from .helpers import (
     PORT,
     UNIT_IDS,
+    audit_log_line_sanity_check,
     check_or_scale_app,
     count_primaries,
     find_unit,
@@ -335,3 +338,23 @@ async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
 
     # cleanup, remove killed unit
     await ops_test.model.destroy_unit(target_unit)
+
+
+async def test_audit_log(ops_test: OpsTest) -> None:
+    """Test that audit log was created and contains actual audit data."""
+    app_name = await get_app_name(ops_test)
+    leader_unit = await find_unit(ops_test, leader=True, app_name=app_name)
+    audit_log_snap_path = "/var/snap/charmed-mongodb/common/var/lib/mongodb/audit.json"
+    audit_log = check_output(
+        f"JUJU_MODEL={ops_test.model_full_name} juju ssh {leader_unit.name} 'sudo cat {audit_log_snap_path}'",
+        stderr=subprocess.PIPE,
+        shell=True,
+        universal_newlines=True,
+    )
+
+    for line in audit_log.splitlines():
+        if not len(line):
+            continue
+        item = json.loads(line)
+        # basic sanity check
+        assert audit_log_line_sanity_check(item), "Audit sanity log check failed for first line"
