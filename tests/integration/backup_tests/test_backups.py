@@ -88,7 +88,6 @@ async def test_blocked_incorrect_creds(ops_test: OpsTest) -> None:
     assert db_unit.workload_status_message == "s3 credentials are incorrect."
 
 
-@pytest.mark.skip("skip")
 @pytest.mark.abort_on_fail
 async def test_blocked_incorrect_conf(ops_test: OpsTest) -> None:
     """Verifies that the charm goes into blocked status when s3 config options are incorrect."""
@@ -162,7 +161,6 @@ async def test_create_and_list_backups(ops_test: OpsTest) -> None:
         assert backups == 1, "Backup not created."
 
 
-@pytest.mark.skip("skip")
 @pytest.mark.abort_on_fail
 async def test_multi_backup(ops_test: OpsTest, continuous_writes_to_db) -> None:
     """With writes in the DB test creating a backup while another one is running.
