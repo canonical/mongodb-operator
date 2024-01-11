@@ -18,18 +18,18 @@ class Config:
     MONGOD_CONF_FILE_PATH = f"{MONGOD_CONF_DIR}/mongod.conf"
     SNAP_PACKAGES = [("charmed-mongodb", "6/edge", 87)]
 
-    class Role:
-        """Role config names for MongoDB Charm."""
-
-        CONFIG_SERVER = "config-server"
-        REPLICATION = "replication"
-        SHARD = "shard"
-
+    # Keep these alphabetically sorted
     class Actions:
         """Actions related config for MongoDB Charm."""
 
         PASSWORD_PARAM_NAME = "password"
         USERNAME_PARAM_NAME = "username"
+
+    class AuditLog:
+        """Audit log related configuration."""
+
+        FORMAT = "JSON"
+        FILE_NAME = "audit.json"
 
     class Backup:
         """Backup related config for MongoDB Charm."""
@@ -79,6 +79,13 @@ class Config:
         UNIT_SCOPE = "unit"
         DB_RELATIONS = [OBSOLETE_RELATIONS_NAME, NAME]
         Scopes = Literal[APP_SCOPE, UNIT_SCOPE]
+
+    class Role:
+        """Role config names for MongoDB Charm."""
+
+        CONFIG_SERVER = "config-server"
+        REPLICATION = "replication"
+        SHARD = "shard"
 
     class Secrets:
         """Secrets related constants."""
