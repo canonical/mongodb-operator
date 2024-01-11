@@ -83,8 +83,6 @@ class Config:
     class Secrets:
         """Secrets related constants."""
 
-        SECRET_LABEL = "secret"
-        SECRET_CACHE_LABEL = "cache"
         SECRET_KEYFILE_NAME = "keyfile"
         SECRET_INTERNAL_LABEL = "internal-secret"
         SECRET_DELETED_LABEL = "None"
