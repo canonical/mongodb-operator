@@ -195,7 +195,7 @@ async def get_secret_content(ops_test, secret_id) -> Dict[str, str]:
     return data[secret_id]["content"]["Data"]
 
 
-def aduit_log_line_sanity_check(entry) -> bool:
+def audit_log_line_sanity_check(entry) -> bool:
     fields = ["atype", "ts", "local", "remote", "users", "roles", "param", "result"]
     for field in fields:
         if entry.get(field) is None:

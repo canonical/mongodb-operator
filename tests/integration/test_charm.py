@@ -22,7 +22,7 @@ from .helpers import (
     APP_NAME,
     PORT,
     UNIT_IDS,
-    aduit_log_line_sanity_check,
+    audit_log_line_sanity_check,
     count_primaries,
     find_unit,
     get_leader_id,
@@ -335,4 +335,4 @@ async def test_audit_log(ops_test: OpsTest) -> None:
             continue
         item = json.loads(line)
         # basic sanity check
-        assert aduit_log_line_sanity_check(item), "Audit sanity log check failed for first line"
+        assert audit_log_line_sanity_check(item), "Audit sanity log check failed for first line"
