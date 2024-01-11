@@ -2,6 +2,7 @@
 # See LICENSE file for licensing details.
 
 import json
+import logging
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -16,6 +17,9 @@ PORT = 27017
 APP_NAME = METADATA["name"]
 UNIT_IDS = [0, 1, 2]
 SERIES = "jammy"
+
+
+logger = logging.getLogger(__name__)
 
 
 def unit_uri(ip_address: str, password, app=APP_NAME) -> str:
@@ -189,3 +193,12 @@ async def get_secret_content(ops_test, secret_id) -> Dict[str, str]:
     _, stdout, _ = await ops_test.juju(*complete_command.split())
     data = json.loads(stdout)
     return data[secret_id]["content"]["Data"]
+
+
+def audit_log_line_sanity_check(entry) -> bool:
+    fields = ["atype", "ts", "local", "remote", "users", "roles", "param", "result"]
+    for field in fields:
+        if entry.get(field) is None:
+            logger.error("Field '%s' not found in audit log entry \"%s\"", field, entry)
+            return False
+    return True
