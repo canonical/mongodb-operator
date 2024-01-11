@@ -112,7 +112,6 @@ async def test_blocked_incorrect_conf(ops_test: OpsTest) -> None:
 async def test_ready_correct_conf(ops_test: OpsTest) -> None:
     """Verifies charm goes into active status when s3 config and creds options are correct."""
     db_app_name = await get_app_name(ops_test)
-    await helpers.set_credentials(ops_test, cloud="AWS")
     choices = string.ascii_letters + string.digits
     unique_path = "".join([secrets.choice(choices) for _ in range(4)])
     configuration_parameters = {

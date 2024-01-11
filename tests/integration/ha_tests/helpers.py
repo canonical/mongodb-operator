@@ -52,7 +52,7 @@ class ProcessRunningError(Exception):
     """Raised when a process is running when it is not expected to be."""
 
 
-def replica_set_client(replica_ips: List[str], password: str, app_name=None) -> MongoClient:
+def replica_set_client(replica_ips: List[str], password: str, app_name: str) -> MongoClient:
     """Generates the replica set URI for multiple IP addresses.
 
     Args:
@@ -67,7 +67,7 @@ def replica_set_client(replica_ips: List[str], password: str, app_name=None) -> 
     return MongoClient(replica_set_uri)
 
 
-async def fetch_replica_set_members(replica_ips: List[str], ops_test: OpsTest, app_name=None):
+async def fetch_replica_set_members(replica_ips: List[str], ops_test: OpsTest, app_name: str):
     """Fetches the IPs listed as replica set members in the MongoDB replica set configuration.
 
     Args:
