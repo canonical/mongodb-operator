@@ -132,7 +132,7 @@ def get_mongod_args(
     full_conf_dir = f"{MONGODB_SNAP_DATA_DIR}{CONF_DIR}" if snap_install else CONF_DIR
     # in k8s the default logging options that are used for the vm charm are ignored and logs are
     # the output of the container. To enable logging to a file it must be set explicitly
-    logging_options = "" if snap_install else f"--logpath={full_data_dir}/{MONGODB_LOG_FILENAME}"
+    logging_options = f"--logpath={full_data_dir}/{MONGODB_LOG_FILENAME}" if snap_install else ""
     cmd = [
         # bind to localhost and external interfaces
         "--bind_ip_all",
