@@ -51,7 +51,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 2
+LIBPATCH = 3
 KEYFILE_KEY = "key-file"
 HOSTS_KEY = "host"
 OPERATOR_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username())
@@ -148,28 +148,6 @@ class ShardingProvider(Object):
 
         return True
 
-    def _proceed_on_broken_event(self, event) -> int:
-        """Returns relation_id if relation broken event occurred due to a removed relation."""
-        departed_relation_id = None
-
-        # Only relation_deparated events can check if scaling down
-        departed_relation_id = event.relation.id
-        if not self.charm.has_departed_run(departed_relation_id):
-            logger.info(
-                "Deferring, must wait for relation departed hook to decide if relation should be removed."
-            )
-            event.defer()
-            return
-
-        # check if were scaling down and add a log message
-        if self.charm.is_scaling_down(event.relation.id):
-            logger.info(
-                "Relation broken event occurring due to scale down, do not proceed to remove users."
-            )
-            return
-
-        return departed_relation_id
-
     def _on_relation_event(self, event):
         """Handles adding and removing of shards.
 
@@ -181,7 +159,7 @@ class ShardingProvider(Object):
 
         departed_relation_id = None
         if isinstance(event, RelationBrokenEvent):
-            departed_relation_id = self._proceed_on_broken_event(event)
+            departed_relation_id = self.charm.proceed_on_broken_event(event)
             if not departed_relation_id:
                 return
 
