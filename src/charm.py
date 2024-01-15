@@ -11,6 +11,7 @@ import time
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
+from charms.data_platform_libs.v0.data_interfaces import DataPeer, DataPeerUnit
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from charms.mongodb.v0.config_server_interface import ClusterProvider
 from charms.mongodb.v0.mongodb import (
@@ -19,7 +20,6 @@ from charms.mongodb.v0.mongodb import (
     NotReadyError,
     PyMongoError,
 )
-from charms.mongodb.v0.mongodb_secrets import SecretCache, generate_secret_label
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v1.helpers import (
     KEY_FILE,
@@ -137,7 +137,30 @@ class MongodbOperatorCharm(CharmBase):
             log_slots=Config.Monitoring.LOG_SLOTS,
         )
 
-        self.secrets = SecretCache(self)
+        self.peer_relation_app = DataPeer(
+            self,
+            relation_name=Config.Relations.PEERS,
+            additional_secret_fields=[
+                "backup-password",
+                "operator-password",
+                "monitor-password",
+            ],
+            secret_field_name=Config.Secrets.SECRET_INTERNAL_LABEL,
+            deleted_label=Config.Secrets.SECRET_DELETED_LABEL,
+        )
+        self.peer_relation_unit = DataPeerUnit(
+            self,
+            relation_name=Config.Relations.PEERS,
+            additional_secret_fields=[
+                "ca-secret",
+                "key-secret",
+                "cert-secret",
+                "csr-secret",
+                "chain-secret",
+            ],
+            secret_field_name=Config.Secrets.SECRET_INTERNAL_LABEL,
+            deleted_label=Config.Secrets.SECRET_DELETED_LABEL,
+        )
 
     # BEGIN: properties
 
@@ -647,20 +670,31 @@ class MongodbOperatorCharm(CharmBase):
         for backup tool on non-leader units to keep them working with MongoDB. The same workflow
         occurs on TLS certs change.
         """
-        label = None
-        if generate_secret_label(self, Config.Relations.APP_SCOPE) == event.secret.label:
-            label = generate_secret_label(self, Config.Relations.APP_SCOPE)
+        # The above two checks will have to be changed when
+        # https://warthogs.atlassian.net/browse/DPE-3313 is processed
+        if (
+            self.peer_relation_app._generate_secret_label(self, Config.Relations.APP_SCOPE, None)
+            == event.secret.label
+        ):
             scope = APP_SCOPE
-        elif generate_secret_label(self, Config.Relations.UNIT_SCOPE) == event.secret.label:
-            label = generate_secret_label(self, Config.Relations.UNIT_SCOPE)
+        elif (
+            self.peer_relation_unit._generate_secret_label(self, Config.Relations.UNIT_SCOPE, None)
+            == event.secret.label
+        ):
             scope = UNIT_SCOPE
         else:
-            logging.debug("Secret %s changed, but it's unknown", event.secret.id)
+            logging.debug(
+                "Secret ID: %s label: %s changed, but it's unknown",
+                event.secret.id,
+                event.secret.label,
+            )
             return
-        logging.debug("Secret %s for scope %s changed, refreshing", event.secret.id, scope)
-
-        # Refreshing cache
-        self.secrets.get(label)
+        logging.debug(
+            "Secret ID: %s label: %s scope: %s changed, refreshing",
+            event.secret.id,
+            event.secret.label,
+            scope,
+        )
 
         # changed secrets means that the URIs used for PBM and mongodb_exporter are now out of date
         self._connect_mongodb_exporter()
@@ -1135,14 +1169,16 @@ class MongodbOperatorCharm(CharmBase):
 
     def get_secret(self, scope: str, key: str) -> Optional[str]:
         """Get secret from the secret storage."""
-        label = generate_secret_label(self, scope)
-        secret = self.secrets.get(label)
-        if not secret:
+        peers = self.model.get_relation(Config.Relations.PEERS)
+
+        if not peers:
             return
 
-        value = secret.get_content().get(key)
-        if value != Config.Secrets.SECRET_DELETED_LABEL:
-            return value
+        if scope == APP_SCOPE:
+            value = self.peer_relation_app.fetch_my_relation_field(peers.id, key)
+        else:
+            value = self.peer_relation_unit.fetch_my_relation_field(peers.id, key)
+        return value
 
     def set_secret(self, scope: str, key: str, value: Optional[str]) -> Optional[str]:
         """Set secret in the secret storage.
@@ -1153,32 +1189,31 @@ class MongodbOperatorCharm(CharmBase):
         if not value:
             return self.remove_secret(scope, key)
 
-        label = generate_secret_label(self, scope)
-        secret = self.secrets.get(label)
-        if not secret:
-            self.secrets.add(label, {key: value}, scope)
+        peers = self.model.get_relation(Config.Relations.PEERS)
+
+        if not peers:
+            return
+
+        label = None
+        if scope == APP_SCOPE:
+            self.peer_relation_app.update_relation_data(peers.id, {key: value})
+            label = self.peer_relation_app._generate_secret_label(self, APP_SCOPE, None)
         else:
-            content = secret.get_content()
-            content.update({key: value})
-            secret.set_content(content)
+            self.peer_relation_unit.update_relation_data(peers.id, {key: value})
+            label = self.peer_relation_unit._generate_secret_label(self, UNIT_SCOPE, None)
         return label
 
     def remove_secret(self, scope, key) -> None:
         """Removing a secret."""
-        label = generate_secret_label(self, scope)
-        secret = self.secrets.get(label)
+        peers = self.model.get_relation(Config.Relations.PEERS)
 
-        if not secret:
+        if not peers:
             return
 
-        content = secret.get_content()
-
-        if not content.get(key) or content[key] == Config.Secrets.SECRET_DELETED_LABEL:
-            logger.error(f"Non-existing secret {scope}:{key} was attempted to be removed.")
-            return
-
-        content[key] = Config.Secrets.SECRET_DELETED_LABEL
-        secret.set_content(content)
+        if scope == APP_SCOPE:
+            self.peer_relation_app.delete_relation_data(peers.id, [key])
+        else:
+            self.peer_relation_unit.delete_relation_data(peers.id, [key])
 
     def start_mongod_service(self):
         """Starts the mongod service and if necessary starts mongos.
