@@ -1334,16 +1334,16 @@ class MongodbOperatorCharm(CharmBase):
                 "Deferring, must wait for relation departed hook to decide if relation should be removed."
             )
             event.defer()
-            return
+            return False
 
         # check if were scaling down and add a log message
         if self.is_scaling_down(departed_relation_id):
             logger.info(
                 "Relation broken event occurring due to scale down, do not proceed to remove users."
             )
-            return
+            return False
 
-        return departed_relation_id
+        return True
 
     @staticmethod
     def _generate_relation_departed_key(rel_id: int) -> str:
