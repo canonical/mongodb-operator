@@ -146,6 +146,18 @@ class ShardingProvider(Object):
             event.defer()
             return False
 
+        if isinstance(event, RelationBrokenEvent):
+            departed_relation_id = event.relation.id
+            if not self.charm.has_departed_run(departed_relation_id):
+                logger.info(
+                    "Deferring, must wait for relation departed hook to decide if relation should be removed."
+                )
+                event.defer()
+                return False
+
+            if not self.charm.proceed_on_broken_event(event):
+                return False
+
         return True
 
     def _on_relation_event(self, event):
@@ -160,15 +172,6 @@ class ShardingProvider(Object):
         departed_relation_id = None
         if isinstance(event, RelationBrokenEvent):
             departed_relation_id = event.relation.id
-            if not self.charm.has_departed_run(departed_relation_id):
-                logger.info(
-                    "Deferring, must wait for relation departed hook to decide if relation should be removed."
-                )
-                event.defer()
-                return
-
-            if not self.charm.proceed_on_broken_event(event):
-                return
 
         try:
             logger.info("Adding/Removing shards not present in cluster.")
