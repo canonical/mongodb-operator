@@ -9,7 +9,13 @@ from unittest.mock import MagicMock, call, patch
 
 import pytest
 from charms.operator_libs_linux.v1 import snap
-from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
+from ops.model import (
+    ActiveStatus,
+    BlockedStatus,
+    MaintenanceStatus,
+    RelationDataTypeError,
+    WaitingStatus,
+)
 from ops.testing import Harness
 from parameterized import parameterized
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
@@ -724,6 +730,7 @@ class TestCharm(unittest.TestCase):
         self._setup_secrets()
 
         # Getting current password
+        self.harness.set_leader(True)
         self.harness.charm.set_secret("app", "monitor-password", "bla")
         assert self.harness.charm.get_secret("app", "monitor-password") == "bla"
 
@@ -739,6 +746,7 @@ class TestCharm(unittest.TestCase):
     def test_set_reset_new_secret(self, scope):
         """NOTE: currently ops.testing seems to allow for non-leader to set secrets too!"""
         # Getting current password
+        self.harness.set_leader(True)
         self.harness.charm.set_secret(scope, "new-secret", "bla")
         assert self.harness.charm.get_secret(scope, "new-secret") == "bla"
 
@@ -752,7 +760,7 @@ class TestCharm(unittest.TestCase):
 
     @parameterized.expand([("app"), ("unit")])
     def test_invalid_secret(self, scope):
-        with self.assertRaises(TypeError):
+        with self.assertRaises(RelationDataTypeError):
             self.harness.charm.set_secret("unit", "somekey", 1)
 
         self.harness.charm.set_secret("unit", "somekey", "")
@@ -762,45 +770,57 @@ class TestCharm(unittest.TestCase):
     def test_delete_password(self):
         """NOTE: currently ops.testing seems to allow for non-leader to remove secrets too!"""
         self._setup_secrets()
+        self.harness.set_leader(True)
 
         assert self.harness.charm.get_secret("app", "monitor-password")
         self.harness.charm.remove_secret("app", "monitor-password")
         assert self.harness.charm.get_secret("app", "monitor-password") is None
 
-        assert self.harness.charm.set_secret("unit", "somekey", "somesecret")
-        self.harness.charm.remove_secret("unit", "somekey")
-        assert self.harness.charm.get_secret("unit", "somekey") is None
+        assert self.harness.charm.set_secret("unit", "ca-secret", "somesecret")
+        self.harness.charm.remove_secret("unit", "ca-secret")
+        assert self.harness.charm.get_secret("unit", "ca-secret") is None
 
         with self._caplog.at_level(logging.ERROR):
             self.harness.charm.remove_secret("app", "monitor-password")
             assert (
-                "Non-existing secret app:monitor-password was attempted to be removed."
+                "Non-existing secret {'monitor-password'} was attempted to be removed."
                 in self._caplog.text
             )
 
-            self.harness.charm.remove_secret("unit", "somekey")
+            self.harness.charm.remove_secret("unit", "ca-secret")
             assert (
-                "Non-existing secret unit:somekey was attempted to be removed."
+                "Non-existing secret {'ca-secret'} was attempted to be removed."
                 in self._caplog.text
             )
 
             self.harness.charm.remove_secret("app", "non-existing-secret")
             assert (
-                "Non-existing secret app:non-existing-secret was attempted to be removed."
+                "Non-existing field 'non-existing-secret' was attempted to be removed"
                 in self._caplog.text
             )
 
-            self.harness.charm.remove_secret("unit", "non-existing-secret")
+            self.harness.charm.remove_secret("unit", "non-existing-secret-unit")
             assert (
-                "Non-existing secret unit:non-existing-secret was attempted to be removed."
+                "Non-existing field 'non-existing-secret-unit' was attempted to be removed"
                 in self._caplog.text
             )
 
-    @parameterized.expand([("app"), ("unit")])
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
-    def test_on_secret_changed(self, scope, connect_exporter):
+    def test_on_secret_changed(self, connect_exporter):
         """NOTE: currently ops.testing seems to allow for non-leader to set secrets too!"""
-        secret_label = self.harness.charm.set_secret(scope, "new-secret", "bla")
+        self.harness.set_leader(True)
+        secret_label = self.harness.charm.set_secret("app", "operator-password", "bla")
+        secret = self.harness.charm.model.get_secret(label=secret_label)
+
+        event = mock.Mock()
+        event.secret = secret
+        secret_label = self.harness.charm._on_secret_changed(event)
+        connect_exporter.assert_called()
+
+    @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
+    def test_on_secret_changed_unit(self, connect_exporter):
+        """NOTE: currently ops.testing seems to allow for non-leader to set secrets too!"""
+        secret_label = self.harness.charm.set_secret("unit", "ca-secret", "bla")
         secret = self.harness.charm.model.get_secret(label=secret_label)
 
         event = mock.Mock()
@@ -815,14 +835,17 @@ class TestCharm(unittest.TestCase):
         """NOTE: currently ops.testing seems to allow for non-leader to set secrets too!"""
         # "Hack": creating a secret outside of the normal MongodbOperatorCharm.set_secret workflow
         scope_obj = self.harness.charm._scope_obj(scope)
-        secret = scope_obj.add_secret({"key": "value"})
+        secret = scope_obj.add_secret({"key": "value"}, label="some-label")
 
         event = mock.Mock()
         event.secret = secret
 
         with self._caplog.at_level(logging.DEBUG):
             self.harness.charm._on_secret_changed(event)
-            assert f"Secret {secret.id} changed, but it's unknown" in self._caplog.text
+            assert (
+                f"Secret ID: {secret.id} label: some-label changed, but it's unknown"
+                in self._caplog.text
+            )
 
         connect_exporter.assert_not_called()
 
