@@ -44,6 +44,7 @@ MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
 MONGO_SHELL = "charmed-mongodb.mongosh"
 
 DATA_DIR = "/var/lib/mongodb"
+LOG_DIR = "/var/log/mongodb"
 CONF_DIR = "/etc/mongod"
 MONGODB_LOG_FILENAME = "mongodb.log"
 logger = logging.getLogger(__name__)
@@ -130,9 +131,10 @@ def get_mongod_args(
     """
     full_data_dir = f"{MONGODB_COMMON_DIR}{DATA_DIR}" if snap_install else DATA_DIR
     full_conf_dir = f"{MONGODB_SNAP_DATA_DIR}{CONF_DIR}" if snap_install else CONF_DIR
+    full_log_dir = f"{MONGODB_COMMON_DIR}{LOG_DIR}" if snap_install else LOG_DIR
     # in k8s the default logging options that are used for the vm charm are ignored and logs are
     # the output of the container. To enable logging to a file it must be set explicitly
-    logging_options = f"--logpath={full_data_dir}/{MONGODB_LOG_FILENAME}" if snap_install else ""
+    logging_options = f"--logpath={full_log_dir}/{MONGODB_LOG_FILENAME}" if snap_install else ""
     cmd = [
         # bind to localhost and external interfaces
         "--bind_ip_all",
