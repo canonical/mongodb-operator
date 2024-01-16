@@ -1323,10 +1323,8 @@ class MongodbOperatorCharm(CharmBase):
         self.unit_peer_data[rel_departed_key] = json.dumps(scaling_down)
         return scaling_down
 
-    def proceed_on_broken_event(self, event) -> int:
+    def proceed_on_broken_event(self, event) -> bool:
         """Returns relation_id if relation broken event occurred due to a removed relation."""
-        departed_relation_id = None
-
         # Only relation_deparated events can check if scaling down
         departed_relation_id = event.relation.id
         if not self.has_departed_run(departed_relation_id):
@@ -1334,16 +1332,16 @@ class MongodbOperatorCharm(CharmBase):
                 "Deferring, must wait for relation departed hook to decide if relation should be removed."
             )
             event.defer()
-            return
+            return False
 
         # check if were scaling down and add a log message
         if self.is_scaling_down(departed_relation_id):
             logger.info(
                 "Relation broken event occurring due to scale down, do not proceed to remove users."
             )
-            return
+            return False
 
-        return departed_relation_id
+        return True
 
     @staticmethod
     def _generate_relation_departed_key(rel_id: int) -> str:

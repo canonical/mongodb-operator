@@ -51,7 +51,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 3
+LIBPATCH = 4
 KEYFILE_KEY = "key-file"
 HOSTS_KEY = "host"
 OPERATOR_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username())
@@ -146,6 +146,17 @@ class ShardingProvider(Object):
             event.defer()
             return False
 
+        if isinstance(event, RelationBrokenEvent):
+            if not self.charm.has_departed_run(event.relation.id):
+                logger.info(
+                    "Deferring, must wait for relation departed hook to decide if relation should be removed."
+                )
+                event.defer()
+                return False
+
+            if not self.charm.proceed_on_broken_event(event):
+                return False
+
         return True
 
     def _on_relation_event(self, event):
@@ -159,9 +170,7 @@ class ShardingProvider(Object):
 
         departed_relation_id = None
         if isinstance(event, RelationBrokenEvent):
-            departed_relation_id = self.charm.proceed_on_broken_event(event)
-            if not departed_relation_id:
-                return
+            departed_relation_id = event.relation.id
 
         try:
             logger.info("Adding/Removing shards not present in cluster.")

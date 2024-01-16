@@ -14,7 +14,7 @@ from charms.data_platform_libs.v0.data_interfaces import (
 )
 from charms.mongodb.v1.helpers import add_args_to_env, get_mongos_args
 from charms.mongodb.v1.mongos import MongosConnection
-from ops.charm import CharmBase, EventBase
+from ops.charm import CharmBase, EventBase, RelationBrokenEvent
 from ops.framework import Object
 from ops.model import ActiveStatus, MaintenanceStatus, WaitingStatus
 
@@ -35,7 +35,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 3
+LIBPATCH = 4
 
 
 class ClusterProvider(Object):
@@ -182,8 +182,13 @@ class ClusterRequirer(Object):
         self.framework.observe(
             charm.on[self.relation_name].relation_changed, self._on_relation_changed
         )
-
-        # TODO Future PRs handle scale down
+        self.framework.observe(
+            charm.on[self.relation_name].relation_departed,
+            self.charm.check_relation_broken_or_scale_down,
+        )
+        self.framework.observe(
+            charm.on[self.relation_name].relation_broken, self._on_relation_broken
+        )
 
     def _on_database_created(self, event) -> None:
         if not self.charm.unit.is_leader():
@@ -227,6 +232,30 @@ class ClusterRequirer(Object):
             return
 
         self.charm.unit.status = ActiveStatus()
+
+    def _on_relation_broken(self, event: RelationBrokenEvent) -> None:
+        # Only relation_deparated events can check if scaling down
+        if not self.charm.has_departed_run(event.relation.id):
+            logger.info(
+                "Deferring, must wait for relation departed hook to decide if relation should be removed."
+            )
+            event.defer()
+            return
+
+        if not self.charm.proceed_on_broken_event(event):
+            logger.info("Skipping relation broken event, broken event due to scale down")
+            return
+
+        self.charm.stop_mongos_service()
+        logger.info("Stopped mongos daemon")
+
+        if not self.charm.unit.is_leader():
+            return
+
+        logger.info("Database and user removed for mongos application")
+        self.charm.remove_secret(Config.Relations.APP_SCOPE, Config.Secrets.USERNAME)
+        self.charm.remove_secret(Config.Relations.APP_SCOPE, Config.Secrets.PASSWORD)
+        self.charm.remove_connection_info()
 
     # BEGIN: helper functions
 
