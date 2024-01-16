@@ -14,7 +14,7 @@ from charms.data_platform_libs.v0.data_interfaces import (
 )
 from charms.mongodb.v1.helpers import add_args_to_env, get_mongos_args
 from charms.mongodb.v1.mongos import MongosConnection
-from ops.charm import CharmBase, EventBase
+from ops.charm import CharmBase, EventBase, RelationBrokenEvent
 from ops.framework import Object
 from ops.model import ActiveStatus, MaintenanceStatus, WaitingStatus
 
@@ -233,10 +233,9 @@ class ClusterRequirer(Object):
 
         self.charm.unit.status = ActiveStatus()
 
-    def _on_relation_broken(self, event) -> None:
+    def _on_relation_broken(self, event: RelationBrokenEvent) -> None:
         # Only relation_deparated events can check if scaling down
-        departed_relation_id = event.relation.id
-        if not self.charm.has_departed_run(departed_relation_id):
+        if not self.charm.has_departed_run(event.relation.id):
             logger.info(
                 "Deferring, must wait for relation departed hook to decide if relation should be removed."
             )

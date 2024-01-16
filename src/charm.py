@@ -1323,10 +1323,8 @@ class MongodbOperatorCharm(CharmBase):
         self.unit_peer_data[rel_departed_key] = json.dumps(scaling_down)
         return scaling_down
 
-    def proceed_on_broken_event(self, event) -> int:
+    def proceed_on_broken_event(self, event) -> bool:
         """Returns relation_id if relation broken event occurred due to a removed relation."""
-        departed_relation_id = None
-
         # Only relation_deparated events can check if scaling down
         departed_relation_id = event.relation.id
         if not self.has_departed_run(departed_relation_id):

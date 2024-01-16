@@ -147,8 +147,7 @@ class ShardingProvider(Object):
             return False
 
         if isinstance(event, RelationBrokenEvent):
-            departed_relation_id = event.relation.id
-            if not self.charm.has_departed_run(departed_relation_id):
+            if not self.charm.has_departed_run(event.relation.id):
                 logger.info(
                     "Deferring, must wait for relation departed hook to decide if relation should be removed."
                 )
