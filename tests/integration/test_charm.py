@@ -340,11 +340,12 @@ async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
     await ops_test.model.destroy_unit(target_unit)
 
 
+@pytest.mark.skip("Skipping until write to log files enabled")
 async def test_audit_log(ops_test: OpsTest) -> None:
     """Test that audit log was created and contains actual audit data."""
     app_name = await get_app_name(ops_test)
     leader_unit = await find_unit(ops_test, leader=True, app_name=app_name)
-    audit_log_snap_path = "/var/snap/charmed-mongodb/common/var/lib/mongodb/audit.json"
+    audit_log_snap_path = "/var/snap/charmed-mongodb/common/var/log/mongodb/audit.log"
     audit_log = check_output(
         f"JUJU_MODEL={ops_test.model_full_name} juju ssh {leader_unit.name} 'sudo cat {audit_log_snap_path}'",
         stderr=subprocess.PIPE,

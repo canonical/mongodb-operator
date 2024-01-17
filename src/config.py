@@ -16,7 +16,7 @@ class Config:
     MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
     MONGOD_CONF_DIR = f"{MONGODB_SNAP_DATA_DIR}/etc/mongod"
     MONGOD_CONF_FILE_PATH = f"{MONGOD_CONF_DIR}/mongod.conf"
-    SNAP_PACKAGES = [("charmed-mongodb", "6/edge", 87)]
+    SNAP_PACKAGES = [("charmed-mongodb", "6/edge", 93)]
 
     # Keep these alphabetically sorted
     class Actions:
@@ -29,7 +29,7 @@ class Config:
         """Audit log related configuration."""
 
         FORMAT = "JSON"
-        FILE_NAME = "audit.json"
+        FILE_NAME = "audit.log"
 
     class Backup:
         """Backup related config for MongoDB Charm."""
