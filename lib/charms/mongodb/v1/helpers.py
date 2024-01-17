@@ -29,7 +29,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 2
 
 # path to store mongodb ketFile
 KEY_FILE = "keyFile"
@@ -55,6 +55,8 @@ def _get_logging_options(snap_install: bool) -> str:
     # TODO sending logs to syslog until we have a separate mount point for logs
     if LOG_TO_SYSLOG:
         return ""
+    # in k8s the default logging options that are used for the vm charm are ignored and logs are
+    # the output of the container. To enable logging to a file it must be set explicitly
     return f"--logpath={LOG_DIR}/{MONGODB_LOG_FILENAME}" if snap_install else ""
 
 
@@ -139,8 +141,6 @@ def get_mongod_args(
     """
     full_data_dir = f"{MONGODB_COMMON_DIR}{DATA_DIR}" if snap_install else DATA_DIR
     full_conf_dir = f"{MONGODB_SNAP_DATA_DIR}{CONF_DIR}" if snap_install else CONF_DIR
-    # in k8s the default logging options that are used for the vm charm are ignored and logs are
-    # the output of the container. To enable logging to a file it must be set explicitly
     logging_options = _get_logging_options(snap_install)
     cmd = [
         # bind to localhost and external interfaces
