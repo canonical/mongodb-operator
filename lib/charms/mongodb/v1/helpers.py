@@ -44,9 +44,20 @@ MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
 MONGO_SHELL = "charmed-mongodb.mongosh"
 
 DATA_DIR = "/var/lib/mongodb"
+LOG_DIR = "/var/log/mongodb"
+LOG_TO_SYSLOG = True
 CONF_DIR = "/etc/mongod"
 MONGODB_LOG_FILENAME = "mongodb.log"
 logger = logging.getLogger(__name__)
+
+
+def _get_logging_options(snap_install: bool) -> str:
+    # TODO sending logs to syslog until we have a separate mount point for logs
+    if LOG_TO_SYSLOG:
+        return ""
+    # in k8s the default logging options that are used for the vm charm are ignored and logs are
+    # the output of the container. To enable logging to a file it must be set explicitly
+    return f"--logpath={LOG_DIR}/{MONGODB_LOG_FILENAME}" if snap_install else ""
 
 
 # noinspection GrazieInspection
@@ -130,9 +141,7 @@ def get_mongod_args(
     """
     full_data_dir = f"{MONGODB_COMMON_DIR}{DATA_DIR}" if snap_install else DATA_DIR
     full_conf_dir = f"{MONGODB_SNAP_DATA_DIR}{CONF_DIR}" if snap_install else CONF_DIR
-    # in k8s the default logging options that are used for the vm charm are ignored and logs are
-    # the output of the container. To enable logging to a file it must be set explicitly
-    logging_options = "" if snap_install else f"--logpath={full_data_dir}/{MONGODB_LOG_FILENAME}"
+    logging_options = _get_logging_options(snap_install)
     cmd = [
         # bind to localhost and external interfaces
         "--bind_ip_all",
@@ -143,6 +152,8 @@ def get_mongod_args(
         # for simplicity we run the mongod daemon on shards, configsvrs, and replicas on the same
         # port
         f"--port={Config.MONGODB_PORT}",
+        "--auditDestination=syslog",  # TODO sending logs to syslog until we have a separate mount point for logs
+        f"--auditFormat={Config.AuditLog.FORMAT}",
         logging_options,
     ]
     if auth:
