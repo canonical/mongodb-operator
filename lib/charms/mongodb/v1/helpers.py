@@ -154,8 +154,9 @@ def get_mongod_args(
         f"--port={Config.MONGODB_PORT}",
         "--auditDestination=syslog",  # TODO sending logs to syslog until we have a separate mount point for logs
         f"--auditFormat={Config.AuditLog.FORMAT}",
-        logging_options,
     ]
+    if logging_options:
+        cmd.extend([logging_options])
     if auth:
         cmd.extend(["--auth"])
 
