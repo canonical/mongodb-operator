@@ -31,7 +31,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 3
+LIBPATCH = 4
 
 logger = logging.getLogger(__name__)
 REL_NAME = "database"
@@ -87,6 +87,11 @@ class MongoDBProvider(Object):
 
     def pass_hook_checks(self) -> bool:
         """Runs the pre-hooks checks for MongoDBProvider, returns True if all pass."""
+        # We shouldn't try to create or update users if the database is not
+        # initialised. We will create users as part of initialisation.
+        if not self.charm.db_initialised:
+            return False
+
         if not self.charm.is_relation_feasible(self.relation_name):
             logger.info("Skipping code for relations.")
             return False
@@ -98,11 +103,6 @@ class MongoDBProvider(Object):
             return False
 
         if not self.charm.unit.is_leader():
-            return False
-
-        # We shouldn't try to create or update users if the database is not
-        # initialised. We will create users as part of initialisation.
-        if not self.charm.db_initialised:
             return False
 
         return True
