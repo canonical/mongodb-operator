@@ -51,7 +51,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 4
+LIBPATCH = 5
 KEYFILE_KEY = "key-file"
 HOSTS_KEY = "host"
 OPERATOR_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username())
@@ -121,6 +121,11 @@ class ShardingProvider(Object):
 
     def pass_hook_checks(self, event: EventBase) -> bool:
         """Runs the pre-hooks checks for ShardingProvider, returns True if all pass."""
+        if not self.charm.db_initialised:
+            logger.info("Deferring %s. db is not initialised.", type(event))
+            event.defer()
+            return False
+
         if not self.charm.is_relation_feasible(self.relation_name):
             logger.info("Skipping event %s , relation not feasible.", type(event))
             return False
@@ -132,11 +137,6 @@ class ShardingProvider(Object):
             return False
 
         if not self.charm.unit.is_leader():
-            return False
-
-        if not self.charm.db_initialised:
-            logger.info("Deferring %s. db is not initialised.", type(event))
-            event.defer()
             return False
 
         # adding/removing shards while a backup/restore is in progress can be disastrous
@@ -507,17 +507,17 @@ class ConfigServerRequirer(Object):
 
     def pass_hook_checks(self, event):
         """Runs the pre-hooks checks for ConfigServerRequirer, returns True if all pass."""
+        if not self.charm.db_initialised:
+            logger.info("Deferring %s. db is not initialised.", type(event))
+            event.defer()
+            return False
+
         if not self.charm.is_relation_feasible(self.relation_name):
             logger.info("Skipping event %s , relation not feasible.", type(event))
             return False
 
         if not self.charm.is_role(Config.Role.SHARD):
             logger.info("skipping %s is only be executed by shards", type(event))
-            return False
-
-        if not self.charm.db_initialised:
-            logger.info("Deferring %s. db is not initialised.", type(event))
-            event.defer()
             return False
 
         mongos_hosts = event.relation.data[event.relation.app].get(HOSTS_KEY, None)

@@ -35,7 +35,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 4
+LIBPATCH = 5
 
 
 class ClusterProvider(Object):
@@ -64,6 +64,11 @@ class ClusterProvider(Object):
 
     def pass_hook_checks(self, event: EventBase) -> bool:
         """Runs the pre-hooks checks for ClusterProvider, returns True if all pass."""
+        if not self.charm.db_initialised:
+            logger.info("Deferring %s. db is not initialised.", type(event))
+            event.defer()
+            return False
+
         if not self.charm.is_role(Config.Role.CONFIG_SERVER):
             logger.info(
                 "Skipping %s. ShardingProvider is only be executed by config-server", type(event)
@@ -71,11 +76,6 @@ class ClusterProvider(Object):
             return False
 
         if not self.charm.unit.is_leader():
-            return False
-
-        if not self.charm.db_initialised:
-            logger.info("Deferring %s. db is not initialised.", type(event))
-            event.defer()
             return False
 
         return True
