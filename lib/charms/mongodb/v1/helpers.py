@@ -7,7 +7,7 @@ import os
 import secrets
 import string
 import subprocess
-from typing import List
+from typing import List, Optional, Union
 
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 from ops.model import (
@@ -29,7 +29,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 2
+LIBPATCH = 3
 
 # path to store mongodb ketFile
 KEY_FILE = "keyFile"
@@ -154,8 +154,9 @@ def get_mongod_args(
         f"--port={Config.MONGODB_PORT}",
         "--auditDestination=syslog",  # TODO sending logs to syslog until we have a separate mount point for logs
         f"--auditFormat={Config.AuditLog.FORMAT}",
-        logging_options,
     ]
+    if logging_options:
+        cmd.extend([logging_options])
     if auth:
         cmd.extend(["--auth"])
 
@@ -258,6 +259,25 @@ def copy_licenses_to_unit():
     subprocess.check_output(
         "cp -r /snap/charmed-mongodb/current/licenses/* src/licenses", shell=True
     )
+
+
+_StrOrBytes = Union[str, bytes]
+
+
+def process_pbm_error(error_string: Optional[_StrOrBytes]) -> str:
+    """Parses pbm error string and returns a user friendly message."""
+    message = "couldn't configure s3 backup option"
+    if not error_string:
+        return message
+    if type(error_string) is bytes:
+        error_string = error_string.decode("utf-8")
+    if "status code: 403" in error_string:  # type: ignore
+        message = "s3 credentials are incorrect."
+    elif "status code: 404" in error_string:  # type: ignore
+        message = "s3 configurations are incompatible."
+    elif "status code: 301" in error_string:  # type: ignore
+        message = "s3 configurations are incompatible."
+    return message
 
 
 def current_pbm_op(pbm_status: str) -> str:
