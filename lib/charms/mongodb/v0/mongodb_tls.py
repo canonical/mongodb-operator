@@ -13,6 +13,7 @@ import re
 import socket
 from typing import List, Optional, Tuple
 
+from charms.mongodb.v0.mongodb import MongoDBConnection
 from charms.tls_certificates_interface.v1.tls_certificates import (
     CertificateAvailableEvent,
     CertificateExpiringEvent,
@@ -22,7 +23,7 @@ from charms.tls_certificates_interface.v1.tls_certificates import (
 )
 from ops.charm import ActionEvent, RelationBrokenEvent, RelationJoinedEvent
 from ops.framework import Object
-from ops.model import ActiveStatus, MaintenanceStatus, Unit
+from ops.model import ActiveStatus, MaintenanceStatus, Unit, WaitingStatus
 
 from config import Config
 
@@ -39,7 +40,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 6
+LIBPATCH = 7
 
 logger = logging.getLogger(__name__)
 
@@ -195,7 +196,12 @@ class MongoDBTLS(Object):
         self.charm.push_tls_certificate_to_workload()
         self.charm.unit.status = MaintenanceStatus("enabling TLS")
         self.charm.restart_mongod_service()
-        self.charm.unit.status = ActiveStatus()
+
+        with MongoDBConnection(self.charm.mongodb_config) as mongo:
+            if not mongo.is_ready:
+                self.charm.unit.status = WaitingStatus("Waiting for MongoDB to start")
+            else:
+                self.charm.unit.status = ActiveStatus()
 
     def _waiting_for_certs(self):
         """Returns a boolean indicating whether additional certs are needed."""
