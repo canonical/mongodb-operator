@@ -27,6 +27,14 @@ async def application_charm(ops_test: OpsTest):
 
 
 @pytest.fixture(scope="module")
+async def mongos_host_application_charm(ops_test: OpsTest):
+    """Build the application charm."""
+    charm_path = "tests/integration/sharding_tests/application"
+    charm = await ops_test.build_charm(charm_path)
+    return charm
+
+
+@pytest.fixture(scope="module")
 async def database_charm(ops_test: OpsTest):
     """Build the database charm."""
     charm = await ops_test.build_charm(".")
