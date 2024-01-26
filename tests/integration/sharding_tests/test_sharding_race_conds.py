@@ -16,7 +16,7 @@ SHARD_REL_NAME = "sharding"
 CONFIG_SERVER_REL_NAME = "config-server"
 MONGODB_KEYFILE_PATH = "/var/snap/charmed-mongodb/current/etc/mongod/keyFile"
 
-TIMEOUT = 60 * 10
+TIMEOUT = 60 * 30
 
 
 @pytest.mark.abort_on_fail

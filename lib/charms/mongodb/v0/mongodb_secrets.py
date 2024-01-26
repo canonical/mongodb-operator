@@ -1,4 +1,5 @@
 """Secrets related helper classes/functions."""
+
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
