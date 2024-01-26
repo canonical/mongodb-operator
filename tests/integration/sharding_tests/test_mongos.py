@@ -56,7 +56,7 @@ async def test_build_and_deploy(ops_test: OpsTest, mongos_host_application_charm
 
 
 @pytest.mark.abort_on_fail
-async def test_form_cluster(ops_test: OpsTest) -> None:
+async def test_connect_to_cluster_creates_user(ops_test: OpsTest) -> None:
     """Verifies that when the cluster is formed a new user is created."""
     await ops_test.model.integrate(
         f"{SHARD_ONE_APP_NAME}:{SHARD_REL_NAME}",
@@ -113,7 +113,8 @@ async def test_form_cluster(ops_test: OpsTest) -> None:
     mongos_user_client.admin.command("dbStats")
 
 
-async def test_remove_mongos(ops_test: OpsTest) -> None:
+@pytest.mark.abort_on_fail
+async def test_disconnect_from_cluster_removes_user(ops_test: OpsTest) -> None:
     """Verifies that when the cluster is formed a the user is removed."""
     # generate URI for new mongos user
     (username, password) = await get_username_password(
