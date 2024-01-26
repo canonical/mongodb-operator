@@ -18,12 +18,16 @@ MONGOD_PORT = 27017
 
 
 async def generate_mongodb_client(
-    ops_test: OpsTest, app_name: str, mongos: bool, username: str = None, password: str = None
+    ops_test: OpsTest,
+    app_name: str,
+    mongos: bool,
+    username: str = "operator",
+    password: str = None,
 ):
     """Returns a MongoDB client for mongos/mongod."""
     hosts = [unit.public_address for unit in ops_test.model.applications[app_name].units]
     password = password or await get_password(ops_test, app_name=app_name)
-    username = username or "operator"
+    username = username
     port = MONGOS_PORT if mongos else MONGOD_PORT
     hosts = [f"{host}:{port}" for host in hosts]
     hosts = ",".join(hosts)
