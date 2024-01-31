@@ -69,12 +69,12 @@ class ClusterProvider(Object):
             event.defer()
             return False
 
-        if not self.charm.is_role(Config.Role.CONFIG_SERVER):
+        is_integrated_to_mongos = len(
+            self.charm.model.relations[Config.Relations.CLUSTER_RELATIONS_NAME]
+        )
+        if not self.charm.is_role(Config.Role.CONFIG_SERVER) and is_integrated_to_mongos:
             logger.info(
-                "Skipping %s. ShardingProvider is only be executed by config-server", type(event)
-            )
-            self.charm.unit.status = BlockedStatus(
-                "Relation to mongos not supported, config role must be config-server"
+                "Skipping %s. ClusterProvider is only be executed by config-server", type(event)
             )
             return False
 
@@ -83,9 +83,20 @@ class ClusterProvider(Object):
 
         return True
 
+    def set_blocked_status_impossible_integration(self) -> None:
+        """Sets the status of the charm in the case that the integration is not possible."""
+        is_integrated_to_mongos = len(
+            self.charm.model.relations[Config.Relations.CLUSTER_RELATIONS_NAME]
+        )
+        if not self.charm.is_role(Config.Role.CONFIG_SERVER) and is_integrated_to_mongos:
+            self.charm.unit.status = BlockedStatus(
+                "Relation to mongos not supported, config role must be config-server"
+            )
+
     def _on_relation_changed(self, event) -> None:
         """Handles providing mongos with KeyFile and hosts."""
         if not self.pass_hook_checks(event):
+            self.set_blocked_status_impossible_integration()
             logger.info("Skipping relation joined event: hook checks did not pass")
             return
 

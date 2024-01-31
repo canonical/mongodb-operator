@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
+import time
+
 import pytest
 from juju.errors import JujuAPIError
 from pytest_operator.plugin import OpsTest
@@ -277,6 +279,12 @@ async def test_replication_mongos_relation(ops_test: OpsTest) -> None:
         f"{REPLICATION_APP_NAME}:cluster",
         f"{MONGOS_APP_NAME}:cluster",
     )
+
+    # TODO remove this and wait for mongos to be active
+    # right now we cannot wait for `mongos` to be active after removing the relation due to a bug
+    # in the mongos charm. To fix the bug it is first necessary to publish the updated library
+    # lib/charms/mongodb/v0/config_server.py
+    time.sleep(60)
 
 
 async def test_shard_mongos_relation(ops_test: OpsTest) -> None:
