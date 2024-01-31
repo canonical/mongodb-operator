@@ -1,4 +1,5 @@
 """Simple functions, which can be used in both K8s and VM charms."""
+
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 import json

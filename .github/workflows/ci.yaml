@@ -50,7 +50,6 @@ jobs:
         run: python3 -m pip install tox
       - name: Run tests
         run: tox run -e unit
-
   lib-check:
     name: Check libraries
     runs-on: ubuntu-latest
@@ -61,21 +60,14 @@ jobs:
         with:
           fetch-depth: 0
       - name: Check libs
-        uses: canonical/charming-actions/check-libraries@2.2.2
+        uses: canonical/charming-actions/check-libraries@2.4.0
         with:
           credentials: "${{ secrets.CHARMHUB_TOKEN }}" # FIXME: current token will expire in 2023-07-04
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 
   build:
-    strategy:
-      fail-fast: true
-      matrix:
-        charm: [".", "tests/integration/relation_tests/new_relations/application-charm"]
-    name: Build ${{ matrix.charm }} charm
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm_without_cache.yaml@v5.1.2
-    with:
-      charmcraft-snap-channel: "latest/edge"
-      path-to-charm-directory: ${{ matrix.charm }}
+    name: Build charms
+    uses: canonical/data-platform-workflows/.github/workflows/build_charms_with_cache.yaml@v8
 
   integration-test:
     strategy:
@@ -111,10 +103,8 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: ${{ needs.build.outputs.artifact-name }}
-
-      - name: Free up disk space
+      - name: Free disk space
         run: |
-          # From https://github.com/actions/runner-images/issues/2840#issuecomment-790492173
           echo "Free disk space before cleanup"
           df -T
           # free space in the runner

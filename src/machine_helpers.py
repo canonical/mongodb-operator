@@ -1,4 +1,5 @@
 """Machine Charm specific functions for operating MongoDB."""
+
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 import logging
