@@ -55,6 +55,7 @@ async def test_build_and_deploy(
         channel="6/edge",
         revision=3,
     )
+
     # TODO: Future PR, once data integrator works with mongos charm deploy that charm instead of
     # packing and deploying the charm in the application dir.
     await ops_test.model.deploy(
@@ -274,7 +275,7 @@ async def test_replication_mongos_relation(ops_test: OpsTest) -> None:
     # clean up relations
     await ops_test.model.applications[REPLICATION_APP_NAME].remove_relation(
         f"{REPLICATION_APP_NAME}:cluster",
-        f"{SHARD_ONE_APP_NAME}:cluster",
+        f"{MONGOS_APP_NAME}:cluster",
     )
 
 

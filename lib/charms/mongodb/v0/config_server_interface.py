@@ -211,7 +211,6 @@ class ClusterRequirer(Object):
             event.relation.id, CONFIG_SERVER_DB_KEY
         )
         if not key_file_contents or not config_server_db:
-            event.defer()
             self.charm.unit.status = WaitingStatus("Waiting for secrets from config-server")
             return
 
