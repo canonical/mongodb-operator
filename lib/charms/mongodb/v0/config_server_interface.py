@@ -16,7 +16,7 @@ from charms.mongodb.v1.helpers import add_args_to_env, get_mongos_args
 from charms.mongodb.v1.mongos import MongosConnection
 from ops.charm import CharmBase, EventBase, RelationBrokenEvent
 from ops.framework import Object
-from ops.model import ActiveStatus, MaintenanceStatus, WaitingStatus
+from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 
 from config import Config
 
@@ -35,7 +35,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 5
+LIBPATCH = 6
 
 
 class ClusterProvider(Object):
@@ -72,6 +72,9 @@ class ClusterProvider(Object):
         if not self.charm.is_role(Config.Role.CONFIG_SERVER):
             logger.info(
                 "Skipping %s. ShardingProvider is only be executed by config-server", type(event)
+            )
+            self.charm.unit.status = BlockedStatus(
+                "Relation to mongos not supported, config role must be config-server"
             )
             return False
 

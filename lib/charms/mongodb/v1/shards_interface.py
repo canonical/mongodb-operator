@@ -51,7 +51,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 5
+LIBPATCH = 6
 KEYFILE_KEY = "key-file"
 HOSTS_KEY = "host"
 OPERATOR_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username())
@@ -518,6 +518,9 @@ class ConfigServerRequirer(Object):
 
         if not self.charm.is_role(Config.Role.SHARD):
             logger.info("skipping %s is only be executed by shards", type(event))
+            return False
+
+        if not event.relation.app:
             return False
 
         mongos_hosts = event.relation.data[event.relation.app].get(HOSTS_KEY, None)
