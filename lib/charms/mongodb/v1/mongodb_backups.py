@@ -57,7 +57,7 @@ S3_RELATION = "s3-credentials"
 REMAPPING_PATTERN = r"\ABackup doesn't match current cluster topology - it has different replica set names. Extra shards in the backup will cause this, for a simple example. The extra/unknown replica set names found in the backup are: ([^,\s]+)([.] Backup has no data for the config server or sole replicaset)?\Z"
 PBM_STATUS_CMD = ["status", "-o", "json"]
 MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
-BACKUP_RESTORE_MAX_ATTEMPTS = 5
+BACKUP_RESTORE_MAX_ATTEMPTS = 10
 BACKUP_RESTORE_ATTEMPT_COOLDOWN = 15
 
 
@@ -292,6 +292,8 @@ class MongoDBBackups(Object):
 
     def _configure_pbm_options(self, event) -> None:
         action = "configure-pbm"
+        # if not self._need_configure():
+        #     return
         try:
             self._set_config_options()
             self._resync_config_options()

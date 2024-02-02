@@ -26,7 +26,7 @@ from charms.mongodb.v1.mongos import (
     ShardNotInClusterError,
     ShardNotPlannedForRemovalError,
 )
-from charms.mongodb.v1.users import MongoDBUser, OperatorUser
+from charms.mongodb.v1.users import MongoDBUser, OperatorUser, BackupUser
 from ops.charm import CharmBase, EventBase, RelationBrokenEvent
 from ops.framework import Object
 from ops.model import (
@@ -55,6 +55,7 @@ LIBPATCH = 6
 KEYFILE_KEY = "key-file"
 HOSTS_KEY = "host"
 OPERATOR_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username())
+BACKUP_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(BackupUser.get_username())
 FORBIDDEN_REMOVAL_ERR_CODE = 20
 AUTH_FAILED_CODE = 18
 
@@ -112,6 +113,10 @@ class ShardingProvider(Object):
                     Config.Relations.APP_SCOPE,
                     OPERATOR_PASSWORD_KEY,
                 ),
+                BACKUP_PASSWORD_KEY: self.charm.get_secret(
+                    Config.Relations.APP_SCOPE,
+                    BACKUP_PASSWORD_KEY,
+                ),
                 KEYFILE_KEY: self.charm.get_secret(
                     Config.Relations.APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME
                 ),
@@ -139,12 +144,12 @@ class ShardingProvider(Object):
         if not self.charm.unit.is_leader():
             return False
 
-        # adding/removing shards while a backup/restore is in progress can be disastrous
-        pbm_status = self.charm.backups.get_pbm_status()
-        if isinstance(pbm_status, MaintenanceStatus):
-            logger.info("Cannot add/remove shards while a backup/restore is in progress.")
-            event.defer()
-            return False
+        # # adding/removing shards while a backup/restore is in progress can be disastrous
+        # pbm_status = self.charm.backups.get_pbm_status()
+        # if isinstance(pbm_status, MaintenanceStatus):
+        #     logger.info("Cannot add/remove shards while a backup/restore is in progress.")
+        #     event.defer()
+        #     return False
 
         if isinstance(event, RelationBrokenEvent):
             if not self.charm.has_departed_run(event.relation.id):
@@ -176,6 +181,10 @@ class ShardingProvider(Object):
             logger.info("Adding/Removing shards not present in cluster.")
             self.add_shards(departed_relation_id)
             self.remove_shards(departed_relation_id)
+            # pbm has bug where when shard configuration is updated the config for pbm is removed
+            # pbm agent should be restarted when the cluster config is changed.
+
+        #  self.charm._connect_pbm_agent()
         except NotDrainedError:
             # it is necessary to removeShard multiple times for the shard to be removed.
             logger.info(
@@ -464,7 +473,6 @@ class ConfigServerRequirer(Object):
 
         # if re-using an old shard, re-set drained flag.
         self.charm.unit_peer_data["drained"] = json.dumps(False)
-
         self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
 
         # shards rely on the config server for secrets
@@ -488,13 +496,22 @@ class ConfigServerRequirer(Object):
             return
 
         # TODO Future work, see if needed to check for all units restarted / primary elected
-        if not relation_data.get(OPERATOR_PASSWORD_KEY):
+        if not relation_data.get(OPERATOR_PASSWORD_KEY) or not relation_data.get(
+            BACKUP_PASSWORD_KEY
+        ):
             event.defer()
             self.charm.unit.status = WaitingStatus("Waiting for secrets from config-server")
             return
 
         try:
-            self.update_operator_password(new_password=relation_data.get(OPERATOR_PASSWORD_KEY))
+            self.update_password(
+                username=OperatorUser.get_username(),
+                new_password=relation_data.get(OPERATOR_PASSWORD_KEY),
+            )
+            self.update_password(
+                username=BackupUser.get_username(),
+                new_password=relation_data.get(BACKUP_PASSWORD_KEY),
+            )
         except RetryError:
             self.charm.unit.status = BlockedStatus("Shard not added to config-server")
             logger.error(
@@ -503,6 +520,8 @@ class ConfigServerRequirer(Object):
             event.defer()
             return
 
+        # after updating the password of the backup user, restart pbm with correct password
+        self.charm._connect_pbm_agent()
         self.charm.app_peer_data["mongos_hosts"] = json.dumps(self.get_mongos_hosts())
 
     def pass_hook_checks(self, event):
@@ -664,8 +683,8 @@ class ConfigServerRequirer(Object):
             self.charm.unit_peer_data["drained"] = json.dumps(drained)
             return drained
 
-    def update_operator_password(self, new_password: str) -> None:
-        """Updates the password for the operator user.
+    def update_password(self, username: str, new_password: str) -> None:
+        """Updates the password for the given user.
 
         Raises:
             RetryError
@@ -675,8 +694,7 @@ class ConfigServerRequirer(Object):
 
         current_password = (
             self.charm.get_secret(
-                Config.Relations.APP_SCOPE,
-                OPERATOR_PASSWORD_KEY,
+                Config.Relations.APP_SCOPE, MongoDBUser.get_password_key_name_for_user(username)
             ),
         )
 
@@ -691,7 +709,7 @@ class ConfigServerRequirer(Object):
                 # a library, for exceptions used in both charm code and lib code.
                 with MongoDBConnection(self.charm.mongodb_config) as mongo:
                     try:
-                        mongo.set_user_password(OperatorUser.get_username(), new_password)
+                        mongo.set_user_password(username, new_password)
                     except NotReadyError:
                         logger.error(
                             "Failed changing the password: Not all members healthy or finished initial sync."
@@ -703,7 +721,7 @@ class ConfigServerRequirer(Object):
 
         self.charm.set_secret(
             Config.Relations.APP_SCOPE,
-            OPERATOR_PASSWORD_KEY,
+            MongoDBUser.get_password_key_name_for_user(username),
             new_password,
         )
 
