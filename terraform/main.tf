@@ -1,5 +1,8 @@
+# Copyright 2024 Canonical Ltd.
+# See LICENSE file for licensing details.
+
 resource "juju_application" "mongodb-k8s" {
-  name  = "mongodb-k8s"
+  name  = var.app_name
   model = var.model_name
 
   charm {
@@ -7,7 +10,7 @@ resource "juju_application" "mongodb-k8s" {
     channel = var.channel
     base    = "ubuntu@22.04"
   }
-  config = var.mongo-config
+  config = var.config
   units  = 1
   trust  = true
 }

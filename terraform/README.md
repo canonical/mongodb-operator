@@ -1,70 +1,54 @@
-# Mongodb-k8s Terraform Module
+# MongoDB Operator Terraform module
 
-This mongodb-k8s Terraform module aims to deploy the [mongodb-k8s charm](https://charmhub.io/mongodb-k8s?channel=6/edge) via Terraform.
+This folder contains a base [Terraform][Terraform] module for the `mongodb-k8s` charm.
 
-## Getting Started
+The module uses the [Terraform Juju provider][Terraform Juju provider] to model the charm deployment onto any Kubernetes environment managed by [Juju][Juju].
 
-### Prerequisites
+The base module is not intended to be deployed in separation (it is possible though), but should rather serve as a building block for higher level modules.
 
-The following software and tools needs to be installed and should be running in the local environment.
+## Module structure
 
-- `microk8s`
-- `juju 3.x`
-- `terrafom`
+- **main.tf** - Defines the Juju application to be deployed.
+- **variables.tf** - Allows customization of the deployment such as Juju model name, channel or application name and charm configuration.
+- **output.tf** - Responsible for integrating the module with other Terraform modules, primarily by defining potential integration endpoints (charm integrations), but also by exposing the application name.
+- **terraform.tf** - Defines the Terraform provider.
 
-### Deploy the Mongodb-k8s charm using Terraform
+## Using mongodb-k8s base module in higher level modules
 
-Make sure that `storage` plugin is enabled for Microk8s:
+If you want to use `mongodb-operator` base module as part of your Terraform module, import it like shown below.
 
-```console
-sudo microk8s enable hostpath-storage
+```text
+module "mongodb-operator" {
+  source = "git::https://github.com/canonical/mongodb-operator.git//terraform"
+  
+  model_name = "juju_model_name"
+  
+ (Customize configuration variables here if needed)
+
+}
 ```
 
-Add a Juju model:
+Create the integrations, for instance:
 
-```console
-juju add model <model-name>
+```text
+resource "juju_integration" "amf-db" {
+  model = var.model_name
+
+  application {
+    name     = module.amf.app_name
+    endpoint = module.amf.database_endpoint
+  }
+
+  application {
+    name     = module.mongodb.app_name
+    endpoint = module.mongodb.database_endpoint
+  }
+}
 ```
 
-Initialise the provider:
+Please check the available [integration pairs][integration pairs].
 
-```console
-terraform init
-```
-
-Customize the configuration inputs under `terraform.tfvars` file according to requirement.
-
-Replace the values in the `terraform.tfvars` file:
-
-```yaml
-# Mandatory Config Options
-model_name = "put your model-name here"
-```
-
-Run Terraform Plan by providing var-file:
-
-```console
-terraform plan -var-file="terraform.tfvars" 
-```
-
-Deploy the resources, skip the approval:
-
-```console
-terraform apply -auto-approve 
-```
-
-### Check the Output
-
-Run `juju switch <juju model>` to switch to the target Juju model and observe the status of the application.
-
-```console
-juju status
-```
-
-### Clean up
-
-Remove the application:
-
-```console
-terraform destroy -auto-approve
-```
+[Terraform]: https://www.terraform.io/
+[Juju]: https://juju.is
+[Terraform Juju provider]: https://registry.terraform.io/providers/juju/juju/latest
+[integration pairs]: https://charmhub.io/mongodb-k8s/integrations?channel=6/edge
