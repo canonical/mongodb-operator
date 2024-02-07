@@ -539,6 +539,7 @@ class ConfigServerRequirer(Object):
             logger.info("skipping %s is only be executed by shards", type(event))
             return False
 
+        # TODO: do we need this?
         if not event.relation.app:
             return False
 
