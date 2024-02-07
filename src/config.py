@@ -17,7 +17,7 @@ class Config:
     MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
     MONGOD_CONF_DIR = f"{MONGODB_SNAP_DATA_DIR}/etc/mongod"
     MONGOD_CONF_FILE_PATH = f"{MONGOD_CONF_DIR}/mongod.conf"
-    SNAP_PACKAGES = [("charmed-mongodb", "6/edge", 93)]
+    SNAP_PACKAGES = [("charmed-mongodb", "6/edge/new-pbm-test-0", 107)]
 
     # Keep these alphabetically sorted
     class Actions:

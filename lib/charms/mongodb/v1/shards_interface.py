@@ -181,10 +181,6 @@ class ShardingProvider(Object):
             logger.info("Adding/Removing shards not present in cluster.")
             self.add_shards(departed_relation_id)
             self.remove_shards(departed_relation_id)
-            # pbm has bug where when shard configuration is updated the config for pbm is removed
-            # pbm agent should be restarted when the cluster config is changed.
-
-        #  self.charm._connect_pbm_agent()
         except NotDrainedError:
             # it is necessary to removeShard multiple times for the shard to be removed.
             logger.info(

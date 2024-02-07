@@ -225,7 +225,9 @@ class MongodbOperatorCharm(CharmBase):
     def backup_config(self) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for backup."""
         self._check_or_set_user_password(BackupUser)
-        return self._get_mongodb_config_for_user(BackupUser, BackupUser.get_hosts())
+        return self._get_mongodb_config_for_user(
+            BackupUser, BackupUser.get_hosts(), standalone=True
+        )
 
     @property
     def unit_peer_data(self) -> Dict:
@@ -773,7 +775,7 @@ class MongodbOperatorCharm(CharmBase):
         )
 
     def _get_mongodb_config_for_user(
-        self, user: MongoDBUser, hosts: Set[str]
+        self, user: MongoDBUser, hosts: Set[str], standalone: bool = False
     ) -> MongoDBConfiguration:
         external_ca, _ = self.tls.get_tls_files(UNIT_SCOPE)
         internal_ca, _ = self.tls.get_tls_files(APP_SCOPE)
@@ -787,6 +789,7 @@ class MongodbOperatorCharm(CharmBase):
             roles=user.get_roles(),
             tls_external=external_ca is not None,
             tls_internal=internal_ca is not None,
+            standalone=standalone,
         )
 
     def _get_user_or_fail_event(self, event: ActionEvent, default_username: str) -> Optional[str]:

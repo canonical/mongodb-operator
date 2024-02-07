@@ -57,6 +57,7 @@ class MongoDBConfiguration:
     roles: Set[str]
     tls_external: bool
     tls_internal: bool
+    standalone: bool = False
 
     @property
     def uri(self):
@@ -66,6 +67,14 @@ class MongoDBConfiguration:
         auth_source = ""
         if self.database != "admin":
             auth_source = "&authSource=admin"
+
+        if self.standalone:
+            return (
+                f"mongodb://{quote_plus(self.username)}:"
+                f"{quote_plus(self.password)}@"
+                f"localhost:27017/?authSource=admin"
+            )
+
         return (
             f"mongodb://{quote_plus(self.username)}:"
             f"{quote_plus(self.password)}@"
