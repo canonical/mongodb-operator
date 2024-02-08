@@ -11,6 +11,10 @@ import logging
 import time
 from typing import List, Optional, Set
 
+from charms.data_platform_libs.v0.data_interfaces import (
+    DatabaseProvides,
+    DatabaseRequires,
+)
 from charms.mongodb.v0.mongodb import (
     MongoDBConnection,
     NotReadyError,
@@ -80,6 +84,7 @@ class ShardingProvider(Object):
         """Constructor for ShardingProvider object."""
         self.relation_name = relation_name
         self.charm = charm
+        self.database_provides = DatabaseProvides(self.charm, relation_name=self.relation_name)
 
         super().__init__(charm, self.relation_name)
         self.framework.observe(
@@ -106,7 +111,8 @@ class ShardingProvider(Object):
             return
 
         # TODO Future PR, sync tls secrets and PBM password
-        self._update_relation_data(
+
+        self.database_provides.update_relation_data(
             event.relation.id,
             {
                 OPERATOR_PASSWORD_KEY: self.charm.get_secret(
@@ -446,6 +452,14 @@ class ConfigServerRequirer(Object):
         """Constructor for ShardingProvider object."""
         self.relation_name = relation_name
         self.charm = charm
+        self.database_requires = DatabaseRequires(
+            self.charm,
+            relation_name=self.relation_name,
+            additional_secret_fields=[KEYFILE_KEY, OPERATOR_PASSWORD_KEY, BACKUP_PASSWORD_KEY],
+            # a database isn't required for the relation between shards + config servers, but is a
+            # requirement for using `DatabaseRequires`
+            database_name="",
+        )
 
         super().__init__(charm, self.relation_name)
         self.framework.observe(
@@ -472,13 +486,15 @@ class ConfigServerRequirer(Object):
         self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
 
         # shards rely on the config server for secrets
-        relation_data = event.relation.data[event.app]
-        if not relation_data.get(KEYFILE_KEY):
+        key_file_contents = self.database_requires.fetch_relation_field(
+            event.relation.id, KEYFILE_KEY
+        )
+        if not key_file_contents:
             event.defer()
             self.charm.unit.status = WaitingStatus("Waiting for secrets from config-server")
             return
 
-        self.update_keyfile(key_file_contents=relation_data.get(KEYFILE_KEY))
+        self.update_keyfile(key_file_contents=key_file_contents)
 
         # restart on high loaded databases can be very slow (e.g. up to 10-20 minutes).
         with MongoDBConnection(self.charm.mongodb_config) as mongo:
@@ -492,22 +508,22 @@ class ConfigServerRequirer(Object):
             return
 
         # TODO Future work, see if needed to check for all units restarted / primary elected
-        if not relation_data.get(OPERATOR_PASSWORD_KEY) or not relation_data.get(
-            BACKUP_PASSWORD_KEY
-        ):
+        operator_password = self.database_requires.fetch_relation_field(
+            event.relation.id, OPERATOR_PASSWORD_KEY
+        )
+        backup_password = self.database_requires.fetch_relation_field(
+            event.relation.id, BACKUP_PASSWORD_KEY
+        )
+        if not operator_password or not backup_password:
             event.defer()
             self.charm.unit.status = WaitingStatus("Waiting for secrets from config-server")
             return
 
         try:
             self.update_password(
-                username=OperatorUser.get_username(),
-                new_password=relation_data.get(OPERATOR_PASSWORD_KEY),
+                username=OperatorUser.get_username(), new_password=operator_password
             )
-            self.update_password(
-                username=BackupUser.get_username(),
-                new_password=relation_data.get(BACKUP_PASSWORD_KEY),
-            )
+            self.update_password(BackupUser.get_username(), new_password=backup_password)
         except RetryError:
             self.charm.unit.status = BlockedStatus("Shard not added to config-server")
             logger.error(

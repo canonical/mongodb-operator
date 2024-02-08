@@ -85,6 +85,7 @@ jobs:
           - sharding-relation-integration
           - sharding-race-conditions-integration
           - sharding-mongos-integration
+          - sharding-backups-integration
     name: ${{ matrix.tox-environments }}
     needs:
       - lint
