@@ -539,6 +539,11 @@ class ConfigServerRequirer(Object):
             logger.info("skipping %s is only be executed by shards", type(event))
             return False
 
+        # occasionally, broken events have no application, in these scenarios nothing should be
+        # processed.
+        if not event.relation.app:
+            return False
+
         mongos_hosts = event.relation.data[event.relation.app].get(HOSTS_KEY, None)
         if isinstance(event, RelationBrokenEvent) and not mongos_hosts:
             logger.info("Config-server relation never set up, no need to process broken event.")
