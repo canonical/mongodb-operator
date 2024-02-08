@@ -14,7 +14,8 @@ class TestMongoDBHelpers(unittest.TestCase):
             "--replSet=my_repl_set",
             "--dbpath=/var/snap/charmed-mongodb/common/var/lib/mongodb",
             "--port=27017",
-            "--auditDestination=syslog",
+            "--logpath=/var/snap/charmed-mongodb/common/var/log/mongodb/mongodb.log",
+            "--auditDestination=file",
             "--auditFormat=JSON",
             "--auth",
             "--clusterAuthMode=keyFile",
@@ -38,7 +39,8 @@ class TestMongoDBHelpers(unittest.TestCase):
             "--replSet=my_repl_set",
             "--dbpath=/var/snap/charmed-mongodb/common/var/lib/mongodb",
             "--port=27017",
-            "--auditDestination=syslog",
+            "--logpath=/var/snap/charmed-mongodb/common/var/log/mongodb/mongodb.log",
+            "--auditDestination=file",
             "--auditFormat=JSON",
         ]
 
@@ -53,8 +55,9 @@ class TestMongoDBHelpers(unittest.TestCase):
             # part of replicaset
             "--replSet=my_repl_set",
             "--dbpath=/var/lib/mongodb",
+            "--logpath=/var/snap/charmed-mongodb/common/var/log/mongodb/mongodb.log",
             "--port=27017",
-            "--auditDestination=syslog",
+            "--auditDestination=file",
             "--auditFormat=JSON",
         ]
 
