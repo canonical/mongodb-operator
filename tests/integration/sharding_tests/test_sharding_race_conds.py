@@ -19,6 +19,7 @@ MONGODB_KEYFILE_PATH = "/var/snap/charmed-mongodb/current/etc/mongod/keyFile"
 TIMEOUT = 60 * 30
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy a sharded cluster."""
@@ -40,6 +41,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     )
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_immediate_relate(ops_test: OpsTest) -> None:
     """Tests the immediate integration of cluster components works without error."""

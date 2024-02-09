@@ -43,6 +43,7 @@ async def add_writes_to_db(ops_test: OpsTest):
     await ha_helpers.clear_db_writes(ops_test)
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy one unit of MongoDB."""
@@ -58,6 +59,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await ops_test.model.wait_for_idle()
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_blocked_incorrect_creds(ops_test: OpsTest) -> None:
     """Verifies that the charm goes into blocked status when s3 creds are incorrect."""
@@ -88,6 +90,7 @@ async def test_blocked_incorrect_creds(ops_test: OpsTest) -> None:
     assert db_unit.workload_status_message == "s3 credentials are incorrect."
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_blocked_incorrect_conf(ops_test: OpsTest, github_secrets) -> None:
     """Verifies that the charm goes into blocked status when s3 config options are incorrect."""
@@ -107,6 +110,7 @@ async def test_blocked_incorrect_conf(ops_test: OpsTest, github_secrets) -> None
     assert db_unit.workload_status_message == "s3 configurations are incompatible."
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_ready_correct_conf(ops_test: OpsTest) -> None:
     """Verifies charm goes into active status when s3 config and creds options are correct."""
@@ -130,6 +134,7 @@ async def test_ready_correct_conf(ops_test: OpsTest) -> None:
     )
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_create_and_list_backups(ops_test: OpsTest, github_secrets) -> None:
     db_app_name = await get_app_name(ops_test)
@@ -161,6 +166,7 @@ async def test_create_and_list_backups(ops_test: OpsTest, github_secrets) -> Non
         assert backups == 1, "Backup not created."
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_multi_backup(ops_test: OpsTest, continuous_writes_to_db, github_secrets) -> None:
     """With writes in the DB test creating a backup while another one is running.
@@ -247,6 +253,7 @@ async def test_multi_backup(ops_test: OpsTest, continuous_writes_to_db, github_s
         assert backups == 2, "Backup not created in bucket on AWS."
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_restore(ops_test: OpsTest, add_writes_to_db) -> None:
     """Simple backup tests that verifies that writes are correctly restored."""
@@ -301,6 +308,7 @@ async def test_restore(ops_test: OpsTest, add_writes_to_db) -> None:
         assert number_writes == number_writes_restored, "writes not correctly restored"
 
 
+@pytest.mark.group(1)
 @pytest.mark.parametrize("cloud_provider", ["AWS", "GCP"])
 async def test_restore_new_cluster(
     ops_test: OpsTest, add_writes_to_db, cloud_provider, github_secrets
@@ -390,6 +398,7 @@ async def test_restore_new_cluster(
     await helpers.destroy_cluster(ops_test, cluster_name=NEW_CLUSTER)
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_update_backup_password(ops_test: OpsTest) -> None:
     """Verifies that after changing the backup password the pbm tool is updated and functional."""

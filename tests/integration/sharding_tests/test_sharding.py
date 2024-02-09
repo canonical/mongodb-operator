@@ -28,6 +28,7 @@ MONGODB_KEYFILE_PATH = "/var/snap/charmed-mongodb/current/etc/mongod/keyFile"
 TIMEOUT = 30 * 60
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy a sharded cluster."""
@@ -80,6 +81,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         assert shard_unit.workload_status_message == "missing relation to config server"
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_cluster_active(ops_test: OpsTest) -> None:
     """Tests the integration of cluster components works without error."""
@@ -120,6 +122,7 @@ async def test_cluster_active(ops_test: OpsTest) -> None:
     ), "Config server did not process config properly"
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_sharding(ops_test: OpsTest) -> None:
     """Tests writing data to mongos gets propagated to shards."""
@@ -173,6 +176,7 @@ async def test_sharding(ops_test: OpsTest) -> None:
     assert has_correct_data, "data not written to shard-three"
 
 
+@pytest.mark.group(1)
 async def test_shard_removal(ops_test: OpsTest) -> None:
     """Test shard removal.
 
@@ -231,6 +235,7 @@ async def test_shard_removal(ops_test: OpsTest) -> None:
     ), "Not all databases on final shard"
 
 
+@pytest.mark.group(1)
 async def test_removal_of_non_primary_shard(ops_test: OpsTest):
     """Tests safe removal of a shard that is not primary."""
     # add back a shard so we can safely remove a shard.
@@ -282,6 +287,7 @@ async def test_removal_of_non_primary_shard(ops_test: OpsTest):
     ), "Not all databases on final shard"
 
 
+@pytest.mark.group(1)
 async def test_unconventual_shard_removal(ops_test: OpsTest):
     """Tests that removing a shard application safely drains data.
 
