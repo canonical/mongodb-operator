@@ -11,9 +11,8 @@ import pytest
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
-from tests.integration.helpers import get_app_name
-
 from ..ha_tests import helpers as ha_helpers
+from ..helpers import get_app_name
 from . import helpers
 
 S3_APP_NAME = "s3-integrator"
