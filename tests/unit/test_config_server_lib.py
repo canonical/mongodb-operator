@@ -62,6 +62,7 @@ class TestConfigServerInterface(unittest.TestCase):
             return False
 
         self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.add_relation("cluster", "mongos")
 
         # fails due to being run on non-config-server
         self.harness.charm.is_role = is_not_config_mock_call

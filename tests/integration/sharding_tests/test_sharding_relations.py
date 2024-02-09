@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
+import time
+
 import pytest
 from juju.errors import JujuAPIError
 from pytest_operator.plugin import OpsTest
@@ -11,6 +13,8 @@ CONFIG_SERVER_TWO_APP_NAME = "config-server-two"
 REPLICATION_APP_NAME = "replication"
 APP_CHARM_NAME = "application"
 LEGACY_APP_CHARM_NAME = "legacy-application"
+MONGOS_APP_NAME = "mongos"
+MONGOS_HOST_APP_NAME = "application-host"
 
 SHARDING_COMPONENTS = [SHARD_ONE_APP_NAME, CONFIG_SERVER_ONE_APP_NAME]
 
@@ -28,7 +32,11 @@ TIMEOUT = 30 * 60
 
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(
-    ops_test: OpsTest, application_charm, legacy_charm, database_charm
+    ops_test: OpsTest,
+    application_charm,
+    legacy_charm,
+    database_charm,
+    mongos_host_application_charm,
 ) -> None:
     """Build and deploy a sharded cluster."""
     await ops_test.model.deploy(
@@ -44,6 +52,18 @@ async def test_build_and_deploy(
     await ops_test.model.deploy(
         database_charm, config={"role": "shard"}, application_name=SHARD_ONE_APP_NAME
     )
+    await ops_test.model.deploy(
+        MONGOS_APP_NAME,
+        channel="6/edge",
+        revision=3,
+    )
+
+    # TODO: Future PR, once data integrator works with mongos charm deploy that charm instead of
+    # packing and deploying the charm in the application dir.
+    await ops_test.model.deploy(
+        mongos_host_application_charm, application_name=MONGOS_HOST_APP_NAME
+    )
+
     await ops_test.model.deploy(database_charm, application_name=REPLICATION_APP_NAME)
     await ops_test.model.deploy(application_charm, application_name=APP_CHARM_NAME)
     await ops_test.model.deploy(legacy_charm, application_name=LEGACY_APP_CHARM_NAME)
@@ -57,6 +77,19 @@ async def test_build_and_deploy(
         idle_period=20,
         raise_on_blocked=False,
         timeout=TIMEOUT,
+    )
+
+    await ops_test.model.integrate(
+        f"{MONGOS_APP_NAME}",
+        f"{MONGOS_HOST_APP_NAME}",
+    )
+
+    await ops_test.model.wait_for_idle(
+        apps=[MONGOS_HOST_APP_NAME, MONGOS_APP_NAME],
+        idle_period=20,
+        raise_on_blocked=False,
+        timeout=TIMEOUT,
+        raise_on_error=False,
     )
 
 
@@ -217,4 +250,66 @@ async def test_replication_shard_relation(ops_test: OpsTest):
         idle_period=20,
         raise_on_blocked=False,
         timeout=TIMEOUT,
+    )
+
+
+async def test_replication_mongos_relation(ops_test: OpsTest) -> None:
+    """Verifies connecting a replica to a mongos router fails."""
+    # attempt to add a replication deployment as a shard to the config server.
+    await ops_test.model.integrate(
+        f"{REPLICATION_APP_NAME}",
+        f"{MONGOS_APP_NAME}",
+    )
+
+    await ops_test.model.wait_for_idle(
+        apps=[REPLICATION_APP_NAME],
+        idle_period=20,
+        raise_on_blocked=False,
+        timeout=TIMEOUT,
+    )
+
+    replication_unit = ops_test.model.applications[REPLICATION_APP_NAME].units[0]
+    assert (
+        replication_unit.workload_status_message
+        == "Relation to mongos not supported, config role must be config-server"
+    ), "replica cannot be related to mongos."
+
+    # clean up relations
+    await ops_test.model.applications[REPLICATION_APP_NAME].remove_relation(
+        f"{REPLICATION_APP_NAME}:cluster",
+        f"{MONGOS_APP_NAME}:cluster",
+    )
+
+    # TODO remove this and wait for mongos to be active
+    # right now we cannot wait for `mongos` to be active after removing the relation due to a bug
+    # in the mongos charm. To fix the bug it is first necessary to publish the updated library
+    # lib/charms/mongodb/v0/config_server.py
+    time.sleep(60)
+
+
+async def test_shard_mongos_relation(ops_test: OpsTest) -> None:
+    """Verifies connecting a shard to a mongos router fails."""
+    # attempt to add a replication deployment as a shard to the config server.
+    await ops_test.model.integrate(
+        f"{SHARD_ONE_APP_NAME}",
+        f"{MONGOS_APP_NAME}",
+    )
+
+    await ops_test.model.wait_for_idle(
+        apps=[SHARD_ONE_APP_NAME],
+        idle_period=20,
+        raise_on_blocked=False,
+        timeout=TIMEOUT,
+    )
+
+    shard_unit = ops_test.model.applications[SHARD_ONE_APP_NAME].units[0]
+    assert (
+        shard_unit.workload_status_message
+        == "Relation to mongos not supported, config role must be config-server"
+    ), "replica cannot be related to mongos."
+
+    # clean up relations
+    await ops_test.model.applications[SHARD_ONE_APP_NAME].remove_relation(
+        f"{MONGOS_APP_NAME}:cluster",
+        f"{SHARD_ONE_APP_NAME}:cluster",
     )
