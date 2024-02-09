@@ -17,7 +17,7 @@ jobs:
 
   build:
     name: Build charm
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm_without_cache.yaml@v8
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm_without_cache.yaml@v11.0.1
     with:
       charmcraft-snap-channel: "latest/stable"
 
@@ -26,7 +26,7 @@ jobs:
     needs:
       - ci-tests
       - build
-    uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v8
+    uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v11.0.1
     with:
       channel: 6/edge
       artifact-name: ${{ needs.build.outputs.artifact-name }}
@@ -36,7 +36,7 @@ jobs:
       contents: write # Needed to create GitHub release
 
   release-libraries:
-    name: Release libraries 
+    name: Release libraries
     runs-on: ubuntu-latest
     needs:
       - ci-tests
