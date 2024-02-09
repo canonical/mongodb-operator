@@ -551,6 +551,8 @@ class ConfigServerRequirer(Object):
             logger.info("skipping %s is only be executed by shards", type(event))
             return False
 
+        # occasionally, broken events have no application, in these scenarios nothing should be
+        # processed.
         if not event.relation.app:
             return False
 

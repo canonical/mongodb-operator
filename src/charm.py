@@ -1363,10 +1363,7 @@ class MongodbOperatorCharm(CharmBase):
         ) and self.client_relations._get_users_from_relations(None):
             return BlockedStatus("cannot have both legacy and new relations")
 
-        is_integrated_to_mongos = len(
-            self.model.relations[Config.Relations.CLUSTER_RELATIONS_NAME]
-        )
-        if not self.is_role(Config.Role.CONFIG_SERVER) and is_integrated_to_mongos:
+        if not self.cluster.is_valid_mongos_integration():
             return BlockedStatus(
                 "Relation to mongos not supported, config role must be config-server"
             )
