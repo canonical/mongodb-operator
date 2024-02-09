@@ -78,7 +78,6 @@ jobs:
     needs:
       - lint
       - unit-test
-      - lib-check
       - build
     uses: canonical/data-platform-workflows/.github/workflows/integration_test_charm.yaml@v11.0.1
     with:
