@@ -30,10 +30,12 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 7
+LIBPATCH = 8
 
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
+
+MONGODB_PORT = 27017
 
 
 @dataclass
@@ -72,7 +74,7 @@ class MongoDBConfiguration:
             return (
                 f"mongodb://{quote_plus(self.username)}:"
                 f"{quote_plus(self.password)}@"
-                f"localhost:27017/?authSource=admin"
+                f"localhost:{MONGODB_PORT}/?authSource=admin"
             )
 
         return (

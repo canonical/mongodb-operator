@@ -30,7 +30,7 @@ from charms.mongodb.v1.mongos import (
     ShardNotInClusterError,
     ShardNotPlannedForRemovalError,
 )
-from charms.mongodb.v1.users import MongoDBUser, OperatorUser, BackupUser
+from charms.mongodb.v1.users import BackupUser, MongoDBUser, OperatorUser
 from ops.charm import CharmBase, EventBase, RelationBrokenEvent
 from ops.framework import Object
 from ops.model import (
@@ -55,7 +55,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 6
+LIBPATCH = 7
 KEYFILE_KEY = "key-file"
 HOSTS_KEY = "host"
 OPERATOR_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username())

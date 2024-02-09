@@ -2,12 +2,12 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import secrets
+import string
+
 import pytest
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
-import string
-import secrets
-
 
 from ..backup_tests import helpers as backup_helpers
 
@@ -43,7 +43,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await ops_test.model.deploy(S3_APP_NAME, channel="edge")
 
     await ops_test.model.wait_for_idle(
-        apps=[S3_APP_NAME, CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME],
+        apps=[S3_APP_NAME, CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
         idle_period=20,
         raise_on_blocked=False,
         timeout=TIMEOUT,
@@ -66,8 +66,8 @@ async def test_set_credentials_in_cluster(ops_test: OpsTest) -> None:
     # apply new configuration options
     await ops_test.model.applications[S3_APP_NAME].set_config(configuration_parameters)
 
-    # provide config-server to entire cluster - integrations made in succession to test race
-    # conditions.
+    # provide config-server to entire cluster and s3-integrator to config-server - integrations
+    # made in succession to test race conditions.
     await ops_test.model.integrate(
         f"{S3_APP_NAME}:{S3_REL_NAME}",
         f"{CONFIG_SERVER_APP_NAME}:{S3_REL_NAME}",
