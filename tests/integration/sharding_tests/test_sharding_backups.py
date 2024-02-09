@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-# Copyright 2023 Canonical Ltd.
+# Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
-import asyncio
 
 import pytest
 from pytest_operator.plugin import OpsTest
@@ -9,13 +8,7 @@ from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 import string
 import secrets
 
-from .helpers import (
-    generate_mongodb_client,
-    has_correct_shards,
-    shard_has_databases,
-    verify_data_mongodb,
-    write_data_to_mongodb,
-)
+
 from ..backup_tests import helpers as backup_helpers
 
 S3_APP_NAME = "s3-integrator"
@@ -59,7 +52,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 
 
 async def test_set_credentials_in_cluster(ops_test: OpsTest) -> None:
-    # set correct AWS credentials for s3 storage but incorrect configs
+    """Tests that sharded cluster can be configured for s3 configurations."""
     await backup_helpers.set_credentials(ops_test, cloud="AWS")
     choices = string.ascii_letters + string.digits
     unique_path = "".join([secrets.choice(choices) for _ in range(4)])
@@ -101,7 +94,7 @@ async def test_set_credentials_in_cluster(ops_test: OpsTest) -> None:
 
 
 async def test_create_and_list_backups_in_cluster(ops_test: OpsTest) -> None:
-    """Pass"""
+    """Tests that sharded cluster can successfully create and list backups."""
     leader_unit = await backup_helpers.get_leader_unit(
         ops_test, db_app_name=CONFIG_SERVER_APP_NAME
     )

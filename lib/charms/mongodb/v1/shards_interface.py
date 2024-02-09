@@ -150,12 +150,12 @@ class ShardingProvider(Object):
         if not self.charm.unit.is_leader():
             return False
 
-        # # adding/removing shards while a backup/restore is in progress can be disastrous
-        # pbm_status = self.charm.backups.get_pbm_status()
-        # if isinstance(pbm_status, MaintenanceStatus):
-        #     logger.info("Cannot add/remove shards while a backup/restore is in progress.")
-        #     event.defer()
-        #     return False
+        # adding/removing shards while a backup/restore is in progress can be disastrous
+        pbm_status = self.charm.backups.get_pbm_status()
+        if isinstance(pbm_status, MaintenanceStatus):
+            logger.info("Cannot add/remove shards while a backup/restore is in progress.")
+            event.defer()
+            return False
 
         if isinstance(event, RelationBrokenEvent):
             if not self.charm.has_departed_run(event.relation.id):
