@@ -133,7 +133,7 @@ jobs:
         run: tox run -e ${{ matrix.tox-environments }} -- -m '${{ steps.select-tests.outputs.mark_expression }}'
         env:
           CI_PACKED_CHARMS: ${{ needs.build.outputs.charms }}
-          AWS_ACCESS_KEY: ${{ matrix.tox-environments != 'backup-integration' || secrets.AWS_ACCESS_KEY }}
-          AWS_SECRET_KEY: ${{ matrix.tox-environments != 'backup-integration' || secrets.AWS_SECRET_KEY }}
-          GCP_ACCESS_KEY: ${{ matrix.tox-environments != 'backup-integration' || secrets.GCP_ACCESS_KEY }}
+          AWS_ACCESS_KEY: ${{ (matrix.tox-environments != 'backup-integration' || matrix.tox-environments != 'sharding-backups-integration')|| secrets.AWS_ACCESS_KEY }}
+          AWS_SECRET_KEY: ${{ (matrix.tox-environments != 'backup-integration' || matrix.tox-environments != 'sharding-backups-integration') || secrets.AWS_SECRET_KEY }}
+          GCP_ACCESS_KEY: ${{ matrix.tox-environments != 'backup-integration' ||  secrets.GCP_ACCESS_KEY }}
           GCP_SECRET_KEY: ${{ matrix.tox-environments != 'backup-integration' || secrets.GCP_SECRET_KEY }}
