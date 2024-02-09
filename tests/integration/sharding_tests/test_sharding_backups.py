@@ -65,6 +65,7 @@ async def test_set_credentials_in_cluster(ops_test: OpsTest) -> None:
 
     # apply new configuration options
     await ops_test.model.applications[S3_APP_NAME].set_config(configuration_parameters)
+    await ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active", timeout=TIMEOUT)
 
     # provide config-server to entire cluster and s3-integrator to config-server - integrations
     # made in succession to test race conditions.
