@@ -529,11 +529,11 @@ class MongodbOperatorCharm(CharmBase):
             logger.error("Failed to remove %s from replica set, error=%r", self.unit.name, e)
 
     def _on_update_status(self, event: UpdateStatusEvent):
-        # cannot have both legacy and new relations since they have different auth requirements
-        if self.client_relations._get_users_from_relations(
-            None, rel="obsolete"
-        ) and self.client_relations._get_users_from_relations(None):
-            self.unit.status = BlockedStatus("cannot have both legacy and new relations")
+        # user-made mistakes might result in other incorrect statues. Prioritise informing users of
+        # their mistake.
+        invalid_integration_status = self.get_invalid_integration_status()
+        if invalid_integration_status:
+            self.unit.status = invalid_integration_status
             return
 
         # no need to report on replica set status until initialised
@@ -1352,6 +1352,18 @@ class MongodbOperatorCharm(CharmBase):
     def _is_removing_last_replica(self) -> bool:
         """Returns True if the last replica (juju unit) is getting removed."""
         return self.app.planned_units() == 0 and len(self._peers.units) == 0
+
+    def get_invalid_integration_status(self) -> Optional[StatusBase]:
+        """Returns a status if an invalid integration is present."""
+        if self.client_relations._get_users_from_relations(
+            None, rel="obsolete"
+        ) and self.client_relations._get_users_from_relations(None):
+            return BlockedStatus("cannot have both legacy and new relations")
+
+        if not self.cluster.is_valid_mongos_integration():
+            return BlockedStatus(
+                "Relation to mongos not supported, config role must be config-server"
+            )
 
     def get_status(self) -> StatusBase:
         """Returns the status with the highest priority from backups, sharding, and mongod.

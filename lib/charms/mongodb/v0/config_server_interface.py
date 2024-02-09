@@ -35,7 +35,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 6
+LIBPATCH = 7
 
 
 class ClusterProvider(Object):
@@ -69,10 +69,7 @@ class ClusterProvider(Object):
             event.defer()
             return False
 
-        is_integrated_to_mongos = len(
-            self.charm.model.relations[Config.Relations.CLUSTER_RELATIONS_NAME]
-        )
-        if not self.charm.is_role(Config.Role.CONFIG_SERVER) and is_integrated_to_mongos:
+        if not self.is_valid_mongos_integration():
             logger.info(
                 "Skipping %s. ClusterProvider is only be executed by config-server", type(event)
             )
@@ -83,20 +80,24 @@ class ClusterProvider(Object):
 
         return True
 
-    def set_blocked_status_impossible_integration(self) -> None:
-        """Sets the status of the charm in the case that the integration is not possible."""
+    def is_valid_mongos_integration(self) -> bool:
+        """Returns true if the integration to mongos is valid."""
         is_integrated_to_mongos = len(
             self.charm.model.relations[Config.Relations.CLUSTER_RELATIONS_NAME]
         )
+
         if not self.charm.is_role(Config.Role.CONFIG_SERVER) and is_integrated_to_mongos:
-            self.charm.unit.status = BlockedStatus(
-                "Relation to mongos not supported, config role must be config-server"
-            )
+            return False
+
+        return True
 
     def _on_relation_changed(self, event) -> None:
         """Handles providing mongos with KeyFile and hosts."""
         if not self.pass_hook_checks(event):
-            self.set_blocked_status_impossible_integration()
+            if not self.is_valid_mongos_integration():
+                self.charm.unit.status = BlockedStatus(
+                    "Relation to mongos not supported, config role must be config-server"
+                )
             logger.info("Skipping relation joined event: hook checks did not pass")
             return
 
