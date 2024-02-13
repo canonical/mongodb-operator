@@ -33,6 +33,16 @@ output "cluster_endpoint" {
   value       = "cluster"
 }
 
+output "metrics_endpoint" {
+  description = "Name of the endpoint to provide the prometheus_scrape interface."
+  value       = "metrics-endpoint"
+}
+
+output "grafana_dashboard_endpoint" {
+  description = "Name of the endpoint to provide the grafana_dashboard interface."
+  value       = "grafana-dashboard"
+}
+
 # Required integration endpoints
 
 output "certificates_endpoint" {
