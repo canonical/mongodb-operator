@@ -20,7 +20,7 @@ variable "channel" {
 }
 
 variable "config" {
-  description = "Additional configuration for the MongoDB. Details about available options can be found at https://charmhub.io/mongodb-k8s/configure?channel=6/edge."
+  description = "Additional configuration for the MongoDB. Details about available options can be found at https://charmhub.io/mongodb-k8s/configure?channel=6/beta."
   type        = map(string)
   default     = {}
 }
