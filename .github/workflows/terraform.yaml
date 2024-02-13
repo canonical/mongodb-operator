@@ -7,7 +7,40 @@ on:
   pull_request:
 
 jobs:
-  check-terraform-module:
-    name: Check Terraform Module
-    uses: canonical/data-platform-workflows/.github/workflows/terraform.yaml@main
-    secrets: inherit
+  check-terraform:
+    name: Check Terraform
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./terraform
+    outputs:
+      CHECK_STATUS: "${{ env.CHECK_STATUS }}"
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Initialize Terraform Module
+        id: init
+        run: terraform init
+
+      - name: Validate Terraform Module
+        id: validate
+        run: terraform validate -no-color
+
+      - name: Validate terraform fmt
+        run: |
+          set +e 
+          echo "CHECK_STATUS=0" >> "$GITHUB_ENV"
+          terraform fmt -recursive -check
+          FMT_STATUS="$?"
+          if [[ "$FMT_STATUS" -ne 0 ]]; then
+            echo "❌ terraform fmt failed" >> "$GITHUB_STEP_SUMMARY"
+            echo "CHECK_STATUS=1" >> "$GITHUB_ENV"
+          fi
+      - name: Process check
+        if: always()
+        run: exit "$CHECK_STATUS"
