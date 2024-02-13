@@ -1,6 +1,6 @@
 # MongoDB Operator Terraform module
 
-This folder contains a base [Terraform][Terraform] module for the `mongodb-k8s` charm.
+This folder contains a base [Terraform][Terraform] module for the `mongodb` charm.
 
 The module uses the [Terraform Juju provider][Terraform Juju provider] to model the charm deployment onto any Kubernetes environment managed by [Juju][Juju].
 
@@ -13,18 +13,17 @@ The base module is not intended to be deployed in separation (it is possible tho
 - **output.tf** - Responsible for integrating the module with other Terraform modules, primarily by defining potential integration endpoints (charm integrations), but also by exposing the application name.
 - **terraform.tf** - Defines the Terraform provider.
 
-## Using mongodb-k8s base module in higher level modules
+## Using mongodb base module in higher level modules
 
 If you want to use `mongodb-operator` base module as part of your Terraform module, import it like shown below.
 
 ```text
 module "mongodb-operator" {
-  source = "git::https://github.com/canonical/mongodb-operator.git//terraform"
+  source = "git::https://github.com/canonical/mongodb-operator.git/terraform"
   
   model_name = "juju_model_name"
   
- (Customize configuration variables here if needed)
-
+  (Customize configuration variables here if needed)
 }
 ```
 
@@ -55,5 +54,5 @@ Please check the available [integration pairs][integration pairs].
 [Terraform]: https://www.terraform.io/
 [Juju]: https://juju.is
 [Terraform Juju provider]: https://registry.terraform.io/providers/juju/juju/latest
-[MongoDB configuration options]: https://charmhub.io/mongodb-k8s/configure?channel=6/edge
-[integration pairs]: https://charmhub.io/mongodb-k8s/integrations?channel=6/edge
+[MongoDB configuration options]: https://charmhub.io/mongodb/configure?channel=6/edge
+[integration pairs]: https://charmhub.io/mongodb/integrations?channel=6/edge

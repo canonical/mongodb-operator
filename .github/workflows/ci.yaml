@@ -50,6 +50,7 @@ jobs:
         run: python3 -m pip install tox
       - name: Run tests
         run: tox run -e unit
+
   lib-check:
     name: Check libraries
     runs-on: ubuntu-latest
@@ -64,6 +65,45 @@ jobs:
         with:
           credentials: "${{ secrets.CHARMHUB_TOKEN }}" # FIXME: current token will expire in 2023-07-04
           github-token: "${{ secrets.GITHUB_TOKEN }}"
+
+  check-terraform:
+    name: Check Terraform
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./terraform
+    outputs:
+      CHECK_STATUS: "${{ env.CHECK_STATUS }}"
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Initialize Terraform Module
+        id: init
+        run: terraform init
+
+      - name: Validate Terraform Module
+        id: validate
+        run: terraform validate -no-color
+
+      - name: Validate terraform fmt
+        run: |
+          set +e 
+          echo "CHECK_STATUS=0" >> "$GITHUB_ENV"
+          terraform fmt -recursive -check
+          FMT_STATUS="$?"
+          if [[ "$FMT_STATUS" -ne 0 ]]; then
+            echo "❌ terraform fmt failed" >> "$GITHUB_STEP_SUMMARY"
+            echo "CHECK_STATUS=1" >> "$GITHUB_ENV"
+          fi
+
+      - name: Process check
+        if: always()
+        run: exit "$CHECK_STATUS"
 
   build:
     name: Build charms
