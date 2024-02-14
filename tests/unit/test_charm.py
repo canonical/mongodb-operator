@@ -720,8 +720,8 @@ class TestCharm(unittest.TestCase):
         self.harness.charm.get_secret("unit", "non-existing-secret") is None
 
     def test_set_reset_existing_password_app(self):
-        """NOTE: currently ops.testing seems to allow for non-leader to set secrets too!"""
         self._setup_secrets()
+        self.harness.set_leader(True)
 
         # Getting current password
         self.harness.charm.set_secret("app", "monitor-password", "bla")
@@ -737,7 +737,8 @@ class TestCharm(unittest.TestCase):
 
     @parameterized.expand([("app"), ("unit")])
     def test_set_reset_new_secret(self, scope):
-        """NOTE: currently ops.testing seems to allow for non-leader to set secrets too!"""
+        self.harness.set_leader(True)
+
         # Getting current password
         self.harness.charm.set_secret(scope, "new-secret", "bla")
         assert self.harness.charm.get_secret(scope, "new-secret") == "bla"
@@ -760,8 +761,8 @@ class TestCharm(unittest.TestCase):
 
     @pytest.mark.usefixtures("use_caplog")
     def test_delete_password(self):
-        """NOTE: currently ops.testing seems to allow for non-leader to remove secrets too!"""
         self._setup_secrets()
+        self.harness.set_leader(True)
 
         assert self.harness.charm.get_secret("app", "monitor-password")
         self.harness.charm.remove_secret("app", "monitor-password")
