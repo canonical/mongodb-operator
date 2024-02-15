@@ -10,7 +10,7 @@ resource "juju_application" "mongodb" {
     channel = var.channel
     base    = "ubuntu@22.04"
   }
-  config = var.mongo-config
+  config = var.config
   units  = 1
   trust  = true
 }
