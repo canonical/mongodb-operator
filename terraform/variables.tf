@@ -19,7 +19,8 @@ variable "channel" {
   default     = "6/beta"
 }
 
-variable "mongo-config" {
-  description = "Additional configuration for the MongoDB"
+variable "config" {
+  description = "Additional configuration for the MongoDB. Details about available options can be found at https://charmhub.io/mongodb/configure?channel=6/beta."
+  type        = map(string)
   default     = {}
 }
