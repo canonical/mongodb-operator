@@ -12,17 +12,6 @@ on:
     - cron: "53 0 * * *" # Daily at 00:53 UTC
   # Triggered on push to branch "main" by .github/workflows/release.yaml
   workflow_call:
-    secrets:
-      CHARMHUB_TOKEN:
-        required: true
-      AWS_ACCESS_KEY:
-        required: true
-      AWS_SECRET_KEY:
-        required: true
-      GCP_ACCESS_KEY:
-        required: true
-      GCP_SECRET_KEY:
-        required: true
 
 jobs:
   lint:
@@ -82,9 +71,8 @@ jobs:
   integration-test:
     name: Integration test charm
     needs:
-      # comment out temporarily to test workflow on GitHub faster
-      # - lint
-      # - unit-test
+      - lint
+      - unit-test
       - build
     uses: canonical/data-platform-workflows/.github/workflows/integration_test_charm.yaml@v11.0.1
     with:
