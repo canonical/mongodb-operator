@@ -72,13 +72,6 @@ jobs:
       cache: true
 
   integration-test:
-    strategy:
-      fail-fast: false
-      matrix:
-        juju:
-          - agent: 3.1.6
-            libjuju: ^3
-            allure: true
     name: Integration test charm
     needs:
       # comment out temporarily to test workflow on GitHub faster
@@ -89,8 +82,7 @@ jobs:
     with:
       artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
       cloud: lxd
-      juju-agent-version: ${{ matrix.juju.agent }}
-      libjuju-version-constraint: ${{ matrix.juju.libjuju }}
+      juju-agent-version: 3.1.6
     permissions:
       contents: write # Needed for Allure Report beta
     secrets:
