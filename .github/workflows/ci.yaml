@@ -70,9 +70,9 @@ jobs:
       matrix:
         path:
           - .
-          - ./sharding_tests/application/metadata.yaml
-          - ./relation_tests/new_relations/application-charm/metadata.yaml
-          - ./dummy_legacy_app/metadata.yaml
+          - tests/integration/sharding_tests/application
+          - tests/integration/relation_tests/new_relations/application-charm
+          - tests/integration/dummy_legacy_app
     name: Build charm
     uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v11.0.1
     with:
@@ -88,7 +88,7 @@ jobs:
       - build
     uses: canonical/data-platform-workflows/.github/workflows/integration_test_charm.yaml@v11.0.1
     with:
-      artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
+      artifact-prefix: packed-charm-cache-true
       cloud: lxd
       juju-agent-version: 3.1.6
     permissions:
