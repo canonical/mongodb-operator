@@ -96,7 +96,7 @@ async def test_blocked_incorrect_conf(ops_test: OpsTest, github_secrets) -> None
     db_app_name = await get_app_name(ops_test)
 
     # set correct AWS credentials for s3 storage but incorrect configs
-    await helpers.set_credentials(ops_test, cloud="AWS")
+    await helpers.set_credentials(ops_test, github_secrets, cloud="AWS")
 
     # wait for both applications to be idle with the correct statuses
     async with ops_test.fast_forward():
@@ -138,7 +138,7 @@ async def test_ready_correct_conf(ops_test: OpsTest) -> None:
 async def test_create_and_list_backups(ops_test: OpsTest, github_secrets) -> None:
     db_app_name = await get_app_name(ops_test)
     leader_unit = await helpers.get_leader_unit(ops_test, db_app_name=db_app_name)
-    await helpers.set_credentials(ops_test, cloud="AWS")
+    await helpers.set_credentials(ops_test, github_secrets, cloud="AWS")
     # verify backup list works
     logger.error("!!!!! test_create_and_list_backups >>>  %s", leader_unit)
     action = await leader_unit.run_action(action_name="list-backups")
@@ -188,7 +188,7 @@ async def test_multi_backup(ops_test: OpsTest, continuous_writes_to_db, github_s
 
     # while first backup is running change access key, secret keys, and bucket name
     # for GCP
-    await helpers.set_credentials(ops_test, cloud="GCP")
+    await helpers.set_credentials(ops_test, github_secrets, cloud="GCP")
 
     # change to GCP configs and wait for PBM to resync
     configuration_parameters = {
@@ -231,7 +231,7 @@ async def test_multi_backup(ops_test: OpsTest, continuous_writes_to_db, github_s
         assert backups == 1, "Backup not created in first bucket on GCP."
 
     # set AWS credentials, set configs for s3 storage, and wait to resync
-    await helpers.set_credentials(ops_test, cloud="AWS")
+    await helpers.set_credentials(ops_test, github_secrets, cloud="AWS")
     configuration_parameters = {
         "bucket": "data-charms-testing",
         "region": "us-east-1",
@@ -314,7 +314,7 @@ async def test_restore_new_cluster(
 ):
     # configure test for the cloud provider
     db_app_name = await get_app_name(ops_test)
-    await helpers.set_credentials(ops_test, cloud=cloud_provider)
+    await helpers.set_credentials(ops_test, github_secrets, cloud=cloud_provider)
     if cloud_provider == "AWS":
         configuration_parameters = {
             "bucket": "data-charms-testing",
