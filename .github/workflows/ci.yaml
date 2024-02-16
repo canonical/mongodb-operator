@@ -66,9 +66,17 @@ jobs:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 
   build:
+    strategy:
+      matrix:
+        path:
+          - .
+          - ./sharding_tests/application/metadata.yaml
+          - ./relation_tests/new_relations/application-charm/metadata.yaml
+          - ./dummy_legacy_app/metadata.yaml
     name: Build charm
     uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v11.0.1
     with:
+      path-to-charm-directory: ${{ matrix.path }}
       cache: true
 
   integration-test:
