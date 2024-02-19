@@ -63,6 +63,7 @@ ORIGINAL_RESTART_DELAY = 5
 logger = logging.getLogger(__name__)
 
 
+@pytest.mark.group(1)
 @pytest.mark.skipif(
     os.environ.get("PYTEST_SKIP_DEPLOY", False),
     reason="skipping deploy, model expected to be provided.",
@@ -83,6 +84,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await ops_test.model.wait_for_idle()
 
 
+@pytest.mark.group(1)
 async def test_storage_re_use(ops_test, continuous_writes):
     """Verifies that database units with attached storage correctly repurpose storage.
 
@@ -122,6 +124,7 @@ async def test_storage_re_use(ops_test, continuous_writes):
     assert total_expected_writes["number"] == actual_writes
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_add_units(ops_test: OpsTest, continuous_writes) -> None:
     """Tests juju add-unit functionality.
@@ -152,7 +155,7 @@ async def test_add_units(ops_test: OpsTest, continuous_writes) -> None:
     assert total_expected_writes["number"] == actual_writes
 
 
-@pytest.mark.abort_on_fail
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_scale_down_capablities(ops_test: OpsTest, continuous_writes) -> None:
     """Tests clusters behavior when scaling down a minority and removing a primary replica.
@@ -230,6 +233,7 @@ async def test_scale_down_capablities(ops_test: OpsTest, continuous_writes) -> N
     assert total_expected_writes["number"] == actual_writes
 
 
+@pytest.mark.group(1)
 async def test_replication_across_members(ops_test: OpsTest, continuous_writes) -> None:
     """Check consistency, ie write to primary, read data from secondaries."""
     # first find primary, write to primary, then read from each unit
@@ -256,6 +260,7 @@ async def test_replication_across_members(ops_test: OpsTest, continuous_writes) 
     assert total_expected_writes["number"] == actual_writes
 
 
+@pytest.mark.group(1)
 async def test_unique_cluster_dbs(ops_test: OpsTest, continuous_writes) -> None:
     """Verify unique clusters do not share DBs."""
     # first find primary, write to primary,
@@ -304,6 +309,7 @@ async def test_unique_cluster_dbs(ops_test: OpsTest, continuous_writes) -> None:
     assert total_expected_writes["number"] == actual_writes
 
 
+@pytest.mark.group(1)
 async def test_replication_member_scaling(ops_test: OpsTest, continuous_writes) -> None:
     """Verify newly added and newly removed members properly replica data.
 
@@ -349,6 +355,7 @@ async def test_replication_member_scaling(ops_test: OpsTest, continuous_writes) 
     assert total_expected_writes["number"] == actual_writes
 
 
+@pytest.mark.group(1)
 async def test_kill_db_process(ops_test, continuous_writes):
     # locate primary unit
     app_name = await get_app_name(ops_test)
@@ -385,6 +392,7 @@ async def test_kill_db_process(ops_test, continuous_writes):
     ), "secondary not up to date with the cluster after restarting."
 
 
+@pytest.mark.group(1)
 async def test_freeze_db_process(ops_test, continuous_writes):
     # locate primary unit
     app_name = await get_app_name(ops_test)
@@ -438,6 +446,7 @@ async def test_freeze_db_process(ops_test, continuous_writes):
     ), "secondary not up to date with the cluster after restarting."
 
 
+@pytest.mark.group(1)
 async def test_restart_db_process(ops_test, continuous_writes, change_logging):
     # locate primary unit
     app_name = await get_app_name(ops_test)
@@ -484,6 +493,7 @@ async def test_restart_db_process(ops_test, continuous_writes, change_logging):
     ), "secondary not up to date with the cluster after restarting."
 
 
+@pytest.mark.group(1)
 async def test_full_cluster_crash(ops_test: OpsTest, continuous_writes, reset_restart_delay):
     app_name = await get_app_name(ops_test)
 
@@ -534,6 +544,7 @@ async def test_full_cluster_crash(ops_test: OpsTest, continuous_writes, reset_re
     assert actual_writes == total_expected_writes["number"], "db writes missing."
 
 
+@pytest.mark.group(1)
 async def test_full_cluster_restart(ops_test: OpsTest, continuous_writes, reset_restart_delay):
     app_name = await get_app_name(ops_test)
 
@@ -582,6 +593,7 @@ async def test_full_cluster_restart(ops_test: OpsTest, continuous_writes, reset_
     assert total_expected_writes["number"] == actual_writes, "writes to the db were missed."
 
 
+@pytest.mark.group(1)
 async def test_network_cut(ops_test, continuous_writes):
     # locate primary unit
     app_name = await get_app_name(ops_test)
@@ -661,6 +673,7 @@ async def test_network_cut(ops_test, continuous_writes):
     ), "secondary not up to date with the cluster after restarting."
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 @pytest.mark.unstable
 async def test_scale_up_down(ops_test: OpsTest, continuous_writes):
@@ -671,6 +684,7 @@ async def test_scale_up_down(ops_test: OpsTest, continuous_writes):
     await verify_writes(ops_test)
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 @pytest.mark.unstable
 async def test_scale_up_down_removing_leader(ops_test: OpsTest, continuous_writes):

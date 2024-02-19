@@ -38,6 +38,7 @@ logger = logging.getLogger(__name__)
 MEDIAN_REELECTION_TIME = 12
 
 
+@pytest.mark.group(1)
 @pytest.mark.skipif(
     os.environ.get("PYTEST_SKIP_DEPLOY", False),
     reason="skipping deploy, model expected to be provided.",
@@ -56,6 +57,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await ops_test.model.wait_for_idle()
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_status(ops_test: OpsTest) -> None:
     """Verifies that the application and unit are active."""
@@ -64,6 +66,7 @@ async def test_status(ops_test: OpsTest) -> None:
     assert len(ops_test.model.applications[app_name].units) == len(UNIT_IDS)
 
 
+@pytest.mark.group(1)
 @pytest.mark.parametrize("unit_id", UNIT_IDS)
 async def test_unit_is_running_as_replica_set(ops_test: OpsTest, unit_id: int) -> None:
     """Tests that mongodb is running as a replica set for the application unit."""
@@ -83,6 +86,7 @@ async def test_unit_is_running_as_replica_set(ops_test: OpsTest, unit_id: int) -
     client.close()
 
 
+@pytest.mark.group(1)
 async def test_leader_is_primary_on_deployment(ops_test: OpsTest) -> None:
     """Tests that right after deployment that the primary unit is the leader."""
     app_name = await get_app_name(ops_test)
@@ -103,6 +107,7 @@ async def test_leader_is_primary_on_deployment(ops_test: OpsTest) -> None:
     client.close()
 
 
+@pytest.mark.group(1)
 async def test_exactly_one_primary(ops_test: OpsTest) -> None:
     """Tests that there is exactly one primary in the deployed units."""
     app_name = await get_app_name(ops_test)
@@ -118,6 +123,7 @@ async def test_exactly_one_primary(ops_test: OpsTest) -> None:
     )
 
 
+@pytest.mark.group(1)
 async def test_get_primary_action(ops_test: OpsTest) -> None:
     """Tests that action get-primary outputs the correct unit with the primary replica."""
     # determine which unit is the primary
@@ -150,6 +156,7 @@ async def test_get_primary_action(ops_test: OpsTest) -> None:
         assert identified_primary == expected_primary
 
 
+@pytest.mark.group(1)
 async def test_set_password_action(ops_test: OpsTest) -> None:
     """Tests that action set-password outputs resets the password on app data and mongod."""
     # verify that password is correctly rotated by comparing old password with rotated one.
@@ -195,6 +202,7 @@ async def test_set_password_action(ops_test: OpsTest) -> None:
         client.close()
 
 
+@pytest.mark.group(1)
 async def test_monitor_user(ops_test: OpsTest) -> None:
     """Test verifies that the monitor user can perform operations such as 'rs.conf()'."""
     app_name = await get_app_name(ops_test)
@@ -212,6 +220,7 @@ async def test_monitor_user(ops_test: OpsTest) -> None:
     assert return_code == 0, "command rs.conf() on monitor user does not work"
 
 
+@pytest.mark.group(1)
 async def test_only_leader_can_set_while_all_can_read_password_secret(ops_test: OpsTest) -> None:
     """Test verifies that only the leader can set a password, while all units can read it."""
     # Setting existing password
@@ -230,6 +239,7 @@ async def test_only_leader_can_set_while_all_can_read_password_secret(ops_test: 
         assert password2 == password
 
 
+@pytest.mark.group(1)
 async def test_reset_and_get_password_secret_same_as_cli(ops_test: OpsTest) -> None:
     """Test verifies that we can set and retrieve the correct password using Juju 3.x secrets."""
     new_password = str(uuid4())
@@ -264,6 +274,7 @@ async def test_reset_and_get_password_secret_same_as_cli(ops_test: OpsTest) -> N
     assert data[secret_id]["content"]["Data"]["monitor-password"] == password
 
 
+@pytest.mark.group(1)
 async def test_empty_password(ops_test: OpsTest) -> None:
     """Test that the password can't be set to an empty string."""
     leader_id = await get_leader_id(ops_test)
@@ -276,6 +287,7 @@ async def test_empty_password(ops_test: OpsTest) -> None:
     assert password1 == password2
 
 
+@pytest.mark.group(1)
 async def test_no_password_change_on_invalid_password(ops_test: OpsTest) -> None:
     """Test that in general, there is no change when password validation fails."""
     leader_id = await get_leader_id(ops_test)
@@ -289,6 +301,7 @@ async def test_no_password_change_on_invalid_password(ops_test: OpsTest) -> None
     assert password1 == password2
 
 
+@pytest.mark.group(1)
 async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
     """Tests that there is exactly one replica set primary unit reported by juju."""
 
@@ -340,6 +353,7 @@ async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
     await ops_test.model.destroy_unit(target_unit)
 
 
+@pytest.mark.group(1)
 @pytest.mark.skip("Skipping until write to log files enabled")
 async def test_audit_log(ops_test: OpsTest) -> None:
     """Test that audit log was created and contains actual audit data."""
