@@ -22,6 +22,7 @@ S3_REL_NAME = "s3-credentials"
 TIMEOUT = 10 * 60
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy a sharded cluster."""
@@ -51,9 +52,10 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     )
 
 
-async def test_set_credentials_in_cluster(ops_test: OpsTest) -> None:
+@pytest.mark.group(1)
+async def test_set_credentials_in_cluster(ops_test: OpsTest, github_secrets) -> None:
     """Tests that sharded cluster can be configured for s3 configurations."""
-    await backup_helpers.set_credentials(ops_test, cloud="AWS")
+    await backup_helpers.set_credentials(ops_test, github_secrets, cloud="AWS")
     choices = string.ascii_letters + string.digits
     unique_path = "".join([secrets.choice(choices) for _ in range(4)])
     configuration_parameters = {
@@ -94,12 +96,13 @@ async def test_set_credentials_in_cluster(ops_test: OpsTest) -> None:
     )
 
 
-async def test_create_and_list_backups_in_cluster(ops_test: OpsTest) -> None:
+@pytest.mark.group(1)
+async def test_create_and_list_backups_in_cluster(ops_test: OpsTest, github_secrets) -> None:
     """Tests that sharded cluster can successfully create and list backups."""
     leader_unit = await backup_helpers.get_leader_unit(
         ops_test, db_app_name=CONFIG_SERVER_APP_NAME
     )
-    await backup_helpers.set_credentials(ops_test, cloud="AWS")
+    await backup_helpers.set_credentials(ops_test, github_secrets, cloud="AWS")
     # verify backup list works
     action = await leader_unit.run_action(action_name="list-backups")
     list_result = await action.wait()
