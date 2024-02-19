@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Set
 from urllib.parse import quote_plus
 
+from config import Config
+
 from bson.json_util import dumps
 from pymongo import MongoClient
 from pymongo.errors import OperationFailure, PyMongoError
@@ -34,8 +36,6 @@ LIBPATCH = 8
 
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
-
-MONGODB_PORT = 27017
 
 
 @dataclass
@@ -74,7 +74,7 @@ class MongoDBConfiguration:
             return (
                 f"mongodb://{quote_plus(self.username)}:"
                 f"{quote_plus(self.password)}@"
-                f"localhost:{MONGODB_PORT}/?authSource=admin"
+                f"localhost:{Config.MONGODB_PORT}/?authSource=admin"
             )
 
         return (
