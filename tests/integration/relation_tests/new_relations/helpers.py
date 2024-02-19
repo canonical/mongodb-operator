@@ -7,7 +7,7 @@ import json
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
-from tests.integration.helpers import get_application_relation_data
+from ...helpers import get_application_relation_data
 
 
 async def verify_application_data(

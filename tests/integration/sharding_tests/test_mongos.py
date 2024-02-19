@@ -20,6 +20,7 @@ MONGODB_KEYFILE_PATH = "/var/snap/charmed-mongodb/current/etc/mongod/keyFile"
 TIMEOUT = 10 * 60
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest, mongos_host_application_charm) -> None:
     """Build and deploy a sharded cluster."""
@@ -55,6 +56,7 @@ async def test_build_and_deploy(ops_test: OpsTest, mongos_host_application_charm
     )
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_connect_to_cluster_creates_user(ops_test: OpsTest) -> None:
     """Verifies that when the cluster is formed a new user is created."""
@@ -113,6 +115,7 @@ async def test_connect_to_cluster_creates_user(ops_test: OpsTest) -> None:
     mongos_user_client.admin.command("dbStats")
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_disconnect_from_cluster_removes_user(ops_test: OpsTest) -> None:
     """Verifies that when the cluster is formed a the user is removed."""
