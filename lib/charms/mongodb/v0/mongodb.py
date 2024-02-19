@@ -9,8 +9,6 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Set
 from urllib.parse import quote_plus
 
-from config import Config
-
 from bson.json_util import dumps
 from pymongo import MongoClient
 from pymongo.errors import OperationFailure, PyMongoError
@@ -23,6 +21,8 @@ from tenacity import (
     stop_after_delay,
     wait_fixed,
 )
+
+from config import Config
 
 # The unique Charmhub library identifier, never change it
 LIBID = "49c69d9977574dd7942eb7b54f43355b"
