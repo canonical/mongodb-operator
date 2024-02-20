@@ -98,9 +98,9 @@ async def find_unit(ops_test: OpsTest, leader: bool, app_name=None) -> ops.model
     return ret_unit
 
 
-async def get_leader_id(ops_test: OpsTest) -> int:
+async def get_leader_id(ops_test: OpsTest, app_name=None) -> int:
     """Returns the unit number of the juju leader unit."""
-    app_name = await get_app_name(ops_test)
+    app_name = app_name or await get_app_name(ops_test)
     for unit in ops_test.model.applications[app_name].units:
         if await unit.is_leader_from_status():
             return int(unit.name.split("/")[1])
