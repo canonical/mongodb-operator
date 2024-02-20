@@ -123,12 +123,13 @@ class MongoDBBackups(Object):
         self.framework.observe(self.charm.on.restore_action, self._on_restore_action)
 
     def on_s3_relation_joined(self, _) -> None:
+        """Checks for valid integration for s3-integrations."""
         if not self.is_valid_s3_integration():
             logger.debug(
                 "Shard does not support s3 relations, please relate s3-integrator to config-server only."
             )
             self.charm.unit.status = BlockedStatus(
-                f"Relation to s3-integrator is not supported, config role must be config-server"
+                "Relation to s3-integrator is not supported, config role must be config-server"
             )
 
     def _on_s3_credential_changed(self, event: CredentialsChangedEvent):
@@ -292,13 +293,15 @@ class MongoDBBackups(Object):
     def is_valid_s3_integration(self) -> bool:
         """Return true if relation to s3-integrator is valid.
 
-        Only replica sets and config servers can integrate to s3-integrator."""
+        Only replica sets and config servers can integrate to s3-integrator.
+        """
         return not self.charm.is_role(Config.Role.SHARD)
 
     def _pass_sanity_checks(self, event, action) -> bool:
         """Return True if basic pre-conditions for running backup actions are met.
 
-        No matter what backup-action is being run, these requirements must be met"""
+        No matter what backup-action is being run, these requirements must be met.
+        """
         if not self.is_valid_s3_integration():
             self._fail_action_with_error_log(
                 event,

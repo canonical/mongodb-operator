@@ -1370,7 +1370,7 @@ class MongodbOperatorCharm(CharmBase):
 
         if not self.backups.is_valid_s3_integration():
             return BlockedStatus(
-                f"Relation to s3-integrator is not supported, config role must be config-server"
+                "Relation to s3-integrator is not supported, config role must be config-server"
             )
 
     def get_status(self) -> StatusBase:
