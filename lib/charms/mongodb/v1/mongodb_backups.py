@@ -295,7 +295,10 @@ class MongoDBBackups(Object):
 
         Only replica sets and config servers can integrate to s3-integrator.
         """
-        return not self.charm.is_role(Config.Role.SHARD)
+        if self.charm.is_role(Config.Role.SHARD) and self.model.get_relation(S3_RELATION):
+            return False
+
+        return True
 
     def _pass_sanity_checks(self, event, action) -> bool:
         """Return True if basic pre-conditions for running backup actions are met.
