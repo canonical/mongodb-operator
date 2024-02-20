@@ -22,6 +22,8 @@ from tenacity import (
     wait_fixed,
 )
 
+from config import Config
+
 # The unique Charmhub library identifier, never change it
 LIBID = "49c69d9977574dd7942eb7b54f43355b"
 
@@ -30,7 +32,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 7
+LIBPATCH = 8
 
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
@@ -57,6 +59,7 @@ class MongoDBConfiguration:
     roles: Set[str]
     tls_external: bool
     tls_internal: bool
+    standalone: bool = False
 
     @property
     def uri(self):
@@ -66,6 +69,14 @@ class MongoDBConfiguration:
         auth_source = ""
         if self.database != "admin":
             auth_source = "&authSource=admin"
+
+        if self.standalone:
+            return (
+                f"mongodb://{quote_plus(self.username)}:"
+                f"{quote_plus(self.password)}@"
+                f"localhost:{Config.MONGODB_PORT}/?authSource=admin"
+            )
+
         return (
             f"mongodb://{quote_plus(self.username)}:"
             f"{quote_plus(self.password)}@"

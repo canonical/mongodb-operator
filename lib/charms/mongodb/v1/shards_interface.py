@@ -30,7 +30,7 @@ from charms.mongodb.v1.mongos import (
     ShardNotInClusterError,
     ShardNotPlannedForRemovalError,
 )
-from charms.mongodb.v1.users import MongoDBUser, OperatorUser
+from charms.mongodb.v1.users import BackupUser, MongoDBUser, OperatorUser
 from ops.charm import CharmBase, EventBase, RelationBrokenEvent
 from ops.framework import Object
 from ops.model import (
@@ -55,10 +55,11 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 6
+LIBPATCH = 7
 KEYFILE_KEY = "key-file"
 HOSTS_KEY = "host"
 OPERATOR_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username())
+BACKUP_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(BackupUser.get_username())
 FORBIDDEN_REMOVAL_ERR_CODE = 20
 AUTH_FAILED_CODE = 18
 
@@ -117,6 +118,10 @@ class ShardingProvider(Object):
                 OPERATOR_PASSWORD_KEY: self.charm.get_secret(
                     Config.Relations.APP_SCOPE,
                     OPERATOR_PASSWORD_KEY,
+                ),
+                BACKUP_PASSWORD_KEY: self.charm.get_secret(
+                    Config.Relations.APP_SCOPE,
+                    BACKUP_PASSWORD_KEY,
                 ),
                 KEYFILE_KEY: self.charm.get_secret(
                     Config.Relations.APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME
@@ -450,7 +455,7 @@ class ConfigServerRequirer(Object):
         self.database_requires = DatabaseRequires(
             self.charm,
             relation_name=self.relation_name,
-            additional_secret_fields=[KEYFILE_KEY, OPERATOR_PASSWORD_KEY],
+            additional_secret_fields=[KEYFILE_KEY, OPERATOR_PASSWORD_KEY, BACKUP_PASSWORD_KEY],
             # a database isn't required for the relation between shards + config servers, but is a
             # requirement for using `DatabaseRequires`
             database_name="",
@@ -478,7 +483,6 @@ class ConfigServerRequirer(Object):
 
         # if re-using an old shard, re-set drained flag.
         self.charm.unit_peer_data["drained"] = json.dumps(False)
-
         self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
 
         # shards rely on the config server for secrets
@@ -507,13 +511,19 @@ class ConfigServerRequirer(Object):
         operator_password = self.database_requires.fetch_relation_field(
             event.relation.id, OPERATOR_PASSWORD_KEY
         )
-        if not operator_password:
+        backup_password = self.database_requires.fetch_relation_field(
+            event.relation.id, BACKUP_PASSWORD_KEY
+        )
+        if not operator_password or not backup_password:
             event.defer()
             self.charm.unit.status = WaitingStatus("Waiting for secrets from config-server")
             return
 
         try:
-            self.update_operator_password(new_password=operator_password)
+            self.update_password(
+                username=OperatorUser.get_username(), new_password=operator_password
+            )
+            self.update_password(BackupUser.get_username(), new_password=backup_password)
         except RetryError:
             self.charm.unit.status = BlockedStatus("Shard not added to config-server")
             logger.error(
@@ -522,6 +532,8 @@ class ConfigServerRequirer(Object):
             event.defer()
             return
 
+        # after updating the password of the backup user, restart pbm with correct password
+        self.charm._connect_pbm_agent()
         self.charm.app_peer_data["mongos_hosts"] = json.dumps(self.get_mongos_hosts())
 
     def pass_hook_checks(self, event):
@@ -685,8 +697,8 @@ class ConfigServerRequirer(Object):
             self.charm.unit_peer_data["drained"] = json.dumps(drained)
             return drained
 
-    def update_operator_password(self, new_password: str) -> None:
-        """Updates the password for the operator user.
+    def update_password(self, username: str, new_password: str) -> None:
+        """Updates the password for the given user.
 
         Raises:
             RetryError
@@ -696,8 +708,7 @@ class ConfigServerRequirer(Object):
 
         current_password = (
             self.charm.get_secret(
-                Config.Relations.APP_SCOPE,
-                OPERATOR_PASSWORD_KEY,
+                Config.Relations.APP_SCOPE, MongoDBUser.get_password_key_name_for_user(username)
             ),
         )
 
@@ -712,7 +723,7 @@ class ConfigServerRequirer(Object):
                 # a library, for exceptions used in both charm code and lib code.
                 with MongoDBConnection(self.charm.mongodb_config) as mongo:
                     try:
-                        mongo.set_user_password(OperatorUser.get_username(), new_password)
+                        mongo.set_user_password(username, new_password)
                     except NotReadyError:
                         logger.error(
                             "Failed changing the password: Not all members healthy or finished initial sync."
@@ -724,7 +735,7 @@ class ConfigServerRequirer(Object):
 
         self.charm.set_secret(
             Config.Relations.APP_SCOPE,
-            OPERATOR_PASSWORD_KEY,
+            MongoDBUser.get_password_key_name_for_user(username),
             new_password,
         )
 
