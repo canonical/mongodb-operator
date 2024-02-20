@@ -137,6 +137,16 @@ async def test_rotate_backup_password(ops_test: OpsTest) -> None:
     config_leader_id = await get_leader_id(ops_test, app_name=CONFIG_SERVER_APP_NAME)
     new_password = "new-password"
 
+    shard_backup_password = get_password(ops_test, username="backup", app_name=SHARD_ONE_APP_NAME)
+    assert (
+        shard_backup_password != new_password
+    ), "shard-one is incorrectly already set to the new password."
+
+    shard_backup_password = get_password(ops_test, username="backup", app_name=SHARD_TWO_APP_NAME)
+    assert (
+        shard_backup_password != new_password
+    ), "shard-two is incorrectly already set to the new password."
+
     await set_password(
         ops_test, unit_id=config_leader_id, username="backup", password=new_password
     )
