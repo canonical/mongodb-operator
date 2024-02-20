@@ -125,3 +125,19 @@ async def test_create_and_list_backups_in_cluster(ops_test: OpsTest, github_secr
                 assert backups == 1
     except RetryError:
         assert backups == 1, "Backup not created."
+
+
+@pytest.mark.group(1)
+async def test_shards_cannot_run_backup_actions(ops_test: OpsTest) -> None:
+    shard_unit = await backup_helpers.get_leader_unit(ops_test, db_app_name=SHARD_ONE_APP_NAME)
+    action = await shard_unit.run_action(action_name="create-backup")
+    attempted_backup = await action.wait()
+    assert attempted_backup.status == "failed", "shard ran create-backup command."
+
+    action = await shard_unit.run_action(action_name="list-backups")
+    attempted_backup = await action.wait()
+    assert attempted_backup.status == "failed", "shard ran list-backup command."
+
+    action = await shard_unit.run_action(action_name="restore")
+    attempted_backup = await action.wait()
+    assert attempted_backup.status == "failed", "shard ran list-backup command."
