@@ -8,25 +8,18 @@ on:
 jobs:
   ci-tests:
     uses: ./.github/workflows/ci.yaml
-    secrets:
-      CHARMHUB_TOKEN: "${{ secrets.CHARMHUB_TOKEN }}"
-      AWS_ACCESS_KEY: "${{ secrets.AWS_ACCESS_KEY }}"
-      AWS_SECRET_KEY: "${{ secrets.AWS_SECRET_KEY }}"
-      GCP_ACCESS_KEY: "${{ secrets.GCP_ACCESS_KEY }}"
-      GCP_SECRET_KEY: "${{ secrets.GCP_SECRET_KEY }}"
+    secrets: inherit
 
   build:
     name: Build charm
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm_without_cache.yaml@v8
-    with:
-      charmcraft-snap-channel: "latest/stable"
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm_without_cache.yaml@v11.0.1
 
   release-charm:
     name: Release charm
     needs:
       - ci-tests
       - build
-    uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v8
+    uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v11.0.1
     with:
       channel: 6/edge
       artifact-name: ${{ needs.build.outputs.artifact-name }}
@@ -36,7 +29,7 @@ jobs:
       contents: write # Needed to create GitHub release
 
   release-libraries:
-    name: Release libraries 
+    name: Release libraries
     runs-on: ubuntu-latest
     needs:
       - ci-tests
