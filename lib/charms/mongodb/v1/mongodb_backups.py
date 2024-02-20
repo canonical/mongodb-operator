@@ -113,17 +113,32 @@ class MongoDBBackups(Object):
         # s3 relation handles the config options for s3 backups
         self.s3_client = S3Requirer(self.charm, S3_RELATION)
         self.framework.observe(
+            self.charm.on[S3_RELATION].relation_joined, self.on_s3_relation_joined
+        )
+        self.framework.observe(
             self.s3_client.on.credentials_changed, self._on_s3_credential_changed
         )
         self.framework.observe(self.charm.on.create_backup_action, self._on_create_backup_action)
         self.framework.observe(self.charm.on.list_backups_action, self._on_list_backups_action)
         self.framework.observe(self.charm.on.restore_action, self._on_restore_action)
 
+    def on_s3_relation_joined(self, _) -> None:
+        if not self.is_valid_s3_integration():
+            logger.debug(
+                "Shard does not support s3 relations, please relate s3-integrator to config-server only."
+            )
+            self.charm.unit.status = BlockedStatus(
+                f"Relation to s3-integrator is not supported, config role must be config-server"
+            )
+
     def _on_s3_credential_changed(self, event: CredentialsChangedEvent):
         """Sets pbm credentials, resyncs if necessary and reports config errors."""
         # handling PBM configurations requires that MongoDB is running and the pbm snap is
         # installed.
         action = "configure-pbm"
+        if not self._pass_sanity_checks(event, action):
+            return
+
         if not self.charm.db_initialised:
             self._defer_action_with_info_log(
                 event, action, "Set PBM credentials, MongoDB not ready."
@@ -140,12 +155,7 @@ class MongoDBBackups(Object):
 
     def _on_create_backup_action(self, event) -> None:
         action = "backup"
-        if self.model.get_relation(S3_RELATION) is None:
-            self._fail_action_with_error_log(
-                event,
-                action,
-                "Relation with s3-integrator charm missing, cannot create backup.",
-            )
+        if not self._pass_sanity_checks(event, action):
             return
 
         # only leader can create backups. This prevents multiple backups from being attempted at
@@ -195,12 +205,7 @@ class MongoDBBackups(Object):
 
     def _on_list_backups_action(self, event) -> None:
         action = "list-backups"
-        if self.model.get_relation(S3_RELATION) is None:
-            self._fail_action_with_error_log(
-                event,
-                action,
-                "Relation with s3-integrator charm missing, cannot list backups.",
-            )
+        if not self._pass_sanity_checks(event, action):
             return
 
         # cannot list backups if pbm is resyncing, or has incompatible options or incorrect
@@ -229,12 +234,7 @@ class MongoDBBackups(Object):
 
     def _on_restore_action(self, event) -> None:
         action = "restore"
-        if self.model.get_relation(S3_RELATION) is None:
-            self._fail_action_with_error_log(
-                event,
-                action,
-                "Relation with s3-integrator charm missing, cannot restore from a backup.",
-            )
+        if not self._pass_sanity_checks(event, action):
             return
 
         backup_id = event.params.get("backup-id")
@@ -289,6 +289,33 @@ class MongoDBBackups(Object):
             self._fail_action_with_error_log(event, action, str(restore_error))
 
     # BEGIN: helper functions
+    def is_valid_s3_integration(self) -> bool:
+        """Return true if relation to s3-integrator is valid.
+
+        Only replica sets and config servers can integrate to s3-integrator."""
+        return not self.charm.is_role(Config.Role.SHARD)
+
+    def _pass_sanity_checks(self, event, action) -> bool:
+        """Return True if basic pre-conditions for running backup actions are met.
+
+        No matter what backup-action is being run, these requirements must be met"""
+        if not self.is_valid_s3_integration():
+            self._fail_action_with_error_log(
+                event,
+                action,
+                "Shards do not support backup operations, please run action on config-server.",
+            )
+            return False
+
+        if self.model.get_relation(S3_RELATION) is None:
+            self._fail_action_with_error_log(
+                event,
+                action,
+                "Relation with s3-integrator charm missing, cannot restore from a backup.",
+            )
+            return False
+
+        return True
 
     def _configure_pbm_options(self, event) -> None:
         action = "configure-pbm"
