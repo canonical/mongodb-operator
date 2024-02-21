@@ -67,8 +67,9 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
-async def test_set_credentials_in_cluster(ops_test: OpsTest, github_secrets) -> None:
+async def test_set_credentials_in_cluster(ops_test: OpsTest) -> None:
     """Tests that sharded cluster can be configured for s3 configurations."""
+    github_secrets = None
     await backup_helpers.set_credentials(ops_test, github_secrets, cloud="AWS")
     choices = string.ascii_letters + string.digits
     unique_path = "".join([secrets.choice(choices) for _ in range(4)])
@@ -112,7 +113,9 @@ async def test_set_credentials_in_cluster(ops_test: OpsTest, github_secrets) -> 
 
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
-async def test_create_and_list_backups_in_cluster(ops_test: OpsTest, github_secrets) -> None:
+async def test_create_and_list_backups_in_cluster(ops_test: OpsTest) -> None:
+
+    github_secrets = None
     """Tests that sharded cluster can successfully create and list backups."""
     leader_unit = await backup_helpers.get_leader_unit(
         ops_test, db_app_name=CONFIG_SERVER_APP_NAME
@@ -203,9 +206,14 @@ async def test_restore_backup(ops_test: OpsTest, add_writes_to_db) -> None:
     number_writes = await ha_helpers.count_writes(ops_test)
     assert number_writes > 0, "no writes to backup"
 
-    db_unit = await backup_helpers.get_leader_unit(ops_test, db_app_name=CONFIG_SERVER_APP_NAME)
-    prev_backups = await backup_helpers.count_logical_backups(db_unit)
-    action = await db_unit.run_action(action_name="create-backup")
+    leader_unit = await backup_helpers.get_leader_unit(
+        ops_test, db_app_name=CONFIG_SERVER_APP_NAME
+    )
+    prev_backups = await backup_helpers.count_logical_backups(leader_unit)
+    await ops_test.model.wait_for_idle(
+        apps=[CONFIG_SERVER_APP_NAME], status="active", idle_period=20
+    ),
+    action = await leader_unit.run_action(action_name="create-backup")
     first_backup = await action.wait()
     assert first_backup.status == "completed", "First backup not started."
 
@@ -213,10 +221,14 @@ async def test_restore_backup(ops_test: OpsTest, add_writes_to_db) -> None:
     try:
         for attempt in Retrying(stop=stop_after_delay(4), wait=wait_fixed(5)):
             with attempt:
-                backups = await backup_helpers.count_logical_backups(db_unit)
+                backups = await backup_helpers.count_logical_backups(leader_unit)
                 assert backups == prev_backups + 1, "Backup not created."
     except RetryError:
         assert backups == prev_backups + 1, "Backup not created."
+
+    await ops_test.model.wait_for_idle(
+        apps=[CONFIG_SERVER_APP_NAME], status="active", idle_period=20
+    ),
 
     # add writes to be cleared after restoring the backup. Note these are written to the same
     # collection that was backed up.
@@ -225,16 +237,18 @@ async def test_restore_backup(ops_test: OpsTest, add_writes_to_db) -> None:
     assert new_number_of_writes > number_writes, "No writes to be cleared after restoring."
 
     # find most recent backup id and restore
-    action = await db_unit.run_action(action_name="list-backups")
+    action = await leader_unit.run_action(action_name="list-backups")
     list_result = await action.wait()
     list_result = list_result.results["backups"]
     most_recent_backup = list_result.split("\n")[-1]
     backup_id = most_recent_backup.split()[0]
-    action = await db_unit.run_action(action_name="restore", **{"backup-id": backup_id})
+    action = await leader_unit.run_action(action_name="restore", **{"backup-id": backup_id})
     restore = await action.wait()
     assert restore.results["restore-status"] == "restore started", "restore not successful"
 
-    ops_test.model.wait_for_idle(apps=[CONFIG_SERVER_APP_NAME], status="active", idle_period=20),
+    await ops_test.model.wait_for_idle(
+        apps=[CONFIG_SERVER_APP_NAME], status="active", idle_period=20
+    ),
 
     # verify all writes are present
     try:

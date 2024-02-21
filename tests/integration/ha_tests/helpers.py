@@ -30,7 +30,8 @@ from ..helpers import get_app_name, get_unit_ip, instance_ip
 
 # TODO move these to a separate file for constants \ config
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
-PORT = 27017
+MONGOD_PORT = 27017
+MONGOS_PORT = 27018
 APP_NAME = METADATA["name"]
 MONGO_COMMON_DIR = "/var/snap/charmed-mongodb/common"
 DB_PROCESS = "/usr/bin/mongod"
@@ -60,7 +61,7 @@ def replica_set_client(replica_ips: List[str], password: str, app_name: str) -> 
         password: password of database.
         app_name: name of application which hosts the cluster.
     """
-    hosts = ["{}:{}".format(replica_ip, PORT) for replica_ip in replica_ips]
+    hosts = ["{}:{}".format(replica_ip, MONGOD_PORT) for replica_ip in replica_ips]
     hosts = ",".join(hosts)
 
     replica_set_uri = f"mongodb://operator:" f"{password}@" f"{hosts}/admin?replicaSet={app_name}"
@@ -100,7 +101,11 @@ def unit_uri(ip_address: str, password, app_name=APP_NAME) -> str:
         password: password of database.
         app_name: name of application which has the cluster.
     """
-    return f"mongodb://operator:" f"{password}@" f"{ip_address}:{PORT}/admin?replicaSet={app_name}"
+    return (
+        f"mongodb://operator:"
+        f"{password}@"
+        f"{ip_address}:{MONGOD_PORT}/admin?replicaSet={app_name}"
+    )
 
 
 # TODO remove this duplicate with helpers.py
@@ -267,10 +272,15 @@ async def start_continous_writes(ops_test: OpsTest, starting_number: int) -> Non
     In the future this should be put in a dummy charm.
     """
     app_name = await get_app_name(ops_test)
+    port = MONGOS_PORT if "config-server" in app_name else MONGOD_PORT
+    repl_set = "" if "config-server" in app_name else f"?replicaSet={app_name}"
     password = await get_password(ops_test, app_name)
-    hosts = [unit.public_address for unit in ops_test.model.applications[app_name].units]
+    hosts = [
+        f"{unit.public_address}:{port}" for unit in ops_test.model.applications[app_name].units
+    ]
     hosts = ",".join(hosts)
-    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app_name}"
+    connection_string = f"mongodb://operator:{password}@{hosts}/admin{repl_set}"
+    print(connection_string)
 
     # run continuous writes in the background.
     subprocess.Popen(
@@ -296,9 +306,13 @@ async def stop_continous_writes(ops_test: OpsTest, down_unit=None, app_name=None
 
     app_name = app_name or await get_app_name(ops_test)
     password = await get_password(ops_test, app_name, down_unit)
-    hosts = [unit.public_address for unit in ops_test.model.applications[app_name].units]
+    port = MONGOS_PORT if "config-server" in app_name else MONGOD_PORT
+    repl_set = "" if "config-server" in app_name else f"?replicaSet={app_name}"
+    hosts = [
+        f"{unit.public_address}:{port}" for unit in ops_test.model.applications[app_name].units
+    ]
     hosts = ",".join(hosts)
-    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app_name}"
+    connection_string = f"mongodb://operator:{password}@{hosts}/admin{repl_set}"
 
     client = MongoClient(connection_string)
     db = client["new-db"]
@@ -314,9 +328,13 @@ async def count_writes(ops_test: OpsTest, down_unit=None, app_name=None) -> int:
     """New versions of pymongo no longer support the count operation, instead find is used."""
     app_name = app_name or await get_app_name(ops_test)
     password = await get_password(ops_test, app_name, down_unit)
-    hosts = [unit.public_address for unit in ops_test.model.applications[app_name].units]
+    port = MONGOS_PORT if "config-server" in app_name else MONGOD_PORT
+    repl_set = "" if "config-server" in app_name else f"?replicaSet={app_name}"
+    hosts = [
+        f"{unit.public_address}:{port}" for unit in ops_test.model.applications[app_name].units
+    ]
     hosts = ",".join(hosts)
-    connection_string = f"mongodb://operator:{password}@{hosts}/admin?replicaSet={app_name}"
+    connection_string = f"mongodb://operator:{password}@{hosts}/admin{repl_set}"
 
     client = MongoClient(connection_string)
     db = client["new-db"]
@@ -333,7 +351,7 @@ async def secondary_up_to_date(ops_test: OpsTest, unit_ip, expected_writes, app_
     """
     app_name = app_name or await get_app_name(ops_test)
     password = await get_password(ops_test, app_name)
-    connection_string = f"mongodb://operator:{password}@{unit_ip}:{PORT}/admin?"
+    connection_string = f"mongodb://operator:{password}@{unit_ip}:{MONGOD_PORT}/admin?"
     client = MongoClient(connection_string, directConnection=True)
 
     try:
