@@ -604,7 +604,7 @@ class MongodbOperatorCharm(CharmBase):
 
         # rotate password to shards
         # TODO in the future support rotating passwords of pbm across shards
-        if username == OperatorUser.get_username():
+        if username in [OperatorUser.get_username(), BackupUser.get_username()]:
             self.config_server.update_credentials(
                 MongoDBUser.get_password_key_name_for_user(username),
                 new_password,
