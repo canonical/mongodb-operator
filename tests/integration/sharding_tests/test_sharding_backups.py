@@ -4,12 +4,14 @@
 
 import secrets
 import string
+import time
 
 import pytest
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from ..backup_tests import helpers as backup_helpers
+from ..ha_tests import helpers as ha_helpers
 from ..helpers import get_leader_id, get_password, set_password
 
 S3_APP_NAME = "s3-integrator"
@@ -21,6 +23,16 @@ SHARD_REL_NAME = "sharding"
 CONFIG_SERVER_REL_NAME = "config-server"
 S3_REL_NAME = "s3-credentials"
 TIMEOUT = 10 * 60
+
+
+@pytest.fixture()
+async def add_writes_to_db(ops_test: OpsTest):
+    """Adds writes to DB before test starts and clears writes at the end of the test."""
+    await ha_helpers.start_continous_writes(ops_test, 1)
+    time.sleep(20)
+    await ha_helpers.stop_continous_writes(ops_test)
+    yield
+    await ha_helpers.clear_db_writes(ops_test)
 
 
 @pytest.mark.group(1)
@@ -183,3 +195,52 @@ async def test_rotate_backup_password(ops_test: OpsTest) -> None:
                 assert backups == 2
     except RetryError:
         assert backups == 2, "Backup not created after password rotation."
+
+
+@pytest.mark.abort_on_fail
+async def test_restore_backup(ops_test: OpsTest, add_writes_to_db) -> None:
+    # count total writes
+    number_writes = await ha_helpers.count_writes(ops_test)
+    assert number_writes > 0, "no writes to backup"
+
+    db_unit = await backup_helpers.get_leader_unit(ops_test, db_app_name=CONFIG_SERVER_APP_NAME)
+    prev_backups = await backup_helpers.count_logical_backups(db_unit)
+    action = await db_unit.run_action(action_name="create-backup")
+    first_backup = await action.wait()
+    assert first_backup.status == "completed", "First backup not started."
+
+    # verify that backup was made on the bucket
+    try:
+        for attempt in Retrying(stop=stop_after_delay(4), wait=wait_fixed(5)):
+            with attempt:
+                backups = await backup_helpers.count_logical_backups(db_unit)
+                assert backups == prev_backups + 1, "Backup not created."
+    except RetryError:
+        assert backups == prev_backups + 1, "Backup not created."
+
+    # add writes to be cleared after restoring the backup. Note these are written to the same
+    # collection that was backed up.
+    await backup_helpers.insert_unwanted_data(ops_test)
+    new_number_of_writes = await ha_helpers.count_writes(ops_test)
+    assert new_number_of_writes > number_writes, "No writes to be cleared after restoring."
+
+    # find most recent backup id and restore
+    action = await db_unit.run_action(action_name="list-backups")
+    list_result = await action.wait()
+    list_result = list_result.results["backups"]
+    most_recent_backup = list_result.split("\n")[-1]
+    backup_id = most_recent_backup.split()[0]
+    action = await db_unit.run_action(action_name="restore", **{"backup-id": backup_id})
+    restore = await action.wait()
+    assert restore.results["restore-status"] == "restore started", "restore not successful"
+
+    ops_test.model.wait_for_idle(apps=[CONFIG_SERVER_APP_NAME], status="active", idle_period=20),
+
+    # verify all writes are present
+    try:
+        for attempt in Retrying(stop=stop_after_delay(4), wait=wait_fixed(20)):
+            with attempt:
+                number_writes_restored = await ha_helpers.count_writes(ops_test)
+                assert number_writes == number_writes_restored, "writes not correctly restored"
+    except RetryError:
+        assert number_writes == number_writes_restored, "writes not correctly restored"
