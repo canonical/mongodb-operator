@@ -4,6 +4,7 @@
 import logging
 import subprocess
 from pathlib import Path
+from typing import Dict, List
 
 import yaml
 from pymongo import MongoClient
@@ -14,6 +15,7 @@ from ..helpers import get_password
 # TODO move these to a separate file for constants \ config
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 MONGOS_PORT = 27018
+MONGOD_PORT = 27017
 APP_NAME = "config-server-one"  # todo change this back to config-server
 
 logger = logging.getLogger(__name__)
@@ -90,6 +92,7 @@ async def stop_continous_writes(ops_test: OpsTest, config_server_name=APP_NAME) 
     client = MongoClient(connection_string)
     db = client["new-db"]
     test_collection = db["test_collection"]
+    client.admin.command("enableSharding", "new-db")
 
     # last written value should be the highest number in the database.
     last_written_value = test_collection.find_one(sort=[("number", -1)])
@@ -97,26 +100,36 @@ async def stop_continous_writes(ops_test: OpsTest, config_server_name=APP_NAME) 
     return last_written_value
 
 
-async def count_writes(ops_test: OpsTest, config_server_name=APP_NAME) -> int:
+async def count_shard_writes(ops_test: OpsTest, shard_app_name=APP_NAME) -> int:
     """New versions of pymongo no longer support the count operation, instead find is used."""
-    connection_string = await mongos_uri(ops_test, config_server_name)
+    connection_string = await mongos_uri(ops_test, shard_app_name)
+    password = await get_password(ops_test, app_name=shard_app_name)
+    hosts = [
+        f"{unit.public_address}:{MONGOD_PORT}"
+        for unit in ops_test.model.applications[shard_app_name].units
+    ]
+    hosts = ",".join(hosts)
+    connection_string = f"mongodb://operator:{password}@{hosts}/admin"
+
     client = MongoClient(connection_string)
     db = client["new-db"]
     test_collection = db["test_collection"]
-    # TODO shard collection
-    # TODO return count on each shard
     count = test_collection.count_documents({})
     client.close()
     return count
 
 
-async def verify_writes(ops_test: OpsTest, config_server_name=APP_NAME):
-    # verify that no writes to the db were missed
-    total_expected_writes = await stop_continous_writes(ops_test)
-    actual_writes = await count_writes(ops_test, config_server_name)
+async def get_cluster_writes_count(ops_test, shard_app_names=List[str]) -> Dict:
+    """Returns a dictionary of the writes for each cluster_component and the total writes."""
+    cluster_write_count = {}
+    total_writes = 0
+    for app_name in shard_app_names:
+        component_writes = await count_shard_writes(ops_test, app_name)
+        cluster_write_count[app_name] = component_writes
+        total_writes += component_writes
 
-    # todo rework this whole function
-    assert total_expected_writes["number"] == actual_writes, "writes to the db were missed."
+    cluster_write_count["total_writes"] = total_writes
+    return cluster_write_count
 
 
 async def insert_unwanted_data(ops_test: OpsTest, config_server_name=APP_NAME) -> None:

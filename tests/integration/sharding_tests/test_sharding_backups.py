@@ -71,9 +71,8 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
-async def test_set_credentials_in_cluster(ops_test: OpsTest) -> None:
+async def test_set_credentials_in_cluster(ops_test: OpsTest, github_secrets) -> None:
     """Tests that sharded cluster can be configured for s3 configurations."""
-    github_secrets = None
     await backup_helpers.set_credentials(ops_test, github_secrets, cloud="AWS")
     choices = string.ascii_letters + string.digits
     unique_path = "".join([secrets.choice(choices) for _ in range(4)])
@@ -117,9 +116,7 @@ async def test_set_credentials_in_cluster(ops_test: OpsTest) -> None:
 
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
-async def test_create_and_list_backups_in_cluster(ops_test: OpsTest) -> None:
-
-    github_secrets = None
+async def test_create_and_list_backups_in_cluster(ops_test: OpsTest, github_secrets) -> None:
     """Tests that sharded cluster can successfully create and list backups."""
     leader_unit = await backup_helpers.get_leader_unit(
         ops_test, db_app_name=CONFIG_SERVER_APP_NAME
@@ -207,8 +204,10 @@ async def test_rotate_backup_password(ops_test: OpsTest) -> None:
 @pytest.mark.abort_on_fail
 async def test_restore_backup(ops_test: OpsTest, add_writes_to_db) -> None:
     # count total writes
-    number_writes = await writes_helpers.count_writes(ops_test)
-    assert number_writes > 0, "no writes to backup"
+    cluster_writes = await writes_helpers.get_cluster_writes_count(
+        ops_test, shard_app_names=SHARD_APPS
+    )
+    assert cluster_writes["total_writes"] > 0, "no writes to backup"
 
     leader_unit = await backup_helpers.get_leader_unit(
         ops_test, db_app_name=CONFIG_SERVER_APP_NAME
@@ -237,8 +236,12 @@ async def test_restore_backup(ops_test: OpsTest, add_writes_to_db) -> None:
     # add writes to be cleared after restoring the backup. Note these are written to the same
     # collection that was backed up.
     await writes_helpers.insert_unwanted_data(ops_test)
-    new_number_of_writes = await writes_helpers.count_writes(ops_test)
-    assert new_number_of_writes > number_writes, "No writes to be cleared after restoring."
+    new_total_writes = await writes_helpers.get_cluster_writes_count(
+        ops_test, shard_app_names=SHARD_APPS
+    )
+    assert (
+        new_total_writes["total_writes"] > cluster_writes["total_writes"]
+    ), "No writes to be cleared after restoring."
 
     # find most recent backup id and restore
     action = await leader_unit.run_action(action_name="list-backups")
@@ -258,7 +261,25 @@ async def test_restore_backup(ops_test: OpsTest, add_writes_to_db) -> None:
     try:
         for attempt in Retrying(stop=stop_after_delay(4), wait=wait_fixed(20)):
             with attempt:
-                number_writes_restored = await writes_helpers.count_writes(ops_test)
-                assert number_writes == number_writes_restored, "writes not correctly restored"
+                restored_total_writes = await writes_helpers.get_cluster_writes_count(
+                    ops_test, shard_app_names=SHARD_APPS
+                )
+                assert (
+                    restored_total_writes["total_writes"] == cluster_writes["total_writes"]
+                ), "writes not correctly restored to whole cluster"
+                assert (
+                    restored_total_writes[SHARD_ONE_APP_NAME] == cluster_writes[SHARD_ONE_APP_NAME]
+                ), f"writes not correctly restored to {SHARD_ONE_APP_NAME}"
+                assert (
+                    restored_total_writes[SHARD_TWO_APP_NAME] == cluster_writes[SHARD_TWO_APP_NAME]
+                ), f"writes not correctly restored to {SHARD_TWO_APP_NAME}"
     except RetryError:
-        assert number_writes == number_writes_restored, "writes not correctly restored"
+        assert (
+            restored_total_writes["total_writes"] == cluster_writes["total_writes"]
+        ), "writes not correctly restored to whole cluster"
+        assert (
+            restored_total_writes[SHARD_ONE_APP_NAME] == cluster_writes[SHARD_ONE_APP_NAME]
+        ), f"writes not correctly restored to {SHARD_ONE_APP_NAME}"
+        assert (
+            restored_total_writes[SHARD_TWO_APP_NAME] == cluster_writes[SHARD_TWO_APP_NAME]
+        ), f"writes not correctly restored to {SHARD_TWO_APP_NAME}"
