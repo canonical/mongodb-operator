@@ -16,7 +16,7 @@ from ..helpers import get_password
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 MONGOS_PORT = 27018
 MONGOD_PORT = 27017
-APP_NAME = "config-server-one"  # todo change this back to config-server
+APP_NAME = "config-server"
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +30,7 @@ class ProcessRunningError(Exception):
 
 
 async def mongos_uri(ops_test: OpsTest, config_server_name=APP_NAME) -> str:
+    """Returns a uri for connecting to mongos."""
     password = await get_password(ops_test, app_name=config_server_name)
     hosts = [
         f"{unit.public_address}:{MONGOS_PORT}"
@@ -59,10 +60,7 @@ async def clear_db_writes(ops_test: OpsTest, config_server_name=APP_NAME) -> boo
 async def start_continous_writes(
     ops_test: OpsTest, starting_number: int, config_server_name=APP_NAME
 ) -> None:
-    """Starts continuous writes to MongoDB with available replicas.
-
-    In the future this should be put in a dummy charm.
-    """
+    """Starts continuous writes to MongoDB."""
     connection_string = await mongos_uri(ops_test, config_server_name)
 
     # run continuous writes in the background.
@@ -77,10 +75,7 @@ async def start_continous_writes(
 
 
 async def stop_continous_writes(ops_test: OpsTest, config_server_name=APP_NAME) -> int:
-    """Stops continuous writes to MongoDB and returns the last written value.
-
-    In the future this should be put in a dummy charm.
-    """
+    """Stops continuous writes to MongoDB and returns the last written value."""
     # stop the process
     proc = subprocess.Popen(["pkill", "-9", "-f", "continuous_writes.py"])
 

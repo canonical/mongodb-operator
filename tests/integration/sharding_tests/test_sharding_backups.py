@@ -20,7 +20,7 @@ S3_APP_NAME = "s3-integrator"
 SHARD_ONE_APP_NAME = "shard-one"
 SHARD_TWO_APP_NAME = "shard-two"
 SHARD_APPS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME]
-CONFIG_SERVER_APP_NAME = "config-server-one"  # todo change to config_server
+CONFIG_SERVER_APP_NAME = "config-server"
 SHARD_REL_NAME = "sharding"
 CONFIG_SERVER_REL_NAME = "config-server"
 S3_REL_NAME = "s3-credentials"
@@ -201,8 +201,10 @@ async def test_rotate_backup_password(ops_test: OpsTest) -> None:
         assert backups == 2, "Backup not created after password rotation."
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_restore_backup(ops_test: OpsTest, add_writes_to_db) -> None:
+    """Tests that sharded Charmed MongoDB cluster supports restores."""
     # count total writes
     cluster_writes = await writes_helpers.get_cluster_writes_count(
         ops_test, shard_app_names=SHARD_APPS
