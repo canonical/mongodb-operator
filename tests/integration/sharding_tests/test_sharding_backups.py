@@ -11,14 +11,16 @@ from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from ..backup_tests import helpers as backup_helpers
-from ..ha_tests import helpers as ha_helpers
+
+# from .writes_helpers import writes_helpers
 from ..helpers import get_leader_id, get_password, set_password
+from . import writes_helpers
 
 S3_APP_NAME = "s3-integrator"
 SHARD_ONE_APP_NAME = "shard-one"
 SHARD_TWO_APP_NAME = "shard-two"
 SHARD_APPS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME]
-CONFIG_SERVER_APP_NAME = "config-server-one"
+CONFIG_SERVER_APP_NAME = "config-server-one"  # todo change to config_server
 SHARD_REL_NAME = "sharding"
 CONFIG_SERVER_REL_NAME = "config-server"
 S3_REL_NAME = "s3-credentials"
@@ -28,11 +30,13 @@ TIMEOUT = 10 * 60
 @pytest.fixture()
 async def add_writes_to_db(ops_test: OpsTest):
     """Adds writes to DB before test starts and clears writes at the end of the test."""
-    await ha_helpers.start_continous_writes(ops_test, 1)
+    await writes_helpers.start_continous_writes(
+        ops_test, 1, config_server_name=CONFIG_SERVER_APP_NAME
+    )
     time.sleep(20)
-    await ha_helpers.stop_continous_writes(ops_test)
+    await writes_helpers.stop_continous_writes(ops_test, config_server_name=CONFIG_SERVER_APP_NAME)
     yield
-    await ha_helpers.clear_db_writes(ops_test)
+    await writes_helpers.clear_db_writes(ops_test)
 
 
 @pytest.mark.group(1)
@@ -203,7 +207,7 @@ async def test_rotate_backup_password(ops_test: OpsTest) -> None:
 @pytest.mark.abort_on_fail
 async def test_restore_backup(ops_test: OpsTest, add_writes_to_db) -> None:
     # count total writes
-    number_writes = await ha_helpers.count_writes(ops_test)
+    number_writes = await writes_helpers.count_writes(ops_test)
     assert number_writes > 0, "no writes to backup"
 
     leader_unit = await backup_helpers.get_leader_unit(
@@ -232,8 +236,8 @@ async def test_restore_backup(ops_test: OpsTest, add_writes_to_db) -> None:
 
     # add writes to be cleared after restoring the backup. Note these are written to the same
     # collection that was backed up.
-    await backup_helpers.insert_unwanted_data(ops_test)
-    new_number_of_writes = await ha_helpers.count_writes(ops_test)
+    await writes_helpers.insert_unwanted_data(ops_test)
+    new_number_of_writes = await writes_helpers.count_writes(ops_test)
     assert new_number_of_writes > number_writes, "No writes to be cleared after restoring."
 
     # find most recent backup id and restore
@@ -254,7 +258,7 @@ async def test_restore_backup(ops_test: OpsTest, add_writes_to_db) -> None:
     try:
         for attempt in Retrying(stop=stop_after_delay(4), wait=wait_fixed(20)):
             with attempt:
-                number_writes_restored = await ha_helpers.count_writes(ops_test)
+                number_writes_restored = await writes_helpers.count_writes(ops_test)
                 assert number_writes == number_writes_restored, "writes not correctly restored"
     except RetryError:
         assert number_writes == number_writes_restored, "writes not correctly restored"
