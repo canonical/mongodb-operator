@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
-import time
-
 import pytest
 from juju.errors import JujuAPIError
 from pytest_operator.plugin import OpsTest
 
+S3_APP_NAME = "s3-integrator"
 SHARD_ONE_APP_NAME = "shard"
 CONFIG_SERVER_ONE_APP_NAME = "config-server-one"
 CONFIG_SERVER_TWO_APP_NAME = "config-server-two"
@@ -58,6 +57,7 @@ async def test_build_and_deploy(
         channel="6/edge",
         revision=3,
     )
+    await ops_test.model.deploy(S3_APP_NAME, channel="edge")
 
     # TODO: Future PR, once data integrator works with mongos charm deploy that charm instead of
     # packing and deploying the charm in the application dir.
@@ -287,11 +287,12 @@ async def test_replication_mongos_relation(ops_test: OpsTest) -> None:
         f"{MONGOS_APP_NAME}:cluster",
     )
 
-    # TODO remove this and wait for mongos to be active
-    # right now we cannot wait for `mongos` to be active after removing the relation due to a bug
-    # in the mongos charm. To fix the bug it is first necessary to publish the updated library
-    # lib/charms/mongodb/v0/config_server.py
-    time.sleep(60)
+    await ops_test.model.wait_for_idle(
+        apps=[SHARD_ONE_APP_NAME],
+        idle_period=20,
+        raise_on_blocked=False,
+        timeout=TIMEOUT,
+    )
 
 
 @pytest.mark.group(1)
@@ -320,4 +321,40 @@ async def test_shard_mongos_relation(ops_test: OpsTest) -> None:
     await ops_test.model.applications[SHARD_ONE_APP_NAME].remove_relation(
         f"{MONGOS_APP_NAME}:cluster",
         f"{SHARD_ONE_APP_NAME}:cluster",
+    )
+
+    await ops_test.model.wait_for_idle(
+        apps=[SHARD_ONE_APP_NAME],
+        idle_period=20,
+        raise_on_blocked=False,
+        timeout=TIMEOUT,
+    )
+
+
+@pytest.mark.group(1)
+async def test_shard_s3_relation(ops_test: OpsTest) -> None:
+    """Verifies integrating a shard to s3-integrator fails."""
+    # attempt to add a replication deployment as a shard to the config server.
+    await ops_test.model.integrate(
+        f"{SHARD_ONE_APP_NAME}",
+        f"{S3_APP_NAME}",
+    )
+
+    await ops_test.model.wait_for_idle(
+        apps=[SHARD_ONE_APP_NAME],
+        idle_period=20,
+        raise_on_blocked=False,
+        timeout=TIMEOUT,
+    )
+
+    shard_unit = ops_test.model.applications[SHARD_ONE_APP_NAME].units[0]
+    assert (
+        shard_unit.workload_status_message
+        == "Relation to s3-integrator is not supported, config role must be config-server"
+    ), "Shard cannot be related to s3-integrator."
+
+    # clean up relations
+    await ops_test.model.applications[SHARD_ONE_APP_NAME].remove_relation(
+        f"{S3_APP_NAME}:s3-credentials",
+        f"{SHARD_ONE_APP_NAME}:s3-credentials",
     )
