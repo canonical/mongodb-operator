@@ -8,7 +8,7 @@ import time
 
 import pytest
 from pytest_operator.plugin import OpsTest
-from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
+from tenacity import Retrying, stop_after_delay, wait_fixed
 
 from ..backup_tests import helpers as backup_helpers
 
@@ -116,19 +116,16 @@ async def test_set_credentials_in_cluster(ops_test: OpsTest, github_secrets) -> 
 
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
-async def test_create_and_list_backups_in_cluster(ops_test: OpsTest, github_secrets) -> None:
+async def test_create_and_list_backups_in_cluster(ops_test: OpsTest) -> None:
     """Tests that sharded cluster can successfully create and list backups."""
-    leader_unit = await backup_helpers.get_leader_unit(
-        ops_test, db_app_name=CONFIG_SERVER_APP_NAME
-    )
-    await backup_helpers.set_credentials(ops_test, github_secrets, cloud="AWS")
     # verify backup list works
-    action = await leader_unit.run_action(action_name="list-backups")
-    list_result = await action.wait()
-    backups = list_result.results["backups"]
+    backups = await backup_helpers.get_backup_list(ops_test, db_app_name=CONFIG_SERVER_APP_NAME)
     assert backups, "backups not outputted"
 
     # verify backup is started
+    leader_unit = await backup_helpers.get_leader_unit(
+        ops_test, db_app_name=CONFIG_SERVER_APP_NAME
+    )
     action = await leader_unit.run_action(action_name="create-backup")
     backup_result = await action.wait()
     assert "backup started" in backup_result.results["backup-status"], "backup didn't start"
@@ -137,13 +134,10 @@ async def test_create_and_list_backups_in_cluster(ops_test: OpsTest, github_secr
     # the action `create-backup` only confirms that the command was sent to the `pbm`. Creating a
     # backup can take a lot of time so this function returns once the command was successfully
     # sent to pbm. Therefore we should retry listing the backup several times
-    try:
-        for attempt in Retrying(stop=stop_after_delay(20), wait=wait_fixed(3)):
-            with attempt:
-                backups = await backup_helpers.count_logical_backups(leader_unit)
-                assert backups == 1
-    except RetryError:
-        assert backups == 1, "Backup not created."
+    for attempt in Retrying(stop=stop_after_delay(20), wait=wait_fixed(3), reraise=True):
+        with attempt:
+            backups = await backup_helpers.count_logical_backups(leader_unit)
+            assert backups == 1
 
 
 @pytest.mark.group(1)
@@ -153,12 +147,16 @@ async def test_rotate_backup_password(ops_test: OpsTest) -> None:
     config_leader_id = await get_leader_id(ops_test, app_name=CONFIG_SERVER_APP_NAME)
     new_password = "new-password"
 
-    shard_backup_password = get_password(ops_test, username="backup", app_name=SHARD_ONE_APP_NAME)
+    shard_backup_password = await get_password(
+        ops_test, username="backup", app_name=SHARD_ONE_APP_NAME
+    )
     assert (
         shard_backup_password != new_password
     ), "shard-one is incorrectly already set to the new password."
 
-    shard_backup_password = get_password(ops_test, username="backup", app_name=SHARD_TWO_APP_NAME)
+    shard_backup_password = await get_password(
+        ops_test, username="backup", app_name=SHARD_TWO_APP_NAME
+    )
     assert (
         shard_backup_password != new_password
     ), "shard-two is incorrectly already set to the new password."
@@ -172,10 +170,14 @@ async def test_rotate_backup_password(ops_test: OpsTest) -> None:
         timeout=TIMEOUT,
     )
 
-    shard_backup_password = get_password(ops_test, username="backup", app_name=SHARD_ONE_APP_NAME)
+    shard_backup_password = await get_password(
+        ops_test, username="backup", app_name=SHARD_ONE_APP_NAME
+    )
     assert shard_backup_password != new_password, "Application shard-one did not rotate password"
 
-    shard_backup_password = get_password(ops_test, username="backup", app_name=SHARD_TWO_APP_NAME)
+    shard_backup_password = await get_password(
+        ops_test, username="backup", app_name=SHARD_TWO_APP_NAME
+    )
     assert shard_backup_password != new_password, "Application shard-two did not rotate password"
 
     # verify backup actions work after password rotation
@@ -192,13 +194,10 @@ async def test_rotate_backup_password(ops_test: OpsTest) -> None:
     # the action `create-backup` only confirms that the command was sent to the `pbm`. Creating a
     # backup can take a lot of time so this function returns once the command was successfully
     # sent to pbm. Therefore we should retry listing the backup several times
-    try:
-        for attempt in Retrying(stop=stop_after_delay(20), wait=wait_fixed(3)):
-            with attempt:
-                backups = await backup_helpers.count_logical_backups(leader_unit)
-                assert backups == 2
-    except RetryError:
-        assert backups == 2, "Backup not created after password rotation."
+    for attempt in Retrying(stop=stop_after_delay(20), wait=wait_fixed(3), reraise=True):
+        with attempt:
+            backups = await backup_helpers.count_logical_backups(leader_unit)
+            assert backups == 2, "Backup not created after password rotation."
 
 
 @pytest.mark.group(1)
@@ -223,13 +222,10 @@ async def test_restore_backup(ops_test: OpsTest, add_writes_to_db) -> None:
     assert first_backup.status == "completed", "First backup not started."
 
     # verify that backup was made on the bucket
-    try:
-        for attempt in Retrying(stop=stop_after_delay(4), wait=wait_fixed(5)):
-            with attempt:
-                backups = await backup_helpers.count_logical_backups(leader_unit)
-                assert backups == prev_backups + 1, "Backup not created."
-    except RetryError:
-        assert backups == prev_backups + 1, "Backup not created."
+    for attempt in Retrying(stop=stop_after_delay(4), wait=wait_fixed(5), reraise=True):
+        with attempt:
+            backups = await backup_helpers.count_logical_backups(leader_unit)
+            assert backups == prev_backups + 1, "Backup not created."
 
     await ops_test.model.wait_for_idle(
         apps=[CONFIG_SERVER_APP_NAME], status="active", idle_period=20
@@ -246,9 +242,9 @@ async def test_restore_backup(ops_test: OpsTest, add_writes_to_db) -> None:
     ), "No writes to be cleared after restoring."
 
     # find most recent backup id and restore
-    action = await leader_unit.run_action(action_name="list-backups")
-    list_result = await action.wait()
-    list_result = list_result.results["backups"]
+    list_result = await backup_helpers.get_backup_list(
+        ops_test, db_app_name=CONFIG_SERVER_APP_NAME
+    )
     most_recent_backup = list_result.split("\n")[-1]
     backup_id = most_recent_backup.split()[0]
     action = await leader_unit.run_action(action_name="restore", **{"backup-id": backup_id})
@@ -260,28 +256,17 @@ async def test_restore_backup(ops_test: OpsTest, add_writes_to_db) -> None:
     ),
 
     # verify all writes are present
-    try:
-        for attempt in Retrying(stop=stop_after_delay(4), wait=wait_fixed(20)):
-            with attempt:
-                restored_total_writes = await writes_helpers.get_cluster_writes_count(
-                    ops_test, shard_app_names=SHARD_APPS
-                )
-                assert (
-                    restored_total_writes["total_writes"] == cluster_writes["total_writes"]
-                ), "writes not correctly restored to whole cluster"
-                assert (
-                    restored_total_writes[SHARD_ONE_APP_NAME] == cluster_writes[SHARD_ONE_APP_NAME]
-                ), f"writes not correctly restored to {SHARD_ONE_APP_NAME}"
-                assert (
-                    restored_total_writes[SHARD_TWO_APP_NAME] == cluster_writes[SHARD_TWO_APP_NAME]
-                ), f"writes not correctly restored to {SHARD_TWO_APP_NAME}"
-    except RetryError:
-        assert (
-            restored_total_writes["total_writes"] == cluster_writes["total_writes"]
-        ), "writes not correctly restored to whole cluster"
-        assert (
-            restored_total_writes[SHARD_ONE_APP_NAME] == cluster_writes[SHARD_ONE_APP_NAME]
-        ), f"writes not correctly restored to {SHARD_ONE_APP_NAME}"
-        assert (
-            restored_total_writes[SHARD_TWO_APP_NAME] == cluster_writes[SHARD_TWO_APP_NAME]
-        ), f"writes not correctly restored to {SHARD_TWO_APP_NAME}"
+    for attempt in Retrying(stop=stop_after_delay(4), wait=wait_fixed(20), reraise=True):
+        with attempt:
+            restored_total_writes = await writes_helpers.get_cluster_writes_count(
+                ops_test, shard_app_names=SHARD_APPS
+            )
+            assert (
+                restored_total_writes["total_writes"] == cluster_writes["total_writes"]
+            ), "writes not correctly restored to whole cluster"
+            assert (
+                restored_total_writes[SHARD_ONE_APP_NAME] == cluster_writes[SHARD_ONE_APP_NAME]
+            ), f"writes not correctly restored to {SHARD_ONE_APP_NAME}"
+            assert (
+                restored_total_writes[SHARD_TWO_APP_NAME] == cluster_writes[SHARD_TWO_APP_NAME]
+            ), f"writes not correctly restored to {SHARD_TWO_APP_NAME}"

@@ -68,6 +68,15 @@ async def get_leader_unit(ops_test: OpsTest, db_app_name=None) -> ops.model.Unit
             return unit
 
 
+async def get_backup_list(ops_test: OpsTest, db_app_name=None) -> str:
+    """Count the number of logical backups."""
+    leader_unit = await get_leader_unit(ops_test, db_app_name=db_app_name)
+    action = await leader_unit.run_action(action_name="list-backups")
+    list_result = await action.wait()
+    list_result = list_result.results["backups"]
+    return list_result
+
+
 async def count_logical_backups(db_unit: ops.model.Unit) -> int:
     """Count the number of logical backups."""
     action = await db_unit.run_action(action_name="list-backups")
