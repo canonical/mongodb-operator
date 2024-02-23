@@ -114,7 +114,7 @@ async def count_shard_writes(ops_test: OpsTest, shard_app_name=APP_NAME) -> int:
     return count
 
 
-async def get_cluster_writes_count(ops_test, shard_app_names=List[str]) -> Dict:
+async def get_cluster_writes_count(ops_test, shard_app_names: List[str]) -> Dict:
     """Returns a dictionary of the writes for each cluster_component and the total writes."""
     cluster_write_count = {}
     total_writes = 0
