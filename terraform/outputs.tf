@@ -43,6 +43,12 @@ output "grafana_dashboard_endpoint" {
   value       = "grafana-dashboard"
 }
 
+output "logging_endpoint" {
+  description = "Name of the endpoint to provide the loki_push_api relation interface."
+  value       = "logging"
+}
+
+
 # Required integration endpoints
 
 output "certificates_endpoint" {
