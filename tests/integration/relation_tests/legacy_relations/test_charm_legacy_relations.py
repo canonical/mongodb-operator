@@ -32,6 +32,7 @@ ELASTIC_APP_NAME = "elasticsearch"
 APP_NAMES = [GRAYLOG_APP_NAME, ELASTIC_APP_NAME, DATABASE_APP_NAME]
 
 
+@pytest.mark.group(1)
 @pytest.mark.skip("Reactive charms don't work with juju 3.1.5")
 async def test_build_deploy_charms(ops_test: OpsTest):
     """Deploy both charms (application and database) to use in the tests."""
@@ -64,6 +65,7 @@ async def test_build_deploy_charms(ops_test: OpsTest):
     )
 
 
+@pytest.mark.group(1)
 @pytest.mark.skip("Reactive charms don't work with juju 3.1.5")
 async def test_relation_data(ops_test: OpsTest) -> None:
     """Test the relation data is set correctly for this legacy relation."""
@@ -94,6 +96,7 @@ async def test_relation_data(ops_test: OpsTest) -> None:
     assert replset == DATABASE_APP_NAME
 
 
+@pytest.mark.group(1)
 @pytest.mark.skip("Reactive charms don't work with juju 3.1.5")
 async def test_mongodb_auth_disabled(ops_test: OpsTest) -> None:
     """Test mongodb no longer uses auth after relating to a legacy relation."""
@@ -104,6 +107,7 @@ async def test_mongodb_auth_disabled(ops_test: OpsTest) -> None:
     ), "MongoDB requires authentication after legacy relation"
 
 
+@pytest.mark.group(1)
 @pytest.mark.skip("Reactive charms don't work with juju 3.1.5")
 async def test_legacy_db_ops(ops_test: OpsTest) -> None:
     """Test graylog is able to do CRUD operations."""
@@ -132,6 +136,7 @@ async def test_legacy_db_ops(ops_test: OpsTest) -> None:
     assert "users:tokenlist" not in user_info["permissions"], "unable to perform delete operations"
 
 
+@pytest.mark.group(1)
 @pytest.mark.skip("Reactive charms don't work with juju 3.1.5")
 async def test_add_unit_joins_without_auth(ops_test: OpsTest):
     """Verify scaling mongodb with legacy relations supports no auth."""
@@ -148,6 +153,7 @@ async def test_add_unit_joins_without_auth(ops_test: OpsTest):
     ), "MongoDB requires disabled authentication to support legacy relations"
 
 
+@pytest.mark.group(1)
 @pytest.mark.unstable
 async def test_enable_tls(ops_test: OpsTest) -> None:
     """Verify each unit has TLS enabled after relating to the TLS application."""
@@ -174,6 +180,7 @@ async def test_enable_tls(ops_test: OpsTest) -> None:
     await ops_test.model.wait_for_idle(apps=[DATABASE_APP_NAME], status="active", timeout=1000)
 
 
+@pytest.mark.group(1)
 @pytest.mark.unstable
 async def test_new_relation_fails_with_legacy(ops_test: OpsTest) -> None:
     """Verify new relation joining results in blocked when legacy relations exist.
@@ -201,6 +208,7 @@ async def test_new_relation_fails_with_legacy(ops_test: OpsTest) -> None:
     ), "MongoDB requires disabled authentication to support legacy relations"
 
 
+@pytest.mark.group(1)
 @pytest.mark.skip("Reactive charms don't work with juju 3.1.5")
 async def test_legacy_relation_fails_with_new(ops_test: OpsTest) -> None:
     """Verify legacy relation joining results in blocked when new relations exist."""
