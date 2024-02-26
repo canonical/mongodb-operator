@@ -226,6 +226,8 @@ async def test_restore_backup(ops_test: OpsTest, add_writes_to_db) -> None:
         ops_test, shard_app_names=SHARD_APPS
     )
     assert cluster_writes["total_writes"] > 0, "no writes to backup"
+    assert cluster_writes[SHARD_ONE_APP_NAME] > 0, "no writes to backup for shard one"
+    assert cluster_writes[SHARD_TWO_APP_NAME] > 0, "no writes to backup for shard two"
 
     leader_unit = await backup_helpers.get_leader_unit(
         ops_test, db_app_name=CONFIG_SERVER_APP_NAME
@@ -257,6 +259,12 @@ async def test_restore_backup(ops_test: OpsTest, add_writes_to_db) -> None:
     assert (
         new_total_writes["total_writes"] > cluster_writes["total_writes"]
     ), "No writes to be cleared after restoring."
+    assert (
+        new_total_writes[SHARD_ONE_APP_NAME] > cluster_writes[SHARD_ONE_APP_NAME]
+    ), "No writes to be cleared after restoring shard one."
+    assert (
+        new_total_writes[SHARD_TWO_APP_NAME] > cluster_writes[SHARD_TWO_APP_NAME]
+    ), "No writes to be cleared after restoring shard two."
 
     # find most recent backup id and restore
     list_result = await backup_helpers.get_backup_list(
