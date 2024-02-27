@@ -135,6 +135,13 @@ class MongodbOperatorCharm(CharmBase):
             metrics_rules_dir=Config.Monitoring.METRICS_RULES_DIR,
             logs_rules_dir=Config.Monitoring.LOGS_RULES_DIR,
             log_slots=Config.Monitoring.LOG_SLOTS,
+            scrape_configs=[
+                {
+                    "static_configs": [
+                        {"labels": {"cluster": self.app.name, "replication_set": self.app.name}},
+                    ],
+                },
+            ],
         )
 
         self.secrets = SecretCache(self)
