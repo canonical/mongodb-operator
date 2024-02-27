@@ -548,6 +548,12 @@ class MongodbOperatorCharm(CharmBase):
                 self.unit.status = WaitingStatus("Waiting for MongoDB to start")
                 return
 
+        # Cannot check more advanced MongoDB statuses if mongod doesn't have correct password from
+        # config server
+        if not self.shard.cluster_password_synced():
+            self.unit.status = WaitingStatus("Waiting to sync passwords with config-server")
+            return
+
         # leader should periodically handle configuring the replica set. Incidents such as network
         # cuts can lead to new IP addresses and therefore will require a reconfigure. Especially
         # in the case that the leader a change in IP address it will not receive a relation event.

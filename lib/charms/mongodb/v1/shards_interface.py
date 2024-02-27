@@ -534,6 +534,14 @@ class ConfigServerRequirer(Object):
 
         # after updating the password of the backup user, restart pbm with correct password
         self.charm._connect_pbm_agent()
+
+        mongos_hosts = self.get_mongos_hosts()
+        if not mongos_hosts:
+            logger.info(
+                "Cannot connect to sharded cluster until mongos hosts are shared, deferring"
+            )
+            event.defer()
+
         self.charm.app_peer_data["mongos_hosts"] = json.dumps(self.get_mongos_hosts())
 
     def pass_hook_checks(self, event):
@@ -557,6 +565,7 @@ class ConfigServerRequirer(Object):
             return False
 
         mongos_hosts = event.relation.data[event.relation.app].get(HOSTS_KEY, None)
+
         if isinstance(event, RelationBrokenEvent) and not mongos_hosts:
             logger.info("Config-server relation never set up, no need to process broken event.")
             return False
@@ -799,15 +808,48 @@ class ConfigServerRequirer(Object):
     def _is_added_to_cluster(self) -> bool:
         """Returns True if the shard has been added to the cluster."""
         try:
-            mongos_hosts = self.get_mongos_hosts()
-            with MongosConnection(self.charm.remote_mongos_config(set(mongos_hosts))) as mongo:
-                cluster_shards = mongo.get_shard_members()
-                return self.charm.app.name in cluster_shards
+            cluster_shards = self.get_shard_members()
+            return self.charm.app.name in cluster_shards
         except OperationFailure as e:
-            if e.code == 13:  # Unauthorized, we are not yet connected to mongos
+            if e.code in [
+                13,
+                18,
+            ]:  # Unauthorized, Authentication -  we are not yet connected to mongos
                 return False
 
             raise
+
+    def cluster_password_synced(self) -> bool:
+        """Returns True if the current password is not synced across the cluster for a shard.
+
+        This race condition occurs in non-juju leader units when the juju leader is actively
+        changing the operator user password but has not fully set the secret across all units.
+        """
+        if self.charm.is_role(Config.Role.CONFIG_SERVER):
+            return True
+
+        if not self.model.get_relation(self.relation_name):
+            return True
+
+        try:
+            # check our ability to use connect to both mongos and our current replica set.
+            mongos_reachable = self._is_mongos_reachable()
+            with MongoDBConnection(self.charm.mongodb_config) as mongo:
+                mongod_reachable = mongo.is_ready
+        except OperationFailure as e:
+            if e.code == 18:  # Unauthorized Error - i.e. password is not in sync
+                return False
+            raise
+
+        return mongos_reachable and mongod_reachable
+
+    def get_shard_members(self) -> List[str]:
+        """Returns a list of shard members.
+
+        Raises: PyMongoError"""
+        mongos_hosts = self.get_mongos_hosts()
+        with MongosConnection(self.charm.remote_mongos_config(set(mongos_hosts))) as mongo:
+            return mongo.get_shard_members()
 
     def _is_shard_aware(self) -> bool:
         """Returns True if shard is in cluster and shard aware."""
