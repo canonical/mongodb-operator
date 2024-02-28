@@ -190,12 +190,12 @@ async def test_rotate_backup_password(ops_test: OpsTest) -> None:
     shard_backup_password = await get_password(
         ops_test, username="backup", app_name=SHARD_ONE_APP_NAME
     )
-    assert shard_backup_password != new_password, "Application shard-one did not rotate password"
+    assert shard_backup_password == new_password, "Application shard-one did not rotate password"
 
     shard_backup_password = await get_password(
         ops_test, username="backup", app_name=SHARD_TWO_APP_NAME
     )
-    assert shard_backup_password != new_password, "Application shard-two did not rotate password"
+    assert shard_backup_password == new_password, "Application shard-two did not rotate password"
 
     # verify backup actions work after password rotation
     leader_unit = await backup_helpers.get_leader_unit(
