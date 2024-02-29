@@ -363,10 +363,7 @@ class ShardingProvider(Object):
             data: dict containing the key-value pairs
                 that should be updated in the relation.
         """
-        if self.charm.unit.is_leader():
-            relation = self.charm.model.get_relation(self.relation_name, relation_id)
-            if relation:
-                relation.data[self.charm.model.app].update(data)
+        self.database_provides.update_relation_data(relation_id, data)
 
     def _get_shards_from_relations(self, departed_shard_id: Optional[int]):
         """Returns a list of the shards related to the config-server."""
@@ -488,6 +485,10 @@ class ConfigServerRequirer(Object):
         )
 
         self.framework.observe(
+            getattr(self.charm.on, "secret_changed"), self._handle_changed_secrets
+        )
+
+        self.framework.observe(
             charm.on[self.relation_name].relation_departed,
             self.charm.check_relation_broken_or_scale_down,
         )
@@ -495,6 +496,50 @@ class ConfigServerRequirer(Object):
         self.framework.observe(
             charm.on[self.relation_name].relation_broken, self._on_relation_broken
         )
+
+    def _handle_changed_secrets(self, event) -> None:
+        """Update operator and backup user passwords when rotation occurs.
+
+        Changes in secrets do not re-trigger a relation changed event, so it is necessary to listen
+        to secret changes events.
+        """
+        if (
+            not self.charm.unit.is_leader()
+            or not event.secret.label
+            or not self.model.get_relation(self.relation_name)
+        ):
+            return
+
+        config_server_relation = self.model.get_relation(self.relation_name)
+
+        # many secret changed events occur, only listen to those related to our interface with the
+        # config-server
+        secret_changing_label = event.secret.label
+        sharding_secretes_label = f"{self.relation_name}.{config_server_relation.id}.extra.secret"
+        if secret_changing_label != sharding_secretes_label:
+            logger.info(
+                "A secret unrelated to this sharding relation %s is changing, igorning secret changed event.",
+                str(config_server_relation.id),
+            )
+            return
+
+        operator_password = self.database_requires.fetch_relation_field(
+            config_server_relation.id, OPERATOR_PASSWORD_KEY
+        )
+        backup_password = self.database_requires.fetch_relation_field(
+            config_server_relation.id, BACKUP_PASSWORD_KEY
+        )
+
+        try:
+            self.update_password(
+                username=OperatorUser.get_username(), new_password=operator_password
+            )
+            self.update_password(BackupUser.get_username(), new_password=backup_password)
+        except RetryError:
+            self.charm.unit.status = BlockedStatus("Failed to rotate cluster secrets")
+            logger.error("Shard failed to rotate cluster secrets.")
+            event.defer()
+            return
 
     def _on_relation_changed(self, event):
         """Retrieves secrets from config-server and updates them within the shard."""
@@ -796,10 +841,7 @@ class ConfigServerRequirer(Object):
             data: dict containing the key-value pairs
                 that should be updated in the relation.
         """
-        if self.charm.unit.is_leader():
-            relation = self.charm.model.get_relation(self.relation_name, relation_id)
-            if relation:
-                relation.data[self.charm.model.app].update(data)
+        self.database_requires.update_relation_data(relation_id, data)
 
     def _is_mongos_reachable(self) -> bool:
         """Returns True if mongos is reachable."""

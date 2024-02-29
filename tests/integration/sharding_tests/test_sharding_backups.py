@@ -134,7 +134,7 @@ async def test_create_and_list_backups_in_cluster(ops_test: OpsTest) -> None:
     # the action `create-backup` only confirms that the command was sent to the `pbm`. Creating a
     # backup can take a lot of time so this function returns once the command was successfully
     # sent to pbm. Therefore we should retry listing the backup several times
-    for attempt in Retrying(stop=stop_after_delay(20), wait=wait_fixed(3), reraise=True):
+    for attempt in Retrying(stop=stop_after_delay(TIMEOUT), wait=wait_fixed(3), reraise=True):
         with attempt:
             backups = await backup_helpers.count_logical_backups(leader_unit)
             assert backups == 1
@@ -161,6 +161,12 @@ async def test_shards_cannot_run_backup_actions(ops_test: OpsTest) -> None:
 @pytest.mark.abort_on_fail
 async def test_rotate_backup_password(ops_test: OpsTest) -> None:
     """Tests that sharded cluster can successfully create and list backups."""
+    await ops_test.model.wait_for_idle(
+        apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
+        idle_period=20,
+        timeout=TIMEOUT,
+        status="active",
+    )
     config_leader_id = await get_leader_id(ops_test, app_name=CONFIG_SERVER_APP_NAME)
     new_password = "new-password"
 
@@ -185,17 +191,24 @@ async def test_rotate_backup_password(ops_test: OpsTest) -> None:
         apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
         idle_period=20,
         timeout=TIMEOUT,
+        status="active",
     )
+    config_svr_backup_password = await get_password(
+        ops_test, username="backup", app_name=CONFIG_SERVER_APP_NAME
+    )
+    assert (
+        config_svr_backup_password == new_password
+    ), "Application config-srver did not rotate password"
 
     shard_backup_password = await get_password(
         ops_test, username="backup", app_name=SHARD_ONE_APP_NAME
     )
-    assert shard_backup_password != new_password, "Application shard-one did not rotate password"
+    assert shard_backup_password == new_password, "Application shard-one did not rotate password"
 
     shard_backup_password = await get_password(
         ops_test, username="backup", app_name=SHARD_TWO_APP_NAME
     )
-    assert shard_backup_password != new_password, "Application shard-two did not rotate password"
+    assert shard_backup_password == new_password, "Application shard-two did not rotate password"
 
     # verify backup actions work after password rotation
     leader_unit = await backup_helpers.get_leader_unit(
