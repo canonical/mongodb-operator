@@ -115,6 +115,12 @@ async def test_shards_cannot_run_backup_actions(ops_test: OpsTest) -> None:
 @pytest.mark.abort_on_fail
 async def test_rotate_backup_password(ops_test: OpsTest) -> None:
     """Tests that sharded cluster can successfully create and list backups."""
+    await ops_test.model.wait_for_idle(
+        apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
+        idle_period=20,
+        timeout=TIMEOUT,
+        status="active",
+    )
     config_leader_id = await get_leader_id(ops_test, app_name=CONFIG_SERVER_APP_NAME)
     new_password = "new-password"
 
