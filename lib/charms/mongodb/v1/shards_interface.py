@@ -505,8 +505,8 @@ class ConfigServerRequirer(Object):
         # if re-using an old shard, re-set drained flag.
         self.charm.unit_peer_data["drained"] = json.dumps(False)
 
-        if not self._is_added_to_cluster():
-            self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
+        # TODO: Future PR better status message behavior
+        self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
 
         # shards rely on the config server for secrets
         key_file_contents = self.database_requires.fetch_relation_field(
