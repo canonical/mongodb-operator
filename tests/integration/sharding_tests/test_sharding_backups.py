@@ -130,6 +130,13 @@ async def test_create_and_list_backups_in_cluster(ops_test: OpsTest) -> None:
     backup_result = await action.wait()
     assert "backup started" in backup_result.results["backup-status"], "backup didn't start"
 
+    await ops_test.model.wait_for_idle(
+        apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
+        idle_period=20,
+        timeout=TIMEOUT,
+        status="active",
+    )
+
     # verify backup is present in the list of backups
     # the action `create-backup` only confirms that the command was sent to the `pbm`. Creating a
     # backup can take a lot of time so this function returns once the command was successfully
@@ -161,6 +168,12 @@ async def test_shards_cannot_run_backup_actions(ops_test: OpsTest) -> None:
 @pytest.mark.abort_on_fail
 async def test_rotate_backup_password(ops_test: OpsTest) -> None:
     """Tests that sharded cluster can successfully create and list backups."""
+    await ops_test.model.wait_for_idle(
+        apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
+        idle_period=20,
+        timeout=TIMEOUT,
+        status="active",
+    )
     config_leader_id = await get_leader_id(ops_test, app_name=CONFIG_SERVER_APP_NAME)
     new_password = "new-password"
 
@@ -185,7 +198,14 @@ async def test_rotate_backup_password(ops_test: OpsTest) -> None:
         apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
         idle_period=20,
         timeout=TIMEOUT,
+        status="active",
     )
+    config_svr_backup_password = await get_password(
+        ops_test, username="backup", app_name=CONFIG_SERVER_APP_NAME
+    )
+    assert (
+        config_svr_backup_password == new_password
+    ), "Application config-srver did not rotate password"
 
     shard_backup_password = await get_password(
         ops_test, username="backup", app_name=SHARD_ONE_APP_NAME
