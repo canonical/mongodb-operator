@@ -363,10 +363,7 @@ class ShardingProvider(Object):
             data: dict containing the key-value pairs
                 that should be updated in the relation.
         """
-        if self.charm.unit.is_leader():
-            relation = self.charm.model.get_relation(self.relation_name, relation_id)
-            if relation:
-                relation.data[self.charm.model.app].update(data)
+        self.database_provides.update_relation_data(relation_id, data)
 
     def _get_shards_from_relations(self, departed_shard_id: Optional[int]):
         """Returns a list of the shards related to the config-server."""
@@ -492,8 +489,7 @@ class ConfigServerRequirer(Object):
         ):
             return
 
-        # only one related config-server is possible
-        config_server_relation = self.charm.model.relations[self.relation_name][0]
+        config_server_relation = self.model.get_relation(self.relation_name)
 
         # many secret changed events occur, only listen to those related to our interface with the
         # config-server
@@ -822,10 +818,7 @@ class ConfigServerRequirer(Object):
             data: dict containing the key-value pairs
                 that should be updated in the relation.
         """
-        if self.charm.unit.is_leader():
-            relation = self.charm.model.get_relation(self.relation_name, relation_id)
-            if relation:
-                relation.data[self.charm.model.app].update(data)
+        self.database_requires.update_relation_data(relation_id, data)
 
     def _is_mongos_reachable(self) -> bool:
         """Returns True if mongos is reachable."""
