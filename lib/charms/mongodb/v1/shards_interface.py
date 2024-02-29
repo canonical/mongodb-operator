@@ -445,7 +445,7 @@ class ShardingProvider(Object):
     def cluster_password_synced(self) -> bool:
         """Returns True if the cluster password is synced."""
         # base case: not config-server
-        if self.charm.is_role(Config.Role.SHARD):
+        if not self.charm.is_role(Config.Role.CONFIG_SERVER):
             return True
 
         # base case: no cluster relation
@@ -834,8 +834,8 @@ class ConfigServerRequirer(Object):
 
     def cluster_password_synced(self) -> bool:
         """Returns True if the cluster password is synced for the shard."""
-        # base case: config-server (i.e. cluster password maintainer)
-        if self.charm.is_role(Config.Role.CONFIG_SERVER):
+        # base case: not a shard
+        if not self.charm.is_role(Config.Role.SHARD):
             return True
 
         # base case: no cluster relation
