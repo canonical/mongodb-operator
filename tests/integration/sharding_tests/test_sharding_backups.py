@@ -8,7 +8,7 @@ import time
 
 import pytest
 from pytest_operator.plugin import OpsTest
-from tenacity import Retrying, stop_after_delay, wait_fixed, stop_after_attempt
+from tenacity import Retrying, stop_after_attempt, stop_after_delay, wait_fixed
 
 from ..backup_tests import helpers as backup_helpers
 
@@ -19,8 +19,9 @@ from . import writes_helpers
 S3_APP_NAME = "s3-integrator"
 SHARD_ONE_APP_NAME = "shard-one"
 SHARD_TWO_APP_NAME = "shard-two"
-SHARD_APPS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME]
 CONFIG_SERVER_APP_NAME = "config-server"
+SHARD_APPS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME]
+CLUSTER_APPS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME, CONFIG_SERVER_APP_NAME]
 SHARD_REL_NAME = "sharding"
 CONFIG_SERVER_REL_NAME = "config-server"
 S3_REL_NAME = "s3-credentials"
@@ -49,8 +50,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
-async def test_set_credentials_in_cluster(ops_test: OpsTest) -> None:
-    github_secrets = None
+async def test_set_credentials_in_cluster(ops_test: OpsTest, github_secrets) -> None:
     """Tests that sharded cluster can be configured for s3 configurations."""
     await backup_helpers.set_credentials(ops_test, github_secrets, cloud="AWS")
     choices = string.ascii_letters + string.digits
@@ -181,12 +181,85 @@ async def test_rotate_backup_password(ops_test: OpsTest) -> None:
 
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
+async def test_restore_backup(ops_test: OpsTest, add_writes_to_db) -> None:
+    """Tests that sharded Charmed MongoDB cluster supports restores."""
+    # count total writes
+    cluster_writes = await writes_helpers.get_cluster_writes_count(
+        ops_test, shard_app_names=SHARD_APPS
+    )
+    assert cluster_writes["total_writes"] > 0, "no writes to backup"
+
+    leader_unit = await backup_helpers.get_leader_unit(
+        ops_test, db_app_name=CONFIG_SERVER_APP_NAME
+    )
+    prev_backups = await backup_helpers.count_logical_backups(leader_unit)
+    await ops_test.model.wait_for_idle(
+        apps=[CONFIG_SERVER_APP_NAME], status="active", idle_period=20
+    ),
+    action = await leader_unit.run_action(action_name="create-backup")
+    first_backup = await action.wait()
+    assert first_backup.status == "completed", "First backup not started."
+
+    # verify that backup was made on the bucket
+    for attempt in Retrying(stop=stop_after_delay(4), wait=wait_fixed(5), reraise=True):
+        with attempt:
+            backups = await backup_helpers.count_logical_backups(leader_unit)
+            assert backups == prev_backups + 1, "Backup not created."
+
+    await ops_test.model.wait_for_idle(
+        apps=[CONFIG_SERVER_APP_NAME], status="active", idle_period=20
+    ),
+
+    # add writes to be cleared after restoring the backup. Note these are written to the same
+    # collection that was backed up.
+    await writes_helpers.insert_unwanted_data(ops_test)
+    new_total_writes = await writes_helpers.get_cluster_writes_count(
+        ops_test, shard_app_names=SHARD_APPS
+    )
+    assert (
+        new_total_writes["total_writes"] > cluster_writes["total_writes"]
+    ), "No writes to be cleared after restoring."
+
+    # find most recent backup id and restore
+    list_result = await backup_helpers.get_backup_list(
+        ops_test, db_app_name=CONFIG_SERVER_APP_NAME
+    )
+    most_recent_backup = list_result.split("\n")[-1]
+    backup_id = most_recent_backup.split()[0]
+    action = await leader_unit.run_action(action_name="restore", **{"backup-id": backup_id})
+    restore = await action.wait()
+    assert restore.results["restore-status"] == "restore started", "restore not successful"
+
+    await ops_test.model.wait_for_idle(
+        apps=[CONFIG_SERVER_APP_NAME], status="active", idle_period=20
+    ),
+
+    # verify all writes are present
+    for attempt in Retrying(stop=stop_after_delay(4), wait=wait_fixed(20), reraise=True):
+        with attempt:
+            restored_total_writes = await writes_helpers.get_cluster_writes_count(
+                ops_test, shard_app_names=SHARD_APPS
+            )
+            assert (
+                restored_total_writes["total_writes"] == cluster_writes["total_writes"]
+            ), "writes not correctly restored to whole cluster"
+            assert (
+                restored_total_writes[SHARD_ONE_APP_NAME] == cluster_writes[SHARD_ONE_APP_NAME]
+            ), f"writes not correctly restored to {SHARD_ONE_APP_NAME}"
+            assert (
+                restored_total_writes[SHARD_TWO_APP_NAME] == cluster_writes[SHARD_TWO_APP_NAME]
+            ), f"writes not correctly restored to {SHARD_TWO_APP_NAME}"
+
+
+@pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_migrate_restore_backup(ops_test: OpsTest, add_writes_to_db) -> None:
     """Tests that sharded Charmed MongoDB cluster supports restores."""
     config_leader_id = await get_leader_id(ops_test, app_name=CONFIG_SERVER_APP_NAME)
     await set_password(
         ops_test, unit_id=config_leader_id, username="operator", password=OPERATOR_PASSWORD
     )
+    await ops_test.model.wait_for_idle(apps=CLUSTER_APPS, status="active", idle_period=20),
 
     # count total writes
     cluster_writes = await writes_helpers.get_cluster_writes_count(
@@ -234,20 +307,15 @@ async def test_migrate_restore_backup(ops_test: OpsTest, add_writes_to_db) -> No
         ops_test, unit_id=config_leader_id, username="operator", password=OPERATOR_PASSWORD
     )
     await ops_test.model.wait_for_idle(
-        apps=[
-            CONFIG_SERVER_APP_NAME,
-            SHARD_ONE_APP_NAME,
-            SHARD_TWO_APP_NAME,
-        ],
-        idle_period=20,
-        status="active",
-        timeout=TIMEOUT,
-    )
+        apps=CLUSTER_APPS, status="active", idle_period=20, timeout=TIMEOUT
+    ),
 
     # find most recent backup id and restore
     leader_unit = await backup_helpers.get_leader_unit(
         ops_test, db_app_name=CONFIG_SERVER_APP_NAME
     )
+
+    # find most recent backup id and restore
     list_result = await backup_helpers.get_backup_list(
         ops_test, db_app_name=CONFIG_SERVER_APP_NAME
     )
@@ -279,7 +347,7 @@ async def test_migrate_restore_backup(ops_test: OpsTest, add_writes_to_db) -> No
 
 
 async def deploy_cluster_backup_test(ops_test: OpsTest, deploy_s3_integrator=True) -> None:
-    """Deploy a cluster for the backup test"""
+    """Deploy a cluster for the backup test."""
     my_charm = await ops_test.build_charm(".")
     await ops_test.model.deploy(
         my_charm,
@@ -308,7 +376,7 @@ async def deploy_cluster_backup_test(ops_test: OpsTest, deploy_s3_integrator=Tru
 
 
 async def setup_cluster_and_s3(ops_test: OpsTest) -> None:
-    """Deploy a cluster for the backup test"""
+    """Deploy a cluster for the backup test."""
     # provide config-server to entire cluster and s3-integrator to config-server - integrations
     # made in succession to test race conditions.
     await ops_test.model.integrate(
@@ -337,6 +405,7 @@ async def setup_cluster_and_s3(ops_test: OpsTest) -> None:
 
 
 async def destroy_cluster_backup_test(ops_test):
+    """Destroy cluster in a forceful way."""
     for app in [
         CONFIG_SERVER_APP_NAME,
         SHARD_ONE_APP_NAME,

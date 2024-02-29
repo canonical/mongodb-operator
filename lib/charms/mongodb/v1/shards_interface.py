@@ -319,6 +319,9 @@ class ShardingProvider(Object):
         if not self.is_mongos_running():
             return BlockedStatus("Internal mongos is not running.")
 
+        if not self.cluster_password_synced():
+            return WaitingStatus("Waiting to sync passwords across the cluster")
+
         shard_draining = self.get_draining_shards()
         if shard_draining:
             shard_draining = ",".join(shard_draining)
@@ -499,6 +502,7 @@ class ConfigServerRequirer(Object):
 
     def _handle_changed_secrets(self, event) -> None:
         """Update operator and backup user passwords when rotation occurs.
+
         Changes in secrets do not re-trigger a relation changed event, so it is necessary to listen
         to secret changes events.
         """
@@ -707,6 +711,26 @@ class ConfigServerRequirer(Object):
         if self.skip_shard_status():
             return None
 
+        relation_status = self.relation_check()
+        if relation_status:
+            return relation_status
+
+        if not self.cluster_password_synced():
+            return WaitingStatus("Waiting to sync passwords across the cluster")
+
+        if not self._is_mongos_reachable():
+            return BlockedStatus("Config server unreachable")
+
+        if not self._is_added_to_cluster():
+            return MaintenanceStatus("Adding shard to config-server")
+
+        if not self._is_shard_aware():
+            return BlockedStatus("Shard is not yet shard aware")
+
+        return ActiveStatus()
+
+    def relation_check(self) -> Optional[StatusBase]:
+        """Returns a status if for relation issues related to sharding."""
         if (
             self.charm.is_role(Config.Role.REPLICATION)
             and self.model.relations[Config.Relations.CONFIG_SERVER_RELATIONS_NAME]
@@ -725,16 +749,7 @@ class ConfigServerRequirer(Object):
         if not self.model.get_relation(self.relation_name) and self.charm.drained:
             return ActiveStatus("Shard drained from cluster, ready for removal")
 
-        if not self._is_mongos_reachable():
-            return BlockedStatus("Config server unreachable")
-
-        if not self._is_added_to_cluster():
-            return MaintenanceStatus("Adding shard to config-server")
-
-        if not self._is_shard_aware():
-            return BlockedStatus("Shard is not yet shard aware")
-
-        return ActiveStatus()
+        return
 
     def skip_shard_status(self) -> bool:
         """Returns true if the status check should be skipped."""
