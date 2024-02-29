@@ -55,7 +55,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 7
+LIBPATCH = 8
 KEYFILE_KEY = "key-file"
 HOSTS_KEY = "host"
 OPERATOR_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username())
@@ -439,6 +439,27 @@ class ShardingProvider(Object):
 
             return draining_shards
 
+    def cluster_password_synced(self) -> bool:
+        """Returns True if the cluster password is synced."""
+        # base case: not config-server
+        if not self.charm.is_role(Config.Role.CONFIG_SERVER):
+            return True
+
+        # base case: no cluster relation
+        if not self.model.relations[self.relation_name]:
+            return True
+
+        try:
+            # check our ability to use connect to cluster
+            with MongosConnection(self.charm.mongos_config) as mongos:
+                mongos.get_shard_members()
+        except OperationFailure as e:
+            if e.code == 18:  # Unauthorized Error - i.e. password is not in sync
+                return False
+            raise
+
+        return True
+
 
 class ConfigServerRequirer(Object):
     """Manage relations between the config server and the shard, on the shard's side."""
@@ -527,6 +548,8 @@ class ConfigServerRequirer(Object):
 
         # if re-using an old shard, re-set drained flag.
         self.charm.unit_peer_data["drained"] = json.dumps(False)
+
+        # TODO: Future PR better status message behavior
         self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
 
         # shards rely on the config server for secrets
@@ -861,14 +884,12 @@ class ConfigServerRequirer(Object):
             raise
 
     def cluster_password_synced(self) -> bool:
-        """Returns True if the current password is not synced across the cluster for a shard.
-
-        This race condition occurs in non-juju leader units when the juju leader is actively
-        changing the operator user password but has not fully set the secret across all units.
-        """
-        if self.charm.is_role(Config.Role.CONFIG_SERVER):
+        """Returns True if the cluster password is synced for the shard."""
+        # base case: not a shard
+        if not self.charm.is_role(Config.Role.SHARD):
             return True
 
+        # base case: no cluster relation
         if not self.model.get_relation(self.relation_name):
             return True
 
@@ -887,7 +908,8 @@ class ConfigServerRequirer(Object):
     def get_shard_members(self) -> List[str]:
         """Returns a list of shard members.
 
-        Raises: PyMongoError"""
+        Raises: PyMongoError
+        """
         mongos_hosts = self.get_mongos_hosts()
         with MongosConnection(self.charm.remote_mongos_config(set(mongos_hosts))) as mongo:
             return mongo.get_shard_members()

@@ -548,10 +548,15 @@ class MongodbOperatorCharm(CharmBase):
                 self.unit.status = WaitingStatus("Waiting for MongoDB to start")
                 return
 
-        # Cannot check more advanced MongoDB statuses if mongod doesn't have correct password from
-        # config server
-        if not self.shard.cluster_password_synced():
-            self.unit.status = WaitingStatus("Waiting to sync passwords with config-server")
+        # Cannot check more advanced MongoDB statuses if the cluster doesn't have passwords synced
+        # this can occur in two cases:
+        # 1. password rotation
+        # 2. race conditions when a new shard is addeded.
+        if (
+            not self.shard.cluster_password_synced()
+            or not self.config_server.cluster_password_synced()
+        ):
+            self.unit.status = WaitingStatus("Waiting to sync passwords across the cluster")
             return
 
         # leader should periodically handle configuring the replica set. Incidents such as network
