@@ -68,107 +68,107 @@ async def test_set_credentials_in_cluster(ops_test: OpsTest) -> None:
     await setup_cluster_and_s3(ops_test)
 
 
-# @pytest.mark.group(1)
-# @pytest.mark.abort_on_fail
-# async def test_create_and_list_backups_in_cluster(ops_test: OpsTest) -> None:
-#     """Tests that sharded cluster can successfully create and list backups."""
-#     # verify backup list works
-#     backups = await backup_helpers.get_backup_list(ops_test, db_app_name=CONFIG_SERVER_APP_NAME)
-#     assert backups, "backups not outputted"
+@pytest.mark.group(1)
+@pytest.mark.abort_on_fail
+async def test_create_and_list_backups_in_cluster(ops_test: OpsTest) -> None:
+    """Tests that sharded cluster can successfully create and list backups."""
+    # verify backup list works
+    backups = await backup_helpers.get_backup_list(ops_test, db_app_name=CONFIG_SERVER_APP_NAME)
+    assert backups, "backups not outputted"
 
-#     # verify backup is started
-#     leader_unit = await backup_helpers.get_leader_unit(
-#         ops_test, db_app_name=CONFIG_SERVER_APP_NAME
-#     )
-#     action = await leader_unit.run_action(action_name="create-backup")
-#     backup_result = await action.wait()
-#     assert "backup started" in backup_result.results["backup-status"], "backup didn't start"
+    # verify backup is started
+    leader_unit = await backup_helpers.get_leader_unit(
+        ops_test, db_app_name=CONFIG_SERVER_APP_NAME
+    )
+    action = await leader_unit.run_action(action_name="create-backup")
+    backup_result = await action.wait()
+    assert "backup started" in backup_result.results["backup-status"], "backup didn't start"
 
-#     # verify backup is present in the list of backups
-#     # the action `create-backup` only confirms that the command was sent to the `pbm`. Creating a
-#     # backup can take a lot of time so this function returns once the command was successfully
-#     # sent to pbm. Therefore we should retry listing the backup several times
-#     for attempt in Retrying(stop=stop_after_delay(20), wait=wait_fixed(3), reraise=True):
-#         with attempt:
-#             backups = await backup_helpers.count_logical_backups(leader_unit)
-#             assert backups == 1
-
-
-# @pytest.mark.group(1)
-# @pytest.mark.abort_on_fail
-# async def test_shards_cannot_run_backup_actions(ops_test: OpsTest) -> None:
-#     shard_unit = await backup_helpers.get_leader_unit(ops_test, db_app_name=SHARD_ONE_APP_NAME)
-#     action = await shard_unit.run_action(action_name="create-backup")
-#     attempted_backup = await action.wait()
-#     assert attempted_backup.status == "failed", "shard ran create-backup command."
-
-#     action = await shard_unit.run_action(action_name="list-backups")
-#     attempted_backup = await action.wait()
-#     assert attempted_backup.status == "failed", "shard ran list-backup command."
-
-#     action = await shard_unit.run_action(action_name="restore")
-#     attempted_backup = await action.wait()
-#     assert attempted_backup.status == "failed", "shard ran list-backup command."
+    # verify backup is present in the list of backups
+    # the action `create-backup` only confirms that the command was sent to the `pbm`. Creating a
+    # backup can take a lot of time so this function returns once the command was successfully
+    # sent to pbm. Therefore we should retry listing the backup several times
+    for attempt in Retrying(stop=stop_after_delay(20), wait=wait_fixed(3), reraise=True):
+        with attempt:
+            backups = await backup_helpers.count_logical_backups(leader_unit)
+            assert backups == 1
 
 
-# @pytest.mark.group(1)
-# @pytest.mark.abort_on_fail
-# async def test_rotate_backup_password(ops_test: OpsTest) -> None:
-#     """Tests that sharded cluster can successfully create and list backups."""
-#     config_leader_id = await get_leader_id(ops_test, app_name=CONFIG_SERVER_APP_NAME)
-#     new_password = "new-password"
+@pytest.mark.group(1)
+@pytest.mark.abort_on_fail
+async def test_shards_cannot_run_backup_actions(ops_test: OpsTest) -> None:
+    shard_unit = await backup_helpers.get_leader_unit(ops_test, db_app_name=SHARD_ONE_APP_NAME)
+    action = await shard_unit.run_action(action_name="create-backup")
+    attempted_backup = await action.wait()
+    assert attempted_backup.status == "failed", "shard ran create-backup command."
 
-#     shard_backup_password = await get_password(
-#         ops_test, username="backup", app_name=SHARD_ONE_APP_NAME
-#     )
-#     assert (
-#         shard_backup_password != new_password
-#     ), "shard-one is incorrectly already set to the new password."
+    action = await shard_unit.run_action(action_name="list-backups")
+    attempted_backup = await action.wait()
+    assert attempted_backup.status == "failed", "shard ran list-backup command."
 
-#     shard_backup_password = await get_password(
-#         ops_test, username="backup", app_name=SHARD_TWO_APP_NAME
-#     )
-#     assert (
-#         shard_backup_password != new_password
-#     ), "shard-two is incorrectly already set to the new password."
+    action = await shard_unit.run_action(action_name="restore")
+    attempted_backup = await action.wait()
+    assert attempted_backup.status == "failed", "shard ran list-backup command."
 
-#     await set_password(
-#         ops_test, unit_id=config_leader_id, username="backup", password=new_password
-#     )
-#     await ops_test.model.wait_for_idle(
-#         apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
-#         idle_period=20,
-#         timeout=TIMEOUT,
-#     )
 
-#     shard_backup_password = await get_password(
-#         ops_test, username="backup", app_name=SHARD_ONE_APP_NAME
-#     )
-#     assert shard_backup_password != new_password, "Application shard-one did not rotate password"
+@pytest.mark.group(1)
+@pytest.mark.abort_on_fail
+async def test_rotate_backup_password(ops_test: OpsTest) -> None:
+    """Tests that sharded cluster can successfully create and list backups."""
+    config_leader_id = await get_leader_id(ops_test, app_name=CONFIG_SERVER_APP_NAME)
+    new_password = "new-password"
 
-#     shard_backup_password = await get_password(
-#         ops_test, username="backup", app_name=SHARD_TWO_APP_NAME
-#     )
-#     assert shard_backup_password != new_password, "Application shard-two did not rotate password"
+    shard_backup_password = await get_password(
+        ops_test, username="backup", app_name=SHARD_ONE_APP_NAME
+    )
+    assert (
+        shard_backup_password != new_password
+    ), "shard-one is incorrectly already set to the new password."
 
-#     # verify backup actions work after password rotation
-#     leader_unit = await backup_helpers.get_leader_unit(
-#         ops_test, db_app_name=CONFIG_SERVER_APP_NAME
-#     )
-#     action = await leader_unit.run_action(action_name="create-backup")
-#     backup_result = await action.wait()
-#     assert (
-#         "backup started" in backup_result.results["backup-status"]
-#     ), "backup didn't start after password rotation"
+    shard_backup_password = await get_password(
+        ops_test, username="backup", app_name=SHARD_TWO_APP_NAME
+    )
+    assert (
+        shard_backup_password != new_password
+    ), "shard-two is incorrectly already set to the new password."
 
-#     # verify backup is present in the list of backups
-#     # the action `create-backup` only confirms that the command was sent to the `pbm`. Creating a
-#     # backup can take a lot of time so this function returns once the command was successfully
-#     # sent to pbm. Therefore we should retry listing the backup several times
-#     for attempt in Retrying(stop=stop_after_delay(20), wait=wait_fixed(3), reraise=True):
-#         with attempt:
-#             backups = await backup_helpers.count_logical_backups(leader_unit)
-#             assert backups == 2, "Backup not created after password rotation."
+    await set_password(
+        ops_test, unit_id=config_leader_id, username="backup", password=new_password
+    )
+    await ops_test.model.wait_for_idle(
+        apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
+        idle_period=20,
+        timeout=TIMEOUT,
+    )
+
+    shard_backup_password = await get_password(
+        ops_test, username="backup", app_name=SHARD_ONE_APP_NAME
+    )
+    assert shard_backup_password != new_password, "Application shard-one did not rotate password"
+
+    shard_backup_password = await get_password(
+        ops_test, username="backup", app_name=SHARD_TWO_APP_NAME
+    )
+    assert shard_backup_password != new_password, "Application shard-two did not rotate password"
+
+    # verify backup actions work after password rotation
+    leader_unit = await backup_helpers.get_leader_unit(
+        ops_test, db_app_name=CONFIG_SERVER_APP_NAME
+    )
+    action = await leader_unit.run_action(action_name="create-backup")
+    backup_result = await action.wait()
+    assert (
+        "backup started" in backup_result.results["backup-status"]
+    ), "backup didn't start after password rotation"
+
+    # verify backup is present in the list of backups
+    # the action `create-backup` only confirms that the command was sent to the `pbm`. Creating a
+    # backup can take a lot of time so this function returns once the command was successfully
+    # sent to pbm. Therefore we should retry listing the backup several times
+    for attempt in Retrying(stop=stop_after_delay(20), wait=wait_fixed(3), reraise=True):
+        with attempt:
+            backups = await backup_helpers.count_logical_backups(leader_unit)
+            assert backups == 2, "Backup not created after password rotation."
 
 
 @pytest.mark.group(1)
