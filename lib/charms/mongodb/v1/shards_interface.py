@@ -55,7 +55,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 7
+LIBPATCH = 8
 KEYFILE_KEY = "key-file"
 HOSTS_KEY = "host"
 OPERATOR_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username())
@@ -442,6 +442,27 @@ class ShardingProvider(Object):
 
             return draining_shards
 
+    def cluster_password_synced(self) -> bool:
+        """Returns True if the cluster password is synced."""
+        # base case: not config-server
+        if self.charm.is_role(Config.Role.SHARD):
+            return True
+
+        # base case: no cluster relation
+        if not self.model.relations[self.relation_name]:
+            return True
+
+        try:
+            # check our ability to use connect to cluster
+            with MongosConnection(self.charm.mongos_config) as mongos:
+                mongos.get_shard_members()
+        except OperationFailure as e:
+            if e.code == 18:  # Unauthorized Error - i.e. password is not in sync
+                return False
+            raise
+
+        return True
+
 
 class ConfigServerRequirer(Object):
     """Manage relations between the config server and the shard, on the shard's side."""
@@ -483,7 +504,9 @@ class ConfigServerRequirer(Object):
 
         # if re-using an old shard, re-set drained flag.
         self.charm.unit_peer_data["drained"] = json.dumps(False)
-        self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
+
+        if not self._is_added_to_cluster():
+            self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
 
         # shards rely on the config server for secrets
         key_file_contents = self.database_requires.fetch_relation_field(
@@ -808,6 +831,37 @@ class ConfigServerRequirer(Object):
                 return False
 
             raise
+
+    def cluster_password_synced(self) -> bool:
+        """Returns True if the cluster password is synced for the shard."""
+        # base case: config-server (i.e. cluster password maintainer)
+        if self.charm.is_role(Config.Role.CONFIG_SERVER):
+            return True
+
+        # base case: no cluster relation
+        if not self.model.get_relation(self.relation_name):
+            return True
+
+        try:
+            # check our ability to use connect to both mongos and our current replica set.
+            mongos_reachable = self._is_mongos_reachable()
+            with MongoDBConnection(self.charm.mongodb_config) as mongo:
+                mongod_reachable = mongo.is_ready
+        except OperationFailure as e:
+            if e.code == 18:  # Unauthorized Error - i.e. password is not in sync
+                return False
+            raise
+
+        return mongos_reachable and mongod_reachable
+
+    def get_shard_members(self) -> List[str]:
+        """Returns a list of shard members.
+
+        Raises: PyMongoError
+        """
+        mongos_hosts = self.get_mongos_hosts()
+        with MongosConnection(self.charm.remote_mongos_config(set(mongos_hosts))) as mongo:
+            return mongo.get_shard_members()
 
     def _is_shard_aware(self) -> bool:
         """Returns True if shard is in cluster and shard aware."""
