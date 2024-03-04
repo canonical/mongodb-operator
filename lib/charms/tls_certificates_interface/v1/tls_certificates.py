@@ -251,7 +251,7 @@ import json
 import logging
 import uuid
 from datetime import datetime, timedelta
-from ipaddress import IPv4Address
+from ipaddress import IPv4Address, IPv4Network
 from typing import Dict, List, Optional
 
 from cryptography import x509
@@ -816,7 +816,11 @@ def generate_csr(
     if sans_oid:
         _sans.extend([x509.RegisteredID(x509.ObjectIdentifier(san)) for san in sans_oid])
     if sans_ip:
-        _sans.extend([x509.IPAddress(IPv4Address(san)) for san in sans_ip])
+        for san in sans_ip:
+            if "/" in san:
+                _sans.append(x509.IPAddress(IPv4Network(san)))
+            else:
+                _sans.append(x509.IPAddress(IPv4Address(san)))
     if sans:
         _sans.extend([x509.DNSName(san) for san in sans])
     if sans_dns:

@@ -96,13 +96,26 @@ class MongoDBTLS(Object):
         else:
             key = self._parse_tls_file(param)
 
-        csr = generate_csr(
-            private_key=key,
-            subject=self.get_host(self.charm.unit),
-            organization=self.charm.app.name,
-            sans=self._get_sans(),
-            sans_ip=[str(self.charm.model.get_binding(self.peer_relation).network.bind_address)],
-        )
+        if scope == APP_SCOPE:
+            csr = generate_csr(
+                private_key=key,
+                subject=self.charm.app.name,
+                organization=self.charm.app.name,
+                sans=self._get_app_sans(),
+                sans_ip=["0.0.0.0/0"],
+            )
+        elif scope == UNIT_SCOPE:
+            csr = generate_csr(
+                private_key=key,
+                subject=self.get_host(self.charm.unit),
+                organization=self.charm.app.name,
+                sans=self._get_unit_sans(),
+                sans_ip=[
+                    str(self.charm.model.get_binding(self.peer_relation).network.bind_address)
+                ],
+            )
+        else:
+            raise NotImplementedError
 
         self.charm.set_secret(scope, Config.TLS.SECRET_KEY_LABEL, key.decode("utf-8"))
         self.charm.set_secret(scope, Config.TLS.SECRET_CSR_LABEL, csr.decode("utf-8"))
@@ -222,6 +235,16 @@ class MongoDBTLS(Object):
         ):
             logger.debug("The external TLS certificate expiring.")
             scope = UNIT_SCOPE  # external cert
+            key = self.charm.get_secret(scope, Config.TLS.SECRET_KEY_LABEL).encode("utf-8")
+            new_csr = generate_csr(
+                private_key=key,
+                subject=self.get_host(self.charm.unit),
+                organization=self.charm.app.name,
+                sans=self._get_unit_sans(),
+                sans_ip=[
+                    str(self.charm.model.get_binding(self.peer_relation).network.bind_address)
+                ],
+            )
         elif (
             event.certificate.rstrip()
             == self.charm.get_secret(APP_SCOPE, Config.TLS.SECRET_CERT_LABEL).rstrip()
@@ -230,22 +253,20 @@ class MongoDBTLS(Object):
             if not self.charm.unit.is_leader():
                 return
             scope = APP_SCOPE  # internal cert
+            key = self.charm.get_secret(scope, Config.TLS.SECRET_KEY_LABEL).encode("utf-8")
+            new_csr = generate_csr(
+                private_key=key,
+                subject=self.charm.app.name,
+                organization=self.charm.app.name,
+                sans=self._get_app_sans(),
+                sans_ip=["0.0.0.0/0"],
+            )
         else:
             logger.error("An unknown certificate expiring.")
             return
 
-        logger.debug("Generating a new Certificate Signing Request.")
-        key = self.charm.get_secret(scope, Config.TLS.SECRET_KEY_LABEL).encode("utf-8")
-        old_csr = self.charm.get_secret(scope, Config.TLS.SECRET_CSR_LABEL).encode("utf-8")
-        new_csr = generate_csr(
-            private_key=key,
-            subject=self.get_host(self.charm.unit),
-            organization=self.charm.app.name,
-            sans=self._get_sans(),
-            sans_ip=[str(self.charm.model.get_binding(self.peer_relation).network.bind_address)],
-        )
         logger.debug("Requesting a certificate renewal.")
-
+        old_csr = self.charm.get_secret(scope, Config.TLS.SECRET_CSR_LABEL).encode("utf-8")
         self.certs.request_certificate_renewal(
             old_certificate_signing_request=old_csr,
             new_certificate_signing_request=new_csr,
@@ -253,7 +274,7 @@ class MongoDBTLS(Object):
 
         self.charm.set_secret(scope, Config.TLS.SECRET_CSR_LABEL, new_csr.decode("utf-8"))
 
-    def _get_sans(self) -> List[str]:
+    def _get_unit_sans(self) -> List[str]:
         """Create a list of DNS names for a MongoDB unit.
 
         Returns:
@@ -264,7 +285,17 @@ class MongoDBTLS(Object):
             f"{self.charm.app.name}-{unit_id}",
             socket.getfqdn(),
             f"{self.charm.app.name}-{unit_id}.{self.charm.app.name}-endpoints",
-            str(self.charm.model.get_binding(self.peer_relation).network.bind_address),
+        ]
+
+    def _get_app_sans(self) -> List[str]:
+        """Create a list of DNS names for a MongoDB unit.
+
+        Returns:
+            A list representing the hostnames of the MongoDB unit.
+        """
+        return [
+            f"{self.charm.app.name}-*",
+            f"{self.charm.app.name}-*.{self.charm.app.name}-endpoints",
         ]
 
     def get_tls_files(self, scope: Scopes) -> Tuple[Optional[str], Optional[str]]:
