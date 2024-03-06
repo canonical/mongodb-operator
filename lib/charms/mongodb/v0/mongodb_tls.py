@@ -218,8 +218,8 @@ class MongoDBTLS(Object):
             return
 
         logger.debug("Generating a new Certificate Signing Request.")
-        key = self.charm.get_tls_secret(internal, Config.TLS.SECRET_KEY_LABEL).encode("utf-8")
-        old_csr = self.charm.get_tls_secret(internal, Config.TLS.SECRET_CSR_LABEL).encode("utf-8")
+        key = self.get_tls_secret(internal, Config.TLS.SECRET_KEY_LABEL).encode("utf-8")
+        old_csr = self.get_tls_secret(internal, Config.TLS.SECRET_CSR_LABEL).encode("utf-8")
         new_csr = generate_csr(
             private_key=key,
             subject=self.get_host(self.charm.unit),
