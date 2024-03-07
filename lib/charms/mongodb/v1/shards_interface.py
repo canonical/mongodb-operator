@@ -55,7 +55,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 8
+LIBPATCH = 9
 KEYFILE_KEY = "key-file"
 HOSTS_KEY = "host"
 OPERATOR_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username())
@@ -556,7 +556,7 @@ class ConfigServerRequirer(Object):
         # FUTURE PR: if config-server does not have TLS enabled log a useful message and go into
         # blocked in relation_changed and other status checks
 
-    def get_membership_auth_mode(self, event) -> Tuple:
+    def get_membership_auth_modes(self, event) -> Tuple:
         """Returns the available authentication membership forms."""
         key_file_contents = self.database_requires.fetch_relation_field(
             event.relation.id, KEYFILE_KEY
@@ -589,8 +589,8 @@ class ConfigServerRequirer(Object):
         )
         self.update_keyfile(key_file_contents=key_file_contents)
 
-        # Future PR - status updating for inconsistencies with TLS (i.e. shard has TLS but
-        # config-server does not and vice versa or CA-mismatch)
+    # Future PR - status updating for inconsistencies with TLS (i.e. shard has TLS but
+    # config-server does not and vice versa or CA-mismatch)
 
     def get_cluster_passwords(self, event) -> Tuple:
         """Retrieves shared cluster passwords."""
@@ -632,7 +632,7 @@ class ConfigServerRequirer(Object):
             self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
 
         # shards rely on the config server for shared cluster secrets
-        key_file_enabled, tls_enabled = self.get_membership_auth_mode(event)
+        key_file_enabled, tls_enabled = self.get_membership_auth_modes(event)
         if not key_file_enabled and not tls_enabled:
             event.defer()
             self.charm.unit.status = WaitingStatus("Waiting for secrets from config-server")
