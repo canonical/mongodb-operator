@@ -641,7 +641,7 @@ class ConfigServerRequirer(Object):
         self.update_member_auth(event, (key_file_enabled, tls_enabled))
 
         # restart on high loaded databases can be very slow (e.g. up to 10-20 minutes).
-        with MongoDBConnection(self.charm.mongodb_config, "localhost", direct=True) as mongo:
+        with MongoDBConnection(self.charm.mongodb_config) as mongo:
             if not mongo.is_ready:
                 logger.info("shard has not started yet, deferfing")
                 self.charm.unit.status = WaitingStatus("Waiting for MongoDB to start")
