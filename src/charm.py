@@ -771,8 +771,8 @@ class MongodbOperatorCharm(CharmBase):
     def _get_mongos_config_for_user(
         self, user: MongoDBUser, hosts: Set[str]
     ) -> MongosConfiguration:
-        external_ca, _ = self.tls.get_tls_files(UNIT_SCOPE)
-        internal_ca, _ = self.tls.get_tls_files(APP_SCOPE)
+        external_ca, _ = self.tls.get_tls_files(internal=False)
+        internal_ca, _ = self.tls.get_tls_files(internal=True)
 
         return MongosConfiguration(
             database=user.get_database_name(),
@@ -788,8 +788,8 @@ class MongodbOperatorCharm(CharmBase):
     def _get_mongodb_config_for_user(
         self, user: MongoDBUser, hosts: Set[str], standalone: bool = False
     ) -> MongoDBConfiguration:
-        external_ca, _ = self.tls.get_tls_files(UNIT_SCOPE)
-        internal_ca, _ = self.tls.get_tls_files(APP_SCOPE)
+        external_ca, _ = self.tls.get_tls_files(internal=False)
+        internal_ca, _ = self.tls.get_tls_files(internal=True)
 
         return MongoDBConfiguration(
             replset=self.app.name,
@@ -996,7 +996,7 @@ class MongodbOperatorCharm(CharmBase):
 
     def push_tls_certificate_to_workload(self) -> None:
         """Uploads certificate to the workload container."""
-        external_ca, external_pem = self.tls.get_tls_files(UNIT_SCOPE)
+        external_ca, external_pem = self.tls.get_tls_files(internal=False)
         if external_ca is not None:
             self.push_file_to_unit(
                 parent_dir=Config.MONGOD_CONF_DIR,
@@ -1011,7 +1011,7 @@ class MongodbOperatorCharm(CharmBase):
                 file_contents=external_pem,
             )
 
-        internal_ca, internal_pem = self.tls.get_tls_files(APP_SCOPE)
+        internal_ca, internal_pem = self.tls.get_tls_files(internal=True)
         if internal_ca is not None:
             self.push_file_to_unit(
                 parent_dir=Config.MONGOD_CONF_DIR,
