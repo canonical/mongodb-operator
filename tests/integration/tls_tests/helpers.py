@@ -81,7 +81,6 @@ async def check_tls(
                 check_tls_cmd = f"exec --unit {unit.name} -- {mongod_tls_check}"
                 return_code, _, _ = await ops_test.juju(*check_tls_cmd.split())
 
-                print(check_tls_cmd)
                 tls_enabled = return_code == 0
                 if enabled != tls_enabled:
                     raise ValueError(
