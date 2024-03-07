@@ -20,6 +20,7 @@ from charms.mongodb.v0.mongodb import (
     NotReadyError,
     OperationFailure,
     PyMongoError,
+    ServerSelectionTimeoutError,
 )
 from charms.mongodb.v1.helpers import KEY_FILE
 from charms.mongodb.v1.mongodb_provider import LEGACY_REL_NAME, REL_NAME
@@ -460,6 +461,10 @@ class ShardingProvider(Object):
                 mongos.get_shard_members()
         except OperationFailure as e:
             if e.code == 18:  # Unauthorized Error - i.e. password is not in sync
+                return False
+            raise
+        except ServerSelectionTimeoutError as e:
+            if e.code == 111:  # Connection refused, - i.e. TLS certs not in sync
                 return False
             raise
 
@@ -958,6 +963,10 @@ class ConfigServerRequirer(Object):
                 mongod_reachable = mongo.is_ready
         except OperationFailure as e:
             if e.code == 18:  # Unauthorized Error - i.e. password is not in sync
+                return False
+            raise
+        except ServerSelectionTimeoutError as e:
+            if e.code == 111:  # Connection refused, - i.e. TLS certs not in sync
                 return False
             raise
 
