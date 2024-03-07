@@ -32,7 +32,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 8
+LIBPATCH = 9
 
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
@@ -74,7 +74,7 @@ class MongoDBConfiguration:
             return (
                 f"mongodb://{quote_plus(self.username)}:"
                 f"{quote_plus(self.password)}@"
-                f"localhost:{Config.MONGODB_PORT}/?authSource=admin"
+                f"{hosts[0]}:{Config.MONGODB_PORT}/?authSource=admin"
             )
 
         return (
@@ -131,6 +131,10 @@ class MongoDBConnection:
             connect=False,
             serverSelectionTimeoutMS=1000,
             connectTimeoutMS=2000,
+            tlsCAFile="/var/snap/charmed-mongodb/current/etc/mongod/external-ca.crt" if config.tls_external else None,
+            tlsDisableOCSPEndpointCheck=config.tls_external,
+            tlsAllowInvalidHostnames=config.tls_external,
+            tls=config.tls_external,
         )
         return
 
