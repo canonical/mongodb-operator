@@ -580,9 +580,8 @@ class ConfigServerRequirer(Object):
         # regenerates the cert with the appropriate configurations needed for sharding.
         if cluster_tls_ca and tls_integrated and not self.has_requested_cluster_certs():
             logger.info("Cluster implements internal membership auth via certificates")
-            self.charm.tls.request_certificate(None, internal=True)
-            self.charm.tls.request_certificate(None, internal=False)
-            self.set_has_requested_cluster_certs(True)
+            self.charm.tls.request_certificate(param=None, internal=True)
+            self.charm.tls.request_certificate(param=None, internal=False)
         elif key_file_contents and not cluster_tls_ca and not tls_integrated:
             logger.info("Cluster implements internal membership auth via keyFile")
 
@@ -633,7 +632,7 @@ class ConfigServerRequirer(Object):
 
         # relation-changed events can be used for other purposes (not only adding the shard), i.e.
         # password rotation, secret rotation, mongos hosts rotation
-        if self._is_mongos_reachable() and not self._is_added_to_cluster():
+        if not self._is_mongos_reachable() or not self._is_added_to_cluster():
             self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
 
         # shards rely on the config server for shared cluster secrets
@@ -644,6 +643,11 @@ class ConfigServerRequirer(Object):
             return
 
         self.update_member_auth(event, (key_file_enabled, tls_enabled))
+
+        if tls_enabled and self.charm.tls.waiting_for_certs():
+            logger.info("Waiting for requested certs, before restarting and adding to cluster.")
+            event.defer()
+            return
 
         # restart on high loaded databases can be very slow (e.g. up to 10-20 minutes).
         with MongoDBConnection(self.charm.mongodb_config) as mongo:
@@ -724,9 +728,6 @@ class ConfigServerRequirer(Object):
         mongos_hosts = json.loads(self.charm.app_peer_data["mongos_hosts"])
         self.wait_for_draining(mongos_hosts)
         self.charm.unit.status = ActiveStatus("Shard drained from cluster, ready for removal")
-
-        # in case of re-using the shard in the future reset this flag to false
-        self.set_has_requested_cluster_certs(False)
 
     def wait_for_draining(self, mongos_hosts: List[str]):
         """Waits for shards to be drained from sharded cluster."""
@@ -1016,10 +1017,16 @@ class ConfigServerRequirer(Object):
 
     def has_requested_cluster_certs(self) -> bool:
         """Returns if the shard has already requested the certificates for internal-membership."""
-        if "requested_cluster_certs" not in self.charm.unit_peer_data:
+        if (
+            "int_certs_subject" not in self.charm.unit_peer_data
+            or "ext_certs_subject" not in self.charm.unit_peer_data
+        ):
+            logger.info("Unit hasn't requested necessary all certs for cluster TLS.")
             return False
-        return json.loads(self.charm.unit_peer_data["requested_cluster_certs"])
 
-    def set_has_requested_cluster_certs(self, certs_requested: bool) -> None:
-        """Set bool if the shard has already requested the certificates for internal-membership."""
-        self.charm.unit_peer_data["requested_cluster_certs"] = json.dumps(certs_requested)
+        int_subject = json.loads(self.charm.unit_peer_data["int_certs_subject"])
+        ext_subject = json.loads(self.charm.unit_peer_data["ext_certs_subject"])
+
+        requested_new_int_cert = int_subject == self.get_config_server_name()
+        requested_new_ext_cert = ext_subject == self.get_config_server_name()
+        return requested_new_int_cert and requested_new_ext_cert

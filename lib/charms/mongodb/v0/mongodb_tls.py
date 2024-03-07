@@ -8,6 +8,7 @@ and expose needed information for client connection via fields in
 external relation.
 """
 import base64
+import json
 import logging
 import re
 import socket
@@ -100,10 +101,13 @@ class MongoDBTLS(Object):
             sans=self._get_sans(),
             sans_ip=[str(self.charm.model.get_binding(self.peer_relation).network.bind_address)],
         )
-
         self.set_tls_secret(internal, Config.TLS.SECRET_KEY_LABEL, key.decode("utf-8"))
         self.set_tls_secret(internal, Config.TLS.SECRET_CSR_LABEL, csr.decode("utf-8"))
         self.set_tls_secret(internal, Config.TLS.SECRET_CERT_LABEL, None)
+
+        label = "int" if internal else "ext"
+        self.charm.unit_peer_data[f"{label}_certs_subject"] = json.dumps(self._get_subject_name())
+        self.charm.unit_peer_data[f"{label}_certs_subject"] = json.dumps(self._get_subject_name())
 
         if self.charm.model.get_relation(Config.TLS.TLS_PEER_RELATION):
             self.certs.request_certificate_creation(certificate_signing_request=csr)
@@ -166,7 +170,7 @@ class MongoDBTLS(Object):
         self.set_tls_secret(internal, Config.TLS.SECRET_CERT_LABEL, event.certificate)
         self.set_tls_secret(internal, Config.TLS.SECRET_CA_LABEL, event.ca)
 
-        if self._waiting_for_certs():
+        if self.waiting_for_certs():
             logger.debug(
                 "Defer till both internal and external TLS certificates available to avoid second restart."
             )
@@ -186,13 +190,13 @@ class MongoDBTLS(Object):
             else:
                 self.charm.unit.status = ActiveStatus()
 
-    def _waiting_for_certs(self):
+    def waiting_for_certs(self):
         """Returns a boolean indicating whether additional certs are needed."""
         if not self.get_tls_secret(internal=True, label_name=Config.TLS.SECRET_CERT_LABEL):
-            logger.debug("Waiting for application certificate.")
+            logger.debug("Waiting for internal certificate.")
             return True
         if not self.get_tls_secret(internal=False, label_name=Config.TLS.SECRET_CERT_LABEL):
-            logger.debug("Waiting for application certificate.")
+            logger.debug("Waiting for external certificate.")
             return True
 
         return False
