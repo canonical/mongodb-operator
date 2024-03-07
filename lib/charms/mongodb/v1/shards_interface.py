@@ -20,7 +20,6 @@ from charms.mongodb.v0.mongodb import (
     NotReadyError,
     OperationFailure,
     PyMongoError,
-    ServerSelectionTimeoutError,
 )
 from charms.mongodb.v1.helpers import KEY_FILE
 from charms.mongodb.v1.mongodb_provider import LEGACY_REL_NAME, REL_NAME
@@ -41,6 +40,7 @@ from ops.model import (
     StatusBase,
     WaitingStatus,
 )
+from pymongo.errors import ServerSelectionTimeoutError
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from config import Config
@@ -999,7 +999,7 @@ class ConfigServerRequirer(Object):
 
     def get_config_server_name(self) -> str:
         """Returns the related config server."""
-        if not len(self.charm.model.relations[self.relation_name]):
+        if not self.model.get_relation(self.relation_name):
             return None
 
         # metadata.yaml prevents having multiple config servers
