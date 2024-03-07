@@ -76,17 +76,18 @@ class MongoDBTLS(Object):
         """Set the TLS private key, which will be used for requesting the certificate."""
         logger.debug("Request to set TLS private key received.")
         try:
-            self._request_certificate(event.params.get("external-key", None), internal=False)
-            self._request_certificate(event.params.get("internal-key", None), internal=True)
+            self.request_certificate(event.params.get("external-key", None), internal=False)
+            self.request_certificate(event.params.get("internal-key", None), internal=True)
             logger.debug("Successfully set TLS private key.")
         except ValueError as e:
             event.fail(str(e))
 
-    def _request_certificate(
+    def request_certificate(
         self,
         param: Optional[str],
         internal: bool,
     ):
+        """Request TLS certificate."""
         if param is None:
             key = generate_private_key()
         else:
@@ -94,8 +95,8 @@ class MongoDBTLS(Object):
 
         csr = generate_csr(
             private_key=key,
-            subject=self.get_host(self.charm.unit),
-            organization=self.charm.app.name,
+            subject=self._get_subject_name(),
+            organization=self._get_subject_name(),
             sans=self._get_sans(),
             sans_ip=[str(self.charm.model.get_binding(self.peer_relation).network.bind_address)],
         )
@@ -124,8 +125,8 @@ class MongoDBTLS(Object):
 
     def _on_tls_relation_joined(self, _: RelationJoinedEvent) -> None:
         """Request certificate when TLS relation joined."""
-        self._request_certificate(None, internal=True)
-        self._request_certificate(None, internal=False)
+        self.request_certificate(None, internal=True)
+        self.request_certificate(None, internal=False)
 
     def _on_tls_relation_broken(self, event: RelationBrokenEvent) -> None:
         """Disable TLS when TLS relation broken."""
@@ -149,7 +150,7 @@ class MongoDBTLS(Object):
 
         if ext_csr and event.certificate_signing_request.rstrip() == ext_csr.rstrip():
             logger.debug("The external TLS certificate available.")
-            internal = False  # external crs
+            internal = False
         elif int_csr and event.certificate_signing_request.rstrip() == int_csr.rstrip():
             logger.debug("The internal TLS certificate available.")
             internal = True
@@ -222,8 +223,8 @@ class MongoDBTLS(Object):
         old_csr = self.get_tls_secret(internal, Config.TLS.SECRET_CSR_LABEL).encode("utf-8")
         new_csr = generate_csr(
             private_key=key,
-            subject=self.get_host(self.charm.unit),
-            organization=self.charm.app.name,
+            subject=self._get_subject_name(),
+            organization=self._get_subject_name(),
             sans=self._get_sans(),
             sans_ip=[str(self.charm.model.get_binding(self.peer_relation).network.bind_address)],
         )
@@ -293,3 +294,15 @@ class MongoDBTLS(Object):
         scope = "int" if internal else "ext"
         label_name = f"{scope}-{label_name}"
         return self.charm.get_secret(UNIT_SCOPE, label_name)
+
+    def _get_subject_name(self) -> str:
+        """Generate the subject name for CSR."""
+        # In sharded MongoDB deployments it is a requirement that all subject names match across
+        # all cluster components
+        if self.charm.is_role(Config.Role.SHARD):
+            # until integrated with config-server use current app name as
+            # subject name
+            subject_name = self.charm.shard.get_config_server_name() or self.charm.app.name
+            return subject_name
+
+        return self.charm.app.name

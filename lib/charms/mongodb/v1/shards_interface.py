@@ -9,7 +9,7 @@ shards.
 import json
 import logging
 import time
-from typing import List, Optional, Set
+from typing import List, Optional, Set, Tuple
 
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseProvides,
@@ -60,6 +60,7 @@ KEYFILE_KEY = "key-file"
 HOSTS_KEY = "host"
 OPERATOR_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username())
 BACKUP_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(BackupUser.get_username())
+INT_TLS_CA_KEY = f"int-{Config.TLS.SECRET_CA_LABEL}"
 FORBIDDEN_REMOVAL_ERR_CODE = 20
 AUTH_FAILED_CODE = 18
 
@@ -110,25 +111,29 @@ class ShardingProvider(Object):
             logger.info("Skipping relation joined event: hook checks did not pass")
             return
 
-        # TODO Future PR, sync tls secrets and PBM password
+        relation_data = {
+            OPERATOR_PASSWORD_KEY: self.charm.get_secret(
+                Config.Relations.APP_SCOPE,
+                OPERATOR_PASSWORD_KEY,
+            ),
+            BACKUP_PASSWORD_KEY: self.charm.get_secret(
+                Config.Relations.APP_SCOPE,
+                BACKUP_PASSWORD_KEY,
+            ),
+            KEYFILE_KEY: self.charm.get_secret(
+                Config.Relations.APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME
+            ),
+            HOSTS_KEY: json.dumps(self.charm._unit_ips),
+        }
 
-        self.database_provides.update_relation_data(
-            event.relation.id,
-            {
-                OPERATOR_PASSWORD_KEY: self.charm.get_secret(
-                    Config.Relations.APP_SCOPE,
-                    OPERATOR_PASSWORD_KEY,
-                ),
-                BACKUP_PASSWORD_KEY: self.charm.get_secret(
-                    Config.Relations.APP_SCOPE,
-                    BACKUP_PASSWORD_KEY,
-                ),
-                KEYFILE_KEY: self.charm.get_secret(
-                    Config.Relations.APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME
-                ),
-                HOSTS_KEY: json.dumps(self.charm._unit_ips),
-            },
+        # if tls enabled
+        int_tls_ca = self.charm.tls.get_tls_secret(
+            internal=True, label_name=Config.TLS.SECRET_CA_LABEL
         )
+        if int_tls_ca:
+            relation_data[INT_TLS_CA_KEY] = int_tls_ca
+
+        self.database_provides.update_relation_data(event.relation.id, relation_data)
 
     def pass_hook_checks(self, event: EventBase) -> bool:
         """Runs the pre-hooks checks for ShardingProvider, returns True if all pass."""
@@ -470,16 +475,23 @@ class ConfigServerRequirer(Object):
         """Constructor for ShardingProvider object."""
         self.relation_name = relation_name
         self.charm = charm
+
         self.database_requires = DatabaseRequires(
             self.charm,
             relation_name=self.relation_name,
-            additional_secret_fields=[KEYFILE_KEY, OPERATOR_PASSWORD_KEY, BACKUP_PASSWORD_KEY],
+            additional_secret_fields=[
+                KEYFILE_KEY,
+                OPERATOR_PASSWORD_KEY,
+                BACKUP_PASSWORD_KEY,
+                INT_TLS_CA_KEY,
+            ],
             # a database isn't required for the relation between shards + config servers, but is a
             # requirement for using `DatabaseRequires`
             database_name="",
         )
 
         super().__init__(charm, self.relation_name)
+
         self.framework.observe(
             charm.on[self.relation_name].relation_changed, self._on_relation_changed
         )
@@ -541,52 +553,57 @@ class ConfigServerRequirer(Object):
             event.defer()
             return
 
-    def _on_relation_changed(self, event):
-        """Retrieves secrets from config-server and updates them within the shard."""
-        if not self.pass_hook_checks(event):
-            logger.info("Skipping relation joined event: hook checks re not passed")
-            return
+        # FUTURE PR: if config-server does not have TLS enabled log a useful message and go into
+        # blocked in relation_changed and other status checks
 
-        # if re-using an old shard, re-set drained flag.
-        self.charm.unit_peer_data["drained"] = json.dumps(False)
-
-        # TODO: Future PR better status message behavior
-        self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
-
-        # shards rely on the config server for secrets
+    def get_membership_auth_mode(self, event) -> Tuple:
+        """Returns the available authentication membership forms."""
         key_file_contents = self.database_requires.fetch_relation_field(
             event.relation.id, KEYFILE_KEY
         )
-        if not key_file_contents:
-            event.defer()
-            self.charm.unit.status = WaitingStatus("Waiting for secrets from config-server")
-            return
+        tls_ca = self.database_requires.fetch_relation_field(event.relation.id, INT_TLS_CA_KEY)
+        return (key_file_contents is not None, tls_ca is not None)
 
+    def update_member_auth(self, event, membership_auth) -> None:
+        """Updates the shard to have the same membership auth as the config-server."""
+        (key_file_contents, cluster_tls_ca) = membership_auth
+        tls_integrated = self.charm.model.get_relation(Config.TLS.TLS_PEER_RELATION)
+
+        # Edge case: shard has TLS enabled before having connected to the config-server. For TLS in
+        # sharded MongoDB clusters it is necessary that the subject and organisation name are the
+        # same in their CSRs. Re-requesting a cert after integrated with the config-server
+        # regenerates the cert with the appropriate configurations needed for sharding.
+        if cluster_tls_ca and tls_integrated and not self.has_requested_cluster_certs():
+            logger.info("Cluster implements internal membership auth via certificates")
+            self.charm.tls.request_certificate(None, internal=True)
+            self.charm.tls.request_certificate(None, internal=False)
+            self.set_has_requested_cluster_certs(True)
+        elif key_file_contents and not cluster_tls_ca and not tls_integrated:
+            logger.info("Cluster implements internal membership auth via keyFile")
+
+        # Copy over keyfile regardless of whether the cluster uses TLS or or KeyFile for internal
+        # membership authentication. If TLS is disabled on the cluster this enables the cluster to
+        # have the correct cluster KeyFile readily available.
+        key_file_contents = self.database_requires.fetch_relation_field(
+            event.relation.id, KEYFILE_KEY
+        )
         self.update_keyfile(key_file_contents=key_file_contents)
 
-        # restart on high loaded databases can be very slow (e.g. up to 10-20 minutes).
-        with MongoDBConnection(self.charm.mongodb_config) as mongo:
-            if not mongo.is_ready:
-                logger.info("shard has not started yet, deferfing")
-                self.charm.unit.status = WaitingStatus("Waiting for MongoDB to start")
-                event.defer()
-                return
+        # Future PR - status updating for inconsistencies with TLS (i.e. shard has TLS but
+        # config-server does not and vice versa or CA-mismatch)
 
-        if not self.charm.unit.is_leader():
-            return
-
-        # TODO Future work, see if needed to check for all units restarted / primary elected
+    def get_cluster_passwords(self, event) -> Tuple:
+        """Retrieves shared cluster passwords."""
         operator_password = self.database_requires.fetch_relation_field(
             event.relation.id, OPERATOR_PASSWORD_KEY
         )
         backup_password = self.database_requires.fetch_relation_field(
             event.relation.id, BACKUP_PASSWORD_KEY
         )
-        if not operator_password or not backup_password:
-            event.defer()
-            self.charm.unit.status = WaitingStatus("Waiting for secrets from config-server")
-            return
+        return (operator_password, backup_password)
 
+    def update_cluster_passwords(self, event, operator_password, backup_password):
+        """Updates shared cluster passwords."""
         try:
             self.update_password(
                 username=OperatorUser.get_username(), new_password=operator_password
@@ -598,11 +615,56 @@ class ConfigServerRequirer(Object):
                 "Shard could not be added to config server, failed to set operator password."
             )
             event.defer()
+
+    def _on_relation_changed(self, event):
+        """Retrieves secrets from config-server and updates them within the shard."""
+        # TODO Future PR include TLS sainity check in pass_hook_checks
+        if not self.pass_hook_checks(event):
+            logger.info("Skipping relation joined event: hook checks re not passed")
             return
+
+        # if re-using an old shard, re-set drained flag.
+        self.charm.unit_peer_data["drained"] = json.dumps(False)
+
+        # relation-changed events can be used for other purposes (not only adding the shard), i.e.
+        # password rotation, secret rotation, mongos hosts rotation
+        if self._is_mongos_reachable() and not self._is_added_to_cluster():
+            self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
+
+        # shards rely on the config server for shared cluster secrets
+        key_file_enabled, tls_enabled = self.get_membership_auth_mode(event)
+        if not key_file_enabled and not tls_enabled:
+            event.defer()
+            self.charm.unit.status = WaitingStatus("Waiting for secrets from config-server")
+            return
+
+        self.update_member_auth(event, (key_file_enabled, tls_enabled))
+
+        # restart on high loaded databases can be very slow (e.g. up to 10-20 minutes).
+        with MongoDBConnection(self.charm.mongodb_config, "localhost", direct=True) as mongo:
+            if not mongo.is_ready:
+                logger.info("shard has not started yet, deferfing")
+                self.charm.unit.status = WaitingStatus("Waiting for MongoDB to start")
+                event.defer()
+                return
+
+        if not self.charm.unit.is_leader():
+            return
+
+        # TODO Future work, see if needed to check for all units restarted / primary elected
+        (operator_password, backup_password) = self.get_cluster_passwords(event)
+        if not operator_password or not backup_password:
+            event.defer()
+            self.charm.unit.status = WaitingStatus("Waiting for secrets from config-server")
+            return
+
+        self.update_cluster_passwords(event, operator_password, backup_password)
 
         # after updating the password of the backup user, restart pbm with correct password
         self.charm._connect_pbm_agent()
         self.charm.app_peer_data["mongos_hosts"] = json.dumps(self.get_mongos_hosts())
+
+        self.charm.unit.status = ActiveStatus("")
 
     def pass_hook_checks(self, event):
         """Runs the pre-hooks checks for ConfigServerRequirer, returns True if all pass."""
@@ -656,8 +718,10 @@ class ConfigServerRequirer(Object):
         self.charm.unit.status = MaintenanceStatus("Draining shard from cluster")
         mongos_hosts = json.loads(self.charm.app_peer_data["mongos_hosts"])
         self.wait_for_draining(mongos_hosts)
-
         self.charm.unit.status = ActiveStatus("Shard drained from cluster, ready for removal")
+
+        # in case of re-using the shard in the future reset this flag to false
+        self.set_has_requested_cluster_certs(False)
 
     def wait_for_draining(self, mongos_hosts: List[str]):
         """Waits for shards to be drained from sharded cluster."""
@@ -869,7 +933,10 @@ class ConfigServerRequirer(Object):
                 cluster_shards = mongo.get_shard_members()
                 return self.charm.app.name in cluster_shards
         except OperationFailure as e:
-            if e.code == 13:  # Unauthorized, we are not yet connected to mongos
+            if e.code in [
+                13,
+                18,
+            ]:  # [Unauthorized, AuthenticationFailed ]we are not yet connected to mongos
                 return False
 
             raise
@@ -921,9 +988,9 @@ class ConfigServerRequirer(Object):
         """Returns True if currently related to config server."""
         return len(self.charm.model.relations[self.relation_name]) > 0
 
-    def get_related_config_server(self) -> str:
+    def get_config_server_name(self) -> str:
         """Returns the related config server."""
-        if self.relation_name not in self.charm.model.relations:
+        if not len(self.charm.model.relations[self.relation_name]):
             return None
 
         # metadata.yaml prevents having multiple config servers
@@ -937,3 +1004,13 @@ class ConfigServerRequirer(Object):
             return
 
         return json.loads(config_server_relation.data[config_server_relation.app].get(HOSTS_KEY))
+
+    def has_requested_cluster_certs(self) -> bool:
+        """Returns if the shard has already requested the certificates for internal-membership."""
+        if "requested_cluster_certs" not in self.charm.unit_peer_data:
+            return False
+        return json.loads(self.charm.unit_peer_data["requested_cluster_certs"])
+
+    def set_has_requested_cluster_certs(self, certs_requested: bool) -> None:
+        """Set bool if the shard has already requested the certificates for internal-membership."""
+        self.charm.unit_peer_data["requested_cluster_certs"] = json.dumps(certs_requested)
