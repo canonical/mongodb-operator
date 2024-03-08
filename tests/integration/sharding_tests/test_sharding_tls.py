@@ -27,7 +27,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await deploy_cluster_components(ops_test)
 
     # deploy the s3 integrator charm
-    await ops_test.model.deploy(CERTS_APP_NAME, channel="edge")
+    await ops_test.model.deploy(CERTS_APP_NAME, channel="stable")
 
     await ops_test.model.wait_for_idle(
         apps=[CERTS_APP_NAME, CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
@@ -67,8 +67,6 @@ async def test_disable_cluster_with_tls(ops_test: OpsTest) -> None:
     await check_cluster_tls_disabled(ops_test)
 
 
-# fix test in future work
-@pytest.mark.skip("Flakey Test")
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_tls_then_build_cluster(ops_test: OpsTest) -> None:
@@ -93,8 +91,7 @@ async def test_tls_then_build_cluster(ops_test: OpsTest) -> None:
     await check_cluster_tls_enabled(ops_test)
 
 
-# FUTURE PR - test that shards cannot rotate internal certs
-# FUTURE PR - test that internal certs can be rotated successfully
+# FUTURE PR - test inconsistencies in TLS settings across cluster
 
 
 async def check_cluster_tls_disabled(ops_test: OpsTest) -> None:
