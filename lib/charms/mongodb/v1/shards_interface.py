@@ -646,6 +646,7 @@ class ConfigServerRequirer(Object):
         # shards rely on the config server for shared cluster secrets
         key_file_enabled, tls_enabled = self.get_membership_auth_modes(event)
         if not key_file_enabled and not tls_enabled:
+            logger.info("Waiting for secrets for config-server.")
             event.defer()
             self.charm.unit.status = WaitingStatus("Waiting for secrets from config-server")
             return
@@ -1031,6 +1032,6 @@ class ConfigServerRequirer(Object):
 
     def _should_request_new_certs(self) -> bool:
         """Returns if the shard has already requested the certificates for internal-membership."""
-        int_subject = self.charm.unit_peer_data.get("int_certs_subject", None)
-        ext_subject = self.charm.unit_peer_data.get("ext_certs_subject", None)
+        int_subject = json.loads(self.charm.unit_peer_data.get("int_certs_subject", None))
+        ext_subject = json.loads(self.charm.unit_peer_data.get("ext_certs_subject", None))
         return {int_subject, ext_subject} != {self.get_config_server_name()}
