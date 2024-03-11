@@ -306,7 +306,6 @@ class MongoDBTLS(Object):
         if self.charm.is_role(Config.Role.SHARD):
             # until integrated with config-server use current app name as
             # subject name
-            subject_name = self.charm.shard.get_config_server_name() or self.charm.app.name
-            return subject_name
+            return self.charm.shard.get_config_server_name() or self.charm.app.name
 
         return self.charm.app.name

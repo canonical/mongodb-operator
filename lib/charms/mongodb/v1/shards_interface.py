@@ -561,7 +561,7 @@ class ConfigServerRequirer(Object):
         # FUTURE PR: if config-server does not have TLS enabled log a useful message and go into
         # blocked in relation_changed and other status checks
 
-    def get_membership_auth_modes(self, event) -> Tuple:
+    def get_membership_auth_modes(self, event: RelationChangedEvent) -> Tuple[bool, bool]:
         """Returns the available authentication membership forms."""
         key_file_contents = self.database_requires.fetch_relation_field(
             event.relation.id, KEYFILE_KEY
@@ -569,9 +569,11 @@ class ConfigServerRequirer(Object):
         tls_ca = self.database_requires.fetch_relation_field(event.relation.id, INT_TLS_CA_KEY)
         return (key_file_contents is not None, tls_ca is not None)
 
-    def update_member_auth(self, event, membership_auth) -> None:
+    def update_member_auth(
+        self, event: RelationChangedEvent, membership_auth: Tuple[bool, bool]
+    ) -> None:
         """Updates the shard to have the same membership auth as the config-server."""
-        (key_file_contents, cluster_tls_ca) = membership_auth
+        is_key_file_contents_auth, is_tls_auth = membership_auth
         tls_integrated = self.charm.model.get_relation(Config.TLS.TLS_PEER_RELATION)
 
         # Edge case: shard has TLS enabled before having connected to the config-server. For TLS in
@@ -596,7 +598,7 @@ class ConfigServerRequirer(Object):
     # Future PR - status updating for inconsistencies with TLS (i.e. shard has TLS but
     # config-server does not and vice versa or CA-mismatch)
 
-    def get_cluster_passwords(self, event) -> Tuple:
+    def get_cluster_passwords(self, event: RelationChangedEvent) -> Tuple[Optional[str], Optional[str]]:
         """Retrieves shared cluster passwords."""
         operator_password = self.database_requires.fetch_relation_field(
             event.relation.id, OPERATOR_PASSWORD_KEY
@@ -606,7 +608,9 @@ class ConfigServerRequirer(Object):
         )
         return (operator_password, backup_password)
 
-    def update_cluster_passwords(self, event, operator_password, backup_password):
+    def update_cluster_passwords(
+        self, event: RelationChangedEvent, operator_password: str, backup_password: str
+    ) -> None:
         """Updates shared cluster passwords."""
         try:
             self.update_password(
