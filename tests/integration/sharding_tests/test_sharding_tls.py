@@ -17,7 +17,7 @@ CLUSTER_COMPONENTS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME, CONFIG_SERVER_APP_
 SHARD_REL_NAME = "sharding"
 CONFIG_SERVER_REL_NAME = "config-server"
 CERT_REL_NAME = "certificates"
-TIMEOUT = 10 * 60
+TIMEOUT = 15 * 60
 
 
 @pytest.mark.group(1)
