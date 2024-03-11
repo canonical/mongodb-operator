@@ -545,8 +545,15 @@ class MongodbOperatorCharm(CharmBase):
         # Cannot check more advanced MongoDB statuses if mongod hasn't started.
         with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
             if not direct_mongo.is_ready:
-                self.unit.status = WaitingStatus("Waiting for MongoDB to start")
-                return
+                # edge case: mongod will fail to run if 1. they are running as shard and 2. they
+                # have already been added to the cluster with internal membership via TLS and 3.
+                # they remove support for TLS
+                if self.is_role(Config.Role.SHARD) and self.shard.shard_needs_tls_enabled():
+                    self.unit.status = BlockedStatus("Shard requires TLS to be enabled.")
+                    return
+                else:
+                    self.unit.status = WaitingStatus("Waiting for MongoDB to start")
+                    return
 
         # Cannot check more advanced MongoDB statuses if the cluster doesn't have passwords synced
         # this can occur in two cases:

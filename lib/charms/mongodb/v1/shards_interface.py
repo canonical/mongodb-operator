@@ -139,17 +139,18 @@ class ShardingProvider(Object):
     def pass_hook_checks(self, event: EventBase) -> bool:
         """Runs the pre-hooks checks for ShardingProvider, returns True if all pass."""
         if not self.charm.db_initialised:
-            logger.info("Deferring %s. db is not initialised.", type(event))
+            logger.info("Deferring %s. db is not initialised.", str(type(event)))
             event.defer()
             return False
 
         if not self.charm.is_relation_feasible(self.relation_name):
-            logger.info("Skipping event %s , relation not feasible.", type(event))
+            logger.info("Skipping event %s , relation not feasible.", str(type(event)))
             return False
 
         if not self.charm.is_role(Config.Role.CONFIG_SERVER):
             logger.info(
-                "Skipping %s. ShardingProvider is only be executed by config-server", type(event)
+                "Skipping %s. ShardingProvider is only be executed by config-server",
+                str(type(event)),
             )
             return False
 
@@ -304,6 +305,15 @@ class ShardingProvider(Object):
 
         for relation in self.charm.model.relations[self.relation_name]:
             self._update_relation_data(relation.id, {HOSTS_KEY: json.dumps(self.charm._unit_ips)})
+
+    def update_ca_secret(self, new_ca: str) -> None:
+        """Updates the new CA for all related shards."""
+        if new_ca == None:
+            for relation in self.charm.model.relations[self.relation_name]:
+                self.database_provides.delete_relation_data(relation.id, {INT_TLS_CA_KEY: new_ca})
+        else:
+            for relation in self.charm.model.relations[self.relation_name]:
+                self._update_relation_data(relation.id, {INT_TLS_CA_KEY: new_ca})
 
     def get_config_server_status(self) -> Optional[StatusBase]:
         """Returns the current status of the config-server."""
@@ -685,16 +695,16 @@ class ConfigServerRequirer(Object):
     def pass_hook_checks(self, event):
         """Runs the pre-hooks checks for ConfigServerRequirer, returns True if all pass."""
         if not self.charm.db_initialised:
-            logger.info("Deferring %s. db is not initialised.", type(event))
+            logger.info("Deferring %s. db is not initialised.", str(type(event)))
             event.defer()
             return False
 
         if not self.charm.is_relation_feasible(self.relation_name):
-            logger.info("Skipping event %s , relation not feasible.", type(event))
+            logger.info("Skipping event %s , relation not feasible.", str(type(event)))
             return False
 
         if not self.charm.is_role(Config.Role.SHARD):
-            logger.info("skipping %s is only be executed by shards", type(event))
+            logger.info("skipping %s is only be executed by shards", str(type(event)))
             return False
 
         # occasionally, broken events have no application, in these scenarios nothing should be
@@ -705,6 +715,31 @@ class ConfigServerRequirer(Object):
         mongos_hosts = event.relation.data[event.relation.app].get(HOSTS_KEY, None)
         if isinstance(event, RelationBrokenEvent) and not mongos_hosts:
             logger.info("Config-server relation never set up, no need to process broken event.")
+            return False
+
+        if self.shard_needs_tls_enabled():
+            logger.info(
+                "Deferring %s. Config-server uses TLS, but shard does not. Please sychronise encryption methods.",
+                str(type(event)),
+            )
+            event.defer()
+            return False
+
+        if self.config_server_needs_tls_enabled():
+            logger.info(
+                "Deferring %s. Shard uses TLS, but config-server does not. Please sychronise encryption methods.",
+                str(type(event)),
+            )
+            event.defer()
+            return False
+
+        if not self.has_compatible_ca():
+            logger.info(
+                "Deferring %s. Shard is integrated to a different CA than the config server. Please use the same CA for all cluster components.",
+                str(type(event)),
+            )
+
+            event.defer()
             return False
 
         return True
@@ -767,15 +802,8 @@ class ConfigServerRequirer(Object):
 
                 break
 
-    def get_shard_status(self) -> Optional[StatusBase]:
-        """Returns the current status of the shard.
-
-        Note: No need to report if currently draining, since that check block other hooks from
-        executing.
-        """
-        if self.skip_shard_status():
-            return None
-
+    def get_relations_statuses(self) -> Optional[StatusBase]:
+        """Returns status based on relations and their validity regarding sharding."""
         if (
             self.charm.is_role(Config.Role.REPLICATION)
             and self.model.relations[Config.Relations.CONFIG_SERVER_RELATIONS_NAME]
@@ -790,6 +818,41 @@ class ConfigServerRequirer(Object):
 
         if not self.model.get_relation(self.relation_name) and not self.charm.drained:
             return BlockedStatus("missing relation to config server")
+
+        return None
+
+    def get_tls_statuses(self) -> Optional[StatusBase]:
+        """Returns statuses relavant to TLS."""
+        if self.shard_needs_tls_enabled():
+            return BlockedStatus("Shard requires TLS to be enabled.")
+
+        if self.config_server_needs_tls_enabled():
+            return BlockedStatus("Shard has TLS enabled, but config-server does not.")
+
+        if not self.has_compatible_ca():
+            logger.error(
+                "Shard is integrated to a different CA than the config server. Please use the same CA for all cluster components."
+            )
+            return BlockedStatus("Shard CA and Config-Server CA don't match.")
+
+        return
+
+    def get_shard_status(self) -> Optional[StatusBase]:
+        """Returns the current status of the shard.
+
+        Note: No need to report if currently draining, since that check block other hooks from
+        executing.
+        """
+        if self.skip_shard_status():
+            return None
+
+        relation_status = self.get_relations_statuses()
+        if relation_status:
+            return relation_status
+
+        tls_status = self.get_tls_statuses()
+        if tls_status:
+            return tls_status
 
         if not self.model.get_relation(self.relation_name) and self.charm.drained:
             return ActiveStatus("Shard drained from cluster, ready for removal")
@@ -1035,3 +1098,53 @@ class ConfigServerRequirer(Object):
         int_subject = json.loads(self.charm.unit_peer_data.get("int_certs_subject", None))
         ext_subject = json.loads(self.charm.unit_peer_data.get("ext_certs_subject", None))
         return {int_subject, ext_subject} != {self.get_config_server_name()}
+
+    def has_compatible_ca(self) -> bool:
+        config_server_relation = self.charm.model.get_relation(self.relation_name)
+        # base-case: nothing to compare
+        if not config_server_relation:
+            return True
+
+        config_server_tls_ca = self.database_requires.fetch_relation_field(
+            config_server_relation.id, INT_TLS_CA_KEY
+        )
+        # TODO - this is None - debug this ASAP - actually seems to be an issue with deferred event. Should be fine just repack and deploy plz
+        shard_tls_ca = self.charm.tls.get_tls_secret(
+            internal=True, label_name=Config.TLS.SECRET_CA_LABEL
+        )
+
+        # base-case: missing one or more CA's to compare
+        if not config_server_tls_ca or not shard_tls_ca:
+            return True
+
+        return config_server_tls_ca == shard_tls_ca
+
+    def shard_needs_tls_enabled(self) -> bool:
+        config_server_relation = self.charm.model.get_relation(self.relation_name)
+        if not config_server_relation:
+            return False
+
+        shard_has_tls = self.charm.model.get_relation(Config.TLS.TLS_PEER_RELATION) is not None
+        config_server_has_tls = (
+            self.database_requires.fetch_relation_field(config_server_relation.id, INT_TLS_CA_KEY)
+            is not None
+        )
+        if config_server_has_tls and not shard_has_tls:
+            return True
+
+        return False
+
+    def config_server_needs_tls_enabled(self) -> bool:
+        config_server_relation = self.charm.model.get_relation(self.relation_name)
+        if not config_server_relation:
+            return False
+
+        shard_has_tls = self.charm.model.get_relation(Config.TLS.TLS_PEER_RELATION) is not None
+        config_server_has_tls = (
+            self.database_requires.fetch_relation_field(config_server_relation.id, INT_TLS_CA_KEY)
+            is not None
+        )
+        if not config_server_has_tls and shard_has_tls:
+            return True
+
+        return False
