@@ -31,7 +31,7 @@ from charms.mongodb.v1.mongos import (
     ShardNotPlannedForRemovalError,
 )
 from charms.mongodb.v1.users import BackupUser, MongoDBUser, OperatorUser
-from ops.charm import CharmBase, EventBase, RelationBrokenEvent
+from ops.charm import CharmBase, EventBase, RelationBrokenEvent, RelationChangedEvent
 from ops.framework import Object
 from ops.model import (
     ActiveStatus,
@@ -464,7 +464,9 @@ class ShardingProvider(Object):
                 return False
             raise
         except ServerSelectionTimeoutError as e:
-            if e.code == 111:  # Connection refused, - i.e. TLS certs not in sync
+            # Connection refused, - this occurs when internal membership via TLS is not in sync
+            # across the cluster.
+            if e.code == 111:
                 return False
             raise
 
@@ -573,18 +575,18 @@ class ConfigServerRequirer(Object):
         self, event: RelationChangedEvent, membership_auth: Tuple[bool, bool]
     ) -> None:
         """Updates the shard to have the same membership auth as the config-server."""
-        is_key_file_contents_auth, is_tls_auth = membership_auth
+        cluster_auth_keyfile, cluster_auth_tls = membership_auth
         tls_integrated = self.charm.model.get_relation(Config.TLS.TLS_PEER_RELATION)
 
         # Edge case: shard has TLS enabled before having connected to the config-server. For TLS in
         # sharded MongoDB clusters it is necessary that the subject and organisation name are the
         # same in their CSRs. Re-requesting a cert after integrated with the config-server
         # regenerates the cert with the appropriate configurations needed for sharding.
-        if cluster_tls_ca and tls_integrated and not self.has_requested_cluster_certs():
+        if cluster_auth_tls and tls_integrated and not self._should_request_new_certs():
             logger.info("Cluster implements internal membership auth via certificates")
             self.charm.tls.request_certificate(param=None, internal=True)
             self.charm.tls.request_certificate(param=None, internal=False)
-        elif key_file_contents and not cluster_tls_ca and not tls_integrated:
+        elif cluster_auth_keyfile and not cluster_auth_tls and not tls_integrated:
             logger.info("Cluster implements internal membership auth via keyFile")
 
         # Copy over keyfile regardless of whether the cluster uses TLS or or KeyFile for internal
@@ -598,7 +600,9 @@ class ConfigServerRequirer(Object):
     # Future PR - status updating for inconsistencies with TLS (i.e. shard has TLS but
     # config-server does not and vice versa or CA-mismatch)
 
-    def get_cluster_passwords(self, event: RelationChangedEvent) -> Tuple[Optional[str], Optional[str]]:
+    def get_cluster_passwords(
+        self, event: RelationChangedEvent
+    ) -> Tuple[Optional[str], Optional[str]]:
         """Retrieves shared cluster passwords."""
         operator_password = self.database_requires.fetch_relation_field(
             event.relation.id, OPERATOR_PASSWORD_KEY
@@ -608,7 +612,7 @@ class ConfigServerRequirer(Object):
         )
         return (operator_password, backup_password)
 
-    def update_cluster_passwords(
+    def sync_cluster_passwords(
         self, event: RelationChangedEvent, operator_password: str, backup_password: str
     ) -> None:
         """Updates shared cluster passwords."""
@@ -620,7 +624,7 @@ class ConfigServerRequirer(Object):
         except RetryError:
             self.charm.unit.status = BlockedStatus("Shard not added to config-server")
             logger.error(
-                "Shard could not be added to config server, failed to set operator password."
+                "Failed to sync cluster passwords from config-server to shard. Shard cannot be added to config-server, deferring event and retrying."
             )
             event.defer()
 
@@ -671,7 +675,7 @@ class ConfigServerRequirer(Object):
             self.charm.unit.status = WaitingStatus("Waiting for secrets from config-server")
             return
 
-        self.update_cluster_passwords(event, operator_password, backup_password)
+        self.sync_cluster_passwords(event, operator_password, backup_password)
 
         # after updating the password of the backup user, restart pbm with correct password
         self.charm._connect_pbm_agent()
@@ -971,7 +975,9 @@ class ConfigServerRequirer(Object):
                 return False
             raise
         except ServerSelectionTimeoutError as e:
-            if e.code == 111:  # Connection refused, - i.e. TLS certs not in sync
+            # Connection refused, - this occurs when internal membership via TLS is not in sync
+            # across the cluster.
+            if e.code == 111:
                 return False
             raise
 
@@ -1019,18 +1025,8 @@ class ConfigServerRequirer(Object):
 
         return json.loads(config_server_relation.data[config_server_relation.app].get(HOSTS_KEY))
 
-    def has_requested_cluster_certs(self) -> bool:
+    def _should_request_new_certs(self) -> bool:
         """Returns if the shard has already requested the certificates for internal-membership."""
-        if (
-            "int_certs_subject" not in self.charm.unit_peer_data
-            or "ext_certs_subject" not in self.charm.unit_peer_data
-        ):
-            logger.info("Unit hasn't requested necessary all certs for cluster TLS.")
-            return False
-
-        int_subject = json.loads(self.charm.unit_peer_data["int_certs_subject"])
-        ext_subject = json.loads(self.charm.unit_peer_data["ext_certs_subject"])
-
-        requested_new_int_cert = int_subject == self.get_config_server_name()
-        requested_new_ext_cert = ext_subject == self.get_config_server_name()
-        return requested_new_int_cert and requested_new_ext_cert
+        int_subject = self.charm.unit_peer_data.get("int_certs_subject", None)
+        ext_subject = self.charm.unit_peer_data.get("ext_certs_subject", None)
+        return {int_subject, ext_subject} != {self.get_config_server_name()}
