@@ -464,8 +464,8 @@ class ShardingProvider(Object):
                 return False
             raise
         except ServerSelectionTimeoutError as e:
-            # Connection refused, - this occurs when internal membership via TLS is not in sync
-            # across the cluster.
+            # Connection refused, - this occurs when internal membership is not in sync across the
+            # cluster (i.e. TLS + KeyFile).
             if e.code == 111:
                 return False
             raise
@@ -952,6 +952,12 @@ class ConfigServerRequirer(Object):
                 return False
 
             raise
+        except ServerSelectionTimeoutError as e:
+            # Connection refused, - this occurs when internal membership is not in sync across the
+            # cluster (i.e. TLS + KeyFile).
+            if e.code == 111:
+                return False
+            raise
 
     def cluster_password_synced(self) -> bool:
         """Returns True if the cluster password is synced for the shard."""
@@ -973,8 +979,8 @@ class ConfigServerRequirer(Object):
                 return False
             raise
         except ServerSelectionTimeoutError as e:
-            # Connection refused, - this occurs when internal membership via TLS is not in sync
-            # across the cluster.
+            # Connection refused, - this occurs when internal membership is not in sync across the
+            # cluster (i.e. TLS + KeyFile).
             if e.code == 111:
                 return False
             raise

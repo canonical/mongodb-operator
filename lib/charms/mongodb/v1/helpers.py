@@ -150,7 +150,7 @@ def get_mongos_args(
         cmd.extend(
             [
                 "--clusterAuthMode=keyFile",
-                f"--keyFile={KEY_FILE}",
+                f"--keyFile={full_conf_dir}/{KEY_FILE}",
             ]
         )
 
