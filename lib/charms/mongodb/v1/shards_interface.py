@@ -582,7 +582,7 @@ class ConfigServerRequirer(Object):
         # sharded MongoDB clusters it is necessary that the subject and organisation name are the
         # same in their CSRs. Re-requesting a cert after integrated with the config-server
         # regenerates the cert with the appropriate configurations needed for sharding.
-        if cluster_auth_tls and tls_integrated and not self._should_request_new_certs():
+        if cluster_auth_tls and tls_integrated and self._should_request_new_certs():
             logger.info("Cluster implements internal membership auth via certificates")
             self.charm.tls.request_certificate(param=None, internal=True)
             self.charm.tls.request_certificate(param=None, internal=False)
@@ -640,7 +640,7 @@ class ConfigServerRequirer(Object):
 
         # relation-changed events can be used for other purposes (not only adding the shard), i.e.
         # password rotation, secret rotation, mongos hosts rotation
-        if not self._is_mongos_reachable() or not self._is_added_to_cluster():
+        if self._is_mongos_reachable() and not self._is_added_to_cluster():
             self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
 
         # shards rely on the config server for shared cluster secrets
@@ -680,8 +680,6 @@ class ConfigServerRequirer(Object):
         # after updating the password of the backup user, restart pbm with correct password
         self.charm._connect_pbm_agent()
         self.charm.app_peer_data["mongos_hosts"] = json.dumps(self.get_mongos_hosts())
-
-        self.charm.unit.status = ActiveStatus("")
 
     def pass_hook_checks(self, event):
         """Runs the pre-hooks checks for ConfigServerRequirer, returns True if all pass."""

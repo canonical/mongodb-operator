@@ -124,15 +124,6 @@ def get_mongos_args(
     ]
 
     # TODO : generalise these into functions to be re-used
-    if not config.tls_internal:
-        # keyFile cannot be used without auth and cannot be used in tandem with internal TLS
-        cmd.extend(
-            [
-                "--clusterAuthMode=keyFile",
-                f"--keyFile={full_conf_dir}/{KEY_FILE}",
-            ]
-        )
-
     if config.tls_external:
         cmd.extend(
             [
@@ -144,7 +135,7 @@ def get_mongos_args(
             ]
         )
 
-    # internal TLS can be enabled only in external is enabled
+    # internal TLS can be enabled only if external is enabled
     if config.tls_internal and config.tls_external:
         cmd.extend(
             [
@@ -154,6 +145,15 @@ def get_mongos_args(
                 f"--tlsClusterFile={full_conf_dir}/{TLS_INT_PEM_FILE}",
             ]
         )
+    else:
+        # keyFile used for authentication replica set peers if no internal tls configured.
+        cmd.extend(
+            [
+                "--clusterAuthMode=keyFile",
+                f"--keyFile={KEY_FILE}",
+            ]
+        )
+
     cmd.append("\n")
     return " ".join(cmd)
 
