@@ -554,7 +554,7 @@ class ConfigServerRequirer(Object):
                 username=OperatorUser.get_username(), new_password=operator_password
             )
             self.update_password(BackupUser.get_username(), new_password=backup_password)
-        except RetryError:
+        except (NotReadyError, PyMongoError):
             self.charm.unit.status = BlockedStatus("Failed to rotate cluster secrets")
             logger.error("Shard failed to rotate cluster secrets.")
             event.defer()
@@ -1032,6 +1032,6 @@ class ConfigServerRequirer(Object):
 
     def _should_request_new_certs(self) -> bool:
         """Returns if the shard has already requested the certificates for internal-membership."""
-        int_subject = json.loads(self.charm.unit_peer_data.get("int_certs_subject", None))
-        ext_subject = json.loads(self.charm.unit_peer_data.get("ext_certs_subject", None))
+        int_subject = self.charm.unit_peer_data.get("int_certs_subject", None)
+        ext_subject = self.charm.unit_peer_data.get("ext_certs_subject", None)
         return {int_subject, ext_subject} != {self.get_config_server_name()}

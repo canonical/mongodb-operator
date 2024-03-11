@@ -29,13 +29,14 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     # deploy the s3 integrator charm
     await ops_test.model.deploy(CERTS_APP_NAME, channel="stable")
 
-    await ops_test.model.wait_for_idle(
-        apps=[CERTS_APP_NAME, CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
-        idle_period=20,
-        raise_on_blocked=False,
-        timeout=TIMEOUT,
-        raise_on_error=False,
-    )
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=[CERTS_APP_NAME, CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
+            idle_period=20,
+            raise_on_blocked=False,
+            timeout=TIMEOUT,
+            raise_on_error=False,
+        )
 
 
 @pytest.mark.group(1)
@@ -43,18 +44,21 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 async def test_built_cluster_with_tls(ops_test: OpsTest) -> None:
     """Tests that the cluster can be integrated with TLS."""
     await integrate_cluster(ops_test)
-    await ops_test.model.wait_for_idle(
-        apps=CLUSTER_COMPONENTS,
-        idle_period=20,
-        timeout=TIMEOUT,
-    )
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=CLUSTER_COMPONENTS,
+            idle_period=20,
+            timeout=TIMEOUT,
+        )
 
     await integrate_with_tls(ops_test)
-    await ops_test.model.wait_for_idle(
-        apps=CLUSTER_COMPONENTS,
-        idle_period=20,
-        timeout=TIMEOUT,
-    )
+
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=CLUSTER_COMPONENTS,
+            idle_period=20,
+            timeout=TIMEOUT,
+        )
 
     await check_cluster_tls_enabled(ops_test)
 
@@ -75,18 +79,21 @@ async def test_tls_then_build_cluster(ops_test: OpsTest) -> None:
     await deploy_cluster_components(ops_test)
 
     await integrate_with_tls(ops_test)
-    await ops_test.model.wait_for_idle(
-        apps=CLUSTER_COMPONENTS,
-        idle_period=20,
-        timeout=TIMEOUT,
-    )
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=CLUSTER_COMPONENTS,
+            idle_period=20,
+            timeout=TIMEOUT,
+        )
 
     await integrate_cluster(ops_test)
-    await ops_test.model.wait_for_idle(
-        apps=CLUSTER_COMPONENTS,
-        idle_period=20,
-        timeout=TIMEOUT,
-    )
+
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=CLUSTER_COMPONENTS,
+            idle_period=20,
+            timeout=TIMEOUT,
+        )
 
     await check_cluster_tls_enabled(ops_test)
 
