@@ -473,12 +473,10 @@ class ShardingProvider(Object):
             if e.code == 18:  # Unauthorized Error - i.e. password is not in sync
                 return False
             raise
-        except ServerSelectionTimeoutError as e:
+        except ServerSelectionTimeoutError:
             # Connection refused, - this occurs when internal membership is not in sync across the
             # cluster (i.e. TLS + KeyFile).
-            if e.code == 111:
-                return False
-            raise
+            return False
 
         return True
 
@@ -564,7 +562,7 @@ class ConfigServerRequirer(Object):
                 username=OperatorUser.get_username(), new_password=operator_password
             )
             self.update_password(BackupUser.get_username(), new_password=backup_password)
-        except RetryError:
+        except (NotReadyError, PyMongoError):
             self.charm.unit.status = BlockedStatus("Failed to rotate cluster secrets")
             logger.error("Shard failed to rotate cluster secrets.")
             event.defer()
@@ -1016,12 +1014,10 @@ class ConfigServerRequirer(Object):
                 return False
 
             raise
-        except ServerSelectionTimeoutError as e:
+        except ServerSelectionTimeoutError:
             # Connection refused, - this occurs when internal membership is not in sync across the
             # cluster (i.e. TLS + KeyFile).
-            if e.code == 111:
-                return False
-            raise
+            return False
 
     def cluster_password_synced(self) -> bool:
         """Returns True if the cluster password is synced for the shard."""
@@ -1042,12 +1038,10 @@ class ConfigServerRequirer(Object):
             if e.code == 18:  # Unauthorized Error - i.e. password is not in sync
                 return False
             raise
-        except ServerSelectionTimeoutError as e:
+        except ServerSelectionTimeoutError:
             # Connection refused, - this occurs when internal membership is not in sync across the
             # cluster (i.e. TLS + KeyFile).
-            if e.code == 111:
-                return False
-            raise
+            return False
 
         return mongos_reachable and mongod_reachable
 
@@ -1095,8 +1089,8 @@ class ConfigServerRequirer(Object):
 
     def _should_request_new_certs(self) -> bool:
         """Returns if the shard has already requested the certificates for internal-membership."""
-        int_subject = json.loads(self.charm.unit_peer_data.get("int_certs_subject", None))
-        ext_subject = json.loads(self.charm.unit_peer_data.get("ext_certs_subject", None))
+        int_subject = self.charm.unit_peer_data.get("int_certs_subject", None)
+        ext_subject = self.charm.unit_peer_data.get("ext_certs_subject", None)
         return {int_subject, ext_subject} != {self.get_config_server_name()}
 
     def has_compatible_ca(self) -> bool:

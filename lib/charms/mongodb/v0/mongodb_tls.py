@@ -8,7 +8,6 @@ and expose needed information for client connection via fields in
 external relation.
 """
 import base64
-import json
 import logging
 import re
 import socket
@@ -106,8 +105,8 @@ class MongoDBTLS(Object):
         self.set_tls_secret(internal, Config.TLS.SECRET_CERT_LABEL, None)
 
         label = "int" if internal else "ext"
-        self.charm.unit_peer_data[f"{label}_certs_subject"] = json.dumps(self._get_subject_name())
-        self.charm.unit_peer_data[f"{label}_certs_subject"] = json.dumps(self._get_subject_name())
+        self.charm.unit_peer_data[f"{label}_certs_subject"] = self._get_subject_name()
+        self.charm.unit_peer_data[f"{label}_certs_subject"] = self._get_subject_name()
 
         if self.charm.model.get_relation(Config.TLS.TLS_PEER_RELATION):
             self.certs.request_certificate_creation(certificate_signing_request=csr)
