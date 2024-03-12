@@ -99,6 +99,8 @@ async def test_tls_then_build_cluster(ops_test: OpsTest) -> None:
     await check_cluster_tls_enabled(ops_test)
 
 
+@pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_tls_inconsistent_rels(ops_test: OpsTest) -> None:
 
     await ops_test.model.deploy(
