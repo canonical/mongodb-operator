@@ -463,12 +463,10 @@ class ShardingProvider(Object):
             if e.code == 18:  # Unauthorized Error - i.e. password is not in sync
                 return False
             raise
-        except ServerSelectionTimeoutError as e:
+        except ServerSelectionTimeoutError:
             # Connection refused, - this occurs when internal membership is not in sync across the
             # cluster (i.e. TLS + KeyFile).
-            if e.code == 111:
-                return False
-            raise
+            return False
 
         return True
 
@@ -953,12 +951,10 @@ class ConfigServerRequirer(Object):
                 return False
 
             raise
-        except ServerSelectionTimeoutError as e:
+        except ServerSelectionTimeoutError:
             # Connection refused, - this occurs when internal membership is not in sync across the
             # cluster (i.e. TLS + KeyFile).
-            if e.code == 111:
-                return False
-            raise
+            return False
 
     def cluster_password_synced(self) -> bool:
         """Returns True if the cluster password is synced for the shard."""
@@ -979,12 +975,10 @@ class ConfigServerRequirer(Object):
             if e.code == 18:  # Unauthorized Error - i.e. password is not in sync
                 return False
             raise
-        except ServerSelectionTimeoutError as e:
+        except ServerSelectionTimeoutError:
             # Connection refused, - this occurs when internal membership is not in sync across the
             # cluster (i.e. TLS + KeyFile).
-            if e.code == 111:
-                return False
-            raise
+            return False
 
         return mongos_reachable and mongod_reachable
 
