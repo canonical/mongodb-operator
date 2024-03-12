@@ -30,14 +30,13 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     # deploy the s3 integrator charm
     await ops_test.model.deploy(CERTS_APP_NAME, channel="stable")
 
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=[CERTS_APP_NAME, CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
-            idle_period=20,
-            raise_on_blocked=False,
-            timeout=TIMEOUT,
-            raise_on_error=False,
-        )
+    await ops_test.model.wait_for_idle(
+        apps=[CERTS_APP_NAME, CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
+        idle_period=20,
+        raise_on_blocked=False,
+        timeout=TIMEOUT,
+        raise_on_error=False,
+    )
 
 
 @pytest.mark.group(1)
@@ -45,21 +44,19 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 async def test_built_cluster_with_tls(ops_test: OpsTest) -> None:
     """Tests that the cluster can be integrated with TLS."""
     await integrate_cluster(ops_test)
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=CLUSTER_COMPONENTS,
-            idle_period=20,
-            timeout=TIMEOUT,
-        )
+    await ops_test.model.wait_for_idle(
+        apps=CLUSTER_COMPONENTS,
+        idle_period=20,
+        timeout=TIMEOUT,
+    )
 
     await integrate_with_tls(ops_test)
 
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=CLUSTER_COMPONENTS,
-            idle_period=20,
-            timeout=TIMEOUT,
-        )
+    await ops_test.model.wait_for_idle(
+        apps=CLUSTER_COMPONENTS,
+        idle_period=20,
+        timeout=TIMEOUT,
+    )
 
     await check_cluster_tls_enabled(ops_test)
 
@@ -80,21 +77,19 @@ async def test_tls_then_build_cluster(ops_test: OpsTest) -> None:
     await deploy_cluster_components(ops_test)
 
     await integrate_with_tls(ops_test)
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=CLUSTER_COMPONENTS,
-            idle_period=20,
-            timeout=TIMEOUT,
-        )
+    await ops_test.model.wait_for_idle(
+        apps=CLUSTER_COMPONENTS,
+        idle_period=20,
+        timeout=TIMEOUT,
+    )
 
     await integrate_cluster(ops_test)
 
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=CLUSTER_COMPONENTS,
-            idle_period=20,
-            timeout=TIMEOUT,
-        )
+    await ops_test.model.wait_for_idle(
+        apps=CLUSTER_COMPONENTS,
+        idle_period=20,
+        timeout=TIMEOUT,
+    )
 
     await check_cluster_tls_enabled(ops_test)
 
@@ -112,13 +107,13 @@ async def test_tls_inconsistent_rels(ops_test: OpsTest) -> None:
         f"{SHARD_ONE_APP_NAME}:{CERT_REL_NAME}",
         f"{CERTS_APP_NAME}:{CERT_REL_NAME}",
     )
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=CLUSTER_COMPONENTS,
-            idle_period=20,
-            timeout=TIMEOUT,
-            raise_on_blocked=False,
-        )
+
+    await ops_test.model.wait_for_idle(
+        apps=CLUSTER_COMPONENTS,
+        idle_period=20,
+        timeout=TIMEOUT,
+        raise_on_blocked=False,
+    )
 
     shard_unit = ops_test.model.applications[SHARD_ONE_APP_NAME].units[0]
     assert (
@@ -131,14 +126,13 @@ async def test_tls_inconsistent_rels(ops_test: OpsTest) -> None:
         f"{CERTS_APP_NAME}:{CERT_REL_NAME}",
     )
 
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=CLUSTER_COMPONENTS,
-            idle_period=20,
-            timeout=TIMEOUT,
-            raise_on_blocked=False,
-            status="active",
-        )
+    await ops_test.model.wait_for_idle(
+        apps=CLUSTER_COMPONENTS,
+        idle_period=20,
+        timeout=TIMEOUT,
+        raise_on_blocked=False,
+        status="active",
+    )
 
     # CASE 2: Config-server does not have TLS enabled - but shard does
     await ops_test.model.applications[CONFIG_SERVER_APP_NAME].remove_relation(
@@ -146,13 +140,12 @@ async def test_tls_inconsistent_rels(ops_test: OpsTest) -> None:
         f"{CERTS_APP_NAME}:{CERT_REL_NAME}",
     )
 
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=CLUSTER_COMPONENTS,
-            idle_period=20,
-            timeout=TIMEOUT,
-            raise_on_blocked=False,
-        )
+    await ops_test.model.wait_for_idle(
+        apps=CLUSTER_COMPONENTS,
+        idle_period=20,
+        timeout=TIMEOUT,
+        raise_on_blocked=False,
+    )
     shard_unit = ops_test.model.applications[SHARD_ONE_APP_NAME].units[0]
     assert (
         shard_unit.workload_status_message == "Shard has TLS enabled, but config-server does not."
@@ -166,13 +159,12 @@ async def test_tls_inconsistent_rels(ops_test: OpsTest) -> None:
         f"{DIFFERENT_CERTS_APP_NAME}:{CERT_REL_NAME}",
     )
 
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=CLUSTER_COMPONENTS,
-            idle_period=20,
-            timeout=TIMEOUT,
-            raise_on_blocked=False,
-        )
+    await ops_test.model.wait_for_idle(
+        apps=CLUSTER_COMPONENTS,
+        idle_period=20,
+        timeout=TIMEOUT,
+        raise_on_blocked=False,
+    )
     shard_unit = ops_test.model.applications[SHARD_ONE_APP_NAME].units[0]
     assert (
         shard_unit.workload_status_message == "Shard CA and Config-Server CA don't match."
@@ -224,12 +216,11 @@ async def deploy_cluster_components(ops_test: OpsTest) -> None:
         my_charm, num_units=1, config={"role": "shard"}, application_name=SHARD_TWO_APP_NAME
     )
 
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=CLUSTER_COMPONENTS,
-            idle_period=20,
-            timeout=TIMEOUT,
-        )
+    await ops_test.model.wait_for_idle(
+        apps=CLUSTER_COMPONENTS,
+        idle_period=20,
+        timeout=TIMEOUT,
+    )
 
 
 async def destroy_cluster(ops_test):
