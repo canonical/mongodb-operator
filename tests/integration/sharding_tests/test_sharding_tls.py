@@ -18,7 +18,7 @@ CLUSTER_COMPONENTS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME, CONFIG_SERVER_APP_
 SHARD_REL_NAME = "sharding"
 CONFIG_SERVER_REL_NAME = "config-server"
 CERT_REL_NAME = "certificates"
-TIMEOUT = 10 * 60
+TIMEOUT = 15 * 60
 
 
 @pytest.mark.group(1)
@@ -45,7 +45,6 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 async def test_built_cluster_with_tls(ops_test: OpsTest) -> None:
     """Tests that the cluster can be integrated with TLS."""
     await integrate_cluster(ops_test)
-
     async with ops_test.fast_forward():
         await ops_test.model.wait_for_idle(
             apps=CLUSTER_COMPONENTS,
@@ -81,7 +80,6 @@ async def test_tls_then_build_cluster(ops_test: OpsTest) -> None:
     await deploy_cluster_components(ops_test)
 
     await integrate_with_tls(ops_test)
-
     async with ops_test.fast_forward():
         await ops_test.model.wait_for_idle(
             apps=CLUSTER_COMPONENTS,

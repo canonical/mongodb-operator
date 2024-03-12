@@ -140,7 +140,8 @@ class MongoDBTLS(Object):
             self.set_tls_secret(internal, Config.TLS.SECRET_CERT_LABEL, None)
             self.set_tls_secret(internal, Config.TLS.SECRET_CHAIN_LABEL, None)
 
-        self.charm.config_server.update_ca_secret(new_ca=None)
+        if self.charm.is_role(Config.Role.CONFIG_SERVER):
+            self.charm.config_server.update_ca_secret(new_ca=None)
 
         logger.info("Restarting mongod with TLS disabled.")
         self.charm.unit.status = MaintenanceStatus("disabling TLS")
@@ -173,8 +174,6 @@ class MongoDBTLS(Object):
 
         if self.charm.is_role(Config.Role.CONFIG_SERVER) and internal:
             self.charm.config_server.update_ca_secret(new_ca=event.ca)
-
-        # todo update for shards
 
         if self.waiting_for_certs():
             logger.debug(

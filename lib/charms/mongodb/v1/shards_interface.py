@@ -1102,7 +1102,7 @@ class ConfigServerRequirer(Object):
         config_server_tls_ca = self.database_requires.fetch_relation_field(
             config_server_relation.id, INT_TLS_CA_KEY
         )
-        # TODO - this is None - debug this ASAP - actually seems to be an issue with deferred event. Should be fine just repack and deploy plz
+
         shard_tls_ca = self.charm.tls.get_tls_secret(
             internal=True, label_name=Config.TLS.SECRET_CA_LABEL
         )
