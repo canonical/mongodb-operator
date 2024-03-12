@@ -56,7 +56,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 9
+LIBPATCH = 10
 KEYFILE_KEY = "key-file"
 HOSTS_KEY = "host"
 OPERATOR_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username())
@@ -308,11 +308,10 @@ class ShardingProvider(Object):
 
     def update_ca_secret(self, new_ca: str) -> None:
         """Updates the new CA for all related shards."""
-        if new_ca == None:
-            for relation in self.charm.model.relations[self.relation_name]:
+        for relation in self.charm.model.relations[self.relation_name]:
+            if new_ca is None:
                 self.database_provides.delete_relation_data(relation.id, {INT_TLS_CA_KEY: new_ca})
-        else:
-            for relation in self.charm.model.relations[self.relation_name]:
+            else:
                 self._update_relation_data(relation.id, {INT_TLS_CA_KEY: new_ca})
 
     def get_config_server_status(self) -> Optional[StatusBase]:
@@ -717,7 +716,7 @@ class ConfigServerRequirer(Object):
 
         if self.shard_needs_tls_enabled():
             logger.info(
-                "Deferring %s. Config-server uses TLS, but shard does not. Please sychronise encryption methods.",
+                "Deferring %s. Config-server uses TLS, but shard does not. Please synchronise encryption methods.",
                 str(type(event)),
             )
             event.defer()
@@ -725,7 +724,7 @@ class ConfigServerRequirer(Object):
 
         if self.config_server_needs_tls_enabled():
             logger.info(
-                "Deferring %s. Shard uses TLS, but config-server does not. Please sychronise encryption methods.",
+                "Deferring %s. Shard uses TLS, but config-server does not. Please synchronise encryption methods.",
                 str(type(event)),
             )
             event.defer()
@@ -820,7 +819,7 @@ class ConfigServerRequirer(Object):
         return None
 
     def get_tls_statuses(self) -> Optional[StatusBase]:
-        """Returns statuses relavant to TLS."""
+        """Returns statuses relevant to TLS."""
         if self.shard_needs_tls_enabled():
             return BlockedStatus("Shard requires TLS to be enabled.")
 
@@ -1094,6 +1093,7 @@ class ConfigServerRequirer(Object):
         return {int_subject, ext_subject} != {self.get_config_server_name()}
 
     def has_compatible_ca(self) -> bool:
+        """Returns true if both the shard and the config server use the same CA."""
         config_server_relation = self.charm.model.get_relation(self.relation_name)
         # base-case: nothing to compare
         if not config_server_relation:
@@ -1114,6 +1114,7 @@ class ConfigServerRequirer(Object):
         return config_server_tls_ca == shard_tls_ca
 
     def shard_needs_tls_enabled(self) -> bool:
+        """Returns true if the config-server has TLS enabled but the shard does not."""
         config_server_relation = self.charm.model.get_relation(self.relation_name)
         if not config_server_relation:
             return False
@@ -1129,6 +1130,7 @@ class ConfigServerRequirer(Object):
         return False
 
     def config_server_needs_tls_enabled(self) -> bool:
+        """Returns true if the shard has TLS enabled but the config-server does not."""
         config_server_relation = self.charm.model.get_relation(self.relation_name)
         if not config_server_relation:
             return False
