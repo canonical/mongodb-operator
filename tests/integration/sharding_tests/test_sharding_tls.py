@@ -118,7 +118,6 @@ async def test_tls_inconsistent_rels(ops_test: OpsTest) -> None:
             idle_period=20,
             timeout=TIMEOUT,
             raise_on_blocked=False,
-            status="active",
         )
 
     shard_unit = ops_test.model.applications[SHARD_ONE_APP_NAME].units[0]
