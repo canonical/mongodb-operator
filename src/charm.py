@@ -142,7 +142,7 @@ class MongodbOperatorCharm(CharmBase):
     # BEGIN: properties
 
     @property
-    def _primary(self) -> str:
+    def primary(self) -> str:
         """Retrieves the unit with the primary replica."""
         try:
             with MongoDBConnection(self.mongodb_config) as mongo:
@@ -575,7 +575,7 @@ class MongodbOperatorCharm(CharmBase):
         self.unit.status = self.get_status()
 
     def _on_get_primary_action(self, event: ActionEvent):
-        event.set_results({"replica-set-primary": self._primary})
+        event.set_results({"replica-set-primary": self.primary})
 
     def _on_get_password(self, event: ActionEvent) -> None:
         """Returns the password for the user as an action response."""

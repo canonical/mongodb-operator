@@ -676,7 +676,12 @@ class ConfigServerRequirer(Object):
         if not self.charm.unit.is_leader():
             return
 
-        # TODO Future work, see if needed to check for all units restarted / primary elected
+        if self.charm.primary is None:
+            logger.info("Replica set has not elected a primary after restarting.")
+            self.charm.unit.status = WaitingStatus("Waiting for MongoDB to start")
+            event.defer()
+            return
+
         (operator_password, backup_password) = self.get_cluster_passwords(event)
         if not operator_password or not backup_password:
             event.defer()
