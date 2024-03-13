@@ -705,7 +705,7 @@ class ConfigServerRequirer(Object):
             logger.info("Config-server relation never set up, no need to process broken event.")
             return False
 
-        if self.shard_needs_tls_enabled():
+        if self.is_shard_tls_needed():
             logger.info(
                 "Deferring %s. Config-server uses TLS, but shard does not. Please synchronise encryption methods.",
                 str(type(event)),
@@ -713,7 +713,7 @@ class ConfigServerRequirer(Object):
             event.defer()
             return False
 
-        if self.config_server_needs_tls_enabled():
+        if self.is_config_server_tls_needed():
             logger.info(
                 "Deferring %s. Shard uses TLS, but config-server does not. Please synchronise encryption methods.",
                 str(type(event)),
@@ -721,7 +721,7 @@ class ConfigServerRequirer(Object):
             event.defer()
             return False
 
-        if not self.has_compatible_ca():
+        if not self.is_ca_compatible():
             logger.info(
                 "Deferring %s. Shard is integrated to a different CA than the config server. Please use the same CA for all cluster components.",
                 str(type(event)),
@@ -811,13 +811,13 @@ class ConfigServerRequirer(Object):
 
     def get_tls_statuses(self) -> Optional[StatusBase]:
         """Returns statuses relevant to TLS."""
-        if self.shard_needs_tls_enabled():
+        if self.is_shard_tls_needed():
             return BlockedStatus("Shard requires TLS to be enabled.")
 
-        if self.config_server_needs_tls_enabled():
+        if self.is_config_server_tls_needed():
             return BlockedStatus("Shard has TLS enabled, but config-server does not.")
 
-        if not self.has_compatible_ca():
+        if not self.is_ca_compatible():
             logger.error(
                 "Shard is integrated to a different CA than the config server. Please use the same CA for all cluster components."
             )
@@ -1079,7 +1079,7 @@ class ConfigServerRequirer(Object):
         ext_subject = self.charm.unit_peer_data.get("ext_certs_subject", None)
         return {int_subject, ext_subject} != {self.get_config_server_name()}
 
-    def has_compatible_ca(self) -> bool:
+    def is_ca_compatible(self) -> bool:
         """Returns true if both the shard and the config server use the same CA."""
         config_server_relation = self.charm.model.get_relation(self.relation_name)
         # base-case: nothing to compare
@@ -1100,7 +1100,7 @@ class ConfigServerRequirer(Object):
 
         return config_server_tls_ca == shard_tls_ca
 
-    def shard_needs_tls_enabled(self) -> bool:
+    def is_shard_tls_needed(self) -> bool:
         """Returns true if the config-server has TLS enabled but the shard does not."""
         config_server_relation = self.charm.model.get_relation(self.relation_name)
         if not config_server_relation:
@@ -1116,7 +1116,7 @@ class ConfigServerRequirer(Object):
 
         return False
 
-    def config_server_needs_tls_enabled(self) -> bool:
+    def is_config_server_tls_needed(self) -> bool:
         """Returns true if the shard has TLS enabled but the config-server does not."""
         config_server_relation = self.charm.model.get_relation(self.relation_name)
         if not config_server_relation:
