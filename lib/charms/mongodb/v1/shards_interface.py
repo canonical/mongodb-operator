@@ -41,7 +41,7 @@ from ops.model import (
     WaitingStatus,
 )
 from pymongo.errors import ServerSelectionTimeoutError
-from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
+from tenacity import Retrying, stop_after_delay, wait_fixed
 
 from config import Config
 
@@ -549,26 +549,10 @@ class ConfigServerRequirer(Object):
             )
             return
 
-        operator_password = self.database_requires.fetch_relation_field(
-            config_server_relation.id, OPERATOR_PASSWORD_KEY
+        (operator_password, backup_password) = self.get_cluster_passwords(
+            config_server_relation.id
         )
-        backup_password = self.database_requires.fetch_relation_field(
-            config_server_relation.id, BACKUP_PASSWORD_KEY
-        )
-
-        try:
-            self.update_password(
-                username=OperatorUser.get_username(), new_password=operator_password
-            )
-            self.update_password(BackupUser.get_username(), new_password=backup_password)
-        except (NotReadyError, PyMongoError):
-            self.charm.unit.status = BlockedStatus("Failed to rotate cluster secrets")
-            logger.error("Shard failed to rotate cluster secrets.")
-            event.defer()
-            return
-
-        # FUTURE PR: if config-server does not have TLS enabled log a useful message and go into
-        # blocked in relation_changed and other status checks
+        self.sync_cluster_passwords(event, operator_password, backup_password)
 
     def get_membership_auth_modes(self, event: RelationChangedEvent) -> Tuple[bool, bool]:
         """Returns the available authentication membership forms."""
@@ -604,40 +588,50 @@ class ConfigServerRequirer(Object):
         )
         self.update_keyfile(key_file_contents=key_file_contents)
 
-    # Future PR - status updating for inconsistencies with TLS (i.e. shard has TLS but
-    # config-server does not and vice versa or CA-mismatch)
-
-    def get_cluster_passwords(
-        self, event: RelationChangedEvent
-    ) -> Tuple[Optional[str], Optional[str]]:
+    def get_cluster_passwords(self, relation_id: int) -> Tuple[Optional[str], Optional[str]]:
         """Retrieves shared cluster passwords."""
         operator_password = self.database_requires.fetch_relation_field(
-            event.relation.id, OPERATOR_PASSWORD_KEY
+            relation_id, OPERATOR_PASSWORD_KEY
         )
         backup_password = self.database_requires.fetch_relation_field(
-            event.relation.id, BACKUP_PASSWORD_KEY
+            relation_id, BACKUP_PASSWORD_KEY
         )
         return (operator_password, backup_password)
 
     def sync_cluster_passwords(
-        self, event: RelationChangedEvent, operator_password: str, backup_password: str
+        self, event: EventBase, operator_password: str, backup_password: str
     ) -> None:
         """Updates shared cluster passwords."""
+        if self.charm.primary is None:
+            logger.info(
+                "Replica set has not elected a primary after restarting, cannot update passwords."
+            )
+            self.charm.unit.status = WaitingStatus("Waiting for MongoDB to start")
+            event.defer()
+            return
+
         try:
             self.update_password(
                 username=OperatorUser.get_username(), new_password=operator_password
             )
             self.update_password(BackupUser.get_username(), new_password=backup_password)
-        except RetryError:
-            self.charm.unit.status = BlockedStatus("Shard not added to config-server")
+        except (NotReadyError, PyMongoError, ServerSelectionTimeoutError):
+            # RelationChangedEvents will only update passwords when the relation is first joined,
+            # otherwise all other password changes result in a Secret Changed Event.
+            if isinstance(event, RelationChangedEvent):
+                self.charm.unit.status = BlockedStatus("Shard not added to config-server")
+            else:
+                self.charm.unit.status = BlockedStatus("Failed to rotate cluster secrets")
             logger.error(
-                "Failed to sync cluster passwords from config-server to shard. Shard cannot be added to config-server, deferring event and retrying."
+                "Failed to sync cluster passwords from config-server to shard. Deferring event and retrying."
             )
             event.defer()
 
+        # after updating the password of the backup user, restart pbm with correct password
+        self.charm._connect_pbm_agent()
+
     def _on_relation_changed(self, event):
         """Retrieves secrets from config-server and updates them within the shard."""
-        # TODO Future PR include TLS sainity check in pass_hook_checks
         if not self.pass_hook_checks(event):
             logger.info("Skipping relation joined event: hook checks re not passed")
             return
@@ -676,13 +670,7 @@ class ConfigServerRequirer(Object):
         if not self.charm.unit.is_leader():
             return
 
-        if self.charm.primary is None:
-            logger.info("Replica set has not elected a primary after restarting.")
-            self.charm.unit.status = WaitingStatus("Waiting for MongoDB to start")
-            event.defer()
-            return
-
-        (operator_password, backup_password) = self.get_cluster_passwords(event)
+        (operator_password, backup_password) = self.get_cluster_passwords(event.relation.id)
         if not operator_password or not backup_password:
             event.defer()
             self.charm.unit.status = WaitingStatus("Waiting for secrets from config-server")
@@ -690,8 +678,6 @@ class ConfigServerRequirer(Object):
 
         self.sync_cluster_passwords(event, operator_password, backup_password)
 
-        # after updating the password of the backup user, restart pbm with correct password
-        self.charm._connect_pbm_agent()
         self.charm.app_peer_data["mongos_hosts"] = json.dumps(self.get_mongos_hosts())
 
     def pass_hook_checks(self, event):
@@ -908,11 +894,7 @@ class ConfigServerRequirer(Object):
             return drained
 
     def update_password(self, username: str, new_password: str) -> None:
-        """Updates the password for the given user.
-
-        Raises:
-            RetryError
-        """
+        """Updates the password for the given user."""
         if not new_password or not self.charm.unit.is_leader():
             return
 
@@ -927,7 +909,7 @@ class ConfigServerRequirer(Object):
 
         # updating operator password, usually comes after keyfile was updated, hence, the mongodb
         # service was restarted. Sometimes this requires units getting insync again.
-        for attempt in Retrying(stop=stop_after_delay(60), wait=wait_fixed(3)):
+        for attempt in Retrying(stop=stop_after_delay(60), wait=wait_fixed(3), reraise=True):
             with attempt:
                 # TODO, in the future use set_password from src/charm.py - this will require adding
                 # a library, for exceptions used in both charm code and lib code.
