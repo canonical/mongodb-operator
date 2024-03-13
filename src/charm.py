@@ -1058,11 +1058,24 @@ class MongodbOperatorCharm(CharmBase):
             return
 
         # must wait for leader to set URI before any attempts to update are made
+        new_pbm_password = self.get_secret(APP_SCOPE, BackupUser.get_password_key_name())
         if not self.get_secret(APP_SCOPE, BackupUser.get_password_key_name()):
             return
 
         snap_cache = snap.SnapCache()
         pbm_snap = snap_cache["charmed-mongodb"]
+
+        try:
+            current_pbm_uri = pbm_snap.get(Config.Backup.URI_PARAM_NAME)
+        except snap.SnapError:
+            # if a snap variable has not been set, the retrieve of it fails
+            current_pbm_uri = ""
+
+        if current_pbm_uri == self.backup_config.uri:
+            return
+
+        logger.debug("PBM uri needs to be updated, resetting the URI and restarting the daemon")
+
         pbm_snap.stop(services=[Config.Backup.SERVICE_NAME])
         pbm_snap.set({Config.Backup.URI_PARAM_NAME: self.backup_config.uri})
         try:
