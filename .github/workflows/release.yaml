@@ -22,7 +22,7 @@ jobs:
     uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v12.7.2
     with:
       channel: 6/edge
-      artifact-name: ${{ needs.build.outputs.artifact-name }}
+      artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
     secrets:
       charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
     permissions:
