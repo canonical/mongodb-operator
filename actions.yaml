@@ -5,8 +5,9 @@ get-primary:
   description: Report primary replica
 
 get-password:
-  description: Change the admin user's password, which is used by charm.
-    It is for internal charm users and SHOULD NOT be used by applications.
+  description: Recieve the password for the provided user, which is used for internal charm
+    userrs and operations. Since it is for internal charm users, it SHOULD NOT be used by 
+    applications.
   params:
     username:
       type: string
