@@ -250,7 +250,7 @@ async def test_restore_backup(ops_test: OpsTest, add_writes_to_shards) -> None:
     ),
 
     # add writes to be cleared after restoring the backup.
-    await writes_helpers.add_and_verify_unwanted_writes(ops_test, cluster_writes)
+    await add_and_verify_unwanted_writes(ops_test, cluster_writes)
 
     # find most recent backup id and restore
     list_result = await backup_helpers.get_backup_list(
@@ -271,7 +271,7 @@ async def test_restore_backup(ops_test: OpsTest, add_writes_to_shards) -> None:
 
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
-async def test_migrate_restore_backup(ops_test: OpsTest, add_writes_to_db) -> None:
+async def test_migrate_restore_backup(ops_test: OpsTest, add_writes_to_shards) -> None:
     """Tests that sharded Charmed MongoDB cluster supports restores."""
     config_leader_id = await get_leader_id(ops_test, app_name=CONFIG_SERVER_APP_NAME)
     await set_password(
@@ -315,7 +315,7 @@ async def test_migrate_restore_backup(ops_test: OpsTest, add_writes_to_db) -> No
     ),
 
     # add writes to be cleared after restoring the backup.
-    await writes_helpers.add_and_verify_unwanted_writes(ops_test, cluster_writes)
+    await add_and_verify_unwanted_writes(ops_test, cluster_writes)
 
     # Destroy the old cluster and create a new cluster with the same exact topology and password
     await destroy_cluster_backup_test(ops_test)
@@ -463,12 +463,14 @@ async def add_and_verify_unwanted_writes(ops_test, old_cluster_writes: Dict):
     ), "No writes to be cleared on shard-two after restoring."
 
 
-async def verify_writes_restored(ops_test, cluster_writes: Dict):
+async def verify_writes_restored(ops_test, cluster_writes: Dict) -> None:
     # verify all writes are present
     for attempt in Retrying(stop=stop_after_delay(4), wait=wait_fixed(20), reraise=True):
         with attempt:
             restored_total_writes = await writes_helpers.get_cluster_writes_count(
-                ops_test, shard_app_names=SHARD_APPS
+                ops_test,
+                shard_app_names=SHARD_APPS,
+                db_names=[SHARD_ONE_DB_NAME, SHARD_TWO_DB_NAME],
             )
             assert (
                 restored_total_writes["total_writes"] == cluster_writes["total_writes"]
