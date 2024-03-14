@@ -451,14 +451,13 @@ class ShardingProvider(Object):
         if not self.charm.is_role(Config.Role.CONFIG_SERVER):
             return True
 
-        # base case: no cluster relation
-        if not self.model.relations[self.relation_name]:
-            return True
-
         try:
-            # check our ability to use connect to cluster
+            # check our ability to use connect to mongos
             with MongosConnection(self.charm.mongos_config) as mongos:
                 mongos.get_shard_members()
+            # check our ability to use connect to mongod
+            with MongoDBConnection(self.charm.mongodb_config) as mongod:
+                mongod.get_replset_status()
         except OperationFailure as e:
             if e.code == 18:  # Unauthorized Error - i.e. password is not in sync
                 return False
@@ -918,7 +917,7 @@ class ConfigServerRequirer(Object):
         """
         self.database_requires.update_relation_data(relation_id, data)
 
-    def _is_mongos_reachable(self) -> bool:
+    def _is_mongos_reachable(self, with_auth=False) -> bool:
         """Returns True if mongos is reachable."""
         if not self.model.get_relation(self.relation_name):
             logger.info("Mongos is not reachable, no relation to config-sever")
@@ -930,11 +929,15 @@ class ConfigServerRequirer(Object):
 
         config = self.charm.remote_mongos_config(set(mongos_hosts))
 
-        # use a URI that is not dependent on the operator password, as we are not guaranteed that
-        # the shard has received the password yet.
-        uri = f"mongodb://{','.join(mongos_hosts)}"
-        with MongosConnection(config, uri) as mongo:
-            return mongo.is_ready
+        if not with_auth:
+            # use a URI that is not dependent on the operator password, as we are not guaranteed
+            # that the shard has received the password yet.
+            uri = f"mongodb://{','.join(mongos_hosts)}"
+            with MongosConnection(config, uri) as mongo:
+                return mongo.is_ready
+        else:
+            with MongosConnection(self.charm.remote_mongos_config(set(mongos_hosts))) as mongo:
+                return mongo.is_ready
 
     def _is_added_to_cluster(self) -> bool:
         """Returns True if the shard has been added to the cluster."""
@@ -968,7 +971,7 @@ class ConfigServerRequirer(Object):
 
         try:
             # check our ability to use connect to both mongos and our current replica set.
-            mongos_reachable = self._is_mongos_reachable()
+            mongos_reachable = self._is_mongos_reachable(with_auth=True)
             with MongoDBConnection(self.charm.mongodb_config) as mongo:
                 mongod_reachable = mongo.is_ready
         except OperationFailure as e:
