@@ -144,7 +144,7 @@ class MongodbOperatorCharm(CharmBase):
     # BEGIN: properties
 
     @property
-    def _primary(self) -> str:
+    def primary(self) -> str:
         """Retrieves the unit with the primary replica."""
         try:
             with MongoDBConnection(self.mongodb_config) as mongo:
@@ -547,8 +547,15 @@ class MongodbOperatorCharm(CharmBase):
         # Cannot check more advanced MongoDB statuses if mongod hasn't started.
         with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
             if not direct_mongo.is_ready:
-                self.unit.status = WaitingStatus("Waiting for MongoDB to start")
-                return
+                # edge case: mongod will fail to run if 1. they are running as shard and 2. they
+                # have already been added to the cluster with internal membership via TLS and 3.
+                # they remove support for TLS
+                if self.is_role(Config.Role.SHARD) and self.shard.is_shard_tls_needed():
+                    self.unit.status = BlockedStatus("Shard requires TLS to be enabled.")
+                    return
+                else:
+                    self.unit.status = WaitingStatus("Waiting for MongoDB to start")
+                    return
 
         # Cannot check more advanced MongoDB statuses if the cluster doesn't have passwords synced
         # this can occur in two cases:
@@ -570,7 +577,7 @@ class MongodbOperatorCharm(CharmBase):
         self.unit.status = self.get_status()
 
     def _on_get_primary_action(self, event: ActionEvent):
-        event.set_results({"replica-set-primary": self._primary})
+        event.set_results({"replica-set-primary": self.primary})
 
     def _on_get_password(self, event: ActionEvent) -> None:
         """Returns the password for the user as an action response."""
@@ -773,8 +780,8 @@ class MongodbOperatorCharm(CharmBase):
     def _get_mongos_config_for_user(
         self, user: MongoDBUser, hosts: Set[str]
     ) -> MongosConfiguration:
-        external_ca, _ = self.tls.get_tls_files(UNIT_SCOPE)
-        internal_ca, _ = self.tls.get_tls_files(APP_SCOPE)
+        external_ca, _ = self.tls.get_tls_files(internal=False)
+        internal_ca, _ = self.tls.get_tls_files(internal=True)
 
         return MongosConfiguration(
             database=user.get_database_name(),
@@ -790,8 +797,8 @@ class MongodbOperatorCharm(CharmBase):
     def _get_mongodb_config_for_user(
         self, user: MongoDBUser, hosts: Set[str], standalone: bool = False
     ) -> MongoDBConfiguration:
-        external_ca, _ = self.tls.get_tls_files(UNIT_SCOPE)
-        internal_ca, _ = self.tls.get_tls_files(APP_SCOPE)
+        external_ca, _ = self.tls.get_tls_files(internal=False)
+        internal_ca, _ = self.tls.get_tls_files(internal=True)
 
         return MongoDBConfiguration(
             replset=self.app.name,
@@ -998,7 +1005,7 @@ class MongodbOperatorCharm(CharmBase):
 
     def push_tls_certificate_to_workload(self) -> None:
         """Uploads certificate to the workload container."""
-        external_ca, external_pem = self.tls.get_tls_files(UNIT_SCOPE)
+        external_ca, external_pem = self.tls.get_tls_files(internal=False)
         if external_ca is not None:
             self.push_file_to_unit(
                 parent_dir=Config.MONGOD_CONF_DIR,
@@ -1013,7 +1020,7 @@ class MongodbOperatorCharm(CharmBase):
                 file_contents=external_pem,
             )
 
-        internal_ca, internal_pem = self.tls.get_tls_files(APP_SCOPE)
+        internal_ca, internal_pem = self.tls.get_tls_files(internal=True)
         if internal_ca is not None:
             self.push_file_to_unit(
                 parent_dir=Config.MONGOD_CONF_DIR,

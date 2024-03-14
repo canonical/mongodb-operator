@@ -27,7 +27,6 @@ from ops.model import ActiveStatus, MaintenanceStatus, Unit, WaitingStatus
 
 from config import Config
 
-APP_SCOPE = Config.Relations.APP_SCOPE
 UNIT_SCOPE = Config.Relations.UNIT_SCOPE
 Scopes = Config.Relations.Scopes
 
@@ -40,7 +39,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 7
+LIBPATCH = 10
 
 logger = logging.getLogger(__name__)
 
@@ -69,28 +68,26 @@ class MongoDBTLS(Object):
         self.framework.observe(self.certs.on.certificate_available, self._on_certificate_available)
         self.framework.observe(self.certs.on.certificate_expiring, self._on_certificate_expiring)
 
-    def is_tls_enabled(self, scope: Scopes):
-        """Returns a boolean indicating if TLS for a given `scope` is enabled."""
-        return self.charm.get_secret(scope, Config.TLS.SECRET_CERT_LABEL) is not None
+    def is_tls_enabled(self, internal: bool):
+        """Returns a boolean indicating if TLS for a given internal/external is enabled."""
+        return self.get_tls_secret(internal, Config.TLS.SECRET_CERT_LABEL) is not None
 
     def _on_set_tls_private_key(self, event: ActionEvent) -> None:
         """Set the TLS private key, which will be used for requesting the certificate."""
         logger.debug("Request to set TLS private key received.")
         try:
-            self._request_certificate(UNIT_SCOPE, event.params.get("external-key", None))
-
-            if not self.charm.unit.is_leader():
-                event.log(
-                    "Only juju leader unit can set private key for the internal certificate. Skipping."
-                )
-                return
-
-            self._request_certificate(APP_SCOPE, event.params.get("internal-key", None))
+            self.request_certificate(event.params.get("external-key", None), internal=False)
+            self.request_certificate(event.params.get("internal-key", None), internal=True)
             logger.debug("Successfully set TLS private key.")
         except ValueError as e:
             event.fail(str(e))
 
-    def _request_certificate(self, scope: Scopes, param: Optional[str]):
+    def request_certificate(
+        self,
+        param: Optional[str],
+        internal: bool,
+    ):
+        """Request TLS certificate."""
         if param is None:
             key = generate_private_key()
         else:
@@ -98,15 +95,18 @@ class MongoDBTLS(Object):
 
         csr = generate_csr(
             private_key=key,
-            subject=self.get_host(self.charm.unit),
-            organization=self.charm.app.name,
+            subject=self._get_subject_name(),
+            organization=self._get_subject_name(),
             sans=self._get_sans(),
             sans_ip=[str(self.charm.model.get_binding(self.peer_relation).network.bind_address)],
         )
+        self.set_tls_secret(internal, Config.TLS.SECRET_KEY_LABEL, key.decode("utf-8"))
+        self.set_tls_secret(internal, Config.TLS.SECRET_CSR_LABEL, csr.decode("utf-8"))
+        self.set_tls_secret(internal, Config.TLS.SECRET_CERT_LABEL, None)
 
-        self.charm.set_secret(scope, Config.TLS.SECRET_KEY_LABEL, key.decode("utf-8"))
-        self.charm.set_secret(scope, Config.TLS.SECRET_CSR_LABEL, csr.decode("utf-8"))
-        self.charm.set_secret(scope, Config.TLS.SECRET_CERT_LABEL, None)
+        label = "int" if internal else "ext"
+        self.charm.unit_peer_data[f"{label}_certs_subject"] = self._get_subject_name()
+        self.charm.unit_peer_data[f"{label}_certs_subject"] = self._get_subject_name()
 
         if self.charm.model.get_relation(Config.TLS.TLS_PEER_RELATION):
             self.certs.request_certificate_creation(certificate_signing_request=csr)
@@ -128,30 +128,20 @@ class MongoDBTLS(Object):
 
     def _on_tls_relation_joined(self, _: RelationJoinedEvent) -> None:
         """Request certificate when TLS relation joined."""
-        if self.charm.unit.is_leader():
-            self._request_certificate(APP_SCOPE, None)
-
-        self._request_certificate(UNIT_SCOPE, None)
+        self.request_certificate(None, internal=True)
+        self.request_certificate(None, internal=False)
 
     def _on_tls_relation_broken(self, event: RelationBrokenEvent) -> None:
         """Disable TLS when TLS relation broken."""
-        logger.debug("Disabling external TLS for unit: %s", self.charm.unit.name)
-        self.charm.set_secret(UNIT_SCOPE, Config.TLS.SECRET_CA_LABEL, None)
-        self.charm.set_secret(UNIT_SCOPE, Config.TLS.SECRET_CERT_LABEL, None)
-        self.charm.set_secret(UNIT_SCOPE, Config.TLS.SECRET_CHAIN_LABEL, None)
+        logger.debug("Disabling external and internal TLS for unit: %s", self.charm.unit.name)
 
-        if self.charm.unit.is_leader():
-            logger.debug("Disabling internal TLS")
-            self.charm.set_secret(APP_SCOPE, Config.TLS.SECRET_CA_LABEL, None)
-            self.charm.set_secret(APP_SCOPE, Config.TLS.SECRET_CERT_LABEL, None)
-            self.charm.set_secret(APP_SCOPE, Config.TLS.SECRET_CHAIN_LABEL, None)
+        for internal in [True, False]:
+            self.set_tls_secret(internal, Config.TLS.SECRET_CA_LABEL, None)
+            self.set_tls_secret(internal, Config.TLS.SECRET_CERT_LABEL, None)
+            self.set_tls_secret(internal, Config.TLS.SECRET_CHAIN_LABEL, None)
 
-        if self.charm.get_secret(APP_SCOPE, Config.TLS.SECRET_CERT_LABEL):
-            logger.debug(
-                "Defer until the leader deletes the internal TLS certificate to avoid second restart."
-            )
-            event.defer()
-            return
+        if self.charm.is_role(Config.Role.CONFIG_SERVER):
+            self.charm.config_server.update_ca_secret(new_ca=None)
 
         logger.info("Restarting mongod with TLS disabled.")
         self.charm.unit.status = MaintenanceStatus("disabling TLS")
@@ -161,29 +151,31 @@ class MongoDBTLS(Object):
 
     def _on_certificate_available(self, event: CertificateAvailableEvent) -> None:
         """Enable TLS when TLS certificate available."""
-        unit_csr = self.charm.get_secret(UNIT_SCOPE, Config.TLS.SECRET_CSR_LABEL)
-        app_csr = self.charm.get_secret(APP_SCOPE, Config.TLS.SECRET_CSR_LABEL)
+        int_csr = self.get_tls_secret(internal=True, label_name=Config.TLS.SECRET_CSR_LABEL)
+        ext_csr = self.get_tls_secret(internal=False, label_name=Config.TLS.SECRET_CSR_LABEL)
 
-        if unit_csr and event.certificate_signing_request.rstrip() == unit_csr.rstrip():
+        if ext_csr and event.certificate_signing_request.rstrip() == ext_csr.rstrip():
             logger.debug("The external TLS certificate available.")
-            scope = UNIT_SCOPE  # external crs
-        elif app_csr and event.certificate_signing_request.rstrip() == app_csr.rstrip():
+            internal = False
+        elif int_csr and event.certificate_signing_request.rstrip() == int_csr.rstrip():
             logger.debug("The internal TLS certificate available.")
-            scope = APP_SCOPE  # internal crs
+            internal = True
         else:
             logger.error("An unknown certificate is available -- ignoring.")
             return
 
-        if scope == UNIT_SCOPE or (scope == APP_SCOPE and self.charm.unit.is_leader()):
-            self.charm.set_secret(
-                scope,
-                Config.TLS.SECRET_CHAIN_LABEL,
-                "\n".join(event.chain) if event.chain is not None else None,
-            )
-            self.charm.set_secret(scope, Config.TLS.SECRET_CERT_LABEL, event.certificate)
-            self.charm.set_secret(scope, Config.TLS.SECRET_CA_LABEL, event.ca)
+        self.set_tls_secret(
+            internal,
+            Config.TLS.SECRET_CHAIN_LABEL,
+            "\n".join(event.chain) if event.chain is not None else None,
+        )
+        self.set_tls_secret(internal, Config.TLS.SECRET_CERT_LABEL, event.certificate)
+        self.set_tls_secret(internal, Config.TLS.SECRET_CA_LABEL, event.ca)
 
-        if self._waiting_for_certs():
+        if self.charm.is_role(Config.Role.CONFIG_SERVER) and internal:
+            self.charm.config_server.update_ca_secret(new_ca=event.ca)
+
+        if self.waiting_for_certs():
             logger.debug(
                 "Defer till both internal and external TLS certificates available to avoid second restart."
             )
@@ -203,13 +195,13 @@ class MongoDBTLS(Object):
             else:
                 self.charm.unit.status = ActiveStatus()
 
-    def _waiting_for_certs(self):
+    def waiting_for_certs(self):
         """Returns a boolean indicating whether additional certs are needed."""
-        if not self.charm.get_secret(APP_SCOPE, Config.TLS.SECRET_CERT_LABEL):
-            logger.debug("Waiting for application certificate.")
+        if not self.get_tls_secret(internal=True, label_name=Config.TLS.SECRET_CERT_LABEL):
+            logger.debug("Waiting for internal certificate.")
             return True
-        if not self.charm.get_secret(UNIT_SCOPE, Config.TLS.SECRET_CERT_LABEL):
-            logger.debug("Waiting for application certificate.")
+        if not self.get_tls_secret(internal=False, label_name=Config.TLS.SECRET_CERT_LABEL):
+            logger.debug("Waiting for external certificate.")
             return True
 
         return False
@@ -218,29 +210,30 @@ class MongoDBTLS(Object):
         """Request the new certificate when old certificate is expiring."""
         if (
             event.certificate.rstrip()
-            == self.charm.get_secret(UNIT_SCOPE, Config.TLS.SECRET_CERT_LABEL).rstrip()
+            == self.get_tls_secret(
+                internal=False, label_name=Config.TLS.SECRET_CERT_LABEL
+            ).rstrip()
         ):
             logger.debug("The external TLS certificate expiring.")
-            scope = UNIT_SCOPE  # external cert
+            internal = False
         elif (
             event.certificate.rstrip()
-            == self.charm.get_secret(APP_SCOPE, Config.TLS.SECRET_CERT_LABEL).rstrip()
+            == self.get_tls_secret(internal=True, label_name=Config.TLS.SECRET_CERT_LABEL).rstrip()
         ):
             logger.debug("The internal TLS certificate expiring.")
-            if not self.charm.unit.is_leader():
-                return
-            scope = APP_SCOPE  # internal cert
+
+            internal = True
         else:
             logger.error("An unknown certificate expiring.")
             return
 
         logger.debug("Generating a new Certificate Signing Request.")
-        key = self.charm.get_secret(scope, Config.TLS.SECRET_KEY_LABEL).encode("utf-8")
-        old_csr = self.charm.get_secret(scope, Config.TLS.SECRET_CSR_LABEL).encode("utf-8")
+        key = self.get_tls_secret(internal, Config.TLS.SECRET_KEY_LABEL).encode("utf-8")
+        old_csr = self.get_tls_secret(internal, Config.TLS.SECRET_CSR_LABEL).encode("utf-8")
         new_csr = generate_csr(
             private_key=key,
-            subject=self.get_host(self.charm.unit),
-            organization=self.charm.app.name,
+            subject=self._get_subject_name(),
+            organization=self._get_subject_name(),
             sans=self._get_sans(),
             sans_ip=[str(self.charm.model.get_binding(self.peer_relation).network.bind_address)],
         )
@@ -251,7 +244,7 @@ class MongoDBTLS(Object):
             new_certificate_signing_request=new_csr,
         )
 
-        self.charm.set_secret(scope, Config.TLS.SECRET_CSR_LABEL, new_csr.decode("utf-8"))
+        self.set_tls_secret(internal, Config.TLS.SECRET_CSR_LABEL, new_csr.decode("utf-8"))
 
     def _get_sans(self) -> List[str]:
         """Create a list of DNS names for a MongoDB unit.
@@ -267,24 +260,25 @@ class MongoDBTLS(Object):
             str(self.charm.model.get_binding(self.peer_relation).network.bind_address),
         ]
 
-    def get_tls_files(self, scope: Scopes) -> Tuple[Optional[str], Optional[str]]:
+    def get_tls_files(self, internal: bool) -> Tuple[Optional[str], Optional[str]]:
         """Prepare TLS files in special MongoDB way.
 
         MongoDB needs two files:
         — CA file should have a full chain.
         — PEM file should have private key and certificate without certificate chain.
         """
-        if not self.is_tls_enabled(scope):
+        scope = "internal" if internal else "external"
+        if not self.is_tls_enabled(internal):
             logging.debug(f"TLS disabled for {scope}")
             return None, None
         logging.debug(f"TLS *enabled* for {scope}, fetching data for CA and PEM files ")
 
-        ca = self.charm.get_secret(scope, Config.TLS.SECRET_CA_LABEL)
-        chain = self.charm.get_secret(scope, Config.TLS.SECRET_CHAIN_LABEL)
+        ca = self.get_tls_secret(internal, Config.TLS.SECRET_CA_LABEL)
+        chain = self.get_tls_secret(internal, Config.TLS.SECRET_CHAIN_LABEL)
         ca_file = chain if chain else ca
 
-        key = self.charm.get_secret(scope, Config.TLS.SECRET_KEY_LABEL)
-        cert = self.charm.get_secret(scope, Config.TLS.SECRET_CERT_LABEL)
+        key = self.get_tls_secret(internal, Config.TLS.SECRET_KEY_LABEL)
+        cert = self.get_tls_secret(internal, Config.TLS.SECRET_CERT_LABEL)
         pem_file = key
         if cert:
             pem_file = key + "\n" + cert if key else cert
@@ -297,3 +291,26 @@ class MongoDBTLS(Object):
             return self.charm._unit_ip(unit)
         else:
             return self.charm.get_hostname_for_unit(unit)
+
+    def set_tls_secret(self, internal: bool, label_name: str, contents: str) -> None:
+        """Sets TLS secret, based on whether or not it is related to internal connections."""
+        scope = "int" if internal else "ext"
+        label_name = f"{scope}-{label_name}"
+        self.charm.set_secret(UNIT_SCOPE, label_name, contents)
+
+    def get_tls_secret(self, internal: bool, label_name: str) -> str:
+        """Gets TLS secret, based on whether or not it is related to internal connections."""
+        scope = "int" if internal else "ext"
+        label_name = f"{scope}-{label_name}"
+        return self.charm.get_secret(UNIT_SCOPE, label_name)
+
+    def _get_subject_name(self) -> str:
+        """Generate the subject name for CSR."""
+        # In sharded MongoDB deployments it is a requirement that all subject names match across
+        # all cluster components
+        if self.charm.is_role(Config.Role.SHARD):
+            # until integrated with config-server use current app name as
+            # subject name
+            return self.charm.shard.get_config_server_name() or self.charm.app.name
+
+        return self.charm.app.name
