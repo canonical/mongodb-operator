@@ -1026,7 +1026,10 @@ class ConfigServerRequirer(Object):
             with MongoDBConnection(self.charm.mongodb_config) as mongo:
                 mongod_reachable = mongo.is_ready
         except OperationFailure as e:
-            if e.code == 18:  # Unauthorized Error - i.e. password is not in sync
+            if e.code in [
+                13,
+                18,
+            ]:  # [Unauthorized, AuthenticationFailed ]we are not yet connected to mongos
                 return False
             raise
         except ServerSelectionTimeoutError:

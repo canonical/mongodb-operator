@@ -47,7 +47,6 @@ from charms.mongodb.v1.users import (
 )
 from charms.operator_libs_linux.v1 import snap
 from charms.operator_libs_linux.v1.systemd import service_running
-
 from ops.charm import (
     ActionEvent,
     CharmBase,
