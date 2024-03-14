@@ -39,7 +39,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 9
+LIBPATCH = 10
 
 logger = logging.getLogger(__name__)
 
@@ -140,6 +140,9 @@ class MongoDBTLS(Object):
             self.set_tls_secret(internal, Config.TLS.SECRET_CERT_LABEL, None)
             self.set_tls_secret(internal, Config.TLS.SECRET_CHAIN_LABEL, None)
 
+        if self.charm.is_role(Config.Role.CONFIG_SERVER):
+            self.charm.config_server.update_ca_secret(new_ca=None)
+
         logger.info("Restarting mongod with TLS disabled.")
         self.charm.unit.status = MaintenanceStatus("disabling TLS")
         self.charm.delete_tls_certificate_from_workload()
@@ -168,6 +171,9 @@ class MongoDBTLS(Object):
         )
         self.set_tls_secret(internal, Config.TLS.SECRET_CERT_LABEL, event.certificate)
         self.set_tls_secret(internal, Config.TLS.SECRET_CA_LABEL, event.ca)
+
+        if self.charm.is_role(Config.Role.CONFIG_SERVER) and internal:
+            self.charm.config_server.update_ca_secret(new_ca=event.ca)
 
         if self.waiting_for_certs():
             logger.debug(
