@@ -46,6 +46,8 @@ from charms.mongodb.v1.users import (
     OperatorUser,
 )
 from charms.operator_libs_linux.v1 import snap
+from charms.operator_libs_linux.v1.systemd import service_running
+
 from ops.charm import (
     ActionEvent,
     CharmBase,
@@ -1058,7 +1060,6 @@ class MongodbOperatorCharm(CharmBase):
             return
 
         # must wait for leader to set URI before any attempts to update are made
-        new_pbm_password = self.get_secret(APP_SCOPE, BackupUser.get_password_key_name())
         if not self.get_secret(APP_SCOPE, BackupUser.get_password_key_name()):
             return
 
@@ -1071,7 +1072,9 @@ class MongodbOperatorCharm(CharmBase):
             # if a snap variable has not been set, the retrieve of it fails
             current_pbm_uri = ""
 
-        if current_pbm_uri == self.backup_config.uri:
+        if current_pbm_uri == self.backup_config.uri and service_running(
+            "snap.charmed-mongodb.pbm-agent.service"
+        ):
             return
 
         logger.debug("PBM uri needs to be updated, resetting the URI and restarting the daemon")
