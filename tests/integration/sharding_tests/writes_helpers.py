@@ -40,23 +40,6 @@ async def mongos_uri(ops_test: OpsTest, config_server_name=APP_NAME) -> str:
     return f"mongodb://operator:{password}@{hosts}/admin"
 
 
-async def clear_db_writes(ops_test: OpsTest, config_server_name=APP_NAME) -> bool:
-    """Stop the DB process and remove any writes to the test collection."""
-    await stop_continous_writes(ops_test)
-
-    # remove collection from database
-    connection_string = await mongos_uri(ops_test, config_server_name)
-
-    client = MongoClient(connection_string)
-    db = client["new-db"]
-
-    # collection for continuous writes
-    test_collection = db["test_collection"]
-    test_collection.drop()
-
-    client.close()
-
-
 async def remove_db_writes(
     ops_test: OpsTest,
     db_name: str,
@@ -136,14 +119,18 @@ async def count_shard_writes(
     return count
 
 
-async def get_cluster_writes_count(ops_test, shard_app_names: List[str]) -> Dict:
+async def get_cluster_writes_count(
+    ops_test, shard_app_names: List[str], db_names: List[str]
+) -> Dict:
     """Returns a dictionary of the writes for each cluster_component and the total writes."""
     cluster_write_count = {}
     total_writes = 0
     for app_name in shard_app_names:
-        component_writes = await count_shard_writes(ops_test, app_name)
-        cluster_write_count[app_name] = component_writes
-        total_writes += component_writes
+        cluster_write_count[app_name] = 0
+        for db in db_names:
+            component_writes = await count_shard_writes(ops_test, app_name, db_name=db)
+            cluster_write_count[app_name] += component_writes
+            total_writes += component_writes
 
     cluster_write_count["total_writes"] = total_writes
     return cluster_write_count

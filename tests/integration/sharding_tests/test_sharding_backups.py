@@ -26,7 +26,7 @@ S3_REL_NAME = "s3-credentials"
 SHARD_ONE_DB_NAME = "new-db"
 SHARD_ONE_COLL_NAME = "test_collection"
 SHARD_TWO_DB_NAME = "new-db-2"
-SHARD_TWO_COLL_NAME = "test_collection_2"
+SHARD_TWO_COLL_NAME = "test_collection"
 TIMEOUT = 10 * 60
 
 
@@ -56,7 +56,9 @@ async def add_writes_to_shards(ops_test: OpsTest):
     mongos_client.admin.command("movePrimary", SHARD_TWO_DB_NAME, to=SHARD_TWO_APP_NAME)
 
     yield
-    await writes_helpers.clear_db_writes(ops_test)
+    await writes_helpers.remove_db_writes(
+        ops_test, db_name=SHARD_ONE_DB_NAME, coll_name=SHARD_ONE_COLL_NAME
+    )
     await writes_helpers.remove_db_writes(
         ops_test, db_name=SHARD_TWO_DB_NAME, coll_name=SHARD_TWO_COLL_NAME
     )
@@ -259,24 +261,16 @@ async def test_restore_backup(ops_test: OpsTest, add_writes_to_shards) -> None:
     """Tests that sharded Charmed MongoDB cluster supports restores."""
     # count total writes
     cluster_writes = await writes_helpers.get_cluster_writes_count(
-        ops_test, shard_app_names=SHARD_APPS
-    )
-    shard_one_writes = await writes_helpers.count_shard_writes(
-        ops_test,
-        shard_app_name=SHARD_ONE_APP_NAME,
-        db_name=SHARD_ONE_DB_NAME,
-        collection_name=SHARD_ONE_COLL_NAME,
-    )
-    shard_two_writes = await writes_helpers.count_shard_writes(
-        ops_test,
-        shard_app_name=SHARD_TWO_APP_NAME,
-        db_name=SHARD_TWO_DB_NAME,
-        collection_name=SHARD_TWO_COLL_NAME,
+        ops_test, shard_app_names=SHARD_APPS, db_names=[SHARD_ONE_DB_NAME, SHARD_TWO_DB_NAME]
     )
 
     assert cluster_writes["total_writes"], "no writes to backup"
-    assert shard_one_writes, "no writes to backup for shard one"
-    assert shard_two_writes, "no writes to backup for shard two"
+    assert cluster_writes[SHARD_ONE_APP_NAME], "no writes to backup for shard one"
+    assert cluster_writes[SHARD_TWO_APP_NAME], "no writes to backup for shard two"
+    assert (
+        cluster_writes[SHARD_ONE_APP_NAME] + cluster_writes[SHARD_TWO_APP_NAME]
+        == cluster_writes["total_writes"]
+    ), "writes not synced"
 
     leader_unit = await backup_helpers.get_leader_unit(
         ops_test, db_app_name=CONFIG_SERVER_APP_NAME
@@ -302,17 +296,9 @@ async def test_restore_backup(ops_test: OpsTest, add_writes_to_shards) -> None:
     # add writes to be cleared after restoring the backup. Note these are written to the same
     # collection that was backed up.
     await writes_helpers.insert_unwanted_data(ops_test)
-    new_total_writes = await writes_helpers.get_cluster_writes_count(
-        ops_test, shard_app_names=SHARD_APPS
-    )
-    # new writes added to cluster in `insert_unwanted_data` get sent to shard-one
-    new_shard_one_writes = await writes_helpers.count_shard_writes(
-        ops_test,
-        shard_app_name=SHARD_ONE_APP_NAME,
-        db_name=SHARD_ONE_DB_NAME,
-        collection_name=SHARD_ONE_COLL_NAME,
-    )
 
+    # new writes added to cluster in `insert_unwanted_data` get sent to shard-one - add more
+    # writes to shard-two
     mongos_client = await generate_mongodb_client(
         ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True
     )
@@ -322,21 +308,18 @@ async def test_restore_backup(ops_test: OpsTest, add_writes_to_shards) -> None:
         coll_name=SHARD_TWO_COLL_NAME,
         content={"horse-breed": "pegasus", "real": True},
     )
-    new_shard_two_writes = await writes_helpers.count_shard_writes(
-        ops_test,
-        shard_app_name=SHARD_TWO_APP_NAME,
-        db_name=SHARD_TWO_DB_NAME,
-        collection_name=SHARD_TWO_COLL_NAME,
+    new_total_writes = await writes_helpers.get_cluster_writes_count(
+        ops_test, shard_app_names=SHARD_APPS, db_names=[SHARD_ONE_DB_NAME, SHARD_TWO_DB_NAME]
     )
 
     assert (
         new_total_writes["total_writes"] > cluster_writes["total_writes"]
     ), "No writes to be cleared after restoring."
     assert (
-        new_shard_one_writes > shard_one_writes
+        new_total_writes[SHARD_ONE_APP_NAME] > cluster_writes[SHARD_ONE_APP_NAME]
     ), "No writes to be cleared on shard-one after restoring."
     assert (
-        new_shard_two_writes > shard_two_writes
+        new_total_writes[SHARD_TWO_APP_NAME] > cluster_writes[SHARD_TWO_APP_NAME]
     ), "No writes to be cleared on shard-two after restoring."
 
     # find most recent backup id and restore
@@ -357,7 +340,9 @@ async def test_restore_backup(ops_test: OpsTest, add_writes_to_shards) -> None:
     for attempt in Retrying(stop=stop_after_delay(4), wait=wait_fixed(20), reraise=True):
         with attempt:
             restored_total_writes = await writes_helpers.get_cluster_writes_count(
-                ops_test, shard_app_names=SHARD_APPS
+                ops_test,
+                shard_app_names=SHARD_APPS,
+                db_names=[SHARD_ONE_DB_NAME, SHARD_TWO_DB_NAME],
             )
             assert (
                 restored_total_writes["total_writes"] == cluster_writes["total_writes"]
