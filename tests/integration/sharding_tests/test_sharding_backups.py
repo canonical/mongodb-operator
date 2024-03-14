@@ -11,10 +11,9 @@ from pytest_operator.plugin import OpsTest
 from tenacity import Retrying, stop_after_delay, wait_fixed
 
 from ..backup_tests import helpers as backup_helpers
-
-# from .writes_helpers import writes_helpers
 from ..helpers import get_leader_id, get_password, set_password
 from . import writes_helpers
+from .helpers import generate_mongodb_client, write_data_to_mongodb
 
 S3_APP_NAME = "s3-integrator"
 SHARD_ONE_APP_NAME = "shard-one"
@@ -24,19 +23,45 @@ CONFIG_SERVER_APP_NAME = "config-server"
 SHARD_REL_NAME = "sharding"
 CONFIG_SERVER_REL_NAME = "config-server"
 S3_REL_NAME = "s3-credentials"
+SHARD_ONE_DB_NAME = "new-db"
+SHARD_ONE_COLL_NAME = "test_collection"
+SHARD_TWO_DB_NAME = "new-db-2"
+SHARD_TWO_COLL_NAME = "test_collection"
 TIMEOUT = 10 * 60
 
 
 @pytest.fixture()
-async def add_writes_to_db(ops_test: OpsTest):
-    """Adds writes to DB before test starts and clears writes at the end of the test."""
+async def add_writes_to_shards(ops_test: OpsTest):
+    """Adds writes to each shard before test starts and clears writes at the end of the test."""
     await writes_helpers.start_continous_writes(
         ops_test, 1, config_server_name=CONFIG_SERVER_APP_NAME
     )
     time.sleep(20)
     await writes_helpers.stop_continous_writes(ops_test, config_server_name=CONFIG_SERVER_APP_NAME)
+
+    # move continuous writes to shard-one
+    mongos_client = await generate_mongodb_client(
+        ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True
+    )
+
+    mongos_client.admin.command("movePrimary", SHARD_ONE_DB_NAME, to=SHARD_ONE_APP_NAME)
+
+    # add writes to shard-two
+    write_data_to_mongodb(
+        mongos_client,
+        db_name=SHARD_TWO_DB_NAME,
+        coll_name=SHARD_TWO_COLL_NAME,
+        content={"horse-breed": "unicorn", "real": True},
+    )
+    mongos_client.admin.command("movePrimary", SHARD_TWO_DB_NAME, to=SHARD_TWO_APP_NAME)
+
     yield
-    await writes_helpers.clear_db_writes(ops_test)
+    await writes_helpers.remove_db_writes(
+        ops_test, db_name=SHARD_ONE_DB_NAME, coll_name=SHARD_ONE_COLL_NAME
+    )
+    await writes_helpers.remove_db_writes(
+        ops_test, db_name=SHARD_TWO_DB_NAME, coll_name=SHARD_TWO_COLL_NAME
+    )
 
 
 @pytest.mark.group(1)
@@ -232,13 +257,20 @@ async def test_rotate_backup_password(ops_test: OpsTest) -> None:
 
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
-async def test_restore_backup(ops_test: OpsTest, add_writes_to_db) -> None:
+async def test_restore_backup(ops_test: OpsTest, add_writes_to_shards) -> None:
     """Tests that sharded Charmed MongoDB cluster supports restores."""
     # count total writes
     cluster_writes = await writes_helpers.get_cluster_writes_count(
-        ops_test, shard_app_names=SHARD_APPS
+        ops_test, shard_app_names=SHARD_APPS, db_names=[SHARD_ONE_DB_NAME, SHARD_TWO_DB_NAME]
     )
-    assert cluster_writes["total_writes"] > 0, "no writes to backup"
+
+    assert cluster_writes["total_writes"], "no writes to backup"
+    assert cluster_writes[SHARD_ONE_APP_NAME], "no writes to backup for shard one"
+    assert cluster_writes[SHARD_TWO_APP_NAME], "no writes to backup for shard two"
+    assert (
+        cluster_writes[SHARD_ONE_APP_NAME] + cluster_writes[SHARD_TWO_APP_NAME]
+        == cluster_writes["total_writes"]
+    ), "writes not synced"
 
     leader_unit = await backup_helpers.get_leader_unit(
         ops_test, db_app_name=CONFIG_SERVER_APP_NAME
@@ -264,12 +296,31 @@ async def test_restore_backup(ops_test: OpsTest, add_writes_to_db) -> None:
     # add writes to be cleared after restoring the backup. Note these are written to the same
     # collection that was backed up.
     await writes_helpers.insert_unwanted_data(ops_test)
-    new_total_writes = await writes_helpers.get_cluster_writes_count(
-        ops_test, shard_app_names=SHARD_APPS
+
+    # new writes added to cluster in `insert_unwanted_data` get sent to shard-one - add more
+    # writes to shard-two
+    mongos_client = await generate_mongodb_client(
+        ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True
     )
+    write_data_to_mongodb(
+        mongos_client,
+        db_name=SHARD_TWO_DB_NAME,
+        coll_name=SHARD_TWO_COLL_NAME,
+        content={"horse-breed": "pegasus", "real": True},
+    )
+    new_total_writes = await writes_helpers.get_cluster_writes_count(
+        ops_test, shard_app_names=SHARD_APPS, db_names=[SHARD_ONE_DB_NAME, SHARD_TWO_DB_NAME]
+    )
+
     assert (
         new_total_writes["total_writes"] > cluster_writes["total_writes"]
     ), "No writes to be cleared after restoring."
+    assert (
+        new_total_writes[SHARD_ONE_APP_NAME] > cluster_writes[SHARD_ONE_APP_NAME]
+    ), "No writes to be cleared on shard-one after restoring."
+    assert (
+        new_total_writes[SHARD_TWO_APP_NAME] > cluster_writes[SHARD_TWO_APP_NAME]
+    ), "No writes to be cleared on shard-two after restoring."
 
     # find most recent backup id and restore
     list_result = await backup_helpers.get_backup_list(
@@ -289,7 +340,9 @@ async def test_restore_backup(ops_test: OpsTest, add_writes_to_db) -> None:
     for attempt in Retrying(stop=stop_after_delay(4), wait=wait_fixed(20), reraise=True):
         with attempt:
             restored_total_writes = await writes_helpers.get_cluster_writes_count(
-                ops_test, shard_app_names=SHARD_APPS
+                ops_test,
+                shard_app_names=SHARD_APPS,
+                db_names=[SHARD_ONE_DB_NAME, SHARD_TWO_DB_NAME],
             )
             assert (
                 restored_total_writes["total_writes"] == cluster_writes["total_writes"]
