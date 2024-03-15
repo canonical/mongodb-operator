@@ -334,6 +334,9 @@ class ShardingProvider(Object):
         if not self.is_mongos_running():
             return BlockedStatus("Internal mongos is not running.")
 
+        if not self.cluster_password_synced():
+            return WaitingStatus("Waiting to sync passwords across the cluster")
+
         shard_draining = self.get_draining_shards()
         if shard_draining:
             shard_draining = ",".join(shard_draining)
@@ -700,6 +703,7 @@ class ConfigServerRequirer(Object):
             return False
 
         mongos_hosts = event.relation.data[event.relation.app].get(HOSTS_KEY, None)
+
         if isinstance(event, RelationBrokenEvent) and not mongos_hosts:
             logger.info("Config-server relation never set up, no need to process broken event.")
             return False
@@ -991,10 +995,8 @@ class ConfigServerRequirer(Object):
     def _is_added_to_cluster(self) -> bool:
         """Returns True if the shard has been added to the cluster."""
         try:
-            mongos_hosts = self.get_mongos_hosts()
-            with MongosConnection(self.charm.remote_mongos_config(set(mongos_hosts))) as mongo:
-                cluster_shards = mongo.get_shard_members()
-                return self.charm.app.name in cluster_shards
+            cluster_shards = self.get_shard_members()
+            return self.charm.app.name in cluster_shards
         except OperationFailure as e:
             if e.code in [
                 13,
@@ -1024,7 +1026,10 @@ class ConfigServerRequirer(Object):
             with MongoDBConnection(self.charm.mongodb_config) as mongo:
                 mongod_reachable = mongo.is_ready
         except OperationFailure as e:
-            if e.code == 18:  # Unauthorized Error - i.e. password is not in sync
+            if e.code in [
+                13,
+                18,
+            ]:  # [Unauthorized, AuthenticationFailed ]we are not yet connected to mongos
                 return False
             raise
         except ServerSelectionTimeoutError:

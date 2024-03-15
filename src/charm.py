@@ -46,6 +46,7 @@ from charms.mongodb.v1.users import (
     OperatorUser,
 )
 from charms.operator_libs_linux.v1 import snap
+from charms.operator_libs_linux.v1.systemd import service_running
 from ops.charm import (
     ActionEvent,
     CharmBase,
@@ -1070,6 +1071,20 @@ class MongodbOperatorCharm(CharmBase):
 
         snap_cache = snap.SnapCache()
         pbm_snap = snap_cache["charmed-mongodb"]
+
+        try:
+            current_pbm_uri = pbm_snap.get(Config.Backup.URI_PARAM_NAME)
+        except snap.SnapError:
+            # if a snap variable has not been set, the retrieve of it fails
+            current_pbm_uri = ""
+
+        if current_pbm_uri == self.backup_config.uri and service_running(
+            "snap.charmed-mongodb.pbm-agent.service"
+        ):
+            return
+
+        logger.debug("PBM uri needs to be updated, resetting the URI and restarting the daemon")
+
         pbm_snap.stop(services=[Config.Backup.SERVICE_NAME])
         pbm_snap.set({Config.Backup.URI_PARAM_NAME: self.backup_config.uri})
         try:
