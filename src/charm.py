@@ -9,7 +9,7 @@ import pwd
 import subprocess
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from charms.mongodb.v0.config_server_interface import ClusterProvider
@@ -72,11 +72,16 @@ from ops.model import (
     Unit,
     WaitingStatus,
 )
+from pymongo.errors import OperationFailure, ServerSelectionTimeoutError
 from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
 from config import Config
 from exceptions import AdminUserCreationError, ApplicationHostNotFoundError
 from machine_helpers import MONGO_USER, ROOT_USER_GID, update_mongod_service
+
+AUTH_FAILED_CODE = 18
+UNAUTHORISED_CODE = 13
+TLS_CANNOT_FIND_PRIMARY = 133
 
 logger = logging.getLogger(__name__)
 
@@ -556,24 +561,13 @@ class MongodbOperatorCharm(CharmBase):
                     self.unit.status = WaitingStatus("Waiting for MongoDB to start")
                     return
 
-        # Cannot check more advanced MongoDB statuses if the cluster doesn't have passwords synced
-        # this can occur in two cases:
-        # 1. password rotation
-        # 2. race conditions when a new shard is addeded.
-        if (
-            not self.shard.cluster_password_synced()
-            or not self.config_server.cluster_password_synced()
-        ):
-            self.unit.status = WaitingStatus("Waiting to sync passwords across the cluster")
-            return
-
         # leader should periodically handle configuring the replica set. Incidents such as network
         # cuts can lead to new IP addresses and therefore will require a reconfigure. Especially
         # in the case that the leader a change in IP address it will not receive a relation event.
         if self.unit.is_leader():
             self._handle_reconfigure(event)
 
-        self.unit.status = self.get_status()
+        self.unit.status = self.process_statuses()
 
     def _on_get_primary_action(self, event: ActionEvent):
         event.set_results({"replica-set-primary": self.primary})
@@ -1406,18 +1400,17 @@ class MongodbOperatorCharm(CharmBase):
                 "Relation to s3-integrator is not supported, config role must be config-server"
             )
 
-    def get_status(self) -> StatusBase:
-        """Returns the status with the highest priority from backups, sharding, and mongod.
-
-        Note: it will never be the case that shard_status and config_server_status are both present
-        since the mongodb app can either be a shard or a config server, but not both.
-        """
-        # retrieve statuses of different services running on Charmed MongoDB
+    def get_statuses(self) -> Tuple:
+        """Retrieves statuses for the different processes running inside the unit."""
         mongodb_status = build_unit_status(self.mongodb_config, self._unit_ip(self.unit))
         shard_status = self.shard.get_shard_status()
         config_server_status = self.config_server.get_config_server_status()
         pbm_status = self.backups.get_pbm_status()
+        return (mongodb_status, shard_status, config_server_status, pbm_status)
 
+    def prioritize_statuses(self, statuses: Tuple) -> StatusBase:
+        """Returns the status with the highest priority from backups, sharding, and mongod."""
+        mongodb_status, shard_status, config_server_status, pbm_status = statuses
         # failure in mongodb takes precedence over sharding and config server
         if not isinstance(mongodb_status, ActiveStatus):
             return mongodb_status
@@ -1433,6 +1426,34 @@ class MongodbOperatorCharm(CharmBase):
 
         # if all statuses are active report mongodb status over sharding status
         return mongodb_status
+
+    def process_statuses(self) -> StatusBase:
+        """Retrieves statuses from processes inside charm and returns the highest priority status.
+
+        When a non-fatal error occurs while processing statuses, the error is processed and
+        returned as a statuses.
+        """
+        # retrieve statuses of different services running on Charmed MongoDB
+        deployment_mode = "replica set" if self.is_role(Config.Role.REPLICATION) else "cluster"
+        waiting_status = None
+        try:
+            statuses = self.get_statuses()
+        except OperationFailure as e:
+            if e.code in [UNAUTHORISED_CODE, AUTH_FAILED_CODE]:
+                waiting_status = f"Waiting to sync passwords across the {deployment_mode}"
+            elif e.code == TLS_CANNOT_FIND_PRIMARY:
+                waiting_status = (
+                    f"Waiting to sync internal membership across the {deployment_mode}"
+                )
+            else:
+                raise
+        except ServerSelectionTimeoutError:
+            waiting_status = f"Waiting to sync internal membership across the {deployment_mode}"
+
+        if waiting_status:
+            return WaitingStatus(waiting_status)
+
+        return self.prioritize_statuses(statuses)
 
     def is_relation_feasible(self, rel_interface) -> bool:
         """Returns true if the proposed relation is feasible."""
