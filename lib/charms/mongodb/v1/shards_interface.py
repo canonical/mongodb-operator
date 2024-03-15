@@ -66,6 +66,10 @@ FORBIDDEN_REMOVAL_ERR_CODE = 20
 AUTH_FAILED_CODE = 18
 
 
+class IncorrectClusterPasswordError(Exception):
+    """Raised when a Shard has the wrong cluster password."""
+
+
 class ShardAuthError(Exception):
     """Raised when a shard doesn't have the same auth as the config server."""
 
@@ -528,11 +532,7 @@ class ConfigServerRequirer(Object):
         Changes in secrets do not re-trigger a relation changed event, so it is necessary to listen
         to secret changes events.
         """
-        if (
-            not self.charm.unit.is_leader()
-            or not event.secret.label
-            or not self.model.get_relation(self.relation_name)
-        ):
+        if not event.secret.label or not self.model.get_relation(self.relation_name):
             return
 
         config_server_relation = self.model.get_relation(self.relation_name)
@@ -551,6 +551,26 @@ class ConfigServerRequirer(Object):
         (operator_password, backup_password) = self.get_cluster_passwords(
             config_server_relation.id
         )
+
+        # in some cases, while the leader is updating the password, non-leader units can execute
+        # other functions with a wrong/outdated password resulting in "flickering" errors in hooks.
+        # To prevent this, non-leader units should wait until the leader has updated the password.
+        if not self.charm.unit.is_leader():
+            try:
+                for attempt in Retrying(
+                    stop=stop_after_delay(60), wait=wait_fixed(3), reraise=True
+                ):
+                    with attempt:
+                        password_updated = self.cluster_password_synced(password=operator_password)
+                        if not password_updated:
+                            raise IncorrectClusterPasswordError
+                        logger.info("Leader successfully set passwword on all units")
+                        return
+            except IncorrectClusterPasswordError:
+                logger.info("Waiting for leader unit to set password")
+                event.defer()
+                return
+
         self.sync_cluster_passwords(event, operator_password, backup_password)
 
     def get_membership_auth_modes(self, event: RelationChangedEvent) -> Tuple[bool, bool]:
@@ -966,8 +986,8 @@ class ConfigServerRequirer(Object):
         """
         self.database_requires.update_relation_data(relation_id, data)
 
-    def _is_mongos_reachable(self, with_auth=False) -> bool:
-        """Returns True if mongos is reachable."""
+    def _is_mongos_reachable(self, password: Optional[str] = None) -> bool:
+        """Returns True if mongos is reachable with or without the provided password."""
         if not self.model.get_relation(self.relation_name):
             logger.info("Mongos is not reachable, no relation to config-sever")
             return False
@@ -976,17 +996,16 @@ class ConfigServerRequirer(Object):
         if not mongos_hosts:
             return False
 
+        mongos_hosts = [f"{host}:{Config.MONGOS_PORT}" for host in mongos_hosts]
         config = self.charm.remote_mongos_config(set(mongos_hosts))
+        uri = (
+            f"mongodb://{','.join(mongos_hosts)}"
+            if not password
+            else f"mongodb://operator:{password}@{','.join(mongos_hosts)}"
+        )
 
-        if not with_auth:
-            # use a URI that is not dependent on the operator password, as we are not guaranteed
-            # that the shard has received the password yet.
-            uri = f"mongodb://{','.join(mongos_hosts)}"
-            with MongosConnection(config, uri) as mongo:
-                return mongo.is_ready
-        else:
-            with MongosConnection(self.charm.remote_mongos_config(set(mongos_hosts))) as mongo:
-                return mongo.is_ready
+        with MongosConnection(config, uri) as mongos:
+            return mongos.is_ready
 
     def _is_added_to_cluster(self) -> bool:
         """Returns True if the shard has been added to the cluster."""
@@ -1008,7 +1027,7 @@ class ConfigServerRequirer(Object):
             # cluster (i.e. TLS + KeyFile).
             return False
 
-    def cluster_password_synced(self) -> bool:
+    def cluster_password_synced(self, password=Optional[str]) -> bool:
         """Returns True if the cluster password is synced for the shard."""
         # base case: not a shard
         if not self.charm.is_role(Config.Role.SHARD):
@@ -1020,8 +1039,9 @@ class ConfigServerRequirer(Object):
 
         try:
             # check our ability to use connect to both mongos and our current replica set.
-            mongos_reachable = self._is_mongos_reachable(with_auth=True)
-            with MongoDBConnection(self.charm.mongodb_config) as mongo:
+            mongos_reachable = self._is_mongos_reachable(password=password)
+            uri = "localhost" if not password else f"mongodb://operator:{password}@localhost"
+            with MongoDBConnection(None, uri) as mongo:
                 mongod_reachable = mongo.is_ready
         except OperationFailure as e:
             if e.code == 18:  # Unauthorized Error - i.e. password is not in sync
