@@ -274,14 +274,10 @@ async def test_restore_backup(ops_test: OpsTest, add_writes_to_shards) -> None:
 async def test_migrate_restore_backup(ops_test: OpsTest, add_writes_to_shards) -> None:
     """Tests that sharded Charmed MongoDB cluster supports restores."""
     config_leader_id = await get_leader_id(ops_test, app_name=CONFIG_SERVER_APP_NAME)
-    # TODO Future Work - determine the source of the temporary error state that occurs during the
-    # rotation of the operator user.
     await set_password(
         ops_test, unit_id=config_leader_id, username="operator", password=OPERATOR_PASSWORD
     )
-    await ops_test.model.wait_for_idle(
-        apps=CLUSTER_APPS, status="active", idle_period=20, raise_on_error=False
-    ),
+    await ops_test.model.wait_for_idle(apps=CLUSTER_APPS, status="active", idle_period=20)
 
     # count total writes
     cluster_writes = await writes_helpers.get_cluster_writes_count(
@@ -326,14 +322,12 @@ async def test_migrate_restore_backup(ops_test: OpsTest, add_writes_to_shards) -
     await deploy_cluster_backup_test(ops_test, deploy_s3_integrator=False)
     await setup_cluster_and_s3(ops_test)
     config_leader_id = await get_leader_id(ops_test, app_name=CONFIG_SERVER_APP_NAME)
-    # TODO Future Work - determine the source of the temporary error state that occurs during the
-    # rotation of the operator user.
     await set_password(
         ops_test, unit_id=config_leader_id, username="operator", password=OPERATOR_PASSWORD
     )
     await ops_test.model.wait_for_idle(
-        apps=CLUSTER_APPS, status="active", idle_period=20, timeout=TIMEOUT, raise_on_error=False
-    ),
+        apps=CLUSTER_APPS, status="active", idle_period=20, timeout=TIMEOUT
+    )
 
     # find most recent backup id and restore
     leader_unit = await backup_helpers.get_leader_unit(
