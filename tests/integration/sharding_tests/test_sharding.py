@@ -18,9 +18,14 @@ from .helpers import (
 SHARD_ONE_APP_NAME = "shard-one"
 SHARD_TWO_APP_NAME = "shard-two"
 SHARD_THREE_APP_NAME = "shard-three"
-SHARD_APPS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME]
+SHARD_APPS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME, SHARD_THREE_APP_NAME]
 CONFIG_SERVER_APP_NAME = "config-server-one"
-CLUSTER_APPS = [CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME]
+CLUSTER_APPS = [
+    CONFIG_SERVER_APP_NAME,
+    SHARD_ONE_APP_NAME,
+    SHARD_TWO_APP_NAME,
+    SHARD_THREE_APP_NAME,
+]
 SHARD_REL_NAME = "sharding"
 CONFIG_SERVER_REL_NAME = "config-server"
 OPERATOR_USERNAME = "operator"
@@ -124,6 +129,37 @@ async def test_cluster_active(ops_test: OpsTest) -> None:
         mongos_client,
         expected_shards=[SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME, SHARD_THREE_APP_NAME],
     ), "Config server did not process config properly"
+
+
+@pytest.mark.group(1)
+async def test_set_operator_password(ops_test: OpsTest):
+    """Tests that the cluster can safely set the operator password."""
+    for cluster_app_name in CLUSTER_APPS:
+        operator_password = await get_password(
+            ops_test, username=OPERATOR_USERNAME, app_name=cluster_app_name
+        )
+        assert (
+            operator_password != OPERATOR_PASSWORD
+        ), f"{cluster_app_name} is incorrectly already set to the new password."
+
+    # rotate password and verify that no unit goes into error as a result of password rotation
+    config_leader_id = await get_leader_id(ops_test, app_name=CONFIG_SERVER_APP_NAME)
+    await set_password(
+        ops_test, unit_id=config_leader_id, username=OPERATOR_USERNAME, password=OPERATOR_PASSWORD
+    )
+    await ops_test.model.wait_for_idle(
+        apps=CLUSTER_APPS,
+        status="active",
+        idle_period=20,
+    ),
+
+    for cluster_app_name in CLUSTER_APPS:
+        operator_password = await get_password(
+            ops_test, username=OPERATOR_USERNAME, app_name=cluster_app_name
+        )
+        assert (
+            operator_password == OPERATOR_PASSWORD
+        ), f"{cluster_app_name} did not rotate to new password."
 
 
 @pytest.mark.group(1)
@@ -346,51 +382,3 @@ async def test_unconventual_shard_removal(ops_test: OpsTest):
         shard_name=SHARD_ONE_APP_NAME,
         expected_databases_on_shard=["animals_database_1", "animals_database_2"],
     ), "Not all databases on final shard"
-
-
-@pytest.mark.group(1)
-async def test_set_operator_password(ops_test: OpsTest):
-    """Tests that the cluster can safely set the operator password."""
-    shard_backup_password = await get_password(
-        ops_test, username=OPERATOR_USERNAME, app_name=SHARD_ONE_APP_NAME
-    )
-    assert (
-        shard_backup_password != OPERATOR_PASSWORD
-    ), "shard-one is incorrectly already set to the new password."
-
-    shard_backup_password = await get_password(
-        ops_test, username=OPERATOR_USERNAME, app_name=SHARD_TWO_APP_NAME
-    )
-    assert (
-        shard_backup_password != OPERATOR_PASSWORD
-    ), "shard-two is incorrectly already set to the new password."
-
-    # rotate password and verify that no unit goes into error as a result of password rotation
-    config_leader_id = await get_leader_id(ops_test, app_name=CONFIG_SERVER_APP_NAME)
-    await set_password(
-        ops_test, unit_id=config_leader_id, username=OPERATOR_USERNAME, password=OPERATOR_PASSWORD
-    )
-    await ops_test.model.wait_for_idle(
-        apps=CLUSTER_APPS,
-        status="active",
-        idle_period=20,
-    ),
-
-    config_svr_backup_password = await get_password(
-        ops_test, username=OPERATOR_USERNAME, app_name=CONFIG_SERVER_APP_NAME
-    )
-    assert (
-        config_svr_backup_password == OPERATOR_PASSWORD
-    ), "Application config-srver did not rotate password"
-    shard_backup_password = await get_password(
-        ops_test, username=OPERATOR_USERNAME, app_name=SHARD_ONE_APP_NAME
-    )
-    assert (
-        shard_backup_password == OPERATOR_PASSWORD
-    ), "Application shard-one did not rotate password"
-    shard_backup_password = await get_password(
-        ops_test, username=OPERATOR_USERNAME, app_name=SHARD_TWO_APP_NAME
-    )
-    assert (
-        shard_backup_password == OPERATOR_PASSWORD
-    ), "Application shard-two did not rotate password"
