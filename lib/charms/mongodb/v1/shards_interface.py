@@ -64,6 +64,7 @@ BACKUP_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(BackupUser.get_
 INT_TLS_CA_KEY = f"int-{Config.TLS.SECRET_CA_LABEL}"
 FORBIDDEN_REMOVAL_ERR_CODE = 20
 AUTH_FAILED_CODE = 18
+UNAUTHORISED_CODE = 13
 
 
 class IncorrectClusterPasswordError(Exception):
@@ -472,7 +473,10 @@ class ShardingProvider(Object):
             with MongoDBConnection(self.charm.mongodb_config) as mongod:
                 mongod.get_replset_status()
         except OperationFailure as e:
-            if e.code == 18:  # Unauthorized Error - i.e. password is not in sync
+            if e.code == [
+                UNAUTHORISED_CODE,
+                AUTH_FAILED_CODE,
+            ]:  # Unauthorized Error - i.e. password is not in sync
                 return False
             raise
         except ServerSelectionTimeoutError:
@@ -1000,7 +1004,7 @@ class ConfigServerRequirer(Object):
         config = self.charm.remote_mongos_config(set(mongos_hosts))
         uri = (
             f"mongodb://{','.join(mongos_hosts)}"
-            if not password
+            if password is None
             else f"mongodb://operator:{password}@{','.join(mongos_hosts)}"
         )
 
@@ -1016,8 +1020,8 @@ class ConfigServerRequirer(Object):
                 return self.charm.app.name in cluster_shards
         except OperationFailure as e:
             if e.code in [
-                13,
-                18,
+                UNAUTHORISED_CODE,
+                AUTH_FAILED_CODE,
             ]:  # [Unauthorized, AuthenticationFailed ]we are not yet connected to mongos
                 return False
 
@@ -1027,7 +1031,7 @@ class ConfigServerRequirer(Object):
             # cluster (i.e. TLS + KeyFile).
             return False
 
-    def cluster_password_synced(self, password=Optional[str]) -> bool:
+    def cluster_password_synced(self, password: Optional[str] = None) -> bool:
         """Returns True if the cluster password is synced for the shard."""
         # base case: not a shard
         if not self.charm.is_role(Config.Role.SHARD):
@@ -1040,11 +1044,14 @@ class ConfigServerRequirer(Object):
         try:
             # check our ability to use connect to both mongos and our current replica set.
             mongos_reachable = self._is_mongos_reachable(password=password)
-            uri = "localhost" if not password else f"mongodb://operator:{password}@localhost"
-            with MongoDBConnection(None, uri) as mongo:
+            uri = "localhost" if password is None else f"mongodb://operator:{password}@localhost"
+            with MongoDBConnection(self.charm.mongodb_config, uri) as mongo:
                 mongod_reachable = mongo.is_ready
         except OperationFailure as e:
-            if e.code == 18:  # Unauthorized Error - i.e. password is not in sync
+            if e.code in [
+                UNAUTHORISED_CODE,
+                AUTH_FAILED_CODE,
+            ]:  # Unauthorized Error - i.e. password is not in sync
                 return False
             raise
         except ServerSelectionTimeoutError:
