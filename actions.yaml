@@ -5,9 +5,8 @@ get-primary:
   description: Report primary replica
 
 get-password:
-  description: Recieve the password for the provided user, which is used for internal charm
-    userrs and operations. Since it is for internal charm users, it SHOULD NOT be used by 
-    applications.
+  description: Fetch the password of the provided internal user of the charm, used for internal charm operations. 
+    It is for internal charm users only, and SHOULD NOT be used by applications.
   params:
     username:
       type: string
