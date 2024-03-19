@@ -87,6 +87,7 @@ class Config:
         CONFIG_SERVER = "config-server"
         REPLICATION = "replication"
         SHARD = "shard"
+        MONGOS = "mongos"
 
     class Secrets:
         """Secrets related constants."""

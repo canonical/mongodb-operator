@@ -1486,6 +1486,16 @@ class MongodbOperatorCharm(CharmBase):
         """Returns true if charm is running as a sharded component."""
         return self.is_role(Config.Role.SHARD) or self.is_role(Config.Role.CONFIG_SERVER)
 
+    def get_config_server_name(self) -> Optional[str]:
+        """Returns the name of the Juju Application that the shard is using as a config server."""
+        if not self.is_role(Config.Role.SHARD):
+            logger.info(
+                "Component %s is not a shard, cannot be integrated to a config-server.", self.role
+            )
+            return None
+
+        return self.shard.get_config_server_name()
+
     # END: helper functions
 
 

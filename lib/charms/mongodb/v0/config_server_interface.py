@@ -18,6 +18,7 @@ from ops.charm import CharmBase, EventBase, RelationBrokenEvent
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 
+from typing import Optional
 from config import Config
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,7 @@ KEY_FILE = "keyFile"
 HOSTS_KEY = "host"
 CONFIG_SERVER_DB_KEY = "config-server-db"
 MONGOS_SOCKET_URI_FMT = "%2Fvar%2Fsnap%2Fcharmed-mongodb%2Fcommon%2Fvar%2Fmongodb-27018.sock"
+INT_TLS_CA_KEY = f"int-{Config.TLS.SECRET_CA_LABEL}"
 
 # The unique Charmhub library identifier, never change it
 LIBID = "58ad1ccca4974932ba22b97781b9b2a0"
@@ -106,16 +108,22 @@ class ClusterProvider(Object):
         # create user and set secrets for mongos relation
         self.charm.client_relations.oversee_users(None, None)
 
+        relation_data = {
+            KEYFILE_KEY: self.charm.get_secret(
+                Config.Relations.APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME
+            ),
+            CONFIG_SERVER_DB_KEY: config_server_db,
+        }
+
+        # if tls enabled
+        int_tls_ca = self.charm.tls.get_tls_secret(
+            internal=True, label_name=Config.TLS.SECRET_CA_LABEL
+        )
+        if int_tls_ca:
+            relation_data[INT_TLS_CA_KEY] = int_tls_ca
+
         if self.charm.unit.is_leader():
-            self.database_provides.update_relation_data(
-                event.relation.id,
-                {
-                    KEYFILE_KEY: self.charm.get_secret(
-                        Config.Relations.APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME
-                    ),
-                    CONFIG_SERVER_DB_KEY: config_server_db,
-                },
-            )
+            self.database_provides.update_relation_data(event.relation.id, relation_data)
 
     def _on_relation_broken(self, event) -> None:
         # Only relation_deparated events can check if scaling down
@@ -166,6 +174,14 @@ class ClusterProvider(Object):
         hosts = ",".join(hosts)
         return f"{replica_set_name}/{hosts}"
 
+    def update_ca_secret(self, new_ca: str) -> None:
+        """Updates the new CA for all related shards."""
+        for relation in self.charm.model.relations[self.relation_name]:
+            if new_ca is None:
+                self.database_provides.delete_relation_data(relation.id, {INT_TLS_CA_KEY: new_ca})
+            else:
+                self._update_relation_data(relation.id, {INT_TLS_CA_KEY: new_ca})
+
 
 class ClusterRequirer(Object):
     """Manage relations between the config server and mongos router on the mongos side."""
@@ -182,7 +198,7 @@ class ClusterRequirer(Object):
             relations_aliases=[self.relation_name],
             database_name=self.charm.database,
             extra_user_roles=self.charm.extra_user_roles,
-            additional_secret_fields=[KEYFILE_KEY],
+            additional_secret_fields=[KEYFILE_KEY, INT_TLS_CA_KEY],
         )
 
         super().__init__(charm, self.relation_name)
@@ -318,5 +334,13 @@ class ClusterRequirer(Object):
             )
 
         return True
+
+    def get_config_server_name(self) -> Optional[str]:
+        """Returns the name of the Juju Application that mongos is using as a config server."""
+        if not self.model.get_relation(self.relation_name):
+            return None
+
+        # metadata.yaml prevents having multiple config servers
+        return self.charm.model.relations[self.relation_name][0].app.name
 
     # END: helper functions

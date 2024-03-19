@@ -75,6 +75,13 @@ class MongoDBTLS(Object):
     def _on_set_tls_private_key(self, event: ActionEvent) -> None:
         """Set the TLS private key, which will be used for requesting the certificate."""
         logger.debug("Request to set TLS private key received.")
+        if self.charm.is_role(Config.Role.MONGOS) and not self.charm.has_config_server():
+            logger.error(
+                "mongos is not running (not integrated to config-server) deferring renewal of certficates."
+            )
+            event.fail("Mongos cannot set TLS keys until integrated to config-server.")
+            return
+
         try:
             self.request_certificate(event.params.get("external-key", None), internal=False)
             self.request_certificate(event.params.get("internal-key", None), internal=True)
@@ -126,8 +133,15 @@ class MongoDBTLS(Object):
             )
         return base64.b64decode(raw_content)
 
-    def _on_tls_relation_joined(self, _: RelationJoinedEvent) -> None:
+    def _on_tls_relation_joined(self, event: RelationJoinedEvent) -> None:
         """Request certificate when TLS relation joined."""
+        if self.charm.is_role(Config.Role.MONGOS) and not self.charm.has_config_server():
+            logger.info(
+                "mongos is not running (not integrated to config-server) deferring renewal of certficates."
+            )
+            event.defer()
+            return
+
         self.request_certificate(None, internal=True)
         self.request_certificate(None, internal=False)
 
@@ -141,6 +155,7 @@ class MongoDBTLS(Object):
             self.set_tls_secret(internal, Config.TLS.SECRET_CHAIN_LABEL, None)
 
         if self.charm.is_role(Config.Role.CONFIG_SERVER):
+            self.charm.cluster.update_ca_secret(new_ca=None)
             self.charm.config_server.update_ca_secret(new_ca=None)
 
         logger.info("Restarting mongod with TLS disabled.")
@@ -173,6 +188,7 @@ class MongoDBTLS(Object):
         self.set_tls_secret(internal, Config.TLS.SECRET_CA_LABEL, event.ca)
 
         if self.charm.is_role(Config.Role.CONFIG_SERVER) and internal:
+            self.charm.cluster.update_ca_secret(new_ca=event.ca)
             self.charm.config_server.update_ca_secret(new_ca=event.ca)
 
         if self.waiting_for_certs():
@@ -208,6 +224,13 @@ class MongoDBTLS(Object):
 
     def _on_certificate_expiring(self, event: CertificateExpiringEvent) -> None:
         """Request the new certificate when old certificate is expiring."""
+        if self.charm.is_role(Config.Role.MONGOS) and not self.charm.has_config_server():
+            logger.info(
+                "mongos is not running (not integrated to config-server) deferring renewal of certficates."
+            )
+            event.defer()
+            return
+
         if (
             event.certificate.rstrip()
             == self.get_tls_secret(
@@ -307,8 +330,9 @@ class MongoDBTLS(Object):
     def _get_subject_name(self) -> str:
         """Generate the subject name for CSR."""
         # In sharded MongoDB deployments it is a requirement that all subject names match across
-        # all cluster components
-        if self.charm.is_role(Config.Role.SHARD):
+        # all cluster components. The config-server name is the source of truth across mongos and
+        # shard deployments.
+        if not self.charm.is_role(Config.Role.CONFIG_SERVER):
             # until integrated with config-server use current app name as
             # subject name
             return self.charm.shard.get_config_server_name() or self.charm.app.name
