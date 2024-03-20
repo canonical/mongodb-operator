@@ -349,7 +349,7 @@ async def test_migrate_restore_backup(ops_test: OpsTest, add_writes_to_shards) -
         attempted_restore.status == "failed"
     ), "config-server ran restore without necessary remapping."
 
-    remap_pattern = f"{CONFIG_SERVER_APP_NAME}={CONFIG_SERVER_APP_NAME_NEW},{SHARD_ONE_APP_NAME}={SHARD_ONE_APP_NAME_NEW},{SHARD_TWO_APP_NAME}={SHARD_TWO_APP_NAME_NEW}"
+    remap_pattern = f"{CONFIG_SERVER_APP_NAME_NEW}={CONFIG_SERVER_APP_NAME},{SHARD_ONE_APP_NAME_NEW}={SHARD_ONE_APP_NAME},{SHARD_TWO_APP_NAME_NEW}={SHARD_TWO_APP_NAME}"
     action = await leader_unit.run_action(
         action_name="restore", **{"backup-id": backup_id, "remap-pattern": remap_pattern}
     )
