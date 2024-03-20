@@ -297,7 +297,10 @@ class MongoDBBackups(Object):
             )
             return False
 
-        if self._needs_remap_arguments(backup_id) and event.params.get("remap-pattern") is None:
+        if (
+            self._needs_provided_remap_arguments(backup_id)
+            and event.params.get("remap-pattern") is None
+        ):
             self._fail_action_with_error_log(
                 event, action, "Cannot restore backup, 'remap-pattern' must be set."
             )
@@ -752,7 +755,7 @@ class MongoDBBackups(Object):
             message = "s3 configurations are incompatible."
         return message
 
-    def _needs_remap_arguments(self, backup_id: str) -> bool:
+    def _needs_provided_remap_arguments(self, backup_id: str) -> bool:
         """Returns true if remap arguments are needed to perform a restore command."""
         pbm_status = self.charm.run_pbm_command(["status", "--out=json"])
         pbm_status = json.loads(pbm_status)
@@ -764,4 +767,7 @@ class MongoDBBackups(Object):
             backup_status = backup.get("error", "")
             break
 
-        return self._backup_from_different_cluster(backup_status)
+        # When a charm is running as a Replica set it can generate its own remapping arguments
+        return self._backup_from_different_cluster(backup_status) and self.charm.is_role(
+            Config.Role.CONFIG_SERVER
+        )

@@ -600,7 +600,7 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.MongodbOperatorCharm.has_backup_service")
     @patch("charm.MongodbOperatorCharm.run_pbm_command")
     @patch("charm.MongoDBBackups.get_pbm_status")
-    @patch("charm.MongoDBBackups._needs_remap_arguments")
+    @patch("charm.MongoDBBackups._needs_provided_remap_arguments")
     def test_restore_failed(self, remap, pbm_status, pbm_command, service):
         """Verifies restore is fails if the pbm command failed."""
         action_event = mock.Mock()
