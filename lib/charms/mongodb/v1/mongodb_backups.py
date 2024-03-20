@@ -297,12 +297,9 @@ class MongoDBBackups(Object):
             )
             return False
 
-        if (
-            self._needs_remap_arguments(pbm_status, backup_id)
-            and event.params.get("remap-pattern") is None
-        ):
+        if self._needs_remap_arguments(backup_id) and event.params.get("remap-pattern") is None:
             self._fail_action_with_error_log(
-                event, action, "Cannot restore backup, 'remapping' pattern must be set."
+                event, action, "Cannot restore backup, 'remap-pattern' must be set."
             )
             return False
 
@@ -572,6 +569,9 @@ class MongoDBBackups(Object):
             with attempt:
                 try:
                     remapping_args = remapping_args or self._remap_replicaset(backup_id)
+                    if remapping_args:
+                        remapping_args = f"--replset-remapping {remapping_args}"
+
                     restore_cmd = ["restore", backup_id]
                     if remapping_args:
                         restore_cmd = restore_cmd + remapping_args.split(" ")
@@ -658,7 +658,7 @@ class MongoDBBackups(Object):
             old_cluster_name,
             current_cluster_name,
         )
-        return f"--replset-remapping {current_cluster_name}={old_cluster_name}"
+        return f"{current_cluster_name}={old_cluster_name}"
 
     def _fail_action_with_error_log(self, event, action: str, message: str) -> None:
         logger.error("%s failed: %s", action.capitalize(), message)
@@ -752,10 +752,11 @@ class MongoDBBackups(Object):
             message = "s3 configurations are incompatible."
         return message
 
-    def _needs_remap_arguments(self, pbm_status: Dict, backup_id: str) -> bool:
+    def _needs_remap_arguments(self, backup_id: str) -> bool:
         """Returns true if remap arguments are needed to perform a restore command."""
+        pbm_status = self.charm.run_pbm_command(["status", "--out=json"])
+        pbm_status = json.loads(pbm_status)
         backups = pbm_status["backups"]["snapshot"] or []
-        backup_status = ""
         for backup in backups:
             if not backup_id == backup["name"]:
                 continue
