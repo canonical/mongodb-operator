@@ -600,14 +600,15 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.MongodbOperatorCharm.has_backup_service")
     @patch("charm.MongodbOperatorCharm.run_pbm_command")
     @patch("charm.MongoDBBackups.get_pbm_status")
-    def test_restore_failed(self, pbm_status, pbm_command, service):
+    @patch("charm.MongoDBBackups._needs_remap_arguments")
+    def test_restore_failed(self, remap, pbm_status, pbm_command, service):
         """Verifies restore is fails if the pbm command failed."""
         action_event = mock.Mock()
         action_event.params = {"backup-id": "back-me-up"}
         pbm_status.return_value = ActiveStatus("")
 
         pbm_command.side_effect = ExecError(
-            command=["/usr/bin/pbm", "list"], exit_code=1, stdout="failed", stderr=""
+            command=["/usr/bin/pbm", "restore"], exit_code=1, stdout="failed", stderr=""
         )
 
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
@@ -660,7 +661,7 @@ class TestMongoBackups(unittest.TestCase):
 
         # first case is that the backup is not in the error state
         remap = self.harness.charm.backups._remap_replicaset("2002-02-14T13:59:14Z")
-        self.assertEqual(remap, "--replset-remapping current-app-name=old-cluster-name")
+        self.assertEqual(remap, "current-app-name=old-cluster-name")
 
     @patch("charm.MongodbOperatorCharm.has_backup_service")
     @patch("charm.MongodbOperatorCharm.run_pbm_command")
