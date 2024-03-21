@@ -34,6 +34,9 @@ storage:
   mongodb:
     type: filesystem
     location: /var/snap/charmed-mongodb/common
+  logs:
+    type: filesystem
+    location: /var/snap/charmed-mongodb/common/var/log/mongodb
 
 peers:
   database-peers:
