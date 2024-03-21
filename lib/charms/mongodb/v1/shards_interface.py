@@ -328,10 +328,10 @@ class ShardingProvider(Object):
             return BlockedStatus("sharding interface cannot be used by replicas")
 
         if self.model.relations[LEGACY_REL_NAME]:
-            return BlockedStatus(f"relation {LEGACY_REL_NAME} to shard not supported.")
+            return BlockedStatus(f"Sharding roles do not support {LEGACY_REL_NAME} interface.")
 
         if self.model.relations[REL_NAME]:
-            return BlockedStatus(f"relation {REL_NAME} to shard not supported.")
+            return BlockedStatus(f"Sharding roles do not support {REL_NAME} interface.")
 
         if not self.is_mongos_running():
             return BlockedStatus("Internal mongos is not running.")
@@ -805,10 +805,10 @@ class ConfigServerRequirer(Object):
             return BlockedStatus("sharding interface cannot be used by replicas")
 
         if self.model.get_relation(LEGACY_REL_NAME):
-            return BlockedStatus(f"relation {LEGACY_REL_NAME} to shard not supported.")
+            return BlockedStatus(f"Sharding roles do not support {LEGACY_REL_NAME} interface.")
 
         if self.model.get_relation(REL_NAME):
-            return BlockedStatus(f"relation {REL_NAME} to shard not supported.")
+            return BlockedStatus(f"Sharding roles do not support {REL_NAME} interface.")
 
         if not self.model.get_relation(self.relation_name) and not self.charm.drained:
             return BlockedStatus("missing relation to config server")
