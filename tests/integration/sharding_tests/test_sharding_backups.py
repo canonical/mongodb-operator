@@ -18,10 +18,14 @@ from .helpers import generate_mongodb_client, write_data_to_mongodb
 
 S3_APP_NAME = "s3-integrator"
 SHARD_ONE_APP_NAME = "shard-one"
+SHARD_ONE_APP_NAME_NEW = "shard-one-new"
 SHARD_TWO_APP_NAME = "shard-two"
+SHARD_TWO_APP_NAME_NEW = "shard-two-new"
 CONFIG_SERVER_APP_NAME = "config-server"
+CONFIG_SERVER_APP_NAME_NEW = "config-server-new"
 SHARD_APPS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME]
 CLUSTER_APPS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME, CONFIG_SERVER_APP_NAME]
+CLUSTER_APPS_NEW = [SHARD_ONE_APP_NAME_NEW, SHARD_TWO_APP_NAME_NEW, CONFIG_SERVER_APP_NAME_NEW]
 SHARD_REL_NAME = "sharding"
 CONFIG_SERVER_REL_NAME = "config-server"
 S3_REL_NAME = "s3-credentials"
@@ -319,52 +323,66 @@ async def test_migrate_restore_backup(ops_test: OpsTest, add_writes_to_shards) -
 
     # Destroy the old cluster and create a new cluster with the same exact topology and password
     await destroy_cluster_backup_test(ops_test)
-    await deploy_cluster_backup_test(ops_test, deploy_s3_integrator=False)
-    await setup_cluster_and_s3(ops_test)
-    config_leader_id = await get_leader_id(ops_test, app_name=CONFIG_SERVER_APP_NAME)
+    await deploy_cluster_backup_test(ops_test, deploy_s3_integrator=False, new_names=True)
+    await setup_cluster_and_s3(ops_test, new_names=True)
+    config_leader_id = await get_leader_id(ops_test, app_name=CONFIG_SERVER_APP_NAME_NEW)
     await set_password(
         ops_test, unit_id=config_leader_id, username="operator", password=OPERATOR_PASSWORD
     )
     await ops_test.model.wait_for_idle(
-        apps=CLUSTER_APPS, status="active", idle_period=20, timeout=TIMEOUT
+        apps=CLUSTER_APPS_NEW, status="active", idle_period=20, timeout=TIMEOUT
     )
 
     # find most recent backup id and restore
     leader_unit = await backup_helpers.get_leader_unit(
-        ops_test, db_app_name=CONFIG_SERVER_APP_NAME
+        ops_test, db_app_name=CONFIG_SERVER_APP_NAME_NEW
     )
-
-    # find most recent backup id and restore
     list_result = await backup_helpers.get_backup_list(
-        ops_test, db_app_name=CONFIG_SERVER_APP_NAME
+        ops_test, db_app_name=CONFIG_SERVER_APP_NAME_NEW
     )
     most_recent_backup = list_result.split("\n")[-1]
     backup_id = most_recent_backup.split()[0]
+
     action = await leader_unit.run_action(action_name="restore", **{"backup-id": backup_id})
+    attempted_restore = await action.wait()
+    assert (
+        attempted_restore.status == "failed"
+    ), "config-server ran restore without necessary remapping."
+
+    remap_pattern = f"{CONFIG_SERVER_APP_NAME_NEW}={CONFIG_SERVER_APP_NAME},{SHARD_ONE_APP_NAME_NEW}={SHARD_ONE_APP_NAME},{SHARD_TWO_APP_NAME_NEW}={SHARD_TWO_APP_NAME}"
+    action = await leader_unit.run_action(
+        action_name="restore", **{"backup-id": backup_id, "remap-pattern": remap_pattern}
+    )
     restore = await action.wait()
     assert restore.results["restore-status"] == "restore started", "restore not successful"
 
     await ops_test.model.wait_for_idle(
-        apps=[CONFIG_SERVER_APP_NAME], status="active", idle_period=20
+        apps=[CONFIG_SERVER_APP_NAME_NEW], status="active", idle_period=20
     ),
 
-    await verify_writes_restored(ops_test, cluster_writes)
+    await verify_writes_restored(ops_test, cluster_writes, new_names=True)
 
 
-async def deploy_cluster_backup_test(ops_test: OpsTest, deploy_s3_integrator=True) -> None:
+async def deploy_cluster_backup_test(
+    ops_test: OpsTest, deploy_s3_integrator=True, new_names=False
+) -> None:
     """Deploy a cluster for the backup test."""
     my_charm = await ops_test.build_charm(".")
+
+    config_server_name = CONFIG_SERVER_APP_NAME if not new_names else CONFIG_SERVER_APP_NAME_NEW
+    shard_one_name = SHARD_ONE_APP_NAME if not new_names else SHARD_ONE_APP_NAME_NEW
+    shard_two_name = SHARD_TWO_APP_NAME if not new_names else SHARD_TWO_APP_NAME_NEW
     await ops_test.model.deploy(
         my_charm,
         num_units=2,
         config={"role": "config-server"},
-        application_name=CONFIG_SERVER_APP_NAME,
+        application_name=config_server_name,
     )
     await ops_test.model.deploy(
-        my_charm, num_units=2, config={"role": "shard"}, application_name=SHARD_ONE_APP_NAME
+        my_charm, num_units=2, config={"role": "shard"}, application_name=shard_one_name
     )
     await ops_test.model.deploy(
-        my_charm, num_units=1, config={"role": "shard"}, application_name=SHARD_TWO_APP_NAME
+        my_charm, num_units=1, config={"role": "shard"}, application_name=shard_two_name
     )
 
     # deploy the s3 integrator charm
@@ -372,7 +390,7 @@ async def deploy_cluster_backup_test(ops_test: OpsTest, deploy_s3_integrator=Tru
         await ops_test.model.deploy(S3_APP_NAME, channel="edge")
 
     await ops_test.model.wait_for_idle(
-        apps=[S3_APP_NAME, CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
+        apps=[S3_APP_NAME, config_server_name, shard_one_name, shard_two_name],
         idle_period=20,
         raise_on_blocked=False,
         timeout=TIMEOUT,
@@ -380,28 +398,32 @@ async def deploy_cluster_backup_test(ops_test: OpsTest, deploy_s3_integrator=Tru
     )
 
 
-async def setup_cluster_and_s3(ops_test: OpsTest) -> None:
+async def setup_cluster_and_s3(ops_test: OpsTest, new_names=False) -> None:
     """Deploy a cluster for the backup test."""
+    config_server_name = CONFIG_SERVER_APP_NAME if not new_names else CONFIG_SERVER_APP_NAME_NEW
+    shard_one_name = SHARD_ONE_APP_NAME if not new_names else SHARD_ONE_APP_NAME_NEW
+    shard_two_name = SHARD_TWO_APP_NAME if not new_names else SHARD_TWO_APP_NAME_NEW
+
     # provide config-server to entire cluster and s3-integrator to config-server - integrations
     # made in succession to test race conditions.
     await ops_test.model.integrate(
         f"{S3_APP_NAME}:{S3_REL_NAME}",
-        f"{CONFIG_SERVER_APP_NAME}:{S3_REL_NAME}",
+        f"{config_server_name}:{S3_REL_NAME}",
     )
     await ops_test.model.integrate(
-        f"{SHARD_ONE_APP_NAME}:{SHARD_REL_NAME}",
-        f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
+        f"{shard_one_name}:{SHARD_REL_NAME}",
+        f"{config_server_name}:{CONFIG_SERVER_REL_NAME}",
     )
     await ops_test.model.integrate(
-        f"{SHARD_TWO_APP_NAME}:{SHARD_REL_NAME}",
-        f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
+        f"{shard_two_name}:{SHARD_REL_NAME}",
+        f"{config_server_name}:{CONFIG_SERVER_REL_NAME}",
     )
 
     await ops_test.model.wait_for_idle(
         apps=[
-            CONFIG_SERVER_APP_NAME,
-            SHARD_ONE_APP_NAME,
-            SHARD_TWO_APP_NAME,
+            config_server_name,
+            shard_one_name,
+            shard_two_name,
         ],
         idle_period=20,
         status="active",
@@ -463,24 +485,30 @@ async def add_and_verify_unwanted_writes(ops_test, old_cluster_writes: Dict) -> 
     ), "No writes to be cleared on shard-two after restoring."
 
 
-async def verify_writes_restored(ops_test, exppected_cluster_writes: Dict) -> None:
+async def verify_writes_restored(
+    ops_test, exppected_cluster_writes: Dict, new_names=False
+) -> None:
     """Verify that writes were correctly restored."""
+    shard_one_name = SHARD_ONE_APP_NAME if not new_names else SHARD_ONE_APP_NAME_NEW
+    shard_two_name = SHARD_TWO_APP_NAME if not new_names else SHARD_TWO_APP_NAME_NEW
+    shard_apps = [shard_one_name, shard_two_name]
+
     # verify all writes are present
     for attempt in Retrying(stop=stop_after_delay(4), wait=wait_fixed(20), reraise=True):
         with attempt:
             restored_total_writes = await writes_helpers.get_cluster_writes_count(
                 ops_test,
-                shard_app_names=SHARD_APPS,
+                shard_app_names=shard_apps,
                 db_names=[SHARD_ONE_DB_NAME, SHARD_TWO_DB_NAME],
             )
             assert (
                 restored_total_writes["total_writes"] == exppected_cluster_writes["total_writes"]
             ), "writes not correctly restored to whole cluster"
             assert (
-                restored_total_writes[SHARD_ONE_APP_NAME]
+                restored_total_writes[shard_one_name]
                 == exppected_cluster_writes[SHARD_ONE_APP_NAME]
-            ), f"writes not correctly restored to {SHARD_ONE_APP_NAME}"
+            ), f"writes not correctly restored to {shard_one_name}"
             assert (
-                restored_total_writes[SHARD_TWO_APP_NAME]
+                restored_total_writes[shard_two_name]
                 == exppected_cluster_writes[SHARD_TWO_APP_NAME]
-            ), f"writes not correctly restored to {SHARD_TWO_APP_NAME}"
+            ), f"writes not correctly restored to {shard_two_name}"
