@@ -69,29 +69,31 @@ async def test_build_and_deploy(
     await ops_test.model.deploy(application_charm, application_name=APP_CHARM_NAME)
     await ops_test.model.deploy(legacy_charm, application_name=LEGACY_APP_CHARM_NAME)
 
-    await ops_test.model.wait_for_idle(
-        apps=[
-            CONFIG_SERVER_ONE_APP_NAME,
-            CONFIG_SERVER_TWO_APP_NAME,
-            SHARD_ONE_APP_NAME,
-        ],
-        idle_period=20,
-        raise_on_blocked=False,
-        timeout=TIMEOUT,
-    )
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=[
+                CONFIG_SERVER_ONE_APP_NAME,
+                CONFIG_SERVER_TWO_APP_NAME,
+                SHARD_ONE_APP_NAME,
+            ],
+            idle_period=20,
+            raise_on_blocked=False,
+            timeout=TIMEOUT,
+        )
 
     await ops_test.model.integrate(
         f"{MONGOS_APP_NAME}",
         f"{MONGOS_HOST_APP_NAME}",
     )
 
-    await ops_test.model.wait_for_idle(
-        apps=[MONGOS_HOST_APP_NAME, MONGOS_APP_NAME],
-        idle_period=20,
-        raise_on_blocked=False,
-        timeout=TIMEOUT,
-        raise_on_error=False,
-    )
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=[MONGOS_HOST_APP_NAME, MONGOS_APP_NAME],
+            idle_period=20,
+            raise_on_blocked=False,
+            timeout=TIMEOUT,
+            raise_on_error=False,
+        )
 
 
 @pytest.mark.group(1)
@@ -119,12 +121,13 @@ async def test_only_one_config_server_relation(ops_test: OpsTest) -> None:
         f"{CONFIG_SERVER_ONE_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
     )
 
-    await ops_test.model.wait_for_idle(
-        apps=[REPLICATION_APP_NAME],
-        idle_period=20,
-        raise_on_blocked=False,
-        timeout=TIMEOUT,
-    )
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=[REPLICATION_APP_NAME],
+            idle_period=20,
+            raise_on_blocked=False,
+            timeout=TIMEOUT,
+        )
 
 
 @pytest.mark.group(1)
@@ -134,12 +137,13 @@ async def test_cannot_use_db_relation(ops_test: OpsTest) -> None:
     for sharded_component in SHARDING_COMPONENTS:
         await ops_test.model.integrate(f"{APP_CHARM_NAME}:{DATABASE_REL_NAME}", sharded_component)
 
-    await ops_test.model.wait_for_idle(
-        apps=SHARDING_COMPONENTS,
-        idle_period=20,
-        raise_on_blocked=False,
-        timeout=TIMEOUT,
-    )
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=SHARDING_COMPONENTS,
+            idle_period=20,
+            raise_on_blocked=False,
+            timeout=TIMEOUT,
+        )
 
     for sharded_component in SHARDING_COMPONENTS:
         sharded_component_unit = ops_test.model.applications[sharded_component].units[0]
@@ -155,12 +159,13 @@ async def test_cannot_use_db_relation(ops_test: OpsTest) -> None:
             sharded_component,
         )
 
-    await ops_test.model.wait_for_idle(
-        apps=SHARDING_COMPONENTS,
-        idle_period=20,
-        raise_on_blocked=False,
-        timeout=TIMEOUT,
-    )
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=SHARDING_COMPONENTS,
+            idle_period=20,
+            raise_on_blocked=False,
+            timeout=TIMEOUT,
+        )
 
 
 @pytest.mark.group(1)
@@ -170,12 +175,13 @@ async def test_cannot_use_legacy_db_relation(ops_test: OpsTest) -> None:
     for sharded_component in SHARDING_COMPONENTS:
         await ops_test.model.integrate(LEGACY_APP_CHARM_NAME, sharded_component)
 
-    await ops_test.model.wait_for_idle(
-        apps=SHARDING_COMPONENTS,
-        idle_period=20,
-        raise_on_blocked=False,
-        timeout=TIMEOUT,
-    )
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=SHARDING_COMPONENTS,
+            idle_period=20,
+            raise_on_blocked=False,
+            timeout=TIMEOUT,
+        )
 
     for sharded_component in SHARDING_COMPONENTS:
         sharded_component_unit = ops_test.model.applications[sharded_component].units[0]
@@ -191,12 +197,13 @@ async def test_cannot_use_legacy_db_relation(ops_test: OpsTest) -> None:
             f"{LEGACY_APP_CHARM_NAME}:{LEGACY_RELATION_NAME}",
         )
 
-    await ops_test.model.wait_for_idle(
-        apps=SHARDING_COMPONENTS,
-        idle_period=20,
-        raise_on_blocked=False,
-        timeout=TIMEOUT,
-    )
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=SHARDING_COMPONENTS,
+            idle_period=20,
+            raise_on_blocked=False,
+            timeout=TIMEOUT,
+        )
 
 
 @pytest.mark.group(1)
@@ -209,12 +216,13 @@ async def test_replication_config_server_relation(ops_test: OpsTest):
         f"{CONFIG_SERVER_ONE_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
     )
 
-    await ops_test.model.wait_for_idle(
-        apps=[REPLICATION_APP_NAME],
-        idle_period=20,
-        raise_on_blocked=False,
-        timeout=TIMEOUT,
-    )
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=[REPLICATION_APP_NAME],
+            idle_period=20,
+            raise_on_blocked=False,
+            timeout=TIMEOUT,
+        )
 
     replication_unit = ops_test.model.applications[REPLICATION_APP_NAME].units[0]
     assert (
@@ -238,12 +246,13 @@ async def test_replication_shard_relation(ops_test: OpsTest):
         f"{REPLICATION_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
     )
 
-    await ops_test.model.wait_for_idle(
-        apps=[REPLICATION_APP_NAME],
-        idle_period=20,
-        raise_on_blocked=False,
-        timeout=TIMEOUT,
-    )
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=[REPLICATION_APP_NAME],
+            idle_period=20,
+            raise_on_blocked=False,
+            timeout=TIMEOUT,
+        )
 
     replication_unit = ops_test.model.applications[REPLICATION_APP_NAME].units[0]
     assert (
@@ -256,12 +265,13 @@ async def test_replication_shard_relation(ops_test: OpsTest):
         f"{REPLICATION_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
     )
 
-    await ops_test.model.wait_for_idle(
-        apps=[REPLICATION_APP_NAME],
-        idle_period=20,
-        raise_on_blocked=False,
-        timeout=TIMEOUT,
-    )
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=[REPLICATION_APP_NAME],
+            idle_period=20,
+            raise_on_blocked=False,
+            timeout=TIMEOUT,
+        )
 
 
 @pytest.mark.group(1)
@@ -274,12 +284,13 @@ async def test_replication_mongos_relation(ops_test: OpsTest) -> None:
         f"{MONGOS_APP_NAME}",
     )
 
-    await ops_test.model.wait_for_idle(
-        apps=[REPLICATION_APP_NAME],
-        idle_period=20,
-        raise_on_blocked=False,
-        timeout=TIMEOUT,
-    )
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=[REPLICATION_APP_NAME],
+            idle_period=20,
+            raise_on_blocked=False,
+            timeout=TIMEOUT,
+        )
 
     replication_unit = ops_test.model.applications[REPLICATION_APP_NAME].units[0]
     assert (
@@ -293,12 +304,13 @@ async def test_replication_mongos_relation(ops_test: OpsTest) -> None:
         f"{MONGOS_APP_NAME}:cluster",
     )
 
-    await ops_test.model.wait_for_idle(
-        apps=[SHARD_ONE_APP_NAME],
-        idle_period=20,
-        raise_on_blocked=False,
-        timeout=TIMEOUT,
-    )
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=[SHARD_ONE_APP_NAME],
+            idle_period=20,
+            raise_on_blocked=False,
+            timeout=TIMEOUT,
+        )
 
 
 @pytest.mark.group(1)
@@ -311,12 +323,13 @@ async def test_shard_mongos_relation(ops_test: OpsTest) -> None:
         f"{MONGOS_APP_NAME}",
     )
 
-    await ops_test.model.wait_for_idle(
-        apps=[SHARD_ONE_APP_NAME],
-        idle_period=20,
-        raise_on_blocked=False,
-        timeout=TIMEOUT,
-    )
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=[SHARD_ONE_APP_NAME],
+            idle_period=20,
+            raise_on_blocked=False,
+            timeout=TIMEOUT,
+        )
 
     shard_unit = ops_test.model.applications[SHARD_ONE_APP_NAME].units[0]
     assert (
@@ -330,12 +343,13 @@ async def test_shard_mongos_relation(ops_test: OpsTest) -> None:
         f"{SHARD_ONE_APP_NAME}:cluster",
     )
 
-    await ops_test.model.wait_for_idle(
-        apps=[SHARD_ONE_APP_NAME],
-        idle_period=20,
-        raise_on_blocked=False,
-        timeout=TIMEOUT,
-    )
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=[SHARD_ONE_APP_NAME],
+            idle_period=20,
+            raise_on_blocked=False,
+            timeout=TIMEOUT,
+        )
 
 
 @pytest.mark.group(1)
@@ -348,12 +362,13 @@ async def test_shard_s3_relation(ops_test: OpsTest) -> None:
         f"{S3_APP_NAME}",
     )
 
-    await ops_test.model.wait_for_idle(
-        apps=[SHARD_ONE_APP_NAME],
-        idle_period=20,
-        raise_on_blocked=False,
-        timeout=TIMEOUT,
-    )
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=[SHARD_ONE_APP_NAME],
+            idle_period=20,
+            raise_on_blocked=False,
+            timeout=TIMEOUT,
+        )
 
     shard_unit = ops_test.model.applications[SHARD_ONE_APP_NAME].units[0]
     assert (
