@@ -447,7 +447,7 @@ class TestMongoBackups(unittest.TestCase):
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
         self.harness.charm.backups._on_list_backups_action(action_event)
 
-        action_event.defer.assert_called()
+        action_event.fail.assert_called()
 
     @patch("charm.MongodbOperatorCharm.has_backup_service")
     @patch("charm.MongodbOperatorCharm.run_pbm_command")
@@ -561,7 +561,7 @@ class TestMongoBackups(unittest.TestCase):
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
         self.harness.charm.backups._on_restore_action(action_event)
 
-        action_event.defer.assert_called()
+        action_event.fail.assert_called()
 
     @patch("charm.MongodbOperatorCharm.has_backup_service")
     @patch("charm.MongodbOperatorCharm.run_pbm_command")
@@ -696,7 +696,7 @@ class TestMongoBackups(unittest.TestCase):
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
         self.harness.charm.backups._on_create_backup_action(action_event)
 
-        action_event.defer.assert_called()
+        action_event.fail.assert_called()
 
     @patch("charm.MongodbOperatorCharm.has_backup_service")
     @patch("charm.MongodbOperatorCharm.run_pbm_command")
