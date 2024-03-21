@@ -67,6 +67,7 @@ def _get_audit_log_settings(snap_install: bool) -> List[str]:
         f"--auditFormat={Config.AuditLog.FORMAT}",
     ]
 
+
 # noinspection GrazieInspection
 def get_create_user_cmd(config: MongoDBConfiguration, mongo_path=MONGO_SHELL) -> List[str]:
     """Creates initial admin user for MongoDB.
@@ -189,7 +190,7 @@ def get_mongod_args(
         # for simplicity we run the mongod daemon on shards, configsvrs, and replicas on the same
         # port
         f"--port={Config.MONGODB_PORT}",
-        "--setParameter processUmask=037", # required for log files perminission (g+r)
+        "--setParameter processUmask=037",  # required for log files perminission (g+r)
         logging_options,
     ]
     cmd.extend(audit_log_settings)
