@@ -56,7 +56,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 11
+LIBPATCH = 12
 KEYFILE_KEY = "key-file"
 HOSTS_KEY = "host"
 OPERATOR_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username())
@@ -328,10 +328,10 @@ class ShardingProvider(Object):
             return BlockedStatus("sharding interface cannot be used by replicas")
 
         if self.model.relations[LEGACY_REL_NAME]:
-            return BlockedStatus(f"relation {LEGACY_REL_NAME} to shard not supported.")
+            return BlockedStatus(f"Sharding roles do not support {LEGACY_REL_NAME} interface.")
 
         if self.model.relations[REL_NAME]:
-            return BlockedStatus(f"relation {REL_NAME} to shard not supported.")
+            return BlockedStatus(f"Sharding roles do not support {REL_NAME} interface.")
 
         if not self.is_mongos_running():
             return BlockedStatus("Internal mongos is not running.")
@@ -511,6 +511,9 @@ class ConfigServerRequirer(Object):
         super().__init__(charm, self.relation_name)
 
         self.framework.observe(
+            charm.on[self.relation_name].relation_joined, self._on_relation_joined
+        )
+        self.framework.observe(
             charm.on[self.relation_name].relation_changed, self._on_relation_changed
         )
 
@@ -634,19 +637,17 @@ class ConfigServerRequirer(Object):
         # after updating the password of the backup user, restart pbm with correct password
         self.charm._connect_pbm_agent()
 
+    def _on_relation_joined(self, _):
+        """Sets status and flags in relation data relevant to sharding."""
+        # if re-using an old shard, re-set flags.
+        self.charm.unit_peer_data["drained"] = json.dumps(False)
+        self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
+
     def _on_relation_changed(self, event):
         """Retrieves secrets from config-server and updates them within the shard."""
         if not self.pass_hook_checks(event):
             logger.info("Skipping relation joined event: hook checks re not passed")
             return
-
-        # if re-using an old shard, re-set drained flag.
-        self.charm.unit_peer_data["drained"] = json.dumps(False)
-
-        # relation-changed events can be used for other purposes (not only adding the shard), i.e.
-        # password rotation, secret rotation, mongos hosts rotation
-        if self._is_mongos_reachable() and not self._is_added_to_cluster():
-            self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
 
         # shards rely on the config server for shared cluster secrets
         key_file_enabled, tls_enabled = self.get_membership_auth_modes(event)
@@ -804,10 +805,10 @@ class ConfigServerRequirer(Object):
             return BlockedStatus("sharding interface cannot be used by replicas")
 
         if self.model.get_relation(LEGACY_REL_NAME):
-            return BlockedStatus(f"relation {LEGACY_REL_NAME} to shard not supported.")
+            return BlockedStatus(f"Sharding roles do not support {LEGACY_REL_NAME} interface.")
 
         if self.model.get_relation(REL_NAME):
-            return BlockedStatus(f"relation {REL_NAME} to shard not supported.")
+            return BlockedStatus(f"Sharding roles do not support {REL_NAME} interface.")
 
         if not self.model.get_relation(self.relation_name) and not self.charm.drained:
             return BlockedStatus("missing relation to config server")
@@ -852,6 +853,9 @@ class ConfigServerRequirer(Object):
 
         if not self._is_mongos_reachable():
             return BlockedStatus("Config server unreachable")
+
+        if not self.cluster_password_synced():
+            return WaitingStatus("Waiting to sync passwords across the cluster")
 
         if not self._is_added_to_cluster():
             return MaintenanceStatus("Adding shard to config-server")
