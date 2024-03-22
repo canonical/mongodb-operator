@@ -10,7 +10,7 @@
 This charm was created to reduce the complexity of the deployment, scaling, and operational challenges of MongoDB database operations. 
 
 It currently supports:
-* MongoDB Deployment
+* MongoDB deployment
 * Replication
 * Sharding
 * Password set and rotation
@@ -28,7 +28,7 @@ It currently supports:
 
 This operator uses the Charmed MongoDB [snap package](https://snapcraft.io/charmed-mongodb), which bundles MongoDB along with other useful tools for building a charmed operator.
 
-You can find information about all this charm's revisions on [Charmhub | Charmed MongoDB](https://charmhub.io/mongodb).
+You can find information about all of this charm's revisions on [Charmhub | Charmed MongoDB](https://charmhub.io/mongodb).
 
 For more details about features and releases, visit our [Release Notes](https://github.com/canonical/mongodb-operator/releases) on GitHub.
 
