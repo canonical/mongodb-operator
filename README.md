@@ -10,14 +10,17 @@
 This charm was created to reduce the complexity of the deployment, scaling, and operational challenges of MongoDB database operations. 
 
 It currently supports:
+* MongoDB Deployment
 * Replication
 * Sharding
-* Password rotation
+* Password set and rotation
 * User management
 * Client connections via integrations
 * TLS encryption
 * Backup & restore
 * Monitoring
+* Auditing
+* Observability
 
 > Check our official documentation at [Charmhub | Charmed MongoDB](https://charmhub.io/mongodb) for tutorials, guides, explanations, and other resources.
 
@@ -41,7 +44,7 @@ Charmed MongoDB is an open source project that warmly welcomes community contrib
 
 ## Licensing & Trademark
 
-The Charmed MongoDB Operator is free software, distributed under the [Apache Software License, version 2.0](https://github.com/canonical/mongodb-operator/blob/main/LICENSE). It installs, operates, and depends on [MongoDB Community Version](https://github.com/mongodb/mongo), which is licensed under the Server Side Public License (SSPL)
+The Charmed MongoDB Operator is free software, distributed under the [Apache Software License, version 2.0](https://github.com/canonical/mongodb-operator/blob/main/LICENSE). It installs, operates, and depends on [MongoDB Community Version](https://github.com/mongodb/mongo) and [Percona Server for MongoDB](https://github.com/percona/percona-server-mongodb), which is licensed under the Server Side Public License (SSPL)
 
-MongoDB is a trademark or registered trademark of MongoDB Inc. Other trademarks are property of their respective owners.
+“MongoDB” is a trademark or registered trademark of MongoDB Inc. Other trademarks are property of their respective owners. Charmed MongoDB is not sponsored, endorsed, or affiliated with MongoDB, Inc.
 
