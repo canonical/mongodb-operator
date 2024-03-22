@@ -7,6 +7,7 @@ This class handles the sharing of secrets between sharded components, adding sha
 shards.
 """
 import logging
+from typing import Optional
 
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseProvides,
@@ -18,7 +19,6 @@ from ops.charm import CharmBase, EventBase, RelationBrokenEvent
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 
-from typing import Optional
 from config import Config
 
 logger = logging.getLogger(__name__)

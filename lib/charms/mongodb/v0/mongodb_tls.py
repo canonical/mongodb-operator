@@ -13,7 +13,6 @@ import re
 import socket
 from typing import List, Optional, Tuple
 
-from charms.mongodb.v0.mongodb import MongoDBConnection
 from charms.tls_certificates_interface.v1.tls_certificates import (
     CertificateAvailableEvent,
     CertificateExpiringEvent,
@@ -77,7 +76,7 @@ class MongoDBTLS(Object):
         logger.debug("Request to set TLS private key received.")
         if self.charm.is_role(Config.Role.MONGOS) and not self.charm.has_config_server():
             logger.error(
-                "mongos is not running (not integrated to config-server) deferring renewal of certficates."
+                "mongos is not running (not integrated to config-server) deferring renewal of certificates."
             )
             event.fail("Mongos cannot set TLS keys until integrated to config-server.")
             return
@@ -137,7 +136,7 @@ class MongoDBTLS(Object):
         """Request certificate when TLS relation joined."""
         if self.charm.is_role(Config.Role.MONGOS) and not self.charm.has_config_server():
             logger.info(
-                "mongos is not running (not integrated to config-server) deferring renewal of certficates."
+                "mongos is not running (not integrated to config-server) deferring renewal of certificates."
             )
             event.defer()
             return
@@ -161,11 +160,18 @@ class MongoDBTLS(Object):
         logger.info("Restarting mongod with TLS disabled.")
         self.charm.unit.status = MaintenanceStatus("disabling TLS")
         self.charm.delete_tls_certificate_from_workload()
-        self.charm.restart_mongod_service()
+        self.charm.restart_charm_services()
         self.charm.unit.status = ActiveStatus()
 
     def _on_certificate_available(self, event: CertificateAvailableEvent) -> None:
         """Enable TLS when TLS certificate available."""
+        if self.charm.is_role(Config.Role.MONGOS) and not self.charm.config_server_db:
+            logger.debug(
+                "mongos requires config-server in order to start, do not restart with TLS until integrated to config-server"
+            )
+            event.defer()
+            return
+
         int_csr = self.get_tls_secret(internal=True, label_name=Config.TLS.SECRET_CSR_LABEL)
         ext_csr = self.get_tls_secret(internal=False, label_name=Config.TLS.SECRET_CSR_LABEL)
 
@@ -203,13 +209,12 @@ class MongoDBTLS(Object):
         self.charm.delete_tls_certificate_from_workload()
         self.charm.push_tls_certificate_to_workload()
         self.charm.unit.status = MaintenanceStatus("enabling TLS")
-        self.charm.restart_mongod_service()
+        self.charm.restart_charm_services()
 
-        with MongoDBConnection(self.charm.mongodb_config) as mongo:
-            if not mongo.is_ready:
-                self.charm.unit.status = WaitingStatus("Waiting for MongoDB to start")
-            else:
-                self.charm.unit.status = ActiveStatus()
+        if not self.charm.is_db_service_ready():
+            self.charm.unit.status = WaitingStatus("Waiting for MongoDB to start")
+        else:
+            self.charm.unit.status = ActiveStatus()
 
     def waiting_for_certs(self):
         """Returns a boolean indicating whether additional certs are needed."""
@@ -226,7 +231,7 @@ class MongoDBTLS(Object):
         """Request the new certificate when old certificate is expiring."""
         if self.charm.is_role(Config.Role.MONGOS) and not self.charm.has_config_server():
             logger.info(
-                "mongos is not running (not integrated to config-server) deferring renewal of certficates."
+                "mongos is not running (not integrated to config-server) deferring renewal of certificates."
             )
             event.defer()
             return
@@ -281,6 +286,7 @@ class MongoDBTLS(Object):
             socket.getfqdn(),
             f"{self.charm.app.name}-{unit_id}.{self.charm.app.name}-endpoints",
             str(self.charm.model.get_binding(self.peer_relation).network.bind_address),
+            "localhost",
         ]
 
     def get_tls_files(self, internal: bool) -> Tuple[Optional[str], Optional[str]]:
@@ -335,6 +341,6 @@ class MongoDBTLS(Object):
         if not self.charm.is_role(Config.Role.CONFIG_SERVER):
             # until integrated with config-server use current app name as
             # subject name
-            return self.charm.shard.get_config_server_name() or self.charm.app.name
+            return self.charm.get_config_server_name() or self.charm.app.name
 
         return self.charm.app.name

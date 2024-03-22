@@ -77,7 +77,7 @@ class MongoDBLegacyProvider(Object):
             try:
                 logger.debug("Disabling authentication.")
                 self.charm.unit.status = MaintenanceStatus("disabling authentication")
-                self.charm.restart_mongod_service(auth=False)
+                self.charm.restart_charm_services(auth=False)
                 self.charm.unit.status = ActiveStatus()
             except (systemd.SystemdError, snap.SnapError) as e:
                 logger.debug("Error disabling authentication %s", e)

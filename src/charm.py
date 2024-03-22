@@ -1238,7 +1238,7 @@ class MongodbOperatorCharm(CharmBase):
         if self.is_role(Config.Role.CONFIG_SERVER):
             mongodb_snap.stop(services=["mongos"])
 
-    def restart_mongod_service(self, auth=None):
+    def restart_charm_services(self, auth=None):
         """Restarts the mongod service with its associated configuration."""
         if auth is None:
             auth = self.auth_enabled()
@@ -1495,6 +1495,19 @@ class MongodbOperatorCharm(CharmBase):
             return None
 
         return self.shard.get_config_server_name()
+
+    def is_db_service_ready(self) -> bool:
+        """Returns True if the underlying database service is ready."""
+        with MongoDBConnection(self.mongodb_config) as mongod:
+            mongod_ready = mongod.is_ready
+
+        if not self.is_role(Config.Role.CONFIG_SERVER):
+            return mongod_ready
+
+        with MongoDBConnection(self.mongos_config) as mongos:
+            mongos_ready = mongos.is_ready
+
+        return mongod_ready and mongos_ready
 
     # END: helper functions
 
