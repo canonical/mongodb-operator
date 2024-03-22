@@ -180,7 +180,7 @@ class ClusterProvider(Object):
             if new_ca is None:
                 self.database_provides.delete_relation_data(relation.id, {INT_TLS_CA_KEY: new_ca})
             else:
-                self._update_relation_data(relation.id, {INT_TLS_CA_KEY: new_ca})
+                self.database_provides.update_relation_data(relation.id, {INT_TLS_CA_KEY: new_ca})
 
 
 class ClusterRequirer(Object):
