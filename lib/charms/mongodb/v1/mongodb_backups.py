@@ -40,7 +40,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 4
+LIBPATCH = 5
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ S3_PBM_OPTION_MAP = {
     "storage-class": "storage.s3.storageClass",
 }
 S3_RELATION = "s3-credentials"
-REMAPPING_PATTERN = r"\ABackup doesn't match current cluster topology - it has different replica set names. Extra shards in the backup will cause this, for a simple example. The extra/unknown replica set names found in the backup are: ([^,\s]+)([.] Backup has no data for the config server or sole replicaset)?\Z"
+REMAPPING_PATTERN = r"\ABackup doesn't match current cluster topology - it has different replica set names. Extra shards in the backup will cause this, for a simple example. The extra/unknown replica set names found in the backup are: ([\w\d\-,\s]+)([.] Backup has no data for the config server or sole replicaset)?\Z"
 PBM_STATUS_CMD = ["status", "-o", "json"]
 MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
 BACKUP_RESTORE_MAX_ATTEMPTS = 10
@@ -141,13 +141,13 @@ class MongoDBBackups(Object):
             return
 
         if not self.charm.db_initialised:
-            self._defer_action_with_info_log(
+            self._defer_event_with_info_log(
                 event, action, "Set PBM credentials, MongoDB not ready."
             )
             return
 
         if not self.charm.has_backup_service():
-            self._defer_action_with_info_log(
+            self._defer_event_with_info_log(
                 event, action, "Set PBM configurations, pbm-agent service not found."
             )
             return
@@ -181,7 +181,7 @@ class MongoDBBackups(Object):
             return
 
         if isinstance(pbm_status, WaitingStatus):
-            self._defer_action_with_info_log(
+            self._fail_action_with_error_log(
                 event,
                 action,
                 "Sync-ing configurations needs more time, must wait before creating a backup.",
@@ -215,7 +215,7 @@ class MongoDBBackups(Object):
         self.charm.unit.status = pbm_status
 
         if isinstance(pbm_status, WaitingStatus):
-            self._defer_action_with_info_log(
+            self._fail_action_with_error_log(
                 event,
                 action,
                 "Sync-ing configurations needs more time, must wait before listing backups.",
@@ -238,46 +238,13 @@ class MongoDBBackups(Object):
         if not self._pass_sanity_checks(event, action):
             return
 
-        backup_id = event.params.get("backup-id")
-        if not backup_id:
-            self._fail_action_with_error_log(event, action, "Missing backup-id to restore")
-            return
-
-        # only leader can restore backups. This prevents multiple restores from being attempted at
-        # once.
-        if not self.charm.unit.is_leader():
-            self._fail_action_with_error_log(
-                event, action, "The action can be run only on leader unit."
-            )
-            return
-
-        # cannot restore backup if pbm is not ready. This could be due to: resyncing, incompatible,
-        # options, incorrect credentials, creating a backup, or already performing a restore.
-        pbm_status = self.get_pbm_status()
-        self.charm.unit.status = pbm_status
-        if isinstance(pbm_status, MaintenanceStatus):
-            self._fail_action_with_error_log(
-                event, action, "Please wait for current backup/restore to finish."
-            )
-            return
-
-        if isinstance(pbm_status, WaitingStatus):
-            self._defer_action_with_info_log(
-                event,
-                action,
-                "Sync-ing configurations needs more time, must wait before restoring.",
-            )
-            return
-
-        if isinstance(pbm_status, BlockedStatus):
-            self._fail_action_with_error_log(
-                event, action, f"Cannot restore backup {pbm_status.message}."
-            )
+        if not self._restore_hook_checks(event):
             return
 
         # sometimes when we are trying to restore pmb can be resyncing, so we need to retry
         try:
-            self._try_to_restore(backup_id)
+            backup_id = event.params.get("backup-id")
+            self._restore(backup_id, remapping_args=event.params.get("remap-pattern"))
             self.charm.unit.status = MaintenanceStatus(
                 f"restore started/running, backup id:'{backup_id}'"
             )
@@ -290,6 +257,57 @@ class MongoDBBackups(Object):
             self._fail_action_with_error_log(event, action, str(restore_error))
 
     # BEGIN: helper functions
+    def _restore_hook_checks(self, event) -> bool:
+        """Runs pre-hook checks specific to running the restore command."""
+        action = "restore"
+        backup_id = event.params.get("backup-id")
+        if not backup_id:
+            self._fail_action_with_error_log(event, action, "Missing backup-id to restore")
+            return False
+
+        # only leader can restore backups. This prevents multiple restores from being attempted at
+        # once.
+        if not self.charm.unit.is_leader():
+            self._fail_action_with_error_log(
+                event, action, "The action can be run only on leader unit."
+            )
+            return False
+
+        # cannot restore backup if pbm is not ready. This could be due to: resyncing, incompatible,
+        # options, incorrect credentials, creating a backup, or already performing a restore.
+        pbm_status = self.get_pbm_status()
+        self.charm.unit.status = pbm_status
+        if isinstance(pbm_status, MaintenanceStatus):
+            self._fail_action_with_error_log(
+                event, action, "Please wait for current backup/restore to finish."
+            )
+            return False
+
+        if isinstance(pbm_status, WaitingStatus):
+            self._fail_action_with_error_log(
+                event,
+                action,
+                "Sync-ing configurations needs more time, must wait before restoring.",
+            )
+            return False
+
+        if isinstance(pbm_status, BlockedStatus):
+            self._fail_action_with_error_log(
+                event, action, f"Cannot restore backup {pbm_status.message}."
+            )
+            return False
+
+        if (
+            self._needs_provided_remap_arguments(backup_id)
+            and event.params.get("remap-pattern") is None
+        ):
+            self._fail_action_with_error_log(
+                event, action, "Cannot restore backup, 'remap-pattern' must be set."
+            )
+            return False
+
+        return True
+
     def is_valid_s3_integration(self) -> bool:
         """Return true if relation to s3-integrator is valid.
 
@@ -337,13 +355,13 @@ class MongoDBBackups(Object):
             return
         except ResyncError:
             self.charm.unit.status = WaitingStatus("waiting to sync s3 configurations.")
-            self._defer_action_with_info_log(
+            self._defer_event_with_info_log(
                 event, action, "Sync-ing configurations needs more time."
             )
             return
         except PBMBusyError:
             self.charm.unit.status = WaitingStatus("waiting to sync s3 configurations.")
-            self._defer_action_with_info_log(
+            self._defer_event_with_info_log(
                 event,
                 action,
                 "Cannot update configs while PBM is running, must wait for PBM action to finish.",
@@ -496,7 +514,7 @@ class MongoDBBackups(Object):
             if backup["status"] == "error":
                 # backups from a different cluster have an error status, but they should show as
                 # finished
-                if self._backup_from_different_cluster(backup.get("error", "")):
+                if self._is_backup_from_different_cluster(backup.get("error", "")):
                     backup_status = "finished"
                 else:
                     # display reason for failure if available
@@ -532,11 +550,11 @@ class MongoDBBackups(Object):
 
         return "\n".join(backups)
 
-    def _backup_from_different_cluster(self, backup_status: str) -> bool:
+    def _is_backup_from_different_cluster(self, backup_status: str) -> bool:
         """Returns if a given backup was made on a different cluster."""
         return re.search(REMAPPING_PATTERN, backup_status) is not None
 
-    def _try_to_restore(self, backup_id: str) -> None:
+    def _restore(self, backup_id: str, remapping_args: Optional[str] = None) -> None:
         """Try to restore cluster a backup specified by backup id.
 
         If PBM is resyncing, the function will retry to create backup
@@ -553,7 +571,10 @@ class MongoDBBackups(Object):
         ):
             with attempt:
                 try:
-                    remapping_args = self._remap_replicaset(backup_id)
+                    remapping_args = remapping_args or self._remap_replicaset(backup_id)
+                    if remapping_args:
+                        remapping_args = f"--replset-remapping {remapping_args}"
+
                     restore_cmd = ["restore", backup_id]
                     if remapping_args:
                         restore_cmd = restore_cmd + remapping_args.split(" ")
@@ -619,34 +640,27 @@ class MongoDBBackups(Object):
         pbm_status = json.loads(pbm_status)
 
         # grab the error status from the backup if present
-        backups = pbm_status["backups"]["snapshot"] or []
-        backup_status = ""
-        for backup in backups:
-            if not backup_id == backup["name"]:
-                continue
+        backup_error_status = self.get_backup_error_status(backup_id)
 
-            backup_status = backup.get("error", "")
-            break
-
-        if not self._backup_from_different_cluster(backup_status):
+        if not self._is_backup_from_different_cluster(backup_error_status):
             return ""
 
         # TODO in the future when we support conf servers and shards this will need to be more
         # comprehensive.
-        old_cluster_name = re.search(REMAPPING_PATTERN, backup_status).group(1)
+        old_cluster_name = re.search(REMAPPING_PATTERN, backup_error_status).group(1)
         current_cluster_name = self.charm.app.name
         logger.debug(
             "Replica set remapping is necessary for restore, old cluster name: %s ; new cluster name: %s",
             old_cluster_name,
             current_cluster_name,
         )
-        return f"--replset-remapping {current_cluster_name}={old_cluster_name}"
+        return f"{current_cluster_name}={old_cluster_name}"
 
     def _fail_action_with_error_log(self, event, action: str, message: str) -> None:
         logger.error("%s failed: %s", action.capitalize(), message)
         event.fail(message)
 
-    def _defer_action_with_info_log(self, event, action: str, message: str) -> None:
+    def _defer_event_with_info_log(self, event, action: str, message: str) -> None:
         logger.info("Deferring %s: %s", action, message)
         event.defer()
 
@@ -733,3 +747,23 @@ class MongoDBBackups(Object):
         elif "status code: 301" in error_message:
             message = "s3 configurations are incompatible."
         return message
+
+    def _needs_provided_remap_arguments(self, backup_id: str) -> bool:
+        """Returns true if remap arguments are needed to perform a restore command."""
+        backup_error_status = self.get_backup_error_status(backup_id)
+
+        # When a charm is running as a Replica set it can generate its own remapping arguments
+        return self._is_backup_from_different_cluster(backup_error_status) and self.charm.is_role(
+            Config.Role.CONFIG_SERVER
+        )
+
+    def get_backup_error_status(self, backup_id: str) -> str:
+        """Get the error status for a provided backup."""
+        pbm_status = self.charm.run_pbm_command(["status", "--out=json"])
+        pbm_status = json.loads(pbm_status)
+        backups = pbm_status["backups"].get("snapshot", [])
+        for backup in backups:
+            if backup_id == backup["name"]:
+                return backup.get("error", "")
+
+        return ""

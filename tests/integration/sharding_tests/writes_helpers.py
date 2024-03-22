@@ -17,6 +17,7 @@ METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 MONGOS_PORT = 27018
 MONGOD_PORT = 27017
 APP_NAME = "config-server"
+APP_NAME_NEW = "config-server-new"
 
 logger = logging.getLogger(__name__)
 
@@ -44,10 +45,10 @@ async def remove_db_writes(
     ops_test: OpsTest,
     db_name: str,
     coll_name: str,
-    config_server_name=APP_NAME,
 ) -> bool:
     """Stop the DB process and remove any writes to the test collection."""
     # remove collection from database
+    config_server_name = APP_NAME if APP_NAME in ops_test.model.applications else APP_NAME_NEW
     connection_string = await mongos_uri(ops_test, config_server_name)
 
     client = MongoClient(connection_string)
@@ -102,7 +103,6 @@ async def count_shard_writes(
     ops_test: OpsTest, shard_app_name=APP_NAME, db_name="new-db", collection_name="test_collection"
 ) -> int:
     """New versions of pymongo no longer support the count operation, instead find is used."""
-    connection_string = await mongos_uri(ops_test, shard_app_name)
     password = await get_password(ops_test, app_name=shard_app_name)
     hosts = [
         f"{unit.public_address}:{MONGOD_PORT}"
