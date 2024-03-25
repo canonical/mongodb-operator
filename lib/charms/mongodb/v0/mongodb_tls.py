@@ -38,7 +38,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 11
+LIBPATCH = 12
 
 logger = logging.getLogger(__name__)
 
@@ -213,7 +213,9 @@ class MongoDBTLS(Object):
 
         if not self.charm.is_db_service_ready():
             self.charm.unit.status = WaitingStatus("Waiting for MongoDB to start")
-        elif self.charm.unit.status == WaitingStatus("Waiting for MongoDB to start"):
+        elif self.charm.unit.status == WaitingStatus(
+            "Waiting for MongoDB to start"
+        ) or self.charm.unit.status == MaintenanceStatus("enabling TLS"):
             # clear waiting status if db service is ready
             self.charm.unit.status = ActiveStatus()
 
