@@ -124,7 +124,7 @@ class MongoDBProvider(Object):
         if self.substrate == "vm" and not self.charm.auth_enabled():
             logger.debug("Enabling authentication.")
             self.charm.unit.status = MaintenanceStatus("re-enabling authentication")
-            self.charm.restart_mongod_service(auth=True)
+            self.charm.restart_charm_services(auth=True)
             self.charm.unit.status = ActiveStatus()
 
         departed_relation_id = None

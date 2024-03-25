@@ -954,7 +954,7 @@ class ConfigServerRequirer(Object):
         )
 
         # when the contents of the keyfile change, we must restart the service
-        self.charm.restart_mongod_service()
+        self.charm.restart_charm_services()
 
         if not self.charm.unit.is_leader():
             return

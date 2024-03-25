@@ -1238,7 +1238,7 @@ class MongodbOperatorCharm(CharmBase):
         if self.is_role(Config.Role.CONFIG_SERVER):
             mongodb_snap.stop(services=["mongos"])
 
-    def restart_mongod_service(self, auth=None):
+    def restart_charm_services(self, auth=None):
         """Restarts the mongod service with its associated configuration."""
         if auth is None:
             auth = self.auth_enabled()
@@ -1485,6 +1485,27 @@ class MongodbOperatorCharm(CharmBase):
     def is_sharding_component(self) -> bool:
         """Returns true if charm is running as a sharded component."""
         return self.is_role(Config.Role.SHARD) or self.is_role(Config.Role.CONFIG_SERVER)
+
+    def get_config_server_name(self) -> Optional[str]:
+        """Returns the name of the Juju Application that the shard is using as a config server."""
+        if not self.is_role(Config.Role.SHARD):
+            logger.info(
+                "Component %s is not a shard, cannot be integrated to a config-server.", self.role
+            )
+            return None
+
+        return self.shard.get_config_server_name()
+
+    def is_db_service_ready(self) -> bool:
+        """Returns True if the underlying database service is ready."""
+        with MongoDBConnection(self.mongodb_config) as mongod:
+            mongod_ready = mongod.is_ready
+
+        if not self.is_role(Config.Role.CONFIG_SERVER):
+            return mongod_ready
+
+        with MongoDBConnection(self.mongos_config) as mongos:
+            return mongod_ready and mongos.is_ready
 
     # END: helper functions
 
