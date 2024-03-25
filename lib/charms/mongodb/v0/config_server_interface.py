@@ -122,8 +122,7 @@ class ClusterProvider(Object):
         if int_tls_ca:
             relation_data[INT_TLS_CA_KEY] = int_tls_ca
 
-        if self.charm.unit.is_leader():
-            self.database_provides.update_relation_data(event.relation.id, relation_data)
+        self.database_provides.update_relation_data(event.relation.id, relation_data)
 
     def _on_relation_broken(self, event) -> None:
         # Only relation_deparated events can check if scaling down

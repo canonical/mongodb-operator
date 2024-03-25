@@ -213,7 +213,8 @@ class MongoDBTLS(Object):
 
         if not self.charm.is_db_service_ready():
             self.charm.unit.status = WaitingStatus("Waiting for MongoDB to start")
-        else:
+        elif self.charm.unit.status == WaitingStatus("Waiting for MongoDB to start"):
+            # clear waiting status if db service is ready
             self.charm.unit.status = ActiveStatus()
 
     def waiting_for_certs(self):
