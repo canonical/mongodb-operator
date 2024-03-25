@@ -16,7 +16,13 @@ from charms.data_platform_libs.v0.data_interfaces import (
 from charms.mongodb.v1.mongos import MongosConnection
 from ops.charm import CharmBase, EventBase, RelationBrokenEvent
 from ops.framework import Object
-from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
+from ops.model import (
+    ActiveStatus,
+    BlockedStatus,
+    MaintenanceStatus,
+    StatusBase,
+    WaitingStatus,
+)
 
 from config import Config
 
@@ -230,6 +236,10 @@ class ClusterRequirer(Object):
 
     def _on_relation_changed(self, event) -> None:
         """Starts/restarts monogs with config server information."""
+        if not self.pass_hook_checks(event):
+            logger.info("pre-hook checks did not pass, not executing event")
+            return
+
         key_file_contents = self.database_requires.fetch_relation_field(
             event.relation.id, KEYFILE_KEY
         )
@@ -286,6 +296,34 @@ class ClusterRequirer(Object):
         self.charm.remove_connection_info()
 
     # BEGIN: helper functions
+    def pass_hook_checks(self, event):
+        """Runs the pre-hooks checks for ClusterRequirer, returns True if all pass."""
+        if self.is_mongos_tls_needed():
+            logger.info(
+                "Deferring %s. Config-server uses TLS, but mongos does not. Please synchronise encryption methods.",
+                str(type(event)),
+            )
+            event.defer()
+            return False
+
+        if self.is_config_server_tls_needed():
+            logger.info(
+                "Deferring %s. mongos uses TLS, but config-server does not. Please synchronise encryption methods.",
+                str(type(event)),
+            )
+            event.defer()
+            return False
+
+        if not self.is_ca_compatible():
+            logger.info(
+                "Deferring %s. mongos is integrated to a different CA than the config server. Please use the same CA for all cluster components.",
+                str(type(event)),
+            )
+
+            event.defer()
+            return False
+
+        return True
 
     def is_mongos_running(self) -> bool:
         """Returns true if mongos service is running."""
@@ -326,6 +364,22 @@ class ClusterRequirer(Object):
 
         return True
 
+    def get_tls_statuses(self) -> Optional[StatusBase]:
+        """Returns statuses relevant to TLS."""
+        if self.is_mongos_tls_needed():
+            return BlockedStatus("mongos requires TLS to be enabled.")
+
+        if self.is_config_server_tls_needed():
+            return BlockedStatus("mongos has TLS enabled, but config-server does not.")
+
+        if not self.is_ca_compatible():
+            logger.error(
+                "mongos is integrated to a different CA than the config server. Please use the same CA for all cluster components."
+            )
+            return BlockedStatus("mongos CA and Config-Server CA don't match.")
+
+        return
+
     def get_config_server_name(self) -> Optional[str]:
         """Returns the name of the Juju Application that mongos is using as a config server."""
         if not self.model.get_relation(self.relation_name):
@@ -333,5 +387,58 @@ class ClusterRequirer(Object):
 
         # metadata.yaml prevents having multiple config servers
         return self.model.get_relation(self.relation_name).app.name
+
+    def is_ca_compatible(self) -> bool:
+        """Returns true if both the mongos and the config server use the same CA."""
+        config_server_relation = self.charm.model.get_relation(self.relation_name)
+        # base-case: nothing to compare
+        if not config_server_relation:
+            return True
+
+        config_server_tls_ca = self.database_requires.fetch_relation_field(
+            config_server_relation.id, INT_TLS_CA_KEY
+        )
+
+        mongos_tls_ca = self.charm.tls.get_tls_secret(
+            internal=True, label_name=Config.TLS.SECRET_CA_LABEL
+        )
+
+        # base-case: missing one or more CA's to compare
+        if not config_server_tls_ca or not mongos_tls_ca:
+            return True
+
+        return config_server_tls_ca == mongos_tls_ca
+
+    def is_mongos_tls_needed(self) -> bool:
+        """Returns true if the config-server has TLS enabled but mongos does not."""
+        config_server_relation = self.charm.model.get_relation(self.relation_name)
+        if not config_server_relation:
+            return False
+
+        mongos_has_tls = self.charm.model.get_relation(Config.TLS.TLS_PEER_RELATION) is not None
+        config_server_has_tls = (
+            self.database_requires.fetch_relation_field(config_server_relation.id, INT_TLS_CA_KEY)
+            is not None
+        )
+        if config_server_has_tls and not mongos_has_tls:
+            return True
+
+        return False
+
+    def is_config_server_tls_needed(self) -> bool:
+        """Returns true if the mongos has TLS enabled but the config-server does not."""
+        config_server_relation = self.charm.model.get_relation(self.relation_name)
+        if not config_server_relation:
+            return False
+
+        mongos_has_tls = self.charm.model.get_relation(Config.TLS.TLS_PEER_RELATION) is not None
+        config_server_has_tls = (
+            self.database_requires.fetch_relation_field(config_server_relation.id, INT_TLS_CA_KEY)
+            is not None
+        )
+        if not config_server_has_tls and mongos_has_tls:
+            return True
+
+        return False
 
     # END: helper functions
