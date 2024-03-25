@@ -13,7 +13,6 @@ from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseProvides,
     DatabaseRequires,
 )
-
 from charms.mongodb.v1.mongos import MongosConnection
 from ops.charm import CharmBase, EventBase, RelationBrokenEvent
 from ops.framework import Object
@@ -37,7 +36,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 8
+LIBPATCH = 9
 
 
 class ClusterProvider(Object):
