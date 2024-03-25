@@ -10,17 +10,15 @@
 This charm was created to reduce the complexity of the deployment, scaling, and operational challenges of MongoDB database operations. 
 
 It currently supports:
-* MongoDB deployment
 * Replication
 * Sharding
-* Password set and rotation
+* Password rotation
 * User management
-* Client connections via integrations
+* Client connections
 * TLS encryption
 * Backup & restore
 * Monitoring
-* Auditing
-* Observability
+* Audit logging
 
 > Check our official documentation at [Charmhub | Charmed MongoDB](https://charmhub.io/mongodb) for tutorials, guides, explanations, and other resources.
 
