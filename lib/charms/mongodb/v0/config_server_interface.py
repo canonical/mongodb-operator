@@ -13,7 +13,7 @@ from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseProvides,
     DatabaseRequires,
 )
-from charms.mongodb.v1.helpers import add_args_to_env, get_mongos_args
+
 from charms.mongodb.v1.mongos import MongosConnection
 from ops.charm import CharmBase, EventBase, RelationBrokenEvent
 from ops.framework import Object
@@ -234,15 +234,15 @@ class ClusterRequirer(Object):
         key_file_contents = self.database_requires.fetch_relation_field(
             event.relation.id, KEYFILE_KEY
         )
-        config_server_db = self.database_requires.fetch_relation_field(
+        config_server_db_uri = self.database_requires.fetch_relation_field(
             event.relation.id, CONFIG_SERVER_DB_KEY
         )
-        if not key_file_contents or not config_server_db:
+        if not key_file_contents or not config_server_db_uri:
             self.charm.unit.status = WaitingStatus("Waiting for secrets from config-server")
             return
 
         updated_keyfile = self.update_keyfile(key_file_contents=key_file_contents)
-        updated_config = self.update_config_server_db(config_server_db=config_server_db)
+        updated_config = self.update_config_server_db(config_server_db=config_server_db_uri)
 
         # avoid restarting mongos when possible
         if not updated_keyfile and not updated_config and self.is_mongos_running():
@@ -251,7 +251,7 @@ class ClusterRequirer(Object):
         # mongos is not available until it is using new secrets
         logger.info("Restarting mongos with new secrets")
         self.charm.unit.status = MaintenanceStatus("starting mongos")
-        self.charm.restart_mongos_service()
+        self.charm.restart_charm_services()
 
         # restart on high loaded databases can be very slow (e.g. up to 10-20 minutes).
         if not self.is_mongos_running():
@@ -304,14 +304,7 @@ class ClusterRequirer(Object):
         if self.charm.config_server_db == config_server_db:
             return False
 
-        mongos_config = self.charm.mongos_config
-        mongos_start_args = get_mongos_args(
-            mongos_config,
-            snap_install=True,
-            config_server_db=config_server_db,
-            external_connectivity=self.charm.is_external_client,
-        )
-        add_args_to_env("MONGOS_ARGS", mongos_start_args)
+        self.charm.update_mongos_args(config_server_db)
         return True
 
     def update_keyfile(self, key_file_contents: str) -> bool:
