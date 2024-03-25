@@ -1505,9 +1505,7 @@ class MongodbOperatorCharm(CharmBase):
             return mongod_ready
 
         with MongoDBConnection(self.mongos_config) as mongos:
-            mongos_ready = mongos.is_ready
-
-        return mongod_ready and mongos_ready
+            return mongod_ready and mongos.is_ready
 
     # END: helper functions
 

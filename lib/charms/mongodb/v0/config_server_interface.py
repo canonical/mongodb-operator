@@ -341,6 +341,6 @@ class ClusterRequirer(Object):
             return None
 
         # metadata.yaml prevents having multiple config servers
-        return self.charm.model.relations[self.relation_name][0].app.name
+        return self.model.get_relation(self.relation_name).app.name
 
     # END: helper functions
