@@ -554,7 +554,7 @@ class MongodbOperatorCharm(CharmBase):
                 # edge case: mongod will fail to run if 1. they are running as shard and 2. they
                 # have already been added to the cluster with internal membership via TLS and 3.
                 # they remove support for TLS
-                if self.is_role(Config.Role.SHARD) and self.shard.is_shard_tls_needed():
+                if self.is_role(Config.Role.SHARD) and self.shard.is_shard_tls_missing():
                     self.unit.status = BlockedStatus("Shard requires TLS to be enabled.")
                     return
                 else:

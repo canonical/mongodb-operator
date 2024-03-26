@@ -298,7 +298,7 @@ class ClusterRequirer(Object):
     # BEGIN: helper functions
     def pass_hook_checks(self, event):
         """Runs the pre-hooks checks for ClusterRequirer, returns True if all pass."""
-        if self.is_mongos_tls_needed():
+        if self.is_mongos_tls_missing():
             logger.info(
                 "Deferring %s. Config-server uses TLS, but mongos does not. Please synchronise encryption methods.",
                 str(type(event)),
@@ -306,7 +306,7 @@ class ClusterRequirer(Object):
             event.defer()
             return False
 
-        if self.is_config_server_tls_needed():
+        if self.is_config_server_tls_missing():
             logger.info(
                 "Deferring %s. mongos uses TLS, but config-server does not. Please synchronise encryption methods.",
                 str(type(event)),
@@ -366,10 +366,10 @@ class ClusterRequirer(Object):
 
     def get_tls_statuses(self) -> Optional[StatusBase]:
         """Returns statuses relevant to TLS."""
-        if self.is_mongos_tls_needed():
+        if self.is_mongos_tls_missing():
             return BlockedStatus("mongos requires TLS to be enabled.")
 
-        if self.is_config_server_tls_needed():
+        if self.is_config_server_tls_missing():
             return BlockedStatus("mongos has TLS enabled, but config-server does not.")
 
         if not self.is_ca_compatible():
@@ -404,12 +404,12 @@ class ClusterRequirer(Object):
         )
 
         # base-case: missing one or more CA's to compare
-        if not config_server_tls_ca or not mongos_tls_ca:
+        if not config_server_tls_ca and not mongos_tls_ca:
             return True
 
         return config_server_tls_ca == mongos_tls_ca
 
-    def is_mongos_tls_needed(self) -> bool:
+    def is_mongos_tls_missing(self) -> bool:
         """Returns true if the config-server has TLS enabled but mongos does not."""
         config_server_relation = self.charm.model.get_relation(self.relation_name)
         if not config_server_relation:
@@ -425,7 +425,7 @@ class ClusterRequirer(Object):
 
         return False
 
-    def is_config_server_tls_needed(self) -> bool:
+    def is_config_server_tls_missing(self) -> bool:
         """Returns true if the mongos has TLS enabled but the config-server does not."""
         config_server_relation = self.charm.model.get_relation(self.relation_name)
         if not config_server_relation:
