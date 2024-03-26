@@ -378,7 +378,7 @@ class ClusterRequirer(Object):
             )
             return BlockedStatus("mongos CA and Config-Server CA don't match.")
 
-        return
+        return None
 
     def get_config_server_name(self) -> Optional[str]:
         """Returns the name of the Juju Application that mongos is using as a config server."""
