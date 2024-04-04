@@ -32,7 +32,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 8
+LIBPATCH = 9
 
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
@@ -236,7 +236,7 @@ class MongoDBConnection:
         # Such operation reduce performance of the cluster. To avoid huge performance
         # degradation, before adding new members, it is needed to check that all other
         # members finished init sync.
-        if self._is_any_sync(rs_status):
+        if self.is_any_sync(rs_status):
             # it can take a while, we should defer
             raise NotReadyError
 
@@ -414,7 +414,7 @@ class MongoDBConnection:
         return primary
 
     @staticmethod
-    def _is_any_sync(rs_status: Dict) -> bool:
+    def is_any_sync(rs_status: Dict) -> bool:
         """Returns true if any replica set members are syncing data.
 
         Checks if any members in replica set are syncing data. Note it is recommended to run only
