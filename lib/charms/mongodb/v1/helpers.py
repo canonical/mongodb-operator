@@ -65,7 +65,7 @@ def _get_audit_log_settings(snap_install: bool) -> List[str]:
     return [
         f"--auditDestination={Config.AuditLog.DESTINATION}",
         f"--auditFormat={Config.AuditLog.FORMAT}",
-        f"--auditPath={audit_log_path}"
+        f"--auditPath={audit_log_path}",
     ]
 
 
