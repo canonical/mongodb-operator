@@ -59,12 +59,13 @@ def _get_logging_options(snap_install: bool) -> str:
 
 
 def _get_audit_log_settings(snap_install: bool) -> List[str]:
-    log_path = f"{LOG_DIR}/{Config.AuditLog.FILE_NAME}"
+    audit_log_path = f"{LOG_DIR}/{Config.AuditLog.FILE_NAME}"
     if snap_install:
-        log_path = f"{MONGODB_COMMON_DIR}{log_path}"
+        audit_log_path = f"{MONGODB_COMMON_DIR}{audit_log_path}"
     return [
         f"--auditDestination={Config.AuditLog.DESTINATION}",
         f"--auditFormat={Config.AuditLog.FORMAT}",
+        f"--auditPath={audit_log_path}"
     ]
 
 
