@@ -38,7 +38,7 @@ from charms.mongodb.v1.mongodb_provider import MongoDBProvider
 from charms.mongodb.v1.mongodb_vm_legacy_provider import MongoDBLegacyProvider
 from charms.mongodb.v1.mongos import MongosConfiguration
 from charms.mongodb.v1.shards_interface import ConfigServerRequirer, ShardingProvider
-from charms.mongodb.v1.upgrade import MongoDBDependencyModel, MongoDBUpgrade
+from charms.mongodb.v0.upgrade import MongoDBDependencyModel, MongoDBUpgrade
 from charms.mongodb.v1.users import (
     CHARM_USERS,
     BackupUser,
