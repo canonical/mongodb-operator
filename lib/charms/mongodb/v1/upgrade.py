@@ -4,26 +4,23 @@
 """Manager for handling Kafka in-place upgrades."""
 
 import logging
-from config import Config
-from typing import Tuple
-from typing_extensions import override
-
 import secrets
 import string
-from pydantic import BaseModel
-
-from ops.model import ActiveStatus
-from ops.charm import CharmBase
-
-from charms.mongodb.v0.mongodb import MongoDBConnection, MongoDBConfiguration
+from typing import Tuple
 
 from charms.data_platform_libs.v0.upgrade import (
     ClusterNotReadyError,
     DataUpgrade,
-    UpgradeGrantedEvent,
     DependencyModel,
+    UpgradeGrantedEvent,
 )
+from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
+from ops.charm import CharmBase
+from ops.model import ActiveStatus
+from pydantic import BaseModel
+from typing_extensions import override
 
+from config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +53,7 @@ class MongoDBUpgrade(DataUpgrade):
 
     @override
     def pre_upgrade_check(self) -> None:
+        """Verifies that an upgrade can be done on the MongoDB deployment."""
         default_message = "Pre-upgrade check failed and cannot safely upgrade"
 
         if self.charm.is_role(Config.Role.SHARD):
@@ -73,15 +71,24 @@ class MongoDBUpgrade(DataUpgrade):
 
     @override
     def build_upgrade_stack(self) -> list[int]:
-        pass
+        """Builds an upgrade stack, specifying the order of nodes to upgrade.
+
+        TODO Implement in DPE-3940
+        """
 
     @override
     def log_rollback_instructions(self) -> None:
-        pass
+        """Logs the rollback instructions in case of failure to upgrade.
+
+        TODO Implement in DPE-3940
+        """
 
     @override
     def _on_upgrade_granted(self, event: UpgradeGrantedEvent) -> None:
-        pass
+        """Execute a series of upgrade steps.
+
+        TODO Implement in DPE-3940
+        """
 
     def is_cluster_healthy(self) -> bool:
         """Returns True if all nodes in the cluster/replcia set are healthy."""
@@ -89,12 +96,11 @@ class MongoDBUpgrade(DataUpgrade):
             logger.debug("Cannot run full cluster health check on shards")
             return False
 
-        # TODO - update this for all untis
         charm_status = self.charm.process_statuses()
         return self.are_nodes_healthy() and isinstance(charm_status, ActiveStatus)
 
     def are_nodes_healthy(self) -> bool:
-        """ "Returns True if all nodes in the MongoDB deployment are healthy."""
+        """Returns True if all nodes in the MongoDB deployment are healthy."""
         if self.charm.is_role(Config.Role.CONFIG_SERVER):
             # TODO future PR implement this
             pass
@@ -138,9 +144,10 @@ class MongoDBUpgrade(DataUpgrade):
         return True
 
     def is_sharded_cluster_able_to_read_write(self) -> bool:
-        """Returns True if is possible to write each shard and read value from all ndoes.
+        """Returns True if is possible to write each shard and read value from all nodes.
 
-        TODO: Implement in a future PR."""
+        TODO: Implement in a future PR.
+        """
         return False
 
     def clear_tmp_collection(
@@ -154,7 +161,7 @@ class MongoDBUpgrade(DataUpgrade):
     def is_excepted_write_on_replica(
         self, host: str, collection: str, expected_write_value: str
     ) -> bool:
-        """Returns True if the replica contains the expected write in the provided collection"""
+        """Returns True if the replica contains the expected write in the provided collection."""
         secondary_config = self.charm.mongodb_config
         secondary_config.hosts = {host}
         with MongoDBConnection(secondary_config, direct=True) as direct_seconary:
@@ -164,7 +171,7 @@ class MongoDBUpgrade(DataUpgrade):
             return query[0][WRITE_KEY] == expected_write_value
 
     def get_random_write_and_collection(self) -> Tuple[str, str]:
-        """Returns a tutple for a random collection name and a unique write to add to it"""
+        """Returns a tutple for a random collection name and a unique write to add to it."""
         choices = string.ascii_letters + string.digits
         collection_name = "collection_" + "".join([secrets.choice(choices) for _ in range(16)])
         write_value = "unique_write_" + "".join([secrets.choice(choices) for _ in range(16)])

@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
-from charms.mongodb.v1.upgrade import MongoDBUpgrade, MongoDBDependencyModel
 from charms.mongodb.v0.config_server_interface import ClusterProvider
 from charms.mongodb.v0.mongodb import (
     MongoDBConfiguration,
@@ -39,6 +38,7 @@ from charms.mongodb.v1.mongodb_provider import MongoDBProvider
 from charms.mongodb.v1.mongodb_vm_legacy_provider import MongoDBLegacyProvider
 from charms.mongodb.v1.mongos import MongosConfiguration
 from charms.mongodb.v1.shards_interface import ConfigServerRequirer, ShardingProvider
+from charms.mongodb.v1.upgrade import MongoDBDependencyModel, MongoDBUpgrade
 from charms.mongodb.v1.users import (
     CHARM_USERS,
     BackupUser,
