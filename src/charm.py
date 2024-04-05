@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
+from charms.mongodb.v1.upgrade import MongoDBUpgrade, MongoDBDependencyModel
 from charms.mongodb.v0.config_server_interface import ClusterProvider
 from charms.mongodb.v0.mongodb import (
     MongoDBConfiguration,
@@ -130,6 +131,12 @@ class MongodbOperatorCharm(CharmBase):
         self.legacy_client_relations = MongoDBLegacyProvider(self)
         self.tls = MongoDBTLS(self, Config.Relations.PEERS, substrate=Config.SUBSTRATE)
         self.backups = MongoDBBackups(self)
+        self.upgrade = MongoDBUpgrade(
+            self,
+            dependency_model=MongoDBDependencyModel(
+                **Config.DEPENDENCIES  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
+            ),
+        )  # TODO future PR add dependency_model
         self.config_server = ShardingProvider(self)
         self.cluster = ClusterProvider(self)
         self.shard = ConfigServerRequirer(self)

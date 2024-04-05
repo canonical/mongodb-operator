@@ -18,6 +18,15 @@ class Config:
     MONGOD_CONF_DIR = f"{MONGODB_SNAP_DATA_DIR}/etc/mongod"
     MONGOD_CONF_FILE_PATH = f"{MONGOD_CONF_DIR}/mongod.conf"
     SNAP_PACKAGES = [("charmed-mongodb", "6/edge", 117)]
+    DEPENDENCIES = {
+        "mongod_service": {
+            "dependencies": {},
+            "name": "mongod",
+            "upgrade_supported": ">4",  # this should be">4,<8" - but we get pydantic.error_wrappers.ValidationError
+            "version": "6.0.6",  # this should be "6.0.6-5" - but we get pydantic.error_wrappers.ValidationError
+        },
+        # TODO: Future PR - implements mongos if necesar
+    }
 
     # Keep these alphabetically sorted
     class Actions:

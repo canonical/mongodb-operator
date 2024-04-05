@@ -10,6 +10,7 @@ from typing_extensions import override
 
 import secrets
 import string
+from pydantic import BaseModel
 
 from ops.model import ActiveStatus
 from ops.charm import CharmBase
@@ -19,12 +20,31 @@ from charms.mongodb.v0.mongodb import MongoDBConnection, MongoDBConfiguration
 from charms.data_platform_libs.v0.upgrade import (
     ClusterNotReadyError,
     DataUpgrade,
+    UpgradeGrantedEvent,
+    DependencyModel,
 )
 
 
 logger = logging.getLogger(__name__)
 
 WRITE_KEY = "write_value"
+
+# The unique Charmhub library identifier, never change it
+LIBID = "todo123"
+
+# Increment this major API version when introducing breaking changes
+LIBAPI = 1
+
+# Increment this PATCH version before using `charmcraft publish-lib` or reset
+# to 0 if you are raising the major API version
+LIBPATCH = 0
+
+
+class MongoDBDependencyModel(BaseModel):
+    """Model for Kafka Operator dependencies."""
+
+    mongod_service: DependencyModel
+    # in future have a mongos service here too
 
 
 class MongoDBUpgrade(DataUpgrade):
@@ -51,12 +71,25 @@ class MongoDBUpgrade(DataUpgrade):
 
         # Future PR - sharding based checks
 
+    @override
+    def build_upgrade_stack(self) -> list[int]:
+        pass
+
+    @override
+    def log_rollback_instructions(self) -> None:
+        pass
+
+    @override
+    def _on_upgrade_granted(self, event: UpgradeGrantedEvent) -> None:
+        pass
+
     def is_cluster_healthy(self) -> bool:
         """Returns True if all nodes in the cluster/replcia set are healthy."""
         if self.charm.is_role(Config.Role.SHARD):
             logger.debug("Cannot run full cluster health check on shards")
             return False
 
+        # TODO - update this for all untis
         charm_status = self.charm.process_statuses()
         return self.are_nodes_healthy() and isinstance(charm_status, ActiveStatus)
 
@@ -67,8 +100,10 @@ class MongoDBUpgrade(DataUpgrade):
             pass
 
         if self.charm.is_role(Config.Role.REPLICATION):
-            with MongoDBConnection(self.mongodb_config) as mongod:
-                return mongod.is_any_sync()
+            with MongoDBConnection(self.charm.mongodb_config) as mongod:
+                rs_status = mongod.get_replset_status()
+                rs_status = mongod.client.admin.command("replSetGetStatus")
+                return not mongod.is_any_sync(rs_status)
 
     def is_cluster_able_to_read_write(self) -> bool:
         """Returns True if read and write is feasible for cluster."""
@@ -84,13 +119,13 @@ class MongoDBUpgrade(DataUpgrade):
         """Returns True if is possible to write to primary and read from replicas."""
         collection_name, write_value = self.get_random_write_and_collection()
         # add write to primary
-        self.add_write(self.mongodb_config, collection_name, write_value)
+        self.add_write(self.charm.mongodb_config, collection_name, write_value)
 
         # verify writes on secondaries
-        with MongoDBConnection(self.mongodb_config) as mongod:
+        with MongoDBConnection(self.charm.mongodb_config) as mongod:
             primary_ip = mongod.primary()
 
-        replica_ips = set(self.charm._unit_ips())
+        replica_ips = set(self.charm._unit_ips)
         secondary_ips = replica_ips - set(primary_ip)
         for secondary_ip in secondary_ips:
             if not self.is_excepted_write_on_replica(secondary_ip, collection_name, write_value):
@@ -99,7 +134,7 @@ class MongoDBUpgrade(DataUpgrade):
                 self.clear_tmp_collection(collection_name)
                 return False
 
-        self.clear_tmp_collection(self.mongodb_config, collection_name)
+        self.clear_tmp_collection(self.charm.mongodb_config, collection_name)
         return True
 
     def is_sharded_cluster_able_to_read_write(self) -> bool:
@@ -121,7 +156,7 @@ class MongoDBUpgrade(DataUpgrade):
     ) -> bool:
         """Returns True if the replica contains the expected write in the provided collection"""
         secondary_config = self.charm.mongodb_config
-        secondary_config.hosts = set(host)
+        secondary_config.hosts = {host}
         with MongoDBConnection(secondary_config, direct=True) as direct_seconary:
             db = direct_seconary.client["admin"]
             test_collection = db[collection]
