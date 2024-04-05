@@ -16,16 +16,7 @@ on:
 jobs:
   lint:
     name: Lint
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Install tox
-        # TODO: Consider replacing with custom image on self-hosted runner OR pinning version
-        run: python3 -m pip install tox
-      - name: Run linters
-        run: tox run -e lint
+    uses: canonical/data-platform-workflows/.github/workflows/lint.yaml@v12.7.2
 
   unit-test:
     name: Unit tests
@@ -39,6 +30,7 @@ jobs:
         run: python3 -m pip install tox
       - name: Run tests
         run: tox run -e unit
+
   lib-check:
     name: Check libraries
     runs-on: ubuntu-latest
@@ -54,6 +46,36 @@ jobs:
           credentials: "${{ secrets.CHARMHUB_TOKEN }}" # FIXME: current token will expire in 2023-07-04
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 
+  check-terraform:
+    name: Check Terraform
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./terraform
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Initialize Terraform Module
+        run: terraform init
+
+      - name: Validate Terraform Module
+        run: terraform validate -no-color
+
+      - name: Validate terraform fmt
+        run: |
+          set +e 
+          terraform fmt -recursive -check -diff
+          FMT_STATUS="$?"
+          if [[ "$FMT_STATUS" -ne 0 ]]; then
+            echo "❌ terraform fmt failed" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit "$FMT_STATUS"
+
   build:
     strategy:
       matrix:
@@ -63,7 +85,7 @@ jobs:
           - tests/integration/relation_tests/new_relations/application-charm
           - tests/integration/dummy_legacy_app
     name: Build charm
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v11.0.1
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v12.7.2
     with:
       path-to-charm-directory: ${{ matrix.path }}
       cache: true
@@ -74,7 +96,7 @@ jobs:
       - lint
       - unit-test
       - build
-    uses: canonical/data-platform-workflows/.github/workflows/integration_test_charm.yaml@v11.0.1
+    uses: canonical/data-platform-workflows/.github/workflows/integration_test_charm.yaml@v12.7.2
     with:
       artifact-prefix: packed-charm-cache-true
       cloud: lxd

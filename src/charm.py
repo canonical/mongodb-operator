@@ -9,7 +9,7 @@ import pwd
 import subprocess
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from charms.mongodb.v0.config_server_interface import ClusterProvider
@@ -46,6 +46,7 @@ from charms.mongodb.v1.users import (
     OperatorUser,
 )
 from charms.operator_libs_linux.v1 import snap
+from charms.operator_libs_linux.v1.systemd import service_running
 from ops.charm import (
     ActionEvent,
     CharmBase,
@@ -71,11 +72,16 @@ from ops.model import (
     Unit,
     WaitingStatus,
 )
+from pymongo.errors import OperationFailure, ServerSelectionTimeoutError
 from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
 from config import Config
 from exceptions import AdminUserCreationError, ApplicationHostNotFoundError
 from machine_helpers import MONGO_USER, ROOT_USER_GID, update_mongod_service
+
+AUTH_FAILED_CODE = 18
+UNAUTHORISED_CODE = 13
+TLS_CANNOT_FIND_PRIMARY = 133
 
 logger = logging.getLogger(__name__)
 
@@ -157,7 +163,7 @@ class MongodbOperatorCharm(CharmBase):
         ]
 
     @property
-    def _primary(self) -> str:
+    def primary(self) -> str:
         """Retrieves the unit with the primary replica."""
         try:
             with MongoDBConnection(self.mongodb_config) as mongo:
@@ -560,8 +566,15 @@ class MongodbOperatorCharm(CharmBase):
         # Cannot check more advanced MongoDB statuses if mongod hasn't started.
         with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
             if not direct_mongo.is_ready:
-                self.unit.status = WaitingStatus("Waiting for MongoDB to start")
-                return
+                # edge case: mongod will fail to run if 1. they are running as shard and 2. they
+                # have already been added to the cluster with internal membership via TLS and 3.
+                # they remove support for TLS
+                if self.is_role(Config.Role.SHARD) and self.shard.is_shard_tls_missing():
+                    self.unit.status = BlockedStatus("Shard requires TLS to be enabled.")
+                    return
+                else:
+                    self.unit.status = WaitingStatus("Waiting for MongoDB to start")
+                    return
 
         # leader should periodically handle configuring the replica set. Incidents such as network
         # cuts can lead to new IP addresses and therefore will require a reconfigure. Especially
@@ -569,10 +582,10 @@ class MongodbOperatorCharm(CharmBase):
         if self.unit.is_leader():
             self._handle_reconfigure(event)
 
-        self.unit.status = self.get_status()
+        self.unit.status = self.process_statuses()
 
     def _on_get_primary_action(self, event: ActionEvent):
-        event.set_results({"replica-set-primary": self._primary})
+        event.set_results({"replica-set-primary": self.primary})
 
     def _on_get_password(self, event: ActionEvent) -> None:
         """Returns the password for the user as an action response."""
@@ -775,8 +788,8 @@ class MongodbOperatorCharm(CharmBase):
     def _get_mongos_config_for_user(
         self, user: MongoDBUser, hosts: Set[str]
     ) -> MongosConfiguration:
-        external_ca, _ = self.tls.get_tls_files(UNIT_SCOPE)
-        internal_ca, _ = self.tls.get_tls_files(APP_SCOPE)
+        external_ca, _ = self.tls.get_tls_files(internal=False)
+        internal_ca, _ = self.tls.get_tls_files(internal=True)
 
         return MongosConfiguration(
             database=user.get_database_name(),
@@ -792,8 +805,8 @@ class MongodbOperatorCharm(CharmBase):
     def _get_mongodb_config_for_user(
         self, user: MongoDBUser, hosts: Set[str], standalone: bool = False
     ) -> MongoDBConfiguration:
-        external_ca, _ = self.tls.get_tls_files(UNIT_SCOPE)
-        internal_ca, _ = self.tls.get_tls_files(APP_SCOPE)
+        external_ca, _ = self.tls.get_tls_files(internal=False)
+        internal_ca, _ = self.tls.get_tls_files(internal=True)
 
         return MongoDBConfiguration(
             replset=self.app.name,
@@ -1000,7 +1013,7 @@ class MongodbOperatorCharm(CharmBase):
 
     def push_tls_certificate_to_workload(self) -> None:
         """Uploads certificate to the workload container."""
-        external_ca, external_pem = self.tls.get_tls_files(UNIT_SCOPE)
+        external_ca, external_pem = self.tls.get_tls_files(internal=False)
         if external_ca is not None:
             self.push_file_to_unit(
                 parent_dir=Config.MONGOD_CONF_DIR,
@@ -1015,7 +1028,7 @@ class MongodbOperatorCharm(CharmBase):
                 file_contents=external_pem,
             )
 
-        internal_ca, internal_pem = self.tls.get_tls_files(APP_SCOPE)
+        internal_ca, internal_pem = self.tls.get_tls_files(internal=True)
         if internal_ca is not None:
             self.push_file_to_unit(
                 parent_dir=Config.MONGOD_CONF_DIR,
@@ -1067,6 +1080,20 @@ class MongodbOperatorCharm(CharmBase):
 
         snap_cache = snap.SnapCache()
         pbm_snap = snap_cache["charmed-mongodb"]
+
+        try:
+            current_pbm_uri = pbm_snap.get(Config.Backup.URI_PARAM_NAME)
+        except snap.SnapError:
+            # if a snap variable has not been set, the retrieve of it fails
+            current_pbm_uri = ""
+
+        if current_pbm_uri == self.backup_config.uri and service_running(
+            "snap.charmed-mongodb.pbm-agent.service"
+        ):
+            return
+
+        logger.debug("PBM uri needs to be updated, resetting the URI and restarting the daemon")
+
         pbm_snap.stop(services=[Config.Backup.SERVICE_NAME])
         pbm_snap.set({Config.Backup.URI_PARAM_NAME: self.backup_config.uri})
         try:
@@ -1226,7 +1253,7 @@ class MongodbOperatorCharm(CharmBase):
         if self.is_role(Config.Role.CONFIG_SERVER):
             mongodb_snap.stop(services=["mongos"])
 
-    def restart_mongod_service(self, auth=None):
+    def restart_charm_services(self, auth=None):
         """Restarts the mongod service with its associated configuration."""
         if auth is None:
             auth = self.auth_enabled()
@@ -1388,18 +1415,17 @@ class MongodbOperatorCharm(CharmBase):
                 "Relation to s3-integrator is not supported, config role must be config-server"
             )
 
-    def get_status(self) -> StatusBase:
-        """Returns the status with the highest priority from backups, sharding, and mongod.
-
-        Note: it will never be the case that shard_status and config_server_status are both present
-        since the mongodb app can either be a shard or a config server, but not both.
-        """
-        # retrieve statuses of different services running on Charmed MongoDB
+    def get_statuses(self) -> Tuple:
+        """Retrieves statuses for the different processes running inside the unit."""
         mongodb_status = build_unit_status(self.mongodb_config, self._unit_ip(self.unit))
         shard_status = self.shard.get_shard_status()
         config_server_status = self.config_server.get_config_server_status()
         pbm_status = self.backups.get_pbm_status()
+        return (mongodb_status, shard_status, config_server_status, pbm_status)
 
+    def prioritize_statuses(self, statuses: Tuple) -> StatusBase:
+        """Returns the status with the highest priority from backups, sharding, and mongod."""
+        mongodb_status, shard_status, config_server_status, pbm_status = statuses
         # failure in mongodb takes precedence over sharding and config server
         if not isinstance(mongodb_status, ActiveStatus):
             return mongodb_status
@@ -1415,6 +1441,34 @@ class MongodbOperatorCharm(CharmBase):
 
         # if all statuses are active report mongodb status over sharding status
         return mongodb_status
+
+    def process_statuses(self) -> StatusBase:
+        """Retrieves statuses from processes inside charm and returns the highest priority status.
+
+        When a non-fatal error occurs while processing statuses, the error is processed and
+        returned as a statuses.
+        """
+        # retrieve statuses of different services running on Charmed MongoDB
+        deployment_mode = "replica set" if self.is_role(Config.Role.REPLICATION) else "cluster"
+        waiting_status = None
+        try:
+            statuses = self.get_statuses()
+        except OperationFailure as e:
+            if e.code in [UNAUTHORISED_CODE, AUTH_FAILED_CODE]:
+                waiting_status = f"Waiting to sync passwords across the {deployment_mode}"
+            elif e.code == TLS_CANNOT_FIND_PRIMARY:
+                waiting_status = (
+                    f"Waiting to sync internal membership across the {deployment_mode}"
+                )
+            else:
+                raise
+        except ServerSelectionTimeoutError:
+            waiting_status = f"Waiting to sync internal membership across the {deployment_mode}"
+
+        if waiting_status:
+            return WaitingStatus(waiting_status)
+
+        return self.prioritize_statuses(statuses)
 
     def is_relation_feasible(self, rel_interface) -> bool:
         """Returns true if the proposed relation is feasible."""
@@ -1446,6 +1500,27 @@ class MongodbOperatorCharm(CharmBase):
     def is_sharding_component(self) -> bool:
         """Returns true if charm is running as a sharded component."""
         return self.is_role(Config.Role.SHARD) or self.is_role(Config.Role.CONFIG_SERVER)
+
+    def get_config_server_name(self) -> Optional[str]:
+        """Returns the name of the Juju Application that the shard is using as a config server."""
+        if not self.is_role(Config.Role.SHARD):
+            logger.info(
+                "Component %s is not a shard, cannot be integrated to a config-server.", self.role
+            )
+            return None
+
+        return self.shard.get_config_server_name()
+
+    def is_db_service_ready(self) -> bool:
+        """Returns True if the underlying database service is ready."""
+        with MongoDBConnection(self.mongodb_config) as mongod:
+            mongod_ready = mongod.is_ready
+
+        if not self.is_role(Config.Role.CONFIG_SERVER):
+            return mongod_ready
+
+        with MongoDBConnection(self.mongos_config) as mongos:
+            return mongod_ready and mongos.is_ready
 
     # END: helper functions
 

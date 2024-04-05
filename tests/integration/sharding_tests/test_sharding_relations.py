@@ -95,6 +95,7 @@ async def test_build_and_deploy(
 
 
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_only_one_config_server_relation(ops_test: OpsTest) -> None:
     """Verify that a shard can only be related to one config server."""
     await ops_test.model.integrate(
@@ -127,6 +128,7 @@ async def test_only_one_config_server_relation(ops_test: OpsTest) -> None:
 
 
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_cannot_use_db_relation(ops_test: OpsTest) -> None:
     """Verify that sharding components cannot use the DB relation."""
     for sharded_component in SHARDING_COMPONENTS:
@@ -162,6 +164,7 @@ async def test_cannot_use_db_relation(ops_test: OpsTest) -> None:
 
 
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_cannot_use_legacy_db_relation(ops_test: OpsTest) -> None:
     """Verify that sharding components cannot use the legacy DB relation."""
     for sharded_component in SHARDING_COMPONENTS:
@@ -197,6 +200,7 @@ async def test_cannot_use_legacy_db_relation(ops_test: OpsTest) -> None:
 
 
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_replication_config_server_relation(ops_test: OpsTest):
     """Verifies that using a replica as a shard fails."""
     # attempt to add a replication deployment as a shard to the config server.
@@ -225,6 +229,7 @@ async def test_replication_config_server_relation(ops_test: OpsTest):
 
 
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_replication_shard_relation(ops_test: OpsTest):
     """Verifies that using a replica as a config-server fails."""
     # attempt to add a shard to a replication deployment as a config server.
@@ -260,6 +265,7 @@ async def test_replication_shard_relation(ops_test: OpsTest):
 
 
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_replication_mongos_relation(ops_test: OpsTest) -> None:
     """Verifies connecting a replica to a mongos router fails."""
     # attempt to add a replication deployment as a shard to the config server.
@@ -296,6 +302,7 @@ async def test_replication_mongos_relation(ops_test: OpsTest) -> None:
 
 
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_shard_mongos_relation(ops_test: OpsTest) -> None:
     """Verifies connecting a shard to a mongos router fails."""
     # attempt to add a replication deployment as a shard to the config server.
@@ -332,6 +339,7 @@ async def test_shard_mongos_relation(ops_test: OpsTest) -> None:
 
 
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_shard_s3_relation(ops_test: OpsTest) -> None:
     """Verifies integrating a shard to s3-integrator fails."""
     # attempt to add a replication deployment as a shard to the config server.

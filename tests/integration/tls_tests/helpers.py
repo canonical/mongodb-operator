@@ -37,24 +37,29 @@ class ProcessError(Exception):
     """Raised when a process fails."""
 
 
-async def mongo_tls_command(ops_test: OpsTest, app_name=None) -> str:
+async def mongo_tls_command(ops_test: OpsTest, app_name=None, mongos=False) -> str:
     """Generates a command which verifies TLS status."""
     app_name = app_name or await get_app_name(ops_test)
+    port = "27017" if not mongos else "27018"
     replica_set_hosts = [
-        unit.public_address for unit in ops_test.model.applications[app_name].units
+        f"{unit.public_address}:{port}" for unit in ops_test.model.applications[app_name].units
     ]
     password = await get_password(ops_test, app_name=app_name)
     hosts = ",".join(replica_set_hosts)
-    replica_set_uri = f"mongodb://operator:" f"{password}@" f"{hosts}/admin?replicaSet={app_name}"
+    extra_args = f"?replicaSet={app_name}" if not mongos else ""
+    replica_set_uri = f"mongodb://operator:{password}@{hosts}/admin{extra_args}"
 
+    status_comand = "rs.status()" if not mongos else "sh.status()"
     return (
-        f"{MONGO_SHELL} '{replica_set_uri}'  --eval 'rs.status()'"
+        f"{MONGO_SHELL} '{replica_set_uri}'  --eval '{status_comand}'"
         f" --tls --tlsCAFile {EXTERNAL_CERT_PATH}"
         f" --tlsCertificateKeyFile {EXTERNAL_PEM_PATH}"
     )
 
 
-async def check_tls(ops_test: OpsTest, unit: ops.model.Unit, enabled: bool, app_name=None) -> bool:
+async def check_tls(
+    ops_test: OpsTest, unit: ops.model.Unit, enabled: bool, app_name=None, mongos=False
+) -> bool:
     """Returns whether TLS is enabled on the specific PostgreSQL instance.
 
     Args:
@@ -70,9 +75,12 @@ async def check_tls(ops_test: OpsTest, unit: ops.model.Unit, enabled: bool, app_
             stop=stop_after_attempt(10), wait=wait_exponential(multiplier=1, min=2, max=30)
         ):
             with attempt:
-                mongod_tls_check = await mongo_tls_command(ops_test, app_name=app_name)
+                mongod_tls_check = await mongo_tls_command(
+                    ops_test, app_name=app_name, mongos=mongos
+                )
                 check_tls_cmd = f"exec --unit {unit.name} -- {mongod_tls_check}"
                 return_code, _, _ = await ops_test.juju(*check_tls_cmd.split())
+
                 tls_enabled = return_code == 0
                 if enabled != tls_enabled:
                     raise ValueError(

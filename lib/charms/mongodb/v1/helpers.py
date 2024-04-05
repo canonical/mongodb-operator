@@ -30,7 +30,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 4
+LIBPATCH = 5
 
 # path to store mongodb ketFile
 KEY_FILE = "keyFile"
@@ -121,12 +121,40 @@ def get_mongos_args(
         f"--configdb {config_server_db}",
         # config server is already using 27017
         f"--port {Config.MONGOS_PORT}",
-        f"--keyFile={full_conf_dir}/{KEY_FILE}",
-        "\n",
     ]
 
-    # TODO Future PR: support TLS on mongos
+    # TODO : generalise these into functions to be re-used
+    if config.tls_external:
+        cmd.extend(
+            [
+                f"--tlsCAFile={full_conf_dir}/{TLS_EXT_CA_FILE}",
+                f"--tlsCertificateKeyFile={full_conf_dir}/{TLS_EXT_PEM_FILE}",
+                # allow non-TLS connections
+                "--tlsMode=preferTLS",
+                "--tlsDisabledProtocols=TLS1_0,TLS1_1",
+            ]
+        )
 
+    # internal TLS can be enabled only if external is enabled
+    if config.tls_internal and config.tls_external:
+        cmd.extend(
+            [
+                "--clusterAuthMode=x509",
+                "--tlsAllowInvalidCertificates",
+                f"--tlsClusterCAFile={full_conf_dir}/{TLS_INT_CA_FILE}",
+                f"--tlsClusterFile={full_conf_dir}/{TLS_INT_PEM_FILE}",
+            ]
+        )
+    else:
+        # keyFile used for authentication replica set peers if no internal tls configured.
+        cmd.extend(
+            [
+                "--clusterAuthMode=keyFile",
+                f"--keyFile={full_conf_dir}/{KEY_FILE}",
+            ]
+        )
+
+    cmd.append("\n")
     return " ".join(cmd)
 
 
