@@ -97,6 +97,8 @@ class MongoDBUpgrade(DataUpgrade):
             return False
 
         charm_status = self.charm.process_statuses()
+        print(self.are_nodes_healthy())
+        print(charm_status)
         return self.are_nodes_healthy() and isinstance(charm_status, ActiveStatus)
 
     def are_nodes_healthy(self) -> bool:
@@ -137,7 +139,7 @@ class MongoDBUpgrade(DataUpgrade):
             if not self.is_excepted_write_on_replica(secondary_ip, collection_name, write_value):
                 # do not return False immediately - as it is
                 logger.debug("Secondary with IP %s, does not contain the expected write.")
-                self.clear_tmp_collection(collection_name)
+                self.clear_tmp_collection(self.charm.mongodb_config, collection_name)
                 return False
 
         self.clear_tmp_collection(self.charm.mongodb_config, collection_name)
