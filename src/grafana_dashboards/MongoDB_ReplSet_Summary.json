@@ -2810,7 +2810,7 @@
                 "label": "Replica Set",
                 "multi": false,
                 "multiFormat": "glob",
-                "name": "replset",
+                "name": "replication_set",
                 "options": [],
                 "query": {
                     "query": "label_values(mongodb_mongod_replset_my_state{cluster=~\"$cluster\"}, set)",
