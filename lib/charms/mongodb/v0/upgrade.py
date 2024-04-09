@@ -93,12 +93,14 @@ class MongoDBUpgrade(DataUpgrade):
         put at the very bottom of the stack.
         """
         upgrade_stack = []
-        units = set([self.charm.unit] + list(self.charm.state.peer_relation.units))  # type: ignore[reportOptionalMemberAccess]
+        units = set([self.charm.unit] + list(self.charm.peers.units))  # type: ignore[reportOptionalMemberAccess]
         primary_unit_id = None
         for unit in units:
             unit_id = int(unit.name.split("/")[-1])
             if unit.name == self.charm.primary:
                 primary_unit_id = unit_id
+                continue
+
             upgrade_stack.append(unit_id)
 
         upgrade_stack.insert(0, primary_unit_id)
@@ -113,14 +115,16 @@ class MongoDBUpgrade(DataUpgrade):
     def _on_upgrade_granted(self, event: UpgradeGrantedEvent) -> None:
         """Execute a series of upgrade steps."""
         dependency_model: DependencyModel = getattr(self.dependency_model, "mongod_service")
+        # version is of the format x.y.z-d
+        mongod_current_version = self.mongod_current_version.split("-")[0]
         if not verify_requirements(
-            version=self.mongod_current_version,
-            requirement=dependency_model.dependencies[MONGOD_SERVICE],
+            version=mongod_current_version,
+            requirement=dependency_model.upgrade_supported,  # todo ask marc
         ):
             logger.error(
                 "Current mongod version %s does not meet requirement %s",
-                self.mongod_current_version,
-                dependency_model.dependencies[MONGOD_SERVICE],
+                mongod_current_version,
+                dependency_model.upgrade_supported,
             )
             self.set_unit_failed()
             return
@@ -128,7 +132,7 @@ class MongoDBUpgrade(DataUpgrade):
         self.charm.stop_charm_services()
 
         try:
-            self._install_snap_packages(packages=Config.SNAP_PACKAGES)
+            self.charm.install_snap_packages(packages=Config.SNAP_PACKAGES)
         except snap.SnapError:
             logger.error("Unable to install Snap")
             self.set_unit_failed()
