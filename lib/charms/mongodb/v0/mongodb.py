@@ -32,7 +32,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 9
+LIBPATCH = 10
 
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
@@ -379,6 +379,10 @@ class MongoDBConnection:
         system_dbs = ("admin", "local", "config")
         databases = self.client.list_database_names()
         return set([db for db in databases if db not in system_dbs])
+
+    def get_mongod_version(self) -> str:
+        """Returns the version of mongod running."""
+        return self.client.server_info()["version"]
 
     def drop_database(self, database: str):
         """Drop a non-default database."""

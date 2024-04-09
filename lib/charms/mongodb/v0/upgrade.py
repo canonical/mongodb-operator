@@ -2,7 +2,6 @@
 # See LICENSE file for licensing details.
 
 """Manager for handling MongoDB in-place upgrades."""
-
 import logging
 import secrets
 import string
@@ -13,11 +12,14 @@ from charms.data_platform_libs.v0.upgrade import (
     DataUpgrade,
     DependencyModel,
     UpgradeGrantedEvent,
+    verify_requirements,
 )
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
+from charms.operator_libs_linux.v1 import snap
 from ops.charm import CharmBase
 from ops.model import ActiveStatus
 from pydantic import BaseModel
+from tenacity import Retrying, stop_after_attempt, wait_fixed
 from typing_extensions import override
 
 from config import Config
@@ -25,6 +27,7 @@ from config import Config
 logger = logging.getLogger(__name__)
 
 WRITE_KEY = "write_value"
+MONGOD_SERVICE = "mongod"
 
 # The unique Charmhub library identifier, never change it
 LIBID = "aad46b9f0ddb4cb392982a52a596ec9b"
@@ -35,6 +38,11 @@ LIBAPI = 0
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
 LIBPATCH = 1
+
+ROLLBACK_INSTRUCTIONS = """Unit failed to upgrade and requires manual rollback to previous stable version.
+    1. Re-run `pre-upgrade-check` action on the leader unit to enter 'recovery' state
+    2. Run `juju refresh` to the previously deployed charm revision
+"""
 
 
 class MongoDBDependencyModel(BaseModel):
@@ -69,26 +77,87 @@ class MongoDBUpgrade(DataUpgrade):
 
         # Future PR - sharding based checks
 
+    def post_upgrade_check(self) -> None:
+        """Runs necessary checks validating the unit is in a healthy state after upgrade."""
+        if not self.is_cluster_able_to_read_write():
+            raise ClusterNotReadyError(
+                message="post-upgrade check failed and cannot safely upgrade",
+                cause="Cluster cannot read/write",
+            )
+
     @override
     def build_upgrade_stack(self) -> list[int]:
         """Builds an upgrade stack, specifying the order of nodes to upgrade.
 
-        TODO Implement in DPE-3940
+        MongoDB Specific: The primary should be upgraded last, so the unit with the primary is
+        put at the very bottom of the stack.
         """
+        upgrade_stack = []
+        units = set([self.charm.unit] + list(self.charm.state.peer_relation.units))  # type: ignore[reportOptionalMemberAccess]
+        primary_unit_id = None
+        for unit in units:
+            unit_id = int(unit.name.split("/")[-1])
+            if unit.name == self.charm.primary:
+                primary_unit_id = unit_id
+            upgrade_stack.append(unit_id)
+
+        upgrade_stack.insert(0, primary_unit_id)
+        return upgrade_stack
 
     @override
     def log_rollback_instructions(self) -> None:
-        """Logs the rollback instructions in case of failure to upgrade.
-
-        TODO Implement in DPE-3940
-        """
+        """Logs the rollback instructions in case of failure to upgrade."""
+        logger.critical(ROLLBACK_INSTRUCTIONS)
 
     @override
     def _on_upgrade_granted(self, event: UpgradeGrantedEvent) -> None:
-        """Execute a series of upgrade steps.
+        """Execute a series of upgrade steps."""
+        dependency_model: DependencyModel = getattr(self.dependency_model, "mongod_service")
+        if not verify_requirements(
+            version=self.mongod_current_version,
+            requirement=dependency_model.dependencies[MONGOD_SERVICE],
+        ):
+            logger.error(
+                "Current mongod version %s does not meet requirement %s",
+                self.mongod_current_version,
+                dependency_model.dependencies[MONGOD_SERVICE],
+            )
+            self.set_unit_failed()
+            return
 
-        TODO Implement in DPE-3940
-        """
+        self.charm.stop_charm_services()
+
+        try:
+            self._install_snap_packages(packages=Config.SNAP_PACKAGES)
+        except snap.SnapError:
+            logger.error("Unable to install Snap")
+            self.set_unit_failed()
+            return
+
+        logger.info(f"{self.charm.unit.name} upgrading service...")
+        self.charm.restart_charm_services()
+
+        try:
+            logger.debug("Running post-upgrade check...")
+            for attempt in Retrying(
+                stop=stop_after_attempt(20),
+                wait=wait_fixed(1),
+                reraise=True,
+            ):
+                with attempt:
+                    self.post_upgrade_check()
+
+            logger.debug("Marking unit completed...")
+            self.set_unit_completed()
+
+            # ensures leader gets it's own relation-changed when it upgrades
+            if self.charm.unit.is_leader():
+                logger.debug("Re-emitting upgrade-changed on leader...")
+                self.on_upgrade_changed(event)
+
+        except ClusterNotReadyError as e:
+            logger.error(e.cause)
+            self.set_unit_failed()
 
     def is_cluster_healthy(self) -> bool:
         """Returns True if all nodes in the cluster/replcia set are healthy."""
@@ -97,8 +166,6 @@ class MongoDBUpgrade(DataUpgrade):
             return False
 
         charm_status = self.charm.process_statuses()
-        print(self.are_nodes_healthy())
-        print(charm_status)
         return self.are_nodes_healthy() and isinstance(charm_status, ActiveStatus)
 
     def are_nodes_healthy(self) -> bool:
@@ -188,3 +255,9 @@ class MongoDBUpgrade(DataUpgrade):
             test_collection = db[collection_name]
             write = {WRITE_KEY: write_value}
             test_collection.insert_one(write)
+
+    @property
+    def mongod_current_version(self) -> str:
+        """Get current mongod version."""
+        with MongoDBConnection(self.charm.mongodb_config) as mongod:
+            return mongod.get_mongod_version()

@@ -375,7 +375,7 @@ class MongodbOperatorCharm(CharmBase):
         try:
             logger.debug("starting MongoDB.")
             self.unit.status = MaintenanceStatus("starting MongoDB")
-            self.start_mongod_service()
+            self.start_charm_services()
             self.unit.status = ActiveStatus()
         except snap.SnapError as e:
             logger.error("An exception occurred when starting mongod agent, error: %s.", str(e))
@@ -1217,7 +1217,7 @@ class MongodbOperatorCharm(CharmBase):
         content[key] = Config.Secrets.SECRET_DELETED_LABEL
         secret.set_content(content)
 
-    def start_mongod_service(self):
+    def start_charm_services(self):
         """Starts the mongod service and if necessary starts mongos.
 
         Raises:
@@ -1231,7 +1231,7 @@ class MongodbOperatorCharm(CharmBase):
         if self.is_role(Config.Role.CONFIG_SERVER):
             mongodb_snap.start(services=["mongos"], enable=True)
 
-    def stop_mongod_service(self):
+    def stop_charm_services(self):
         """Stops the mongod service and if necessary stops mongos.
 
         Raises:
@@ -1251,14 +1251,14 @@ class MongodbOperatorCharm(CharmBase):
             auth = self.auth_enabled()
 
         try:
-            self.stop_mongod_service()
+            self.stop_charm_services()
             update_mongod_service(
                 auth,
                 self._unit_ip(self.unit),
                 config=self.mongodb_config,
                 role=self.role,
             )
-            self.start_mongod_service()
+            self.start_charm_services()
         except snap.SnapError as e:
             logger.error("An exception occurred when starting mongod agent, error: %s.", str(e))
             self.unit.status = BlockedStatus("couldn't start MongoDB")
