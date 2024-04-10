@@ -66,7 +66,9 @@ async def test_enable_tls(ops_test: OpsTest) -> None:
 
     # Wait for all units enabling TLS.
     for unit in ops_test.model.applications[app_name].units:
-        assert await check_tls(ops_test, unit, enabled=True, app_name=app_name)
+        assert await check_tls(
+            ops_test, unit, enabled=True, app_name=app_name
+        ), f"TLS not enabled for unit {unit.name}."
 
 
 @pytest.mark.group(1)
@@ -233,4 +235,6 @@ async def test_disable_tls(ops_test: OpsTest) -> None:
 
     # Wait for all units disabling TLS.
     for unit in ops_test.model.applications[app_name].units:
-        assert await check_tls(ops_test, unit, enabled=False, app_name=app_name)
+        assert await check_tls(
+            ops_test, unit, enabled=False, app_name=app_name
+        ), f"TLS not disabled for unit {unit.name}."

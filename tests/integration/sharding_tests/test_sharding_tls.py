@@ -185,18 +185,14 @@ async def check_cluster_tls_disabled(ops_test: OpsTest) -> None:
     # check each replica set is running with TLS enabled
     for cluster_component in CLUSTER_COMPONENTS:
         for unit in ops_test.model.applications[cluster_component].units:
-            assert (
-                await tls_helpers.check_tls(
-                    ops_test, unit, enabled=False, app_name=cluster_component, mongos=False
-                )
+            assert await tls_helpers.check_tls(
+                ops_test, unit, enabled=False, app_name=cluster_component, mongos=False
             ), f"MongoDB TLS not disabled in unit {unit.name}"
 
     # check mongos is running with TLS enabled
     for unit in ops_test.model.applications[CONFIG_SERVER_APP_NAME].units:
-        assert (
-            await tls_helpers.check_tls(
-                ops_test, unit, enabled=False, app_name=CONFIG_SERVER_APP_NAME, mongos=True
-            )
+        assert await tls_helpers.check_tls(
+            ops_test, unit, enabled=False, app_name=CONFIG_SERVER_APP_NAME, mongos=True
         ), f"Mongos TLS not disabled in unit {unit.name}"
 
 
@@ -204,18 +200,14 @@ async def check_cluster_tls_enabled(ops_test: OpsTest) -> None:
     # check each replica set is running with TLS enabled
     for cluster_component in CLUSTER_COMPONENTS:
         for unit in ops_test.model.applications[cluster_component].units:
-            assert (
-                await tls_helpers.check_tls(
-                    ops_test, unit, enabled=True, app_name=cluster_component, mongos=False
-                )
+            assert await tls_helpers.check_tls(
+                ops_test, unit, enabled=True, app_name=cluster_component, mongos=False
             ), f"MongoDB TLS not enabled in unit {unit.name}"
 
     # check mongos is running with TLS enabled
     for unit in ops_test.model.applications[CONFIG_SERVER_APP_NAME].units:
-        assert (
-            await tls_helpers.check_tls(
-                ops_test, unit, enabled=True, app_name=CONFIG_SERVER_APP_NAME, mongos=True
-            )
+        assert await tls_helpers.check_tls(
+            ops_test, unit, enabled=True, app_name=CONFIG_SERVER_APP_NAME, mongos=True
         ), f"Mongos TLS not enabled in unit {unit.name}"
 
 
