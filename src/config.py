@@ -17,7 +17,7 @@ class Config:
     MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
     MONGOD_CONF_DIR = f"{MONGODB_SNAP_DATA_DIR}/etc/mongod"
     MONGOD_CONF_FILE_PATH = f"{MONGOD_CONF_DIR}/mongod.conf"
-    SNAP_PACKAGES = [("charmed-mongodb", "6/edge", 111)]
+    SNAP_PACKAGES = [("charmed-mongodb", "6/edge", 118)]
 
     # Keep these alphabetically sorted
     class Actions:
@@ -54,15 +54,15 @@ class Config:
     class TLS:
         """TLS related config for MongoDB Charm."""
 
+        KEY_FILE_NAME = "keyFile"
+        TLS_PEER_RELATION = "certificates"
+        SECRET_KEY_LABEL = "key-secret"
+
         EXT_PEM_FILE = "external-cert.pem"
         EXT_CA_FILE = "external-ca.crt"
         INT_PEM_FILE = "internal-cert.pem"
         INT_CA_FILE = "internal-ca.crt"
-        KEY_FILE_NAME = "keyFile"
-        TLS_PEER_RELATION = "certificates"
-
         SECRET_CA_LABEL = "ca-secret"
-        SECRET_KEY_LABEL = "key-secret"
         SECRET_CERT_LABEL = "cert-secret"
         SECRET_CSR_LABEL = "csr-secret"
         SECRET_CHAIN_LABEL = "chain-secret"
@@ -87,6 +87,7 @@ class Config:
         CONFIG_SERVER = "config-server"
         REPLICATION = "replication"
         SHARD = "shard"
+        MONGOS = "mongos"
 
     class Secrets:
         """Secrets related constants."""

@@ -582,7 +582,7 @@ class TestCharm(unittest.TestCase):
         connection.return_value.__enter__.return_value.primary.return_value = None
 
         # verify no primary identified
-        primary = self.harness.charm._primary
+        primary = self.harness.charm.primary
         self.assertEqual(primary, None)
 
     @patch("charm.MongodbOperatorCharm.get_secret")
@@ -594,7 +594,7 @@ class TestCharm(unittest.TestCase):
         get_secret.return_value = "pass123"
         for exception in PYMONGO_EXCEPTIONS:
             connection.return_value.__enter__.return_value.primary.side_effect = exception
-            self.assertEqual(self.harness.charm._primary, None)
+            self.assertEqual(self.harness.charm.primary, None)
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
