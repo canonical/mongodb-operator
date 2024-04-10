@@ -87,6 +87,14 @@ class MongoDBUpgrade(DataUpgrade):
 
     @override
     def build_upgrade_stack(self) -> list[int]:
+        """Builds an upgrade stack, specifying the order of nodes to upgrade."""
+        if self.charm.is_role(Config.Role.CONFIG_SERVER):
+            # TODO implement in a future PR a stack for shards and config server
+            pass
+        elif self.charm.is_role(Config.Role.REPLICATION):
+            return self.get_replica_set_upgrade_stack()
+
+    def get_replica_set_upgrade_stack(self) -> list[int]:
         """Builds an upgrade stack, specifying the order of nodes to upgrade.
 
         MongoDB Specific: The primary should be upgraded last, so the unit with the primary is
