@@ -31,6 +31,7 @@ class Config:
         },
         # TODO: Future PR DPE-3940 - implements mongos if necessary
     }
+    SNAP_PACKAGES = [("charmed-mongodb", "6/edge", 118)]
 
     # Keep these alphabetically sorted
     class Actions:
