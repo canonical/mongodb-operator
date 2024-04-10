@@ -22,11 +22,7 @@ class Config:
         "mongod_service": {
             "dependencies": {},
             "name": "mongod",
-            # this should be">=6,<7" - but we get pydantic.error_wrappers.ValidationError - resolve
-            # in DPE-3940
-            "upgrade_supported": ">=6.0.0",
-            # this should be "6.0.6-5" - but we get pydantic.error_wrappers.ValidationError -
-            # resolve in DPE-3940
+            "upgrade_supported": ">=6.0.0,<7",
             "version": "6.0.6",
         },
         # TODO: Future PR DPE-3940 - implements mongos if necessary

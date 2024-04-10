@@ -544,6 +544,10 @@ class MongodbOperatorCharm(CharmBase):
             logger.error("Failed to remove %s from replica set, error=%r", self.unit.name, e)
 
     def _on_update_status(self, event: UpdateStatusEvent):
+        if not self.upgrade.idle:
+            logger.info("Processing upgrade, wait to check status")
+            return
+
         # user-made mistakes might result in other incorrect statues. Prioritise informing users of
         # their mistake.
         invalid_integration_status = self.get_invalid_integration_status()
