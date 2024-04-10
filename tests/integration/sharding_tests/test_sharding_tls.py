@@ -303,7 +303,7 @@ async def rotate_and_verify_certs(ops_test: OpsTest, app: str) -> None:
             original_tls_info[unit.name]["mongos_service"] = (
                 await tls_helpers.time_process_started(ops_test, unit.name, MONGOD_SERVICE)
             )
-        tls_helpers.check_certs_correctly_distributed(ops_test, unit)
+        await tls_helpers.check_certs_correctly_distributed(ops_test, unit)
 
     # set external and internal key using auto-generated key for each unit
     for unit in ops_test.model.applications[app].units:
@@ -338,7 +338,7 @@ async def rotate_and_verify_certs(ops_test: OpsTest, app: str) -> None:
                 ops_test, unit.name, MONGOS_SERVICE
             )
 
-        tls_helpers.check_certs_correctly_distributed(ops_test, unit, app_name=app)
+        await tls_helpers.check_certs_correctly_distributed(ops_test, unit, app_name=app)
         assert (
             new_external_cert != original_tls_info[unit.name]["external_cert_contents"]
         ), "external cert not rotated"
@@ -365,5 +365,4 @@ async def rotate_and_verify_certs(ops_test: OpsTest, app: str) -> None:
             ), f"mongos service for {unit.name} was not restarted."
 
     # Verify that TLS is functioning on all units.
-    for unit in ops_test.model.applications[app].units:
-        check_cluster_tls_enabled(ops_test)
+    await check_cluster_tls_enabled(ops_test)

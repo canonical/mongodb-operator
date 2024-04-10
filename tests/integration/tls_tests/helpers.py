@@ -7,6 +7,7 @@ from datetime import datetime
 
 import ops
 from charms.mongodb.v1.helpers import MONGO_SHELL
+from ops.model import Unit
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_attempt, wait_exponential
 
@@ -58,14 +59,20 @@ async def mongo_tls_command(ops_test: OpsTest, app_name=None, mongos=False) -> s
 
 
 async def check_tls(
-    ops_test: OpsTest, unit: ops.model.Unit, enabled: bool, app_name=None, mongos=False
+    ops_test: OpsTest,
+    unit: ops.model.Unit,
+    enabled: bool,
+    app_name: str | None,
+    mongos: bool = False,
 ) -> bool:
-    """Returns whether TLS is enabled on the specific PostgreSQL instance.
+    """Returns whether TLS is enabled on the specific MongoDB instance.
 
     Args:
         ops_test: The ops test framework instance.
         unit: The unit to be checked.
         enabled: check if TLS is enabled/disabled
+        app_name: name of running mongodb app
+        mongos: whether sharded deployment of replica set
 
     Returns:
         Whether TLS is enabled/disabled.
@@ -91,7 +98,7 @@ async def check_tls(
         return False
 
 
-async def time_file_created(ops_test: OpsTest, unit_name: str, path: str) -> int:
+async def time_file_created(ops_test: OpsTest, unit_name: str, path: str) -> datetime:
     """Returns the unix timestamp of when a file was created on a specified unit."""
     time_cmd = f"exec --unit {unit_name} --  ls -l --time-style=full-iso {path} "
     return_code, ls_output, _ = await ops_test.juju(*time_cmd.split())
@@ -104,7 +111,7 @@ async def time_file_created(ops_test: OpsTest, unit_name: str, path: str) -> int
     return process_ls_time(ls_output)
 
 
-async def time_process_started(ops_test: OpsTest, unit_name: str, process_name: str) -> int:
+async def time_process_started(ops_test: OpsTest, unit_name: str, process_name: str) -> datetime:
     """Retrieves the time that a given process started according to systemd."""
     time_cmd = f"exec --unit {unit_name} --  systemctl show {process_name} --property=ActiveEnterTimestamp"
     return_code, systemctl_output, _ = await ops_test.juju(*time_cmd.split())
@@ -126,7 +133,7 @@ def process_ls_time(ls_output):
     return d
 
 
-def process_systemctl_time(systemctl_output):
+def process_systemctl_time(systemctl_output) -> datetime:
     """Parse time representation as returned by the 'systemctl' command."""
     "ActiveEnterTimestamp=Thu 2022-09-22 10:00:00 UTC"
     time_as_str = "T".join(systemctl_output.split("=")[1].split(" ")[1:3])
@@ -134,8 +141,8 @@ def process_systemctl_time(systemctl_output):
     return d
 
 
-async def scp_file_preserve_ctime(ops_test: OpsTest, unit_name: str, path: str) -> int:
-    """Returns the unix timestamp of when a file was created on a specified unit."""
+async def scp_file_preserve_ctime(ops_test: OpsTest, unit_name: str, path: str) -> str:
+    """Returns the name of the file copied from the set path in the unit."""
     # Retrieving the file
     filename = path.split("/")[-1]
     complete_command = f"scp --container mongod {unit_name}:{path} {filename}"
@@ -150,7 +157,7 @@ async def scp_file_preserve_ctime(ops_test: OpsTest, unit_name: str, path: str) 
             stderr,
         )
 
-    return f"{filename}"
+    return filename
 
 
 async def check_certs_correctly_distributed(
@@ -208,7 +215,7 @@ async def check_certs_correctly_distributed(
         assert relation_internal_cert == internal_contents_file
 
 
-async def get_file_contents(ops_test: OpsTest, unit: str, filepath: str) -> str:
+async def get_file_contents(ops_test: OpsTest, unit: Unit, filepath: str) -> str:
     """Returns the contents of the provided filepath."""
     mv_cmd = f"exec --unit {unit.name} sudo cat {filepath} "
     _, stdout, _ = await ops_test.juju(*mv_cmd.split())
