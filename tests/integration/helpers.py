@@ -207,6 +207,7 @@ async def get_secret_content(ops_test, secret_id) -> Dict[str, str]:
     complete_command = f"show-secret {secret_id} --reveal --format=json"
     _, stdout, _ = await ops_test.juju(*complete_command.split())
     data = json.loads(stdout)
+    logger.error(f"\n\n\nget_secret_content: {secret_id} -- {data}")
     return data[secret_id]["content"]["Data"]
 
 

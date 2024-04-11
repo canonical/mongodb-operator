@@ -173,10 +173,12 @@ async def check_certs_correctly_distributed(
     app_secret_content = await get_secret_content(ops_test, app_secret_id)
     unit_secret_content = await get_secret_content(ops_test, unit_secret_id)
 
-    a = app_secret_content.copy()
-    u = unit_secret_content.copy()
-    logger.error(f"\n\n\ncheck_certs_correctly_distributed: \napp_secret_content: {a}")
-    logger.error(f"\n\n\ncheck_certs_correctly_distributed: \nunit_secret_content: {u}")
+    logger.error(
+        f"\n\n\ncheck_certs_correctly_distributed: \napp_secret_content: {app_secret_content}"
+    )
+    logger.error(
+        f"\n\n\ncheck_certs_correctly_distributed: \nunit_secret_content: {unit_secret_content}"
+    )
     app_current_crt = app_secret_content["csr-secret"]
     unit_current_crt = unit_secret_content["csr-secret"]
 
