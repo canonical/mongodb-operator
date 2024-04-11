@@ -21,6 +21,7 @@ from charms.mongodb.v0.mongodb import (
 )
 from charms.mongodb.v0.mongodb_secrets import SecretCache, generate_secret_label
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
+from charms.mongodb.v0.upgrade import MongoDBDependencyModel, MongoDBUpgrade
 from charms.mongodb.v1.helpers import (
     KEY_FILE,
     TLS_EXT_CA_FILE,
@@ -130,6 +131,12 @@ class MongodbOperatorCharm(CharmBase):
         self.legacy_client_relations = MongoDBLegacyProvider(self)
         self.tls = MongoDBTLS(self, Config.Relations.PEERS, substrate=Config.SUBSTRATE)
         self.backups = MongoDBBackups(self)
+        self.upgrade = MongoDBUpgrade(
+            self,
+            dependency_model=MongoDBDependencyModel(
+                **Config.DEPENDENCIES  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
+            ),
+        )  # TODO future PR add dependency_model
         self.config_server = ShardingProvider(self)
         self.cluster = ClusterProvider(self)
         self.shard = ConfigServerRequirer(self)

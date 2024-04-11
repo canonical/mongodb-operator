@@ -55,3 +55,6 @@ set-tls-private-key:
     internal-key:
       type: string
       description: The content of private key for internal communications with clients. Content will be auto-generated if this option is not specified.
+
+pre-upgrade-check:
+  description: Run necessary pre-upgrade checks before executing a charm upgrade.

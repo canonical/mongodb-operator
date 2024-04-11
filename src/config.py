@@ -17,6 +17,20 @@ class Config:
     MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
     MONGOD_CONF_DIR = f"{MONGODB_SNAP_DATA_DIR}/etc/mongod"
     MONGOD_CONF_FILE_PATH = f"{MONGOD_CONF_DIR}/mongod.conf"
+    SNAP_PACKAGES = [("charmed-mongodb", "6/edge", 117)]
+    DEPENDENCIES = {
+        "mongod_service": {
+            "dependencies": {},
+            "name": "mongod",
+            # this should be">4,<8" - but we get pydantic.error_wrappers.ValidationError - resolve
+            # in DPE-3940
+            "upgrade_supported": ">4",
+            # this should be "6.0.6-5" - but we get pydantic.error_wrappers.ValidationError -
+            # resolve in DPE-3940
+            "version": "6.0.6",
+        },
+        # TODO: Future PR DPE-3940 - implements mongos if necessary
+    }
     SNAP_PACKAGES = [("charmed-mongodb", "6/edge", 118)]
 
     # Keep these alphabetically sorted
