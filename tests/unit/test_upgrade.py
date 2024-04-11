@@ -2,13 +2,13 @@
 # See LICENSE file for licensing details.
 import unittest
 from unittest import mock
-from unittest.mock import patch, MagicMock
-from charms.operator_libs_linux.v1 import snap
-from tenacity import stop_after_attempt
-from charms.data_platform_libs.v0.upgrade import ClusterNotReadyError
+from unittest.mock import MagicMock, patch
 
+from charms.data_platform_libs.v0.upgrade import ClusterNotReadyError
+from charms.operator_libs_linux.v1 import snap
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
 from ops.testing import Harness
+from tenacity import stop_after_attempt
 
 from charm import MongodbOperatorCharm
 
