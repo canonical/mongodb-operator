@@ -107,7 +107,6 @@ async def test_tls_then_build_cluster(ops_test: OpsTest) -> None:
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_tls_inconsistent_rels(ops_test: OpsTest) -> None:
-
     await ops_test.model.deploy(
         CERTS_APP_NAME, application_name=DIFFERENT_CERTS_APP_NAME, channel="stable"
     )

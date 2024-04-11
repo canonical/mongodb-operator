@@ -52,6 +52,11 @@ logger = logging.getLogger(__name__)
 
 
 def _get_logging_options(snap_install: bool) -> str:
+    """Returns config option for log path.
+
+    :param snap_install: indicate that charmed-mongodb was installed from snap (VM charms)
+    :return: a path to log file to be used
+    """
     log_path = f"{LOG_DIR}/{MONGODB_LOG_FILENAME}"
     if snap_install:
         log_path = f"{MONGODB_COMMON_DIR}{log_path}"
@@ -59,6 +64,11 @@ def _get_logging_options(snap_install: bool) -> str:
 
 
 def _get_audit_log_settings(snap_install: bool) -> List[str]:
+    """Return config options for audit log.
+
+    :param snap_install: indicate that charmed-mongodb was installed from snap (VM charms)
+    :return: a list of audit log settings for charmed MongoDB
+    """
     audit_log_path = f"{LOG_DIR}/{Config.AuditLog.FILE_NAME}"
     if snap_install:
         audit_log_path = f"{MONGODB_COMMON_DIR}{audit_log_path}"
