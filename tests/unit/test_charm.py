@@ -9,7 +9,13 @@ from unittest.mock import MagicMock, call, patch
 
 import pytest
 from charms.operator_libs_linux.v1 import snap
-from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
+from ops.model import (
+    ActiveStatus,
+    BlockedStatus,
+    MaintenanceStatus,
+    ModelError,
+    WaitingStatus,
+)
 from ops.testing import Harness
 from parameterized import parameterized
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
@@ -730,6 +736,14 @@ class TestCharm(unittest.TestCase):
         self.harness.charm.set_secret("app", "monitor-password", "blablabla")
         assert self.harness.charm.get_secret("app", "monitor-password") == "blablabla"
 
+    def test_set_reset_existing_password_app_nonleader(self):
+        self._setup_secrets()
+        self.harness.set_leader(False)
+
+        # Getting current password
+        with self.assertRaises(ModelError):
+            self.harness.charm.set_secret("app", "monitor-password", "bla")
+
     @parameterized.expand([("app"), ("unit")])
     def test_set_secret_returning_secret_id(self, scope):
         secret_id = self.harness.charm.set_secret(scope, "somekey", "bla")
@@ -737,7 +751,8 @@ class TestCharm(unittest.TestCase):
 
     @parameterized.expand([("app"), ("unit")])
     def test_set_reset_new_secret(self, scope):
-        self.harness.set_leader(True)
+        if scope == "app":
+            self.harness.set_leader(True)
 
         # Getting current password
         self.harness.charm.set_secret(scope, "new-secret", "bla")
@@ -750,6 +765,22 @@ class TestCharm(unittest.TestCase):
         # Set another new secret
         self.harness.charm.set_secret(scope, "new-secret2", "blablabla")
         assert self.harness.charm.get_secret(scope, "new-secret2") == "blablabla"
+
+    def test_set_reset_new_secret_non_leader(self):
+        self.harness.set_leader(True)
+
+        # Getting current password
+        self.harness.charm.set_secret("app", "new-secret", "bla")
+        assert self.harness.charm.get_secret("app", "new-secret") == "bla"
+
+        # Reset new secret
+        self.harness.set_leader(False)
+        with self.assertRaises(ModelError):
+            self.harness.charm.set_secret("app", "new-secret", "blablabla")
+
+        # Set another new secret
+        with self.assertRaises(ModelError):
+            self.harness.charm.set_secret("app", "new-secret2", "blablabla")
 
     @parameterized.expand([("app"), ("unit")])
     def test_invalid_secret(self, scope):
@@ -796,6 +827,13 @@ class TestCharm(unittest.TestCase):
                 "Non-existing secret unit:non-existing-secret was attempted to be removed."
                 in self._caplog.text
             )
+
+    def test_delete_password_non_leader(self):
+        self._setup_secrets()
+        self.harness.set_leader(False)
+        assert self.harness.charm.get_secret("app", "monitor-password")
+        with self.assertRaises(ModelError):
+            self.harness.charm.remove_secret("app", "monitor-password")
 
     @parameterized.expand([("app"), ("unit")])
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
