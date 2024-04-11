@@ -38,7 +38,7 @@ LIBPATCH = 1
 
 
 class MongoDBDependencyModel(BaseModel):
-    """Model for Kafka Operator dependencies."""
+    """Model for MongoDB Operator dependencies."""
 
     mongod_service: DependencyModel
     # in future have a mongos service here too
