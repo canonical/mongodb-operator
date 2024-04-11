@@ -179,8 +179,8 @@ async def check_certs_correctly_distributed(
     logger.error(
         f"\n\n\ncheck_certs_correctly_distributed: \nunit_secret_content: {unit_secret_content}"
     )
-    app_current_crt = app_secret_content["csr-secret"]
-    unit_current_crt = unit_secret_content["csr-secret"]
+    internal_unit_csr = unit_secret_content["int-csr-secret"]
+    external_unit_csr = unit_secret_content["ext-csr-secret"]
 
     # Get the values for certs from the relation, as provided by TLS Charm
     certificates_raw_data = await get_application_relation_data(
@@ -191,12 +191,12 @@ async def check_certs_correctly_distributed(
     external_item = [
         data
         for data in certificates_data
-        if data["certificate_signing_request"].rstrip() == unit_current_crt.rstrip()
+        if data["certificate_signing_request"].rstrip() == external_unit_csr.rstrip()
     ][0]
     internal_item = [
         data
         for data in certificates_data
-        if data["certificate_signing_request"].rstrip() == app_current_crt.rstrip()
+        if data["certificate_signing_request"].rstrip() == internal_unit_csr.rstrip()
     ][0]
 
     # Get a local copy of the external cert

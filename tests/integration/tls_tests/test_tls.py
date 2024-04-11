@@ -77,7 +77,7 @@ async def test_rotate_tls_key(ops_test: OpsTest) -> None:
 
     This test rotates tls private keys to randomly generated keys.
     """
-    # dict of values for cert file certion and mongod service start times. After resetting the
+    # dict of values for cert file creation and mongod service start times. After resetting the
     # private keys these certificates should be updated and the mongod service should be
     # restarted
     original_tls_times = {}
