@@ -12,7 +12,6 @@ from charms.data_platform_libs.v0.upgrade import (
     DataUpgrade,
     DependencyModel,
     UpgradeGrantedEvent,
-    verify_requirements,
 )
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 from charms.operator_libs_linux.v1 import snap
@@ -59,6 +58,15 @@ class MongoDBUpgrade(DataUpgrade):
         super().__init__(charm, **kwargs)
         self.charm = charm
 
+    @property
+    def idle(self) -> bool:
+        """Checks if cluster has completed upgrade.
+
+        Returns:
+            True if cluster has completed upgrade. Otherwise False
+        """
+        return not bool(self.upgrade_stack)
+
     @override
     def pre_upgrade_check(self) -> None:
         """Verifies that an upgrade can be done on the MongoDB deployment."""
@@ -73,7 +81,9 @@ class MongoDBUpgrade(DataUpgrade):
             raise ClusterNotReadyError(message=default_message, cause="Cluster is not healthy")
 
         if not self.is_cluster_able_to_read_write():
-            raise ClusterNotReadyError(message=default_message, cause="Cluster cannot read/write")
+            raise ClusterNotReadyError(
+                message=default_message, cause="Cluster cannot read/write - please check logs"
+            )
 
         # Future PR - sharding based checks
 
@@ -122,21 +132,7 @@ class MongoDBUpgrade(DataUpgrade):
     @override
     def _on_upgrade_granted(self, event: UpgradeGrantedEvent) -> None:
         """Execute a series of upgrade steps."""
-        dependency_model: DependencyModel = getattr(self.dependency_model, "mongod_service")
-        # version is of the format x.y.z-d
-        mongod_current_version = self.mongod_current_version.split("-")[0]
-        if not verify_requirements(
-            version=mongod_current_version,
-            requirement=dependency_model.upgrade_supported,  # todo ask marc
-        ):
-            logger.error(
-                "Current mongod version %s does not meet requirement %s",
-                mongod_current_version,
-                dependency_model.upgrade_supported,
-            )
-            self.set_unit_failed()
-            return
-
+        # TODO: Future PR - check compatibility of new mongod version with current mongos versions
         self.charm.stop_charm_services()
 
         try:
