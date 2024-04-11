@@ -35,6 +35,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await ops_test.model.wait_for_idle()
 
 
+@pytest.mark.group(1)
 async def test_preflight_check(ops_test: OpsTest) -> None:
     """Verifies that the preflight check can run successfully."""
     app_name = await get_app_name(ops_test)
