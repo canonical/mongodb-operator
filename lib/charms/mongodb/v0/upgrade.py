@@ -2,6 +2,7 @@
 # See LICENSE file for licensing details.
 
 """Manager for handling MongoDB in-place upgrades."""
+
 import logging
 import secrets
 import string
@@ -45,7 +46,7 @@ ROLLBACK_INSTRUCTIONS = """Unit failed to upgrade and requires manual rollback t
 
 
 class MongoDBDependencyModel(BaseModel):
-    """Model for Kafka Operator dependencies."""
+    """Model for MongoDB Operator dependencies."""
 
     mongod_service: DependencyModel
     # in future have a mongos service here too
@@ -263,9 +264,3 @@ class MongoDBUpgrade(DataUpgrade):
             test_collection = db[collection_name]
             write = {WRITE_KEY: write_value}
             test_collection.insert_one(write)
-
-    @property
-    def mongod_current_version(self) -> str:
-        """Get current mongod version."""
-        with MongoDBConnection(self.charm.mongodb_config) as mongod:
-            return mongod.get_mongod_version()

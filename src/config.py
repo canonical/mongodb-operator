@@ -17,7 +17,7 @@ class Config:
     MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
     MONGOD_CONF_DIR = f"{MONGODB_SNAP_DATA_DIR}/etc/mongod"
     MONGOD_CONF_FILE_PATH = f"{MONGOD_CONF_DIR}/mongod.conf"
-    SNAP_PACKAGES = [("charmed-mongodb", "6/edge", 117)]
+    SNAP_PACKAGES = [("charmed-mongodb", "6/edge", 118)]
     DEPENDENCIES = {
         "mongod_service": {
             "dependencies": {},
@@ -25,7 +25,7 @@ class Config:
             "upgrade_supported": ">=6.0.0,<7",
             "version": "6.0.6",
         },
-        # TODO: Future PR DPE-3940 - implements mongos if necessary
+        # TODO: Future PR - implement mongos deps when supporting sharding upgrades
     }
 
     # Keep these alphabetically sorted

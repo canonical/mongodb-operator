@@ -206,3 +206,10 @@ async def check_certs_correctly_distributed(
     with open(internal_copy_path) as f:
         internal_contents_file = f.read()
         assert relation_internal_cert == internal_contents_file
+
+
+async def get_file_contents(ops_test: OpsTest, unit: str, filepath: str) -> str:
+    """Returns the contents of the provided filepath."""
+    mv_cmd = f"exec --unit {unit.name} sudo cat {filepath} "
+    _, stdout, _ = await ops_test.juju(*mv_cmd.split())
+    return stdout
