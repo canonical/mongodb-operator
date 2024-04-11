@@ -144,15 +144,30 @@ class MongodbOperatorCharm(CharmBase):
         # relation events for Prometheus metrics are handled in the MetricsEndpointProvider
         self._grafana_agent = COSAgentProvider(
             self,
-            metrics_endpoints=Config.Monitoring.METRICS_ENDPOINTS,
             metrics_rules_dir=Config.Monitoring.METRICS_RULES_DIR,
             logs_rules_dir=Config.Monitoring.LOGS_RULES_DIR,
             log_slots=Config.Monitoring.LOG_SLOTS,
+            scrape_configs=self._mongo_scrape_config,
         )
 
         self.secrets = SecretCache(self)
 
     # BEGIN: properties
+    def _mongo_scrape_config(self) -> List[Dict]:
+        """Generates scrape config for the mongo metrics endpoint."""
+        return [
+            {
+                "metrics_path": "/metrics",
+                "static_configs": [
+                    {
+                        "targets": [
+                            f"{self._unit_ip(self.unit)}:{Config.Monitoring.MONGODB_EXPORTER_PORT}"
+                        ],
+                        "labels": {"cluster": self.app.name, "replication_set": self.app.name},
+                    }
+                ],
+            }
+        ]
 
     @property
     def primary(self) -> str:

@@ -38,7 +38,7 @@ LIBPATCH = 1
 
 
 class MongoDBDependencyModel(BaseModel):
-    """Model for Kafka Operator dependencies."""
+    """Model for MongoDB Operator dependencies."""
 
     mongod_service: DependencyModel
     # in future have a mongos service here too
@@ -97,8 +97,6 @@ class MongoDBUpgrade(DataUpgrade):
             return False
 
         charm_status = self.charm.process_statuses()
-        print(self.are_nodes_healthy())
-        print(charm_status)
         return self.are_nodes_healthy() and isinstance(charm_status, ActiveStatus)
 
     def are_nodes_healthy(self) -> bool:
