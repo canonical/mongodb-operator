@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
+import json
 import logging
 from datetime import datetime
 
@@ -9,9 +10,15 @@ from charms.mongodb.v1.helpers import MONGO_SHELL
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_attempt, wait_exponential
 
-from ..ha_tests.helpers import app_name
-from ..helpers import get_password
+from ..helpers import (
+    get_app_name,
+    get_application_relation_data,
+    get_password,
+    get_secret_content,
+    get_secret_id,
+)
 
+# TODO move this to a separate constants file
 PORT = 27017
 MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
 
@@ -21,6 +28,8 @@ EXTERNAL_CERT_PATH = f"{MONGOD_CONF_DIR}/external-ca.crt"
 INTERNAL_CERT_PATH = f"{MONGOD_CONF_DIR}/internal-ca.crt"
 EXTERNAL_PEM_PATH = f"{MONGOD_CONF_DIR}/external-cert.pem"
 
+TLS_RELATION_NAME = "certificates"
+
 logger = logging.getLogger(__name__)
 
 
@@ -28,22 +37,29 @@ class ProcessError(Exception):
     """Raised when a process fails."""
 
 
-async def mongo_tls_command(ops_test: OpsTest) -> str:
+async def mongo_tls_command(ops_test: OpsTest, app_name=None, mongos=False) -> str:
     """Generates a command which verifies TLS status."""
-    app = await app_name(ops_test)
-    replica_set_hosts = [unit.public_address for unit in ops_test.model.applications[app].units]
-    password = await get_password(ops_test, app)
+    app_name = app_name or await get_app_name(ops_test)
+    port = "27017" if not mongos else "27018"
+    replica_set_hosts = [
+        f"{unit.public_address}:{port}" for unit in ops_test.model.applications[app_name].units
+    ]
+    password = await get_password(ops_test, app_name=app_name)
     hosts = ",".join(replica_set_hosts)
-    replica_set_uri = f"mongodb://operator:" f"{password}@" f"{hosts}/admin?replicaSet={app}"
+    extra_args = f"?replicaSet={app_name}" if not mongos else ""
+    replica_set_uri = f"mongodb://operator:{password}@{hosts}/admin{extra_args}"
 
+    status_comand = "rs.status()" if not mongos else "sh.status()"
     return (
-        f"{MONGO_SHELL} '{replica_set_uri}'  --eval 'rs.status()'"
+        f"{MONGO_SHELL} '{replica_set_uri}'  --eval '{status_comand}'"
         f" --tls --tlsCAFile {EXTERNAL_CERT_PATH}"
         f" --tlsCertificateKeyFile {EXTERNAL_PEM_PATH}"
     )
 
 
-async def check_tls(ops_test: OpsTest, unit: ops.model.Unit, enabled: bool) -> bool:
+async def check_tls(
+    ops_test: OpsTest, unit: ops.model.Unit, enabled: bool, app_name=None, mongos=False
+) -> bool:
     """Returns whether TLS is enabled on the specific PostgreSQL instance.
 
     Args:
@@ -59,9 +75,12 @@ async def check_tls(ops_test: OpsTest, unit: ops.model.Unit, enabled: bool) -> b
             stop=stop_after_attempt(10), wait=wait_exponential(multiplier=1, min=2, max=30)
         ):
             with attempt:
-                mongod_tls_check = await mongo_tls_command(ops_test)
+                mongod_tls_check = await mongo_tls_command(
+                    ops_test, app_name=app_name, mongos=mongos
+                )
                 check_tls_cmd = f"exec --unit {unit.name} -- {mongod_tls_check}"
                 return_code, _, _ = await ops_test.juju(*check_tls_cmd.split())
+
                 tls_enabled = return_code == 0
                 if enabled != tls_enabled:
                     raise ValueError(
@@ -132,3 +151,65 @@ async def scp_file_preserve_ctime(ops_test: OpsTest, unit_name: str, path: str) 
         )
 
     return f"{filename}"
+
+
+async def check_certs_correctly_distributed(
+    ops_test: OpsTest, unit: ops.Unit, app_name=None
+) -> None:
+    """Comparing expected vs distributed certificates.
+
+    Verifying certificates downloaded on the charm against the ones distributed by the TLS operator
+    """
+    app_name = app_name or await get_app_name(ops_test)
+    app_secret_id = await get_secret_id(ops_test, app_name)
+    unit_secret_id = await get_secret_id(ops_test, unit.name)
+    app_secret_content = await get_secret_content(ops_test, app_secret_id)
+    unit_secret_content = await get_secret_content(ops_test, unit_secret_id)
+    app_current_crt = app_secret_content["csr-secret"]
+    unit_current_crt = unit_secret_content["csr-secret"]
+
+    # Get the values for certs from the relation, as provided by TLS Charm
+    certificates_raw_data = await get_application_relation_data(
+        ops_test, app_name, TLS_RELATION_NAME, "certificates"
+    )
+    certificates_data = json.loads(certificates_raw_data)
+
+    external_item = [
+        data
+        for data in certificates_data
+        if data["certificate_signing_request"].rstrip() == unit_current_crt.rstrip()
+    ][0]
+    internal_item = [
+        data
+        for data in certificates_data
+        if data["certificate_signing_request"].rstrip() == app_current_crt.rstrip()
+    ][0]
+
+    # Get a local copy of the external cert
+    external_copy_path = await scp_file_preserve_ctime(ops_test, unit.name, EXTERNAL_CERT_PATH)
+
+    # Get the external cert value from the relation
+    relation_external_cert = "\n".join(external_item["chain"])
+
+    # CHECK: Compare if they are the same
+    with open(external_copy_path) as f:
+        external_contents_file = f.read()
+        assert relation_external_cert == external_contents_file
+
+    # Get a local copy of the internal cert
+    internal_copy_path = await scp_file_preserve_ctime(ops_test, unit.name, INTERNAL_CERT_PATH)
+
+    # Get the external cert value from the relation
+    relation_internal_cert = "\n".join(internal_item["chain"])
+
+    # CHECK: Compare if they are the same
+    with open(internal_copy_path) as f:
+        internal_contents_file = f.read()
+        assert relation_internal_cert == internal_contents_file
+
+
+async def get_file_contents(ops_test: OpsTest, unit: str, filepath: str) -> str:
+    """Returns the contents of the provided filepath."""
+    mv_cmd = f"exec --unit {unit.name} sudo cat {filepath} "
+    _, stdout, _ = await ops_test.juju(*mv_cmd.split())
+    return stdout

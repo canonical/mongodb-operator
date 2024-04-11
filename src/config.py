@@ -1,4 +1,5 @@
 """Configuration for MongoDB Charm."""
+
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
@@ -16,20 +17,20 @@ class Config:
     MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
     MONGOD_CONF_DIR = f"{MONGODB_SNAP_DATA_DIR}/etc/mongod"
     MONGOD_CONF_FILE_PATH = f"{MONGOD_CONF_DIR}/mongod.conf"
-    SNAP_PACKAGES = [("charmed-mongodb", "6/edge", 87)]
+    SNAP_PACKAGES = [("charmed-mongodb", "6/edge", 118)]
 
-    class Role:
-        """Role config names for MongoDB Charm."""
-
-        CONFIG_SERVER = "config-server"
-        REPLICATION = "replication"
-        SHARD = "shard"
-
+    # Keep these alphabetically sorted
     class Actions:
         """Actions related config for MongoDB Charm."""
 
         PASSWORD_PARAM_NAME = "password"
         USERNAME_PARAM_NAME = "username"
+
+    class AuditLog:
+        """Audit log related configuration."""
+
+        FORMAT = "JSON"
+        FILE_NAME = "audit.log"
 
     class Backup:
         """Backup related config for MongoDB Charm."""
@@ -53,15 +54,15 @@ class Config:
     class TLS:
         """TLS related config for MongoDB Charm."""
 
+        KEY_FILE_NAME = "keyFile"
+        TLS_PEER_RELATION = "certificates"
+        SECRET_KEY_LABEL = "key-secret"
+
         EXT_PEM_FILE = "external-cert.pem"
         EXT_CA_FILE = "external-ca.crt"
         INT_PEM_FILE = "internal-cert.pem"
         INT_CA_FILE = "internal-ca.crt"
-        KEY_FILE_NAME = "keyFile"
-        TLS_PEER_RELATION = "certificates"
-
         SECRET_CA_LABEL = "ca-secret"
-        SECRET_KEY_LABEL = "key-secret"
         SECRET_CERT_LABEL = "cert-secret"
         SECRET_CSR_LABEL = "csr-secret"
         SECRET_CHAIN_LABEL = "chain-secret"
@@ -79,6 +80,14 @@ class Config:
         UNIT_SCOPE = "unit"
         DB_RELATIONS = [OBSOLETE_RELATIONS_NAME, NAME]
         Scopes = Literal[APP_SCOPE, UNIT_SCOPE]
+
+    class Role:
+        """Role config names for MongoDB Charm."""
+
+        CONFIG_SERVER = "config-server"
+        REPLICATION = "replication"
+        SHARD = "shard"
+        MONGOS = "mongos"
 
     class Secrets:
         """Secrets related constants."""

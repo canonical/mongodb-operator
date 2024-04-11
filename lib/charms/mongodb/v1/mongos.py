@@ -1,4 +1,5 @@
 """Code for interactions with MongoDB."""
+
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
@@ -60,7 +61,7 @@ class MongosConfiguration:
         # Auth DB should be specified while user connects to application DB.
         auth_source = ""
         if self.database != "admin":
-            auth_source = "&authSource=admin"
+            auth_source = "authSource=admin"
         return (
             f"mongodb://{quote_plus(self.username)}:"
             f"{quote_plus(self.password)}@"

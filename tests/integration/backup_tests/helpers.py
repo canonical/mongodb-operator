@@ -1,6 +1,5 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
-import os
 import subprocess
 
 import ops
@@ -9,6 +8,7 @@ from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_attempt, wait_fixed
 
 from ..ha_tests import helpers as ha_helpers
+from ..helpers import get_app_name
 
 S3_APP_NAME = "s3-integrator"
 TIMEOUT = 10 * 60
@@ -62,28 +62,19 @@ async def create_and_verify_backup(ops_test: OpsTest) -> None:
 
 async def get_leader_unit(ops_test: OpsTest, db_app_name=None) -> ops.model.Unit:
     """Returns the leader unit of the database charm."""
-    db_app_name = db_app_name or await app_name(ops_test)
+    db_app_name = db_app_name or await get_app_name(ops_test)
     for unit in ops_test.model.applications[db_app_name].units:
         if await unit.is_leader_from_status():
             return unit
 
 
-async def app_name(ops_test: OpsTest) -> str:
-    """Returns the name of the cluster running MongoDB.
-
-    This is important since not all deployments of the MongoDB charm have the application name
-    "mongodb".
-
-    Note: if multiple clusters are running MongoDB this will return the one first found.
-    """
-    status = await ops_test.model.get_status()
-    for app in ops_test.model.applications:
-        # note that format of the charm field is not exactly "mongodb" but instead takes the form
-        # of `local:focal/mongodb-6`
-        if "mongodb" in status["applications"][app]["charm"]:
-            return app
-
-    return None
+async def get_backup_list(ops_test: OpsTest, db_app_name=None) -> str:
+    """Count the number of logical backups."""
+    leader_unit = await get_leader_unit(ops_test, db_app_name=db_app_name)
+    action = await leader_unit.run_action(action_name="list-backups")
+    list_result = await action.wait()
+    list_result = list_result.results["backups"]
+    return list_result
 
 
 async def count_logical_backups(db_unit: ops.model.Unit) -> int:
@@ -112,11 +103,11 @@ async def count_failed_backups(db_unit: ops.model.Unit) -> int:
     return failed_backups
 
 
-async def set_credentials(ops_test: OpsTest, cloud: str) -> None:
+async def set_credentials(ops_test: OpsTest, github_secrets, cloud: str) -> None:
     """Sets the s3 crednetials for the provided cloud, valid options are AWS or GCP."""
     # set access key and secret keys
-    access_key = os.environ.get(f"{cloud}_ACCESS_KEY", False)
-    secret_key = os.environ.get(f"{cloud}_SECRET_KEY", False)
+    access_key = github_secrets[f"{cloud}_ACCESS_KEY"]
+    secret_key = github_secrets[f"{cloud}_SECRET_KEY"]
     assert access_key and secret_key, f"{cloud} access key and secret key not provided."
 
     s3_integrator_unit = ops_test.model.applications[S3_APP_NAME].units[0]
@@ -142,11 +133,11 @@ def is_relation_joined(ops_test: OpsTest, endpoint_one: str, endpoint_two: str) 
 
 async def insert_unwanted_data(ops_test: OpsTest) -> None:
     """Inserts the data into the MongoDB cluster via primary replica."""
-    app = await app_name(ops_test)
-    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
+    app_name = await get_app_name(ops_test)
+    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app_name].units]
     primary = (await ha_helpers.replica_set_primary(ip_addresses, ops_test)).public_address
-    password = await ha_helpers.get_password(ops_test, app)
-    client = MongoClient(ha_helpers.unit_uri(primary, password, app), directConnection=True)
+    password = await ha_helpers.get_password(ops_test, app_name)
+    client = MongoClient(ha_helpers.unit_uri(primary, password, app_name), directConnection=True)
     db = client["new-db"]
     test_collection = db["test_collection"]
     test_collection.insert_one({"unwanted_data": "bad data 1"})

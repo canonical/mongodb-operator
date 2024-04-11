@@ -6,6 +6,7 @@ import asyncio
 import pytest
 from pytest_operator.plugin import OpsTest
 
+from ..helpers import get_leader_id, get_password, set_password
 from .helpers import (
     generate_mongodb_client,
     has_correct_shards,
@@ -17,10 +18,18 @@ from .helpers import (
 SHARD_ONE_APP_NAME = "shard-one"
 SHARD_TWO_APP_NAME = "shard-two"
 SHARD_THREE_APP_NAME = "shard-three"
-SHARD_APPS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME]
+SHARD_APPS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME, SHARD_THREE_APP_NAME]
 CONFIG_SERVER_APP_NAME = "config-server-one"
+CLUSTER_APPS = [
+    CONFIG_SERVER_APP_NAME,
+    SHARD_ONE_APP_NAME,
+    SHARD_TWO_APP_NAME,
+    SHARD_THREE_APP_NAME,
+]
 SHARD_REL_NAME = "sharding"
 CONFIG_SERVER_REL_NAME = "config-server"
+OPERATOR_USERNAME = "operator"
+OPERATOR_PASSWORD = "operator-password"
 MONGODB_KEYFILE_PATH = "/var/snap/charmed-mongodb/current/etc/mongod/keyFile"
 # for now we have a large timeout due to the slow drainage of the `config.system.sessions`
 # collection. More info here:
@@ -28,6 +37,7 @@ MONGODB_KEYFILE_PATH = "/var/snap/charmed-mongodb/current/etc/mongod/keyFile"
 TIMEOUT = 30 * 60
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy a sharded cluster."""
@@ -80,6 +90,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         assert shard_unit.workload_status_message == "missing relation to config server"
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_cluster_active(ops_test: OpsTest) -> None:
     """Tests the integration of cluster components works without error."""
@@ -120,6 +131,38 @@ async def test_cluster_active(ops_test: OpsTest) -> None:
     ), "Config server did not process config properly"
 
 
+@pytest.mark.group(1)
+async def test_set_operator_password(ops_test: OpsTest):
+    """Tests that the cluster can safely set the operator password."""
+    for cluster_app_name in CLUSTER_APPS:
+        operator_password = await get_password(
+            ops_test, username=OPERATOR_USERNAME, app_name=cluster_app_name
+        )
+        assert (
+            operator_password != OPERATOR_PASSWORD
+        ), f"{cluster_app_name} is incorrectly already set to the new password."
+
+    # rotate password and verify that no unit goes into error as a result of password rotation
+    config_leader_id = await get_leader_id(ops_test, app_name=CONFIG_SERVER_APP_NAME)
+    await set_password(
+        ops_test, unit_id=config_leader_id, username=OPERATOR_USERNAME, password=OPERATOR_PASSWORD
+    )
+    await ops_test.model.wait_for_idle(
+        apps=CLUSTER_APPS,
+        status="active",
+        idle_period=20,
+    ),
+
+    for cluster_app_name in CLUSTER_APPS:
+        operator_password = await get_password(
+            ops_test, username=OPERATOR_USERNAME, app_name=cluster_app_name
+        )
+        assert (
+            operator_password == OPERATOR_PASSWORD
+        ), f"{cluster_app_name} did not rotate to new password."
+
+
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_sharding(ops_test: OpsTest) -> None:
     """Tests writing data to mongos gets propagated to shards."""
@@ -173,6 +216,7 @@ async def test_sharding(ops_test: OpsTest) -> None:
     assert has_correct_data, "data not written to shard-three"
 
 
+@pytest.mark.group(1)
 async def test_shard_removal(ops_test: OpsTest) -> None:
     """Test shard removal.
 
@@ -231,6 +275,7 @@ async def test_shard_removal(ops_test: OpsTest) -> None:
     ), "Not all databases on final shard"
 
 
+@pytest.mark.group(1)
 async def test_removal_of_non_primary_shard(ops_test: OpsTest):
     """Tests safe removal of a shard that is not primary."""
     # add back a shard so we can safely remove a shard.
@@ -282,6 +327,7 @@ async def test_removal_of_non_primary_shard(ops_test: OpsTest):
     ), "Not all databases on final shard"
 
 
+@pytest.mark.group(1)
 async def test_unconventual_shard_removal(ops_test: OpsTest):
     """Tests that removing a shard application safely drains data.
 

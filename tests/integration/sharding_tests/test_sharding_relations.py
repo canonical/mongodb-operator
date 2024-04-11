@@ -5,12 +5,15 @@ import pytest
 from juju.errors import JujuAPIError
 from pytest_operator.plugin import OpsTest
 
+S3_APP_NAME = "s3-integrator"
 SHARD_ONE_APP_NAME = "shard"
 CONFIG_SERVER_ONE_APP_NAME = "config-server-one"
 CONFIG_SERVER_TWO_APP_NAME = "config-server-two"
 REPLICATION_APP_NAME = "replication"
 APP_CHARM_NAME = "application"
 LEGACY_APP_CHARM_NAME = "legacy-application"
+MONGOS_APP_NAME = "mongos"
+MONGOS_HOST_APP_NAME = "application-host"
 
 SHARDING_COMPONENTS = [SHARD_ONE_APP_NAME, CONFIG_SERVER_ONE_APP_NAME]
 
@@ -26,9 +29,14 @@ RELATION_LIMIT_MESSAGE = 'cannot add relation "shard:sharding config-server-two:
 TIMEOUT = 30 * 60
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(
-    ops_test: OpsTest, application_charm, legacy_charm, database_charm
+    ops_test: OpsTest,
+    application_charm,
+    legacy_charm,
+    database_charm,
+    mongos_host_application_charm,
 ) -> None:
     """Build and deploy a sharded cluster."""
     await ops_test.model.deploy(
@@ -44,6 +52,19 @@ async def test_build_and_deploy(
     await ops_test.model.deploy(
         database_charm, config={"role": "shard"}, application_name=SHARD_ONE_APP_NAME
     )
+    await ops_test.model.deploy(
+        MONGOS_APP_NAME,
+        channel="6/edge",
+        revision=3,
+    )
+    await ops_test.model.deploy(S3_APP_NAME, channel="edge")
+
+    # TODO: Future PR, once data integrator works with mongos charm deploy that charm instead of
+    # packing and deploying the charm in the application dir.
+    await ops_test.model.deploy(
+        mongos_host_application_charm, application_name=MONGOS_HOST_APP_NAME
+    )
+
     await ops_test.model.deploy(database_charm, application_name=REPLICATION_APP_NAME)
     await ops_test.model.deploy(application_charm, application_name=APP_CHARM_NAME)
     await ops_test.model.deploy(legacy_charm, application_name=LEGACY_APP_CHARM_NAME)
@@ -59,7 +80,22 @@ async def test_build_and_deploy(
         timeout=TIMEOUT,
     )
 
+    await ops_test.model.integrate(
+        f"{MONGOS_APP_NAME}",
+        f"{MONGOS_HOST_APP_NAME}",
+    )
 
+    await ops_test.model.wait_for_idle(
+        apps=[MONGOS_HOST_APP_NAME, MONGOS_APP_NAME],
+        idle_period=20,
+        raise_on_blocked=False,
+        timeout=TIMEOUT,
+        raise_on_error=False,
+    )
+
+
+@pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_only_one_config_server_relation(ops_test: OpsTest) -> None:
     """Verify that a shard can only be related to one config server."""
     await ops_test.model.integrate(
@@ -91,6 +127,8 @@ async def test_only_one_config_server_relation(ops_test: OpsTest) -> None:
     )
 
 
+@pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_cannot_use_db_relation(ops_test: OpsTest) -> None:
     """Verify that sharding components cannot use the DB relation."""
     for sharded_component in SHARDING_COMPONENTS:
@@ -125,6 +163,8 @@ async def test_cannot_use_db_relation(ops_test: OpsTest) -> None:
     )
 
 
+@pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_cannot_use_legacy_db_relation(ops_test: OpsTest) -> None:
     """Verify that sharding components cannot use the legacy DB relation."""
     for sharded_component in SHARDING_COMPONENTS:
@@ -159,6 +199,8 @@ async def test_cannot_use_legacy_db_relation(ops_test: OpsTest) -> None:
     )
 
 
+@pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_replication_config_server_relation(ops_test: OpsTest):
     """Verifies that using a replica as a shard fails."""
     # attempt to add a replication deployment as a shard to the config server.
@@ -186,6 +228,8 @@ async def test_replication_config_server_relation(ops_test: OpsTest):
     )
 
 
+@pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_replication_shard_relation(ops_test: OpsTest):
     """Verifies that using a replica as a config-server fails."""
     # attempt to add a shard to a replication deployment as a config server.
@@ -217,4 +261,108 @@ async def test_replication_shard_relation(ops_test: OpsTest):
         idle_period=20,
         raise_on_blocked=False,
         timeout=TIMEOUT,
+    )
+
+
+@pytest.mark.group(1)
+@pytest.mark.abort_on_fail
+async def test_replication_mongos_relation(ops_test: OpsTest) -> None:
+    """Verifies connecting a replica to a mongos router fails."""
+    # attempt to add a replication deployment as a shard to the config server.
+    await ops_test.model.integrate(
+        f"{REPLICATION_APP_NAME}",
+        f"{MONGOS_APP_NAME}",
+    )
+
+    await ops_test.model.wait_for_idle(
+        apps=[REPLICATION_APP_NAME],
+        idle_period=20,
+        raise_on_blocked=False,
+        timeout=TIMEOUT,
+    )
+
+    replication_unit = ops_test.model.applications[REPLICATION_APP_NAME].units[0]
+    assert (
+        replication_unit.workload_status_message
+        == "Relation to mongos not supported, config role must be config-server"
+    ), "replica cannot be related to mongos."
+
+    # clean up relations
+    await ops_test.model.applications[REPLICATION_APP_NAME].remove_relation(
+        f"{REPLICATION_APP_NAME}:cluster",
+        f"{MONGOS_APP_NAME}:cluster",
+    )
+
+    await ops_test.model.wait_for_idle(
+        apps=[SHARD_ONE_APP_NAME],
+        idle_period=20,
+        raise_on_blocked=False,
+        timeout=TIMEOUT,
+    )
+
+
+@pytest.mark.group(1)
+@pytest.mark.abort_on_fail
+async def test_shard_mongos_relation(ops_test: OpsTest) -> None:
+    """Verifies connecting a shard to a mongos router fails."""
+    # attempt to add a replication deployment as a shard to the config server.
+    await ops_test.model.integrate(
+        f"{SHARD_ONE_APP_NAME}",
+        f"{MONGOS_APP_NAME}",
+    )
+
+    await ops_test.model.wait_for_idle(
+        apps=[SHARD_ONE_APP_NAME],
+        idle_period=20,
+        raise_on_blocked=False,
+        timeout=TIMEOUT,
+    )
+
+    shard_unit = ops_test.model.applications[SHARD_ONE_APP_NAME].units[0]
+    assert (
+        shard_unit.workload_status_message
+        == "Relation to mongos not supported, config role must be config-server"
+    ), "replica cannot be related to mongos."
+
+    # clean up relations
+    await ops_test.model.applications[SHARD_ONE_APP_NAME].remove_relation(
+        f"{MONGOS_APP_NAME}:cluster",
+        f"{SHARD_ONE_APP_NAME}:cluster",
+    )
+
+    await ops_test.model.wait_for_idle(
+        apps=[SHARD_ONE_APP_NAME],
+        idle_period=20,
+        raise_on_blocked=False,
+        timeout=TIMEOUT,
+    )
+
+
+@pytest.mark.group(1)
+@pytest.mark.abort_on_fail
+async def test_shard_s3_relation(ops_test: OpsTest) -> None:
+    """Verifies integrating a shard to s3-integrator fails."""
+    # attempt to add a replication deployment as a shard to the config server.
+    await ops_test.model.integrate(
+        f"{SHARD_ONE_APP_NAME}",
+        f"{S3_APP_NAME}",
+    )
+
+    await ops_test.model.wait_for_idle(
+        apps=[SHARD_ONE_APP_NAME],
+        idle_period=20,
+        raise_on_blocked=False,
+        timeout=TIMEOUT,
+    )
+
+    shard_unit = ops_test.model.applications[SHARD_ONE_APP_NAME].units[0]
+    assert (
+        shard_unit.workload_status_message
+        == "Relation to s3-integrator is not supported, config role must be config-server"
+    ), "Shard cannot be related to s3-integrator."
+
+    # clean up relations
+    await ops_test.model.applications[SHARD_ONE_APP_NAME].remove_relation(
+        f"{S3_APP_NAME}:s3-credentials",
+        f"{SHARD_ONE_APP_NAME}:s3-credentials",
     )

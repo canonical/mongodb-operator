@@ -1,4 +1,5 @@
 """Simple functions, which can be used in both K8s and VM charms."""
+
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 import json
@@ -29,7 +30,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 5
 
 # path to store mongodb ketFile
 KEY_FILE = "keyFile"
@@ -44,9 +45,20 @@ MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
 MONGO_SHELL = "charmed-mongodb.mongosh"
 
 DATA_DIR = "/var/lib/mongodb"
+LOG_DIR = "/var/log/mongodb"
+LOG_TO_SYSLOG = True
 CONF_DIR = "/etc/mongod"
 MONGODB_LOG_FILENAME = "mongodb.log"
 logger = logging.getLogger(__name__)
+
+
+def _get_logging_options(snap_install: bool) -> str:
+    # TODO sending logs to syslog until we have a separate mount point for logs
+    if LOG_TO_SYSLOG:
+        return ""
+    # in k8s the default logging options that are used for the vm charm are ignored and logs are
+    # the output of the container. To enable logging to a file it must be set explicitly
+    return f"--logpath={LOG_DIR}/{MONGODB_LOG_FILENAME}" if snap_install else ""
 
 
 # noinspection GrazieInspection
@@ -84,6 +96,7 @@ def get_mongos_args(
     config,
     snap_install: bool = False,
     config_server_db: str = None,
+    external_connectivity: bool = True,
 ) -> str:
     """Returns the arguments used for starting mongos on a config-server side application.
 
@@ -92,9 +105,9 @@ def get_mongos_args(
     """
     # suborinate charm which provides its own config_server_db, should only use unix domain socket
     binding_ips = (
-        f"--bind_ip {MONGODB_COMMON_DIR}/var/mongodb-27018.sock"
-        if config_server_db
-        else "--bind_ip_all"
+        "--bind_ip_all"
+        if external_connectivity
+        else f"--bind_ip {MONGODB_COMMON_DIR}/var/mongodb-27018.sock"
     )
 
     # mongos running on the config server communicates through localhost
@@ -108,12 +121,40 @@ def get_mongos_args(
         f"--configdb {config_server_db}",
         # config server is already using 27017
         f"--port {Config.MONGOS_PORT}",
-        f"--keyFile={full_conf_dir}/{KEY_FILE}",
-        "\n",
     ]
 
-    # TODO Future PR: support TLS on mongos
+    # TODO : generalise these into functions to be re-used
+    if config.tls_external:
+        cmd.extend(
+            [
+                f"--tlsCAFile={full_conf_dir}/{TLS_EXT_CA_FILE}",
+                f"--tlsCertificateKeyFile={full_conf_dir}/{TLS_EXT_PEM_FILE}",
+                # allow non-TLS connections
+                "--tlsMode=preferTLS",
+                "--tlsDisabledProtocols=TLS1_0,TLS1_1",
+            ]
+        )
 
+    # internal TLS can be enabled only if external is enabled
+    if config.tls_internal and config.tls_external:
+        cmd.extend(
+            [
+                "--clusterAuthMode=x509",
+                "--tlsAllowInvalidCertificates",
+                f"--tlsClusterCAFile={full_conf_dir}/{TLS_INT_CA_FILE}",
+                f"--tlsClusterFile={full_conf_dir}/{TLS_INT_PEM_FILE}",
+            ]
+        )
+    else:
+        # keyFile used for authentication replica set peers if no internal tls configured.
+        cmd.extend(
+            [
+                "--clusterAuthMode=keyFile",
+                f"--keyFile={full_conf_dir}/{KEY_FILE}",
+            ]
+        )
+
+    cmd.append("\n")
     return " ".join(cmd)
 
 
@@ -130,9 +171,7 @@ def get_mongod_args(
     """
     full_data_dir = f"{MONGODB_COMMON_DIR}{DATA_DIR}" if snap_install else DATA_DIR
     full_conf_dir = f"{MONGODB_SNAP_DATA_DIR}{CONF_DIR}" if snap_install else CONF_DIR
-    # in k8s the default logging options that are used for the vm charm are ignored and logs are
-    # the output of the container. To enable logging to a file it must be set explicitly
-    logging_options = "" if snap_install else f"--logpath={full_data_dir}/{MONGODB_LOG_FILENAME}"
+    logging_options = _get_logging_options(snap_install)
     cmd = [
         # bind to localhost and external interfaces
         "--bind_ip_all",
@@ -143,6 +182,8 @@ def get_mongod_args(
         # for simplicity we run the mongod daemon on shards, configsvrs, and replicas on the same
         # port
         f"--port={Config.MONGODB_PORT}",
+        "--auditDestination=syslog",  # TODO sending logs to syslog until we have a separate mount point for logs
+        f"--auditFormat={Config.AuditLog.FORMAT}",
         logging_options,
     ]
     if auth:
@@ -164,6 +205,7 @@ def get_mongod_args(
                 f"--tlsCertificateKeyFile={full_conf_dir}/{TLS_EXT_PEM_FILE}",
                 # allow non-TLS connections
                 "--tlsMode=preferTLS",
+                "--tlsDisabledProtocols=TLS1_0,TLS1_1",
             ]
         )
 

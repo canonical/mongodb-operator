@@ -5,8 +5,9 @@ get-primary:
   description: Report primary replica
 
 get-password:
-  description: Change the admin user's password, which is used by charm.
-    It is for internal charm users and SHOULD NOT be used by applications.
+  description:
+    Fetch the password of the provided internal user of the charm, used for internal charm operations.
+    It is for internal charm users only, and SHOULD NOT be used by applications.
   params:
     username:
       type: string
@@ -39,6 +40,11 @@ restore:
     backup-id:
       type: string
       description: A backup-id to identify the backup to restore. Format of <%Y-%m-%dT%H:%M:%SZ>
+    remap-pattern:
+      type: string
+      description:
+        Optional, a pattern used to remap cluster component names when performing a restore.
+        Format of old_config_server_name=new_config_server_name,old_shard_name=new_shard_name
 
 set-tls-private-key:
   description: Set the privates key, which will be used for certificate signing requests (CSR). Run for each unit separately.

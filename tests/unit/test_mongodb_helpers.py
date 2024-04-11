@@ -14,6 +14,8 @@ class TestMongoDBHelpers(unittest.TestCase):
             "--replSet=my_repl_set",
             "--dbpath=/var/snap/charmed-mongodb/common/var/lib/mongodb",
             "--port=27017",
+            "--auditDestination=syslog",
+            "--auditFormat=JSON",
             "--auth",
             "--clusterAuthMode=keyFile",
             "--keyFile=/var/snap/charmed-mongodb/current/etc/mongod/keyFile",
@@ -36,6 +38,8 @@ class TestMongoDBHelpers(unittest.TestCase):
             "--replSet=my_repl_set",
             "--dbpath=/var/snap/charmed-mongodb/common/var/lib/mongodb",
             "--port=27017",
+            "--auditDestination=syslog",
+            "--auditFormat=JSON",
         ]
 
         self.assertEqual(
@@ -50,7 +54,8 @@ class TestMongoDBHelpers(unittest.TestCase):
             "--replSet=my_repl_set",
             "--dbpath=/var/lib/mongodb",
             "--port=27017",
-            "--logpath=/var/lib/mongodb/mongodb.log",
+            "--auditDestination=syslog",
+            "--auditFormat=JSON",
         ]
 
         self.assertEqual(
