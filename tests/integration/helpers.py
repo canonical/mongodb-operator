@@ -193,7 +193,9 @@ async def get_secret_id(ops_test, app_or_unit: Optional[str] = None) -> str:
         complete_command += f" --owner {prefix}{app_or_unit}"
 
     _, stdout, _ = await ops_test.juju(*complete_command.split())
-    output_lines_split = [line.split() for line in stdout.split("\n")]
+    output_lines_split = [line.split() for line in stdout.strip().split("\n")]
+    logger.error(f"\n\n\nget_secret_id (app-unit: {app_or_unit}): {output_lines_split}\n\n\n")
+    print(f"\n\n\nget_secret_id (app-unit: {app_or_unit}): {output_lines_split}\n\n\n")
     if app_or_unit:
         return [line[0] for line in output_lines_split if app_or_unit in line][0]
     else:
