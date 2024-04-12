@@ -368,19 +368,15 @@ class MongodbOperatorCharm(CharmBase):
         unresponsive therefore causing a cluster failure, error the component. This prevents it
         from executing other hooks with a new role.
         """
-        if not self.upgrade.idle:
-            logger.info("cannot process %s, upgrade is in progress", event)
-            event.defer()
-            return
-
-        # TODO in the future (24.04) support migration of components
-        if self.is_role_changed():
-            logger.error(
-                f"cluster migration currently not supported, cannot change from { self.model.config['role']} to {self.role}"
-            )
-            raise ShardingMigrationError(
-                f"Migration of sharding components not permitted, revert config role to {self.role}"
-            )
+        if self.upgrade.idle:
+            # TODO in the future (24.04) support migration of components
+            if self.is_role_changed():
+                logger.error(
+                    f"cluster migration currently not supported, cannot change from { self.model.config['role']} to {self.role}"
+                )
+                raise ShardingMigrationError(
+                    f"Migration of sharding components not permitted, revert config role to {self.role}"
+                )
 
     def _on_start(self, event: StartEvent) -> None:
         """Enables MongoDB service and initialises replica set.
