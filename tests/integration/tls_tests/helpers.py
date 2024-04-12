@@ -182,7 +182,7 @@ async def check_certs_correctly_distributed(
     ][0]
 
     # Get a local copy of the external cert
-    external_copy_path = await scp_file_preserve_ctime(ops_test, unit.name, EXTERNAL_CERT_PATH)
+external_contents_file = await get_file_content(ops_test, unit.name, EXTERNAL_CERT_PATH)
 
     # Get the external cert value from the relation
     relation_external_cert = "\n".join(external_item["chain"]).strip()
