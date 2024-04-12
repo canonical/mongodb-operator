@@ -41,6 +41,7 @@ class Config:
         """Audit log related configuration."""
 
         FORMAT = "JSON"
+        DESTINATION = "file"
         FILE_NAME = "audit.log"
 
     class Backup:
