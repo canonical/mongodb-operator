@@ -263,8 +263,9 @@ class ZooKeeperCharm(CharmBase):
 import json
 import logging
 from abc import ABC, abstractmethod
-from typing import List, Literal, Optional, Set, Tuple
+from typing import Dict, List, Literal, Optional, Set, Tuple
 
+import poetry.core.constraints.version as poetry_version
 from ops.charm import (
     ActionEvent,
     CharmBase,
@@ -284,199 +285,31 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 10
+LIBPATCH = 16
 
-PYDEPS = ["pydantic>=1.10,<2"]
+PYDEPS = ["pydantic>=1.10,<2", "poetry-core"]
 
 logger = logging.getLogger(__name__)
 
 # --- DEPENDENCY RESOLUTION FUNCTIONS ---
 
 
-def build_complete_sem_ver(version: str) -> list[int]:
-    """Builds complete major.minor.patch version from version string.
-
-    Returns:
-        List of major.minor.patch version integers
-    """
-    versions = [int(ver) if ver != "*" else 0 for ver in str(version).split(".")]
-
-    # padding with 0s until complete major.minor.patch
-    return (versions + 3 * [0])[:3]
-
-
-def verify_caret_requirements(version: str, requirement: str) -> bool:
-    """Verifies version requirements using carats.
-
-    Args:
-        version: the version currently in use
-        requirement: the requirement version
-
-    Returns:
-        True if `version` meets defined `requirement`. Otherwise False
-    """
-    if not requirement.startswith("^"):
-        return True
-
-    requirement = requirement[1:]
-
-    sem_version = build_complete_sem_ver(version)
-    sem_requirement = build_complete_sem_ver(requirement)
-
-    # caret uses first non-zero character, not enough to just count '.'
-    if sem_requirement[0] == 0:
-        max_version_index = requirement.count(".")
-        for i, semver in enumerate(sem_requirement):
-            if semver != 0:
-                max_version_index = i
-                break
-    else:
-        max_version_index = 0
-
-    for i in range(3):
-        # version higher than first non-zero
-        if (i <= max_version_index) and (sem_version[i] != sem_requirement[i]):
-            return False
-
-        # version either higher or lower than first non-zero
-        if (i > max_version_index) and (sem_version[i] < sem_requirement[i]):
-            return False
-
-    return True
-
-
-def verify_tilde_requirements(version: str, requirement: str) -> bool:
-    """Verifies version requirements using tildes.
-
-    Args:
-        version: the version currently in use
-        requirement: the requirement version
-
-    Returns:
-        True if `version` meets defined `requirement`. Otherwise False
-    """
-    if not requirement.startswith("~"):
-        return True
-
-    requirement = requirement[1:]
-
-    sem_version = build_complete_sem_ver(version)
-    sem_requirement = build_complete_sem_ver(requirement)
-
-    max_version_index = min(1, requirement.count("."))
-
-    for i in range(3):
-        # version higher before requirement level
-        if (i < max_version_index) and (sem_version[i] > sem_requirement[i]):
-            return False
-
-        # version either higher or lower at requirement level
-        if (i == max_version_index) and (sem_version[i] != sem_requirement[i]):
-            return False
-
-        # version lower after requirement level
-        if (i > max_version_index) and (sem_version[i] < sem_requirement[i]):
-            return False
-
-    # must be valid
-    return True
-
-
-def verify_wildcard_requirements(version: str, requirement: str) -> bool:
-    """Verifies version requirements using wildcards.
-
-    Args:
-        version: the version currently in use
-        requirement: the requirement version
-
-    Returns:
-        True if `version` meets defined `requirement`. Otherwise False
-    """
-    if "*" not in requirement:
-        return True
-
-    sem_version = build_complete_sem_ver(version)
-    sem_requirement = build_complete_sem_ver(requirement)
-
-    max_version_index = requirement.count(".")
-
-    for i in range(3):
-        # version not the same before wildcard
-        if (i < max_version_index) and (sem_version[i] != sem_requirement[i]):
-            return False
-
-        # version not higher after wildcard
-        if (i == max_version_index) and (sem_version[i] < sem_requirement[i]):
-            return False
-
-    # must be valid
-    return True
-
-
-def verify_inequality_requirements(version: str, requirement: str) -> bool:
-    """Verifies version requirements using inequalities.
-
-    Args:
-        version: the version currently in use
-        requirement: the requirement version
-
-    Returns:
-        True if `version` meets defined `requirement`. Otherwise False
-    """
-    if not any(char for char in [">", ">="] if requirement.startswith(char)):
-        return True
-
-    raw_requirement = requirement.replace(">", "").replace("=", "")
-
-    sem_version = build_complete_sem_ver(version)
-    sem_requirement = build_complete_sem_ver(raw_requirement)
-
-    max_version_index = raw_requirement.count(".") or 0
-
-    for i in range(3):
-        # valid at same requirement level
-        if (
-            (i == max_version_index)
-            and ("=" in requirement)
-            and (sem_version[i] == sem_requirement[i])
-        ):
-            return True
-
-        # version not increased at any point
-        if sem_version[i] < sem_requirement[i]:
-            return False
-
-        # valid
-        if sem_version[i] > sem_requirement[i]:
-            return True
-
-    # must not be valid
-    return False
-
-
 def verify_requirements(version: str, requirement: str) -> bool:
-    """Verifies a specified version against defined requirements.
+    """Verifies a specified version against defined constraint.
 
-    Supports caret (`^`), tilde (`~`), wildcard (`*`) and greater-than inequalities (`>`, `>=`)
+    Supports Poetry version constraints
+    https://python-poetry.org/docs/dependency-specification/#version-constraints
 
     Args:
         version: the version currently in use
-        requirement: the requirement version
+        requirement: Poetry version constraint
 
     Returns:
         True if `version` meets defined `requirement`. Otherwise False
     """
-    if not all(
-        [
-            verify_inequality_requirements(version=version, requirement=requirement),
-            verify_caret_requirements(version=version, requirement=requirement),
-            verify_tilde_requirements(version=version, requirement=requirement),
-            verify_wildcard_requirements(version=version, requirement=requirement),
-        ]
-    ):
-        return False
-
-    return True
+    return poetry_version.parse_constraint(requirement).allows(
+        poetry_version.Version.parse(version)
+    )
 
 
 # --- DEPENDENCY MODEL TYPES ---
@@ -513,7 +346,7 @@ class DependencyModel(BaseModel):
         print(model.dict())  # exporting back validated deps
     """
 
-    dependencies: dict[str, str]
+    dependencies: Dict[str, str]
     name: str
     upgrade_supported: str
     version: str
@@ -521,19 +354,14 @@ class DependencyModel(BaseModel):
     @validator("dependencies", "upgrade_supported", each_item=True)
     @classmethod
     def dependencies_validator(cls, value):
-        """Validates values with dependencies for multiple special characters."""
+        """Validates version constraint."""
         if isinstance(value, dict):
             deps = value.values()
         else:
             deps = [value]
 
-        chars = ["~", "^", ">", "*"]
-
         for dep in deps:
-            if (count := sum([dep.count(char) for char in chars])) != 1:
-                raise ValueError(
-                    f"Value uses greater than 1 special character (^ ~ > *). Found {count}."
-                )
+            poetry_version.parse_constraint(dep)
 
         return value
 
@@ -673,7 +501,7 @@ class DataUpgrade(Object, ABC):
 
     STATES = ["recovery", "failed", "idle", "ready", "upgrading", "completed"]
 
-    on = UpgradeEvents()  # pyright: ignore [reportGeneralTypeIssues]
+    on = UpgradeEvents()  # pyright: ignore [reportAssignmentType]
 
     def __init__(
         self,
@@ -777,6 +605,21 @@ class DataUpgrade(Object, ABC):
 
         self.peer_relation.data[self.charm.app].update({"upgrade-stack": json.dumps(stack)})
         self._upgrade_stack = stack
+
+    @property
+    def other_unit_states(self) -> list:
+        """Current upgrade state for other units.
+
+        Returns:
+            Unsorted list of upgrade states for other units.
+        """
+        if not self.peer_relation:
+            return []
+
+        return [
+            self.peer_relation.data[unit].get("state", "")
+            for unit in list(self.peer_relation.units)
+        ]
 
     @property
     def unit_states(self) -> list:
@@ -1067,6 +910,10 @@ class DataUpgrade(Object, ABC):
             self.charm.unit.status = WaitingStatus("other units upgrading first...")
             self.peer_relation.data[self.charm.unit].update({"state": "ready"})
 
+            if self.charm.app.planned_units() == 1:
+                # single unit upgrade, emit upgrade_granted event right away
+                getattr(self.on, "upgrade_granted").emit()
+
         else:
             # for k8s run version checks only on highest ordinal unit
             if (
@@ -1093,9 +940,9 @@ class DataUpgrade(Object, ABC):
             logger.debug("Cluster failed to upgrade, exiting...")
             return
 
-        if self.cluster_state == "recovery":
-            logger.debug("Cluster in recovery, deferring...")
-            event.defer()
+        if self.substrate == "vm" and self.cluster_state == "recovery":
+            # skip run while in recovery. The event will be retrigged when the cluster is ready
+            logger.debug("Cluster in recovery, skip...")
             return
 
         # if all units completed, mark as complete
@@ -1116,8 +963,7 @@ class DataUpgrade(Object, ABC):
                 logger.debug("upgrade-changed event handled before pre-checks, exiting...")
                 return
 
-            logger.debug("Did not find upgrade-stack or completed cluster state, deferring...")
-            event.defer()
+            logger.debug("Did not find upgrade-stack or completed cluster state, skipping...")
             return
 
         # upgrade ongoing, set status for waiting units
@@ -1147,6 +993,7 @@ class DataUpgrade(Object, ABC):
             self.charm.unit == top_unit
             and top_state in ["ready", "upgrading"]
             and self.cluster_state == "ready"
+            and "upgrading" not in self.other_unit_states
         ):
             logger.debug(
                 f"{top_unit.name} is next to upgrade, emitting `upgrade_granted` event and upgrading..."
