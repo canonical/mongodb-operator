@@ -188,8 +188,6 @@ external_contents_file = await get_file_content(ops_test, unit.name, EXTERNAL_CE
     relation_external_cert = "\n".join(external_item["chain"]).strip()
 
     # CHECK: Compare if they are the same
-    with open(external_copy_path) as f:
-        external_contents_file = f.read()
         assert (
             relation_external_cert == external_contents_file
         ), f"Relation Content:\n{relation_external_cert}\nFile Content:\n{external_contents_file}\nMismatch."
