@@ -302,7 +302,7 @@ async def rotate_and_verify_certs(ops_test: OpsTest, app: str) -> None:
             original_tls_info[unit.name]["mongos_service"] = (
                 await tls_helpers.time_process_started(ops_test, unit.name, MONGOD_SERVICE)
             )
-        await tls_helpers.check_certs_correctly_distributed(ops_test, unit)
+        await tls_helpers.check_certs_correctly_distributed(ops_test, unit, app_name=app)
 
     # set external and internal key using auto-generated key for each unit
     for unit in ops_test.model.applications[app].units:
