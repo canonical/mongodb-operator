@@ -188,9 +188,9 @@ external_contents_file = await get_file_content(ops_test, unit.name, EXTERNAL_CE
     relation_external_cert = "\n".join(external_item["chain"]).strip()
 
     # CHECK: Compare if they are the same
-        assert (
-            relation_external_cert == external_contents_file
-        ), f"Relation Content:\n{relation_external_cert}\nFile Content:\n{external_contents_file}\nMismatch."
+assert (
+      relation_external_cert == external_contents_file
+ ), f"Relation Content:\n{relation_external_cert}\nFile Content:\n{external_contents_file}\nMismatch."
 
     # Get a local copy of the internal cert
     internal_copy_path = await scp_file_preserve_ctime(ops_test, unit.name, INTERNAL_CERT_PATH)
