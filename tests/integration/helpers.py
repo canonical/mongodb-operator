@@ -184,7 +184,10 @@ async def get_secret_id(ops_test, app_or_unit: Optional[str] = None) -> str:
 
     if app_or_unit:
         prefix = "unit" if app_or_unit[-1].isdigit() else "application"
-        complete_command += f" --owner {prefix}-{app_or_unit}"
+        formated_app_or_unit = f"{prefix}-{app_or_unit}"
+        if prefix == "unit":
+            formated_app_or_unit = formated_app_or_unit.replace("/", "-")
+        complete_command += f" --owner {formated_app_or_unit}"
 
     _, stdout, _ = await ops_test.juju(*complete_command.split())
     output_lines_split = [line.split() for line in stdout.strip().split("\n")]
