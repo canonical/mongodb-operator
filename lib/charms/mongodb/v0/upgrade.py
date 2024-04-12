@@ -19,7 +19,7 @@ from charms.operator_libs_linux.v1 import snap
 from ops.charm import CharmBase
 from ops.model import ActiveStatus
 from pydantic import BaseModel
-from tenacity import Retrying, stop_after_attempt, wait_fixed
+from tenacity import retry, stop_after_attempt, wait_fixed
 from typing_extensions import override
 
 from config import Config
@@ -94,6 +94,11 @@ class MongoDBUpgrade(DataUpgrade):
 
         # Future PR - sharding based checks
 
+    @retry(
+        stop=stop_after_attempt(20),
+        wait=wait_fixed(1),
+        reraise=True,
+    )
     def post_upgrade_check(self) -> None:
         """Runs necessary checks validating the unit is in a healthy state after upgrade."""
         if not self.is_cluster_able_to_read_write():
@@ -154,13 +159,7 @@ class MongoDBUpgrade(DataUpgrade):
 
         try:
             logger.debug("Running post-upgrade check...")
-            for attempt in Retrying(
-                stop=stop_after_attempt(20),
-                wait=wait_fixed(1),
-                reraise=True,
-            ):
-                with attempt:
-                    self.post_upgrade_check()
+            self.post_upgrade_check()
 
             logger.debug("Marking unit completed...")
             self.set_unit_completed()
