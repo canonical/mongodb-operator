@@ -75,11 +75,17 @@ class MongoDBUpgrade(DataUpgrade):
 
         if self.charm.is_role(Config.Role.SHARD):
             raise ClusterNotReadyError(
-                message=default_message, cause="Cannot run pre-upgrade check on shards"
+                message=default_message,
+                cause="Cannot run pre-upgrade check on shards",
+                resolution="Run this action on config-server.",
             )
 
         if not self.is_cluster_healthy():
-            raise ClusterNotReadyError(message=default_message, cause="Cluster is not healthy")
+            raise ClusterNotReadyError(
+                message=default_message,
+                cause="Cluster is not healthy",
+                resolution="Please check juju status for information",
+            )
 
         if not self.is_cluster_able_to_read_write():
             raise ClusterNotReadyError(

@@ -4,7 +4,9 @@
 # See LICENSE file for licensing details.
 
 
-from typing import Literal
+from typing import Literal, TypeAlias
+
+Package: TypeAlias = tuple[str, str, str]
 
 
 class Config:
@@ -22,7 +24,7 @@ class Config:
         "mongod_service": {
             "dependencies": {},
             "name": "mongod",
-            "upgrade_supported": ">=6.0.0,<7",
+            "upgrade_supported": "^6.0.0,<7",
             "version": "6.0.6",
         },
         # TODO: Future PR - implement mongos deps when supporting sharding upgrades

@@ -76,7 +76,7 @@ from ops.model import (
 from pymongo.errors import OperationFailure, ServerSelectionTimeoutError
 from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
-from config import Config
+from config import Config, Package
 from exceptions import AdminUserCreationError, ApplicationHostNotFoundError
 from machine_helpers import MONGO_USER, ROOT_USER_GID, update_mongod_service
 
@@ -947,7 +947,7 @@ class MongodbOperatorCharm(CharmBase):
                 logger.exception("failed opening port: %s", str(e))
                 raise
 
-    def install_snap_packages(self, packages: List[str]) -> None:
+    def install_snap_packages(self, packages: List[Package]) -> None:
         """Installs package(s) to container.
 
         Args:
