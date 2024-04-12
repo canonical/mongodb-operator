@@ -145,7 +145,7 @@ async def scp_file_preserve_ctime(ops_test: OpsTest, unit_name: str, path: str) 
     """Returns the name of the file copied from the set path in the unit."""
     # Retrieving the file
     filename = path.split("/")[-1]
-    complete_command = f"scp --container mongod {unit_name}:{path} {filename}"
+    complete_command = f"scp {unit_name}:{path} {filename}"
     return_code, scp_output, stderr = await ops_test.juju(*complete_command.split())
 
     if return_code != 0:
@@ -168,17 +168,9 @@ async def check_certs_correctly_distributed(
     Verifying certificates downloaded on the charm against the ones distributed by the TLS operator
     """
     app_name = app_name or await get_app_name(ops_test)
-    app_secret_id = await get_secret_id(ops_test, app_name)
     unit_secret_id = await get_secret_id(ops_test, unit.name)
-    app_secret_content = await get_secret_content(ops_test, app_secret_id)
     unit_secret_content = await get_secret_content(ops_test, unit_secret_id)
 
-    logger.error(
-        f"\n\n\ncheck_certs_correctly_distributed: \napp_secret_content: {app_secret_content}"
-    )
-    logger.error(
-        f"\n\n\ncheck_certs_correctly_distributed: \nunit_secret_content: {unit_secret_content}"
-    )
     internal_unit_csr = unit_secret_content["int-csr-secret"]
     external_unit_csr = unit_secret_content["ext-csr-secret"]
 
@@ -188,15 +180,15 @@ async def check_certs_correctly_distributed(
     )
     certificates_data = json.loads(certificates_raw_data)
 
-    external_item = [
-        data
-        for data in certificates_data
-        if data["certificate_signing_request"].rstrip() == external_unit_csr.rstrip()
-    ][0]
     internal_item = [
         data
         for data in certificates_data
         if data["certificate_signing_request"].rstrip() == internal_unit_csr.rstrip()
+    ][0]
+    external_item = [
+        data
+        for data in certificates_data
+        if data["certificate_signing_request"].rstrip() == external_unit_csr.rstrip()
     ][0]
 
     # Get a local copy of the external cert

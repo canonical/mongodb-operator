@@ -183,22 +183,15 @@ async def get_secret_id(ops_test, app_or_unit: Optional[str] = None) -> str:
     complete_command = "list-secrets"
 
     if app_or_unit:
-        if app_or_unit[-1].isdigit():
-            # it's a unit
-            prefix = "unit-"
-        else:
-            prefix = "application-"
-        complete_command += f" --owner {prefix}{app_or_unit}"
+        prefix = "unit" if app_or_unit[-1].isdigit() else "application"
+        complete_command += f" --owner {prefix}-{app_or_unit}"
 
     _, stdout, _ = await ops_test.juju(*complete_command.split())
     output_lines_split = [line.split() for line in stdout.strip().split("\n")]
-    logger.error(
-        f"get_secret_id -- cmd: {complete_command} (app-unit: {app_or_unit}): {output_lines_split}\n\n\n"
-    )
     if app_or_unit:
         return [line[0] for line in output_lines_split if app_or_unit in line][0]
-    else:
-        return output_lines_split[1][0]
+
+    return output_lines_split[1][0]
 
 
 async def get_secret_content(ops_test, secret_id) -> Dict[str, str]:
@@ -207,7 +200,6 @@ async def get_secret_content(ops_test, secret_id) -> Dict[str, str]:
     complete_command = f"show-secret {secret_id} --reveal --format=json"
     _, stdout, _ = await ops_test.juju(*complete_command.split())
     data = json.loads(stdout)
-    logger.error(f"\n\n\nget_secret_content: {secret_id} -- {data}")
     return data[secret_id]["content"]["Data"]
 
 
