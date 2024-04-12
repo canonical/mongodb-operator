@@ -129,23 +129,25 @@ def process_ls_time(ls_output):
     time_as_str = "T".join(ls_output.split("\n")[0].split(" ")[5:7])
     # further strip down additional milliseconds
     time_as_str = time_as_str[0:-3]
-    d = datetime.strptime(time_as_str, "%Y-%m-%dT%H:%M:%S.%f")
-    return d
+    return datetime.strptime(time_as_str, "%Y-%m-%dT%H:%M:%S.%f")
 
 
 def process_systemctl_time(systemctl_output) -> datetime:
     """Parse time representation as returned by the 'systemctl' command."""
     "ActiveEnterTimestamp=Thu 2022-09-22 10:00:00 UTC"
     time_as_str = "T".join(systemctl_output.split("=")[1].split(" ")[1:3])
-    d = datetime.strptime(time_as_str, "%Y-%m-%dT%H:%M:%S")
-    return d
+    return datetime.strptime(time_as_str, "%Y-%m-%dT%H:%M:%S")
 
 
 async def scp_file_preserve_ctime(ops_test: OpsTest, unit_name: str, path: str) -> str:
     """Returns the name of the file copied from the set path in the unit."""
     # Retrieving the file
     filename = path.split("/")[-1]
-    complete_command = f"scp {unit_name}:{path} {filename}"
+
+    cp_home_change_perms = f"sudo cat {path} > ~/{filename}"
+    await ops_test.juju(*cp_home_change_perms.split(), check=True)
+
+    complete_command = f"scp {unit_name}:~/{filename} ."
     return_code, scp_output, stderr = await ops_test.juju(*complete_command.split())
 
     if return_code != 0:
