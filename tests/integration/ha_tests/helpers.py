@@ -37,7 +37,7 @@ DB_PROCESS = "/usr/bin/mongod"
 MONGODB_LOG_PATH = f"{MONGO_COMMON_DIR}/var/log/mongodb/mongodb.log"
 MONGOD_SERVICE_DEFAULT_PATH = "/etc/systemd/system/snap.charmed-mongodb.mongod.service"
 TMP_SERVICE_PATH = "tests/integration/ha_tests/tmp.service"
-LOGGING_OPTIONS = f"--logpath={MONGO_COMMON_DIR}/var/log/mongodb/mongodb.log --logappend"
+LOGGING_OPTIONS = "--logappend"
 EXPORTER_PROC = "/usr/bin/mongodb_exporter"
 GREP_PROC = "grep"
 
