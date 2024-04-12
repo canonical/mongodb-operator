@@ -18,6 +18,7 @@ from typing import Dict, List, Optional, Union
 from charms.data_platform_libs.v0.s3 import CredentialsChangedEvent, S3Requirer
 from charms.mongodb.v1.helpers import current_pbm_op, process_pbm_status
 from charms.operator_libs_linux.v1 import snap
+from ops.charm import RelationJoinedEvent
 from ops.framework import Object
 from ops.model import BlockedStatus, MaintenanceStatus, StatusBase, WaitingStatus
 from ops.pebble import ExecError
@@ -40,7 +41,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 5
+LIBPATCH = 6
 
 logger = logging.getLogger(__name__)
 
@@ -122,8 +123,13 @@ class MongoDBBackups(Object):
         self.framework.observe(self.charm.on.list_backups_action, self._on_list_backups_action)
         self.framework.observe(self.charm.on.restore_action, self._on_restore_action)
 
-    def on_s3_relation_joined(self, _) -> None:
+    def on_s3_relation_joined(self, event: RelationJoinedEvent) -> None:
         """Checks for valid integration for s3-integrations."""
+        if not self.charm.upgrade.idle:
+            logger.info("cannot process %s, upgrade is in progress", event)
+            event.defer()
+            return False
+
         if not self.is_valid_s3_integration():
             logger.debug(
                 "Shard does not support s3 relations, please relate s3-integrator to config-server only."
@@ -323,6 +329,11 @@ class MongoDBBackups(Object):
 
         No matter what backup-action is being run, these requirements must be met.
         """
+        if not self.charm.upgrade.idle:
+            logger.info("cannot process %s, upgrade is in progress", event)
+            event.defer()
+            return False
+
         if not self.is_valid_s3_integration():
             self._fail_action_with_error_log(
                 event,
