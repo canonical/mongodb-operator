@@ -138,7 +138,7 @@ def process_systemctl_time(systemctl_output) -> datetime:
     return datetime.strptime(time_as_str, "%Y-%m-%dT%H:%M:%S")
 
 
-async def scp_file_preserve_ctime(ops_test: OpsTest, unit_name: str, path: str) -> str:
+async def scp_file(ops_test: OpsTest, unit_name: str, path: str) -> str:
     """Returns the name of the file copied from the set path in the unit."""
     # Retrieving the file
     filename = path.split("/")[-1]
@@ -161,49 +161,31 @@ async def check_certs_correctly_distributed(
     unit_secret_id = await get_secret_id(ops_test, unit.name)
     unit_secret_content = await get_secret_content(ops_test, unit_secret_id)
 
-    internal_unit_csr = unit_secret_content["int-csr-secret"]
-    external_unit_csr = unit_secret_content["ext-csr-secret"]
-
     # Get the values for certs from the relation, as provided by TLS Charm
     certificates_raw_data = await get_application_relation_data(
         ops_test, app_name, TLS_RELATION_NAME, "certificates"
     )
     certificates_data = json.loads(certificates_raw_data)
 
-    internal_item = [
-        data
-        for data in certificates_data
-        if data["certificate_signing_request"].rstrip() == internal_unit_csr.rstrip()
-    ][0]
-    external_item = [
-        data
-        for data in certificates_data
-        if data["certificate_signing_request"].rstrip() == external_unit_csr.rstrip()
-    ][0]
+    # compare the TLS resources stored on the disk of the unit with the ones from the TLS relation
+    for cert_type, cert_path in [("int", INTERNAL_CERT_PATH), ("ext", EXTERNAL_CERT_PATH)]:
+        unit_csr = unit_secret_content[f"{cert_type}-csr-secret"]
+        tls_item = [
+            data
+            for data in certificates_data
+            if data["certificate_signing_request"].rstrip() == unit_csr.rstrip()
+        ][0]
 
-    # Get a local copy of the external cert
-external_contents_file = await get_file_content(ops_test, unit.name, EXTERNAL_CERT_PATH)
+        # Read the content of the cert file stored in the unit
+        cert_file_content = await get_file_content(ops_test, unit.name, cert_path)
 
-    # Get the external cert value from the relation
-    relation_external_cert = "\n".join(external_item["chain"]).strip()
+        # Get the external cert value from the relation
+        relation_cert = "\n".join(tls_item["chain"]).strip()
 
-    # CHECK: Compare if they are the same
-assert (
-      relation_external_cert == external_contents_file
- ), f"Relation Content:\n{relation_external_cert}\nFile Content:\n{external_contents_file}\nMismatch."
-
-    # Get a local copy of the internal cert
-    internal_copy_path = await scp_file_preserve_ctime(ops_test, unit.name, INTERNAL_CERT_PATH)
-
-    # Get the external cert value from the relation
-    relation_internal_cert = "\n".join(internal_item["chain"]).strip()
-
-    # CHECK: Compare if they are the same
-    with open(internal_copy_path) as f:
-        internal_contents_file = f.read()
+        # confirm that they match
         assert (
-            relation_internal_cert == internal_contents_file
-        ), f"Relation Content:\n{relation_internal_cert}\nFile Content:\n{internal_contents_file}\nMismatch."
+            relation_cert == cert_file_content
+        ), f"Relation Content for {cert_type}-cert:\n{relation_cert}\nFile Content:\n{cert_file_content}\nMismatch."
 
 
 async def get_file_content(ops_test: OpsTest, unit_name: str, filepath: str) -> str:
