@@ -19,7 +19,7 @@ from charms.operator_libs_linux.v1 import snap
 from ops.charm import CharmBase
 from ops.model import ActiveStatus
 from pydantic import BaseModel
-from tenacity import retry, stop_after_attempt, wait_fixed
+from tenacity import Retrying, retry, stop_after_attempt, wait_fixed
 from typing_extensions import override
 
 from config import Config
@@ -43,6 +43,10 @@ ROLLBACK_INSTRUCTIONS = """Unit failed to upgrade and requires manual rollback t
     1. Re-run `pre-upgrade-check` action on the leader unit to enter 'recovery' state
     2. Run `juju refresh` to the previously deployed charm revision
 """
+
+
+class FailedToElectNewPrimaryError(Exception):
+    """Raised when a new primary isn't elected after stepping down."""
 
 
 class MongoDBDependencyModel(BaseModel):
@@ -154,6 +158,10 @@ class MongoDBUpgrade(DataUpgrade):
             self.set_unit_failed()
             return
 
+        if self.charm.unit.name == self.charm.primary:
+            logger.debug("Stepping down current primary, before upgrading service...")
+            self.step_down_primary_and_wait_reelection()
+
         logger.info(f"{self.charm.unit.name} upgrading service...")
         self.charm.restart_charm_services()
 
@@ -172,6 +180,18 @@ class MongoDBUpgrade(DataUpgrade):
         except ClusterNotReadyError as e:
             logger.error(e.cause)
             self.set_unit_failed()
+
+    def step_down_primary_and_wait_reelection(self) -> bool:
+        """Steps down the current primary and waits for a new one to be elected."""
+        old_primary = self.charm.primary
+        with MongoDBConnection(self.charm.mongodb_config) as mongod:
+            mongod.step_down_primary()
+
+        for attempt in Retrying(stop=stop_after_attempt(30), wait=wait_fixed(1), reraise=True):
+            with attempt:
+                new_primary = self.charm.primary
+                if new_primary != old_primary:
+                    raise FailedToElectNewPrimaryError()
 
     def is_cluster_healthy(self) -> bool:
         """Returns True if all nodes in the cluster/replcia set are healthy."""
