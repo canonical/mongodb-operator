@@ -7,7 +7,6 @@ from datetime import datetime
 
 import ops
 from charms.mongodb.v1.helpers import MONGO_SHELL
-from ops.model import Unit
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_attempt, wait_exponential
 
@@ -144,20 +143,9 @@ async def scp_file_preserve_ctime(ops_test: OpsTest, unit_name: str, path: str) 
     # Retrieving the file
     filename = path.split("/")[-1]
 
-    cp_home_change_perms = f"sudo cat {path} > ~/{filename}"
-    await ops_test.juju(*cp_home_change_perms.split(), check=True)
-
-    complete_command = f"scp {unit_name}:~/{filename} ."
-    return_code, scp_output, stderr = await ops_test.juju(*complete_command.split())
-
-    if return_code != 0:
-        logger.error(stderr)
-        raise ProcessError(
-            "Expected command %s to succeed instead it failed: %s; %s",
-            complete_command,
-            return_code,
-            stderr,
-        )
+    file_content = await get_file_content(ops_test, unit_name, path)
+    with open(filename, mode="w") as f:
+        f.write(file_content)
 
     return filename
 
@@ -216,8 +204,8 @@ async def check_certs_correctly_distributed(
         assert relation_internal_cert == internal_contents_file
 
 
-async def get_file_contents(ops_test: OpsTest, unit: Unit, filepath: str) -> str:
+async def get_file_content(ops_test: OpsTest, unit_name: str, filepath: str) -> str:
     """Returns the contents of the provided filepath."""
-    mv_cmd = f"exec --unit {unit.name} sudo cat {filepath} "
-    _, stdout, _ = await ops_test.juju(*mv_cmd.split())
+    cat_cmd = f"exec --unit {unit_name} -- sudo cat {filepath}"
+    _, stdout, _ = await ops_test.juju(*cat_cmd.split(), check=True)
     return stdout

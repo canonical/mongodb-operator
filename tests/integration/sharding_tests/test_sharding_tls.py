@@ -285,10 +285,10 @@ async def rotate_and_verify_certs(ops_test: OpsTest, app: str) -> None:
     for unit in ops_test.model.applications[app].units:
         original_tls_info[unit.name] = {}
         original_tls_info[unit.name]["external_cert_contents"] = (
-            await tls_helpers.get_file_contents(ops_test, unit, tls_helpers.EXTERNAL_CERT_PATH)
+            await tls_helpers.get_file_content(ops_test, unit.name, tls_helpers.EXTERNAL_CERT_PATH)
         )
         original_tls_info[unit.name]["internal_cert_contents"] = (
-            await tls_helpers.get_file_contents(ops_test, unit, tls_helpers.INTERNAL_CERT_PATH)
+            await tls_helpers.get_file_content(ops_test, unit.name, tls_helpers.INTERNAL_CERT_PATH)
         )
         original_tls_info[unit.name]["external_cert"] = await tls_helpers.time_file_created(
             ops_test, unit.name, tls_helpers.EXTERNAL_CERT_PATH
@@ -318,11 +318,11 @@ async def rotate_and_verify_certs(ops_test: OpsTest, app: str) -> None:
     # After updating both the external key and the internal key a new certificate request will be
     # made; then the certificates should be available and updated.
     for unit in ops_test.model.applications[app].units:
-        new_external_cert = await tls_helpers.get_file_contents(
-            ops_test, unit, tls_helpers.EXTERNAL_CERT_PATH
+        new_external_cert = await tls_helpers.get_file_content(
+            ops_test, unit.name, tls_helpers.EXTERNAL_CERT_PATH
         )
-        new_internal_cert = await tls_helpers.get_file_contents(
-            ops_test, unit, tls_helpers.INTERNAL_CERT_PATH
+        new_internal_cert = await tls_helpers.get_file_content(
+            ops_test, unit.name, tls_helpers.INTERNAL_CERT_PATH
         )
         new_external_cert_time = await tls_helpers.time_file_created(
             ops_test, unit.name, tls_helpers.EXTERNAL_CERT_PATH
