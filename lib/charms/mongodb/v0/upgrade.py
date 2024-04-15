@@ -34,7 +34,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 2
 
 
 class MongoDBDependencyModel(BaseModel):
@@ -137,7 +137,7 @@ class MongoDBUpgrade(DataUpgrade):
             if not self.is_excepted_write_on_replica(secondary_ip, collection_name, write_value):
                 # do not return False immediately - as it is
                 logger.debug("Secondary with IP %s, does not contain the expected write.")
-                self.clear_tmp_collection(collection_name)
+                self.clear_tmp_collection(self.charm.mongodb_config, collection_name)
                 return False
 
         self.clear_tmp_collection(self.charm.mongodb_config, collection_name)
