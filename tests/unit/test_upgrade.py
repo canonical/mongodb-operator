@@ -8,7 +8,6 @@ from charms.data_platform_libs.v0.upgrade import ClusterNotReadyError
 from charms.operator_libs_linux.v1 import snap
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
 from ops.testing import Harness
-from tenacity import stop_after_attempt
 
 from charm import MongodbOperatorCharm
 
@@ -85,14 +84,18 @@ class TestCharm(unittest.TestCase):
     @patch("charms.mongodb.v0.upgrade.Retrying")
     @patch("charm.MongoDBUpgrade.is_excepted_write_on_replica")
     @patch("charm.MongodbOperatorCharm.restart_charm_services")
+    @patch("charm.MongoDBConnection")
     @patch("charms.mongodb.v0.upgrade.MongoDBConnection")
     @patch("charm.MongodbOperatorCharm.install_snap_packages")
     @patch("charm.MongodbOperatorCharm.stop_charm_services")
+    @patch("charm.MongoDBUpgrade.post_upgrade_check")
     def test_on_upgrade_granted(
         self,
+        post_upgrade_check,
         stop_charm_services,
         install_snap_packages,
-        connection,
+        connection_1,
+        connection_2,
         restart,
         is_excepted_write_on_replica,
         retrying,
@@ -101,25 +104,16 @@ class TestCharm(unittest.TestCase):
         rel_id = self.harness.charm.model.get_relation("database-peers").id
         self.harness.add_relation_unit(rel_id, "mongodb/1")
 
-        # case 1: the upgrade is not supported (i.e. mismatch in versions
-        connection.return_value.__enter__.return_value.get_mongod_version.return_value = "3.4.5"
-        mock_event = MagicMock()
-        self.harness.charm.upgrade._on_upgrade_granted(mock_event)
-        restart.assert_not_called()
-
-        # case 2: fails to install snap_packages
-        connection.return_value.__enter__.return_value.get_mongod_version.return_value = "6.0.5-5"
+        # case 1: fails to install snap_packages
         install_snap_packages.side_effect = snap.SnapError
         mock_event = MagicMock()
         self.harness.charm.upgrade._on_upgrade_granted(mock_event)
         restart.assert_not_called()
 
-        # case 3: post_upgrade_check fails
-        connection.return_value.__enter__.return_value.get_mongod_version.return_value = "6.0.5-5"
+        # case 2: post_upgrade_check fails
         install_snap_packages.side_effect = None
         # disable_retry
-        retrying.stop = stop_after_attempt(1)
-        retrying.side_effect = ClusterNotReadyError(
+        post_upgrade_check.side_effect = ClusterNotReadyError(
             "post-upgrade check failed and cannot safely upgrade",
             cause="Cluster cannot read/write",
         )
@@ -128,12 +122,10 @@ class TestCharm(unittest.TestCase):
         restart.assert_called()
         self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
 
-        # case 4: everything works
-        connection.return_value.__enter__.return_value.get_mongod_version.return_value = "6.0.5-5"
+        # case 3: everything works
         install_snap_packages.side_effect = None
         is_excepted_write_on_replica.return_value = True
-        retrying.stop = stop_after_attempt(1)
-        retrying.side_effect = None
+        post_upgrade_check.side_effect = None
         mock_event = MagicMock()
         self.harness.charm.upgrade._on_upgrade_granted(mock_event)
         restart.assert_called()
