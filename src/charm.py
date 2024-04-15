@@ -76,7 +76,7 @@ from ops.model import (
 from pymongo.errors import OperationFailure, ServerSelectionTimeoutError
 from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
-from config import Config
+from config import Config, Package
 from exceptions import AdminUserCreationError, ApplicationHostNotFoundError
 from machine_helpers import MONGO_USER, ROOT_USER_GID, update_mongod_service
 
@@ -184,7 +184,7 @@ class MongodbOperatorCharm(CharmBase):
             return self.unit.name
 
         # check if peer unit matches primary ip
-        for unit in self._peers.units:
+        for unit in self.peers.units:
             if primary_ip == self._unit_ip(unit):
                 return unit.name
 
@@ -207,8 +207,8 @@ class MongodbOperatorCharm(CharmBase):
             a list of IP address associated with MongoDB application.
         """
         peer_addresses = []
-        if self._peers:
-            peer_addresses = [self._unit_ip(unit) for unit in self._peers.units]
+        if self.peers:
+            peer_addresses = [self._unit_ip(unit) for unit in self.peers.units]
 
         logger.debug("peer addresses: %s", peer_addresses)
         self_address = self._unit_ip(self.unit)
@@ -260,21 +260,21 @@ class MongodbOperatorCharm(CharmBase):
     @property
     def unit_peer_data(self) -> Dict:
         """Peer relation data object."""
-        if not self._peers:
+        if not self.peers:
             return {}
 
-        return self._peers.data[self.unit]
+        return self.peers.data[self.unit]
 
     @property
     def app_peer_data(self) -> Dict:
         """Peer relation data object."""
-        if not self._peers:
+        if not self.peers:
             return {}
 
-        return self._peers.data[self.app]
+        return self.peers.data[self.app]
 
     @property
-    def _peers(self) -> Optional[Relation]:
+    def peers(self) -> Optional[Relation]:
         """Fetch the peer relation.
 
         Returns:
@@ -330,7 +330,7 @@ class MongodbOperatorCharm(CharmBase):
         """Handle the install event (fired on startup)."""
         self.unit.status = MaintenanceStatus("installing MongoDB")
         try:
-            self._install_snap_packages(packages=Config.SNAP_PACKAGES)
+            self.install_snap_packages(packages=Config.SNAP_PACKAGES)
 
         except snap.SnapError:
             self.unit.status = BlockedStatus("couldn't install MongoDB")
@@ -368,8 +368,8 @@ class MongodbOperatorCharm(CharmBase):
         unresponsive therefore causing a cluster failure, error the component. This prevents it
         from executing other hooks with a new role.
         """
-        # TODO in the future (24.04) support migration of components
-        if self.is_role_changed():
+        if self.upgrade.idle and self.is_role_changed():
+            # TODO in the future (24.04) support migration of components
             logger.error(
                 f"cluster migration currently not supported, cannot change from { self.model.config['role']} to {self.role}"
             )
@@ -390,7 +390,7 @@ class MongodbOperatorCharm(CharmBase):
         try:
             logger.debug("starting MongoDB.")
             self.unit.status = MaintenanceStatus("starting MongoDB")
-            self.start_mongod_service()
+            self.start_charm_services()
             self.unit.status = ActiveStatus()
         except snap.SnapError as e:
             logger.error("An exception occurred when starting mongod agent, error: %s.", str(e))
@@ -442,6 +442,11 @@ class MongodbOperatorCharm(CharmBase):
         if not self.unit.is_leader():
             return
 
+        if not self.upgrade.idle:
+            logger.info("cannot process %s, upgrade is in progress", event)
+            event.defer()
+            return
+
         self._on_relation_handler(event)
 
         self._update_related_hosts(event)
@@ -452,6 +457,11 @@ class MongodbOperatorCharm(CharmBase):
         Args:
             event: The triggering relation joined/changed event.
         """
+        if not self.upgrade.idle:
+            logger.info("cannot process %s, upgrade is in progress", event)
+            event.defer()
+            return
+
         # changing the monitor password will lead to non-leader units receiving a relation changed
         # event. We must update the monitor and pbm URI if the password changes so that COS/pbm
         # can continue to work
@@ -495,6 +505,11 @@ class MongodbOperatorCharm(CharmBase):
 
     def _on_leader_elected(self, event: LeaderElectedEvent) -> None:
         """Generates necessary keyfile and updates replica hosts."""
+        if not self.upgrade.idle:
+            logger.info("cannot process %s, upgrade is in progress", event)
+            event.defer()
+            return
+
         if not self.get_secret(APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME):
             self._generate_secrets()
 
@@ -508,6 +523,11 @@ class MongodbOperatorCharm(CharmBase):
         """
         # allow leader to update relation data and hosts if it isn't leaving
         if not self.unit.is_leader() or event.departing_unit == self.unit:
+            return
+
+        if not self.upgrade.idle:
+            logger.info("cannot process %s, upgrade is in progress", event)
+            event.defer()
             return
 
         self._update_hosts(event)
@@ -559,6 +579,10 @@ class MongodbOperatorCharm(CharmBase):
             logger.error("Failed to remove %s from replica set, error=%r", self.unit.name, e)
 
     def _on_update_status(self, event: UpdateStatusEvent):
+        if not self.upgrade.idle:
+            logger.info("Processing upgrade, wait to check status")
+            return
+
         # user-made mistakes might result in other incorrect statues. Prioritise informing users of
         # their mistake.
         invalid_integration_status = self.get_invalid_integration_status()
@@ -608,6 +632,10 @@ class MongodbOperatorCharm(CharmBase):
 
     def _on_set_password(self, event: ActionEvent) -> None:
         """Set the password for the admin user."""
+        if not self.upgrade.idle:
+            event.fail("Cannot set password, upgrade is in progress.")
+            return
+
         # check conditions for setting the password and fail if necessary
         if not self.pass_pre_set_password_checks(event):
             return
@@ -943,7 +971,7 @@ class MongodbOperatorCharm(CharmBase):
                 logger.exception("failed opening port: %s", str(e))
                 raise
 
-    def _install_snap_packages(self, packages: List[str]) -> None:
+    def install_snap_packages(self, packages: List[Package]) -> None:
         """Installs package(s) to container.
 
         Args:
@@ -1142,7 +1170,7 @@ class MongodbOperatorCharm(CharmBase):
             try:
                 logger.info("Replica Set initialization")
                 direct_mongo.init_replset()
-                self._peers.data[self.app]["replica_set_hosts"] = json.dumps(
+                self.peers.data[self.app]["replica_set_hosts"] = json.dumps(
                     [self._unit_ip(self.unit)]
                 )
 
@@ -1179,8 +1207,8 @@ class MongodbOperatorCharm(CharmBase):
         if unit == self.unit:
             return str(self.model.get_binding(Config.Relations.PEERS).network.bind_address)
         # check if host is a peer
-        elif unit in self._peers.data:
-            return str(self._peers.data[unit].get("private-address"))
+        elif unit in self.peers.data:
+            return str(self.peers.data[unit].get("private-address"))
         # raise exception if host not found
         else:
             raise ApplicationHostNotFoundError
@@ -1232,7 +1260,7 @@ class MongodbOperatorCharm(CharmBase):
         content[key] = Config.Secrets.SECRET_DELETED_LABEL
         secret.set_content(content)
 
-    def start_mongod_service(self):
+    def start_charm_services(self):
         """Starts the mongod service and if necessary starts mongos.
 
         Raises:
@@ -1246,7 +1274,7 @@ class MongodbOperatorCharm(CharmBase):
         if self.is_role(Config.Role.CONFIG_SERVER):
             mongodb_snap.start(services=["mongos"], enable=True)
 
-    def stop_mongod_service(self):
+    def stop_charm_services(self):
         """Stops the mongod service and if necessary stops mongos.
 
         Raises:
@@ -1266,14 +1294,14 @@ class MongodbOperatorCharm(CharmBase):
             auth = self.auth_enabled()
 
         try:
-            self.stop_mongod_service()
+            self.stop_charm_services()
             update_mongod_service(
                 auth,
                 self._unit_ip(self.unit),
                 config=self.mongodb_config,
                 role=self.role,
             )
-            self.start_mongod_service()
+            self.start_charm_services()
         except snap.SnapError as e:
             logger.error("An exception occurred when starting mongod agent, error: %s.", str(e))
             self.unit.status = BlockedStatus("couldn't start MongoDB")
@@ -1338,10 +1366,10 @@ class MongodbOperatorCharm(CharmBase):
             return self.unit
 
     def _peer_data(self, scope: Scopes):
-        if not self._peers:
+        if not self.peers:
             return {}.setdefault(scope, {})
         scope_obj = self._scope_obj(scope)
-        return self._peers.data[scope_obj]
+        return self.peers.data[scope_obj]
 
     def check_relation_broken_or_scale_down(self, event: RelationDepartedEvent) -> None:
         """Checks relation departed event is the result of removed relation or scale down.
@@ -1403,7 +1431,7 @@ class MongodbOperatorCharm(CharmBase):
     @property
     def _is_removing_last_replica(self) -> bool:
         """Returns True if the last replica (juju unit) is getting removed."""
-        return self.app.planned_units() == 0 and len(self._peers.units) == 0
+        return self.app.planned_units() == 0 and len(self.peers.units) == 0
 
     def get_invalid_integration_status(self) -> Optional[StatusBase]:
         """Returns a status if an invalid integration is present."""

@@ -286,6 +286,10 @@ class MongoDBConnection:
         logger.debug("rs_config: %r", dumps(rs_config["config"]))
         self.client.admin.command("replSetReconfig", rs_config["config"])
 
+    def step_down_primary(self) -> None:
+        """Steps down the current primary, forcing a re-election."""
+        self.client.admin.command("replSetStepDown", {"stepDownSecs": "60"})
+
     def create_user(self, config: MongoDBConfiguration):
         """Create user.
 

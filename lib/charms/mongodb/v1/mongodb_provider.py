@@ -16,7 +16,7 @@ from typing import List, Optional, Set
 from charms.data_platform_libs.v0.data_interfaces import DatabaseProvides
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 from charms.mongodb.v1.helpers import generate_password
-from ops.charm import CharmBase, RelationBrokenEvent, RelationChangedEvent
+from ops.charm import CharmBase, EventBase, RelationBrokenEvent, RelationChangedEvent
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, Relation
 from pymongo.errors import PyMongoError
@@ -31,7 +31,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 4
+LIBPATCH = 5
 
 logger = logging.getLogger(__name__)
 REL_NAME = "database"
@@ -85,10 +85,15 @@ class MongoDBProvider(Object):
             self.database_provides.on.database_requested, self._on_relation_event
         )
 
-    def pass_hook_checks(self) -> bool:
+    def pass_hook_checks(self, event: EventBase) -> bool:
         """Runs the pre-hooks checks for MongoDBProvider, returns True if all pass."""
         # We shouldn't try to create or update users if the database is not
         # initialised. We will create users as part of initialisation.
+        if not self.charm.upgrade.idle:
+            logger.info("cannot process %s, upgrade is in progress", event)
+            event.defer()
+            return False
+
         if not self.charm.db_initialised:
             return False
 
@@ -115,7 +120,7 @@ class MongoDBProvider(Object):
         data. As a result, related charm gets credentials for accessing the
         MongoDB database.
         """
-        if not self.pass_hook_checks():
+        if not self.pass_hook_checks(event):
             logger.info("Skipping %s: hook checks did not pass", type(event))
             return
 

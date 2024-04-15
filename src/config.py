@@ -4,7 +4,9 @@
 # See LICENSE file for licensing details.
 
 
-from typing import Literal
+from typing import Literal, TypeAlias
+
+Package: TypeAlias = tuple[str, str, str]
 
 
 class Config:
@@ -22,14 +24,10 @@ class Config:
         "mongod_service": {
             "dependencies": {},
             "name": "mongod",
-            # this should be">4,<8" - but we get pydantic.error_wrappers.ValidationError - resolve
-            # in DPE-3940
-            "upgrade_supported": ">4",
-            # this should be "6.0.6-5" - but we get pydantic.error_wrappers.ValidationError -
-            # resolve in DPE-3940
+            "upgrade_supported": "^6.0.0,<7",
             "version": "6.0.6",
         },
-        # TODO: Future PR DPE-3940 - implements mongos if necessary
+        # TODO: Future PR - implement mongos deps when supporting sharding upgrades
     }
 
     # Keep these alphabetically sorted

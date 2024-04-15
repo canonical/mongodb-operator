@@ -15,9 +15,11 @@ from charms.data_platform_libs.v0.upgrade import (
     UpgradeGrantedEvent,
 )
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
+from charms.operator_libs_linux.v1 import snap
 from ops.charm import CharmBase
 from ops.model import ActiveStatus
 from pydantic import BaseModel
+from tenacity import Retrying, retry, stop_after_attempt, wait_fixed
 from typing_extensions import override
 
 from config import Config
@@ -25,6 +27,7 @@ from config import Config
 logger = logging.getLogger(__name__)
 
 WRITE_KEY = "write_value"
+MONGOD_SERVICE = "mongod"
 
 # The unique Charmhub library identifier, never change it
 LIBID = "aad46b9f0ddb4cb392982a52a596ec9b"
@@ -34,7 +37,16 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 2
+LIBPATCH = 3
+
+ROLLBACK_INSTRUCTIONS = """Unit failed to upgrade and requires manual rollback to previous stable version.
+    1. Re-run `pre-upgrade-check` action on the leader unit to enter 'recovery' state
+    2. Run `juju refresh` to the previously deployed charm revision
+"""
+
+
+class FailedToElectNewPrimaryError(Exception):
+    """Raised when a new primary isn't elected after stepping down."""
 
 
 class MongoDBDependencyModel(BaseModel):
@@ -51,6 +63,15 @@ class MongoDBUpgrade(DataUpgrade):
         super().__init__(charm, **kwargs)
         self.charm = charm
 
+    @property
+    def idle(self) -> bool:
+        """Checks if cluster has completed upgrade.
+
+        Returns:
+            True if cluster has completed upgrade. Otherwise False
+        """
+        return not bool(self.upgrade_stack)
+
     @override
     def pre_upgrade_check(self) -> None:
         """Verifies that an upgrade can be done on the MongoDB deployment."""
@@ -58,37 +79,119 @@ class MongoDBUpgrade(DataUpgrade):
 
         if self.charm.is_role(Config.Role.SHARD):
             raise ClusterNotReadyError(
-                message=default_message, cause="Cannot run pre-upgrade check on shards"
+                message=default_message,
+                cause="Cannot run pre-upgrade check on shards",
+                resolution="Run this action on config-server.",
             )
 
         if not self.is_cluster_healthy():
-            raise ClusterNotReadyError(message=default_message, cause="Cluster is not healthy")
+            raise ClusterNotReadyError(
+                message=default_message,
+                cause="Cluster is not healthy",
+                resolution="Please check juju status for information",
+            )
 
         if not self.is_cluster_able_to_read_write():
-            raise ClusterNotReadyError(message=default_message, cause="Cluster cannot read/write")
+            raise ClusterNotReadyError(
+                message=default_message, cause="Cluster cannot read/write - please check logs"
+            )
 
         # Future PR - sharding based checks
 
+    @retry(
+        stop=stop_after_attempt(20),
+        wait=wait_fixed(1),
+        reraise=True,
+    )
+    def post_upgrade_check(self) -> None:
+        """Runs necessary checks validating the unit is in a healthy state after upgrade."""
+        if not self.is_cluster_able_to_read_write():
+            raise ClusterNotReadyError(
+                message="post-upgrade check failed and cannot safely upgrade",
+                cause="Cluster cannot read/write",
+            )
+
     @override
     def build_upgrade_stack(self) -> list[int]:
+        """Builds an upgrade stack, specifying the order of nodes to upgrade."""
+        if self.charm.is_role(Config.Role.CONFIG_SERVER):
+            # TODO implement in a future PR a stack for shards and config server
+            pass
+        elif self.charm.is_role(Config.Role.REPLICATION):
+            return self.get_replica_set_upgrade_stack()
+
+    def get_replica_set_upgrade_stack(self) -> list[int]:
         """Builds an upgrade stack, specifying the order of nodes to upgrade.
 
-        TODO Implement in DPE-3940
+        MongoDB Specific: The primary should be upgraded last, so the unit with the primary is
+        put at the very bottom of the stack.
         """
+        upgrade_stack = []
+        units = set([self.charm.unit] + list(self.charm.peers.units))  # type: ignore[reportOptionalMemberAccess]
+        primary_unit_id = None
+        for unit in units:
+            unit_id = int(unit.name.split("/")[-1])
+            if unit.name == self.charm.primary:
+                primary_unit_id = unit_id
+                continue
+
+            upgrade_stack.append(unit_id)
+
+        upgrade_stack.insert(0, primary_unit_id)
+        return upgrade_stack
 
     @override
     def log_rollback_instructions(self) -> None:
-        """Logs the rollback instructions in case of failure to upgrade.
-
-        TODO Implement in DPE-3940
-        """
+        """Logs the rollback instructions in case of failure to upgrade."""
+        logger.critical(ROLLBACK_INSTRUCTIONS)
 
     @override
     def _on_upgrade_granted(self, event: UpgradeGrantedEvent) -> None:
-        """Execute a series of upgrade steps.
+        """Execute a series of upgrade steps."""
+        # TODO: Future PR - check compatibility of new mongod version with current mongos versions
+        self.charm.stop_charm_services()
 
-        TODO Implement in DPE-3940
-        """
+        try:
+            self.charm.install_snap_packages(packages=Config.SNAP_PACKAGES)
+        except snap.SnapError:
+            logger.error("Unable to install Snap")
+            self.set_unit_failed()
+            return
+
+        if self.charm.unit.name == self.charm.primary:
+            logger.debug("Stepping down current primary, before upgrading service...")
+            self.step_down_primary_and_wait_reelection()
+
+        logger.info(f"{self.charm.unit.name} upgrading service...")
+        self.charm.restart_charm_services()
+
+        try:
+            logger.debug("Running post-upgrade check...")
+            self.post_upgrade_check()
+
+            logger.debug("Marking unit completed...")
+            self.set_unit_completed()
+
+            # ensures leader gets it's own relation-changed when it upgrades
+            if self.charm.unit.is_leader():
+                logger.debug("Re-emitting upgrade-changed on leader...")
+                self.on_upgrade_changed(event)
+
+        except ClusterNotReadyError as e:
+            logger.error(e.cause)
+            self.set_unit_failed()
+
+    def step_down_primary_and_wait_reelection(self) -> bool:
+        """Steps down the current primary and waits for a new one to be elected."""
+        old_primary = self.charm.primary
+        with MongoDBConnection(self.charm.mongodb_config) as mongod:
+            mongod.step_down_primary()
+
+        for attempt in Retrying(stop=stop_after_attempt(30), wait=wait_fixed(1), reraise=True):
+            with attempt:
+                new_primary = self.charm.primary
+                if new_primary != old_primary:
+                    raise FailedToElectNewPrimaryError()
 
     def is_cluster_healthy(self) -> bool:
         """Returns True if all nodes in the cluster/replcia set are healthy."""

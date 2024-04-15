@@ -42,7 +42,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 11
+LIBPATCH = 12
 
 
 class ClusterProvider(Object):
@@ -80,6 +80,11 @@ class ClusterProvider(Object):
             logger.info(
                 "Skipping %s. ClusterProvider is only be executed by config-server", type(event)
             )
+            return False
+
+        if not self.charm.upgrade.idle:
+            logger.info("cannot process %s, upgrade is in progress", event)
+            event.defer()
             return False
 
         if not self.charm.unit.is_leader():

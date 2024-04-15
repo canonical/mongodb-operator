@@ -31,7 +31,13 @@ from charms.mongodb.v1.mongos import (
     ShardNotPlannedForRemovalError,
 )
 from charms.mongodb.v1.users import BackupUser, MongoDBUser, OperatorUser
-from ops.charm import CharmBase, EventBase, RelationBrokenEvent, RelationChangedEvent
+from ops.charm import (
+    CharmBase,
+    EventBase,
+    RelationBrokenEvent,
+    RelationChangedEvent,
+    RelationJoinedEvent,
+)
 from ops.framework import Object
 from ops.model import (
     ActiveStatus,
@@ -56,7 +62,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 13
+LIBPATCH = 14
 KEYFILE_KEY = "key-file"
 HOSTS_KEY = "host"
 OPERATOR_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username())
@@ -140,6 +146,11 @@ class ShardingProvider(Object):
 
     def pass_hook_checks(self, event: EventBase) -> bool:
         """Runs the pre-hooks checks for ShardingProvider, returns True if all pass."""
+        if not self.charm.upgrade.idle:
+            logger.info("cannot process %s, upgrade is in progress", event)
+            event.defer()
+            return False
+
         if not self.charm.db_initialised:
             logger.info("Deferring %s. db is not initialised.", str(type(event)))
             event.defer()
@@ -536,6 +547,11 @@ class ConfigServerRequirer(Object):
         Changes in secrets do not re-trigger a relation changed event, so it is necessary to listen
         to secret changes events.
         """
+        if not self.charm.upgrade.idle:
+            logger.info("cannot process %s, upgrade is in progress", event)
+            event.defer()
+            return False
+
         if (
             not self.charm.unit.is_leader()
             or not event.secret.label
@@ -637,8 +653,13 @@ class ConfigServerRequirer(Object):
         # after updating the password of the backup user, restart pbm with correct password
         self.charm._connect_pbm_agent()
 
-    def _on_relation_joined(self, _):
+    def _on_relation_joined(self, event: RelationJoinedEvent):
         """Sets status and flags in relation data relevant to sharding."""
+        if not self.charm.upgrade.idle:
+            logger.info("cannot process %s, upgrade is in progress", event)
+            event.defer()
+            return
+
         # if re-using an old shard, re-set flags.
         self.charm.unit_peer_data["drained"] = json.dumps(False)
         self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
@@ -687,6 +708,11 @@ class ConfigServerRequirer(Object):
 
     def pass_hook_checks(self, event):
         """Runs the pre-hooks checks for ConfigServerRequirer, returns True if all pass."""
+        if not self.charm.upgrade.idle:
+            logger.info("cannot process %s, upgrade is in progress", event)
+            event.defer()
+            return False
+
         if not self.charm.db_initialised:
             logger.info("Deferring %s. db is not initialised.", str(type(event)))
             event.defer()
