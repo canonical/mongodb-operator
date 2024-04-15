@@ -25,16 +25,10 @@ class TestCharm(unittest.TestCase):
         """Test is_cluster_healthy function."""
 
         def is_shard_mock_call(*args):
-            if args == ("shard",):
-                return True
-            else:
-                return False
+            return args == ("shard",)
 
         def is_replication_mock_call(*args):
-            if args == ("replication",):
-                return True
-            else:
-                return False
+            return args == ("replication",)
 
         active_status = mock.Mock()
         active_status.return_value = ActiveStatus()
