@@ -73,6 +73,10 @@ class MongoDBTLS(Object):
 
     def _on_set_tls_private_key(self, event: ActionEvent) -> None:
         """Set the TLS private key, which will be used for requesting the certificate."""
+        if not self.charm.upgrade.idle:
+            event.fail("Cannot set TLS key - upgrade is in progress.")
+            return
+
         logger.debug("Request to set TLS private key received.")
         if self.charm.is_role(Config.Role.MONGOS) and not self.charm.has_config_server():
             logger.error(
@@ -141,11 +145,21 @@ class MongoDBTLS(Object):
             event.defer()
             return
 
+        if not self.charm.upgrade.idle:
+            logger.info("cannot process %s, upgrade is in progress", event)
+            event.defer()
+            return
+
         self.request_certificate(None, internal=True)
         self.request_certificate(None, internal=False)
 
     def _on_tls_relation_broken(self, event: RelationBrokenEvent) -> None:
         """Disable TLS when TLS relation broken."""
+        if not self.charm.upgrade.idle:
+            logger.info("cannot process %s, upgrade is in progress", event)
+            event.defer()
+            return
+
         logger.debug("Disabling external and internal TLS for unit: %s", self.charm.unit.name)
 
         for internal in [True, False]:
@@ -165,6 +179,11 @@ class MongoDBTLS(Object):
 
     def _on_certificate_available(self, event: CertificateAvailableEvent) -> None:
         """Enable TLS when TLS certificate available."""
+        if not self.charm.upgrade.idle:
+            logger.info("cannot process %s, upgrade is in progress", event)
+            event.defer()
+            return
+
         if self.charm.is_role(Config.Role.MONGOS) and not self.charm.config_server_db:
             logger.debug(
                 "mongos requires config-server in order to start, do not restart with TLS until integrated to config-server"
@@ -232,6 +251,11 @@ class MongoDBTLS(Object):
 
     def _on_certificate_expiring(self, event: CertificateExpiringEvent) -> None:
         """Request the new certificate when old certificate is expiring."""
+        if not self.charm.upgrade.idle:
+            logger.info("cannot process %s, upgrade is in progress", event)
+            event.defer()
+            return
+
         if self.charm.is_role(Config.Role.MONGOS) and not self.charm.has_config_server():
             logger.info(
                 "mongos is not running (not integrated to config-server) deferring renewal of certificates."
