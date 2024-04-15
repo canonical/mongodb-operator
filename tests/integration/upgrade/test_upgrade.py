@@ -8,7 +8,8 @@ import os
 import pytest
 from pytest_operator.plugin import OpsTest
 
-from ..helpers import check_or_scale_app, find_unit, get_app_name
+from ..ha_tests import helpers as ha_helpers
+from ..helpers import check_or_scale_app, find_unit, get_app_name, unit_hostname
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,25 @@ async def test_preflight_check(ops_test: OpsTest) -> None:
     logger.info("Calling pre-upgrade-check")
     action = await leader_unit.run_action("pre-upgrade-check")
     await action.wait()
+    assert action.status == "completed", "pre-upgrade-check failed, expected to succeed."
+
+    await ops_test.model.wait_for_idle(
+        apps=[app_name], status="active", timeout=1000, idle_period=120
+    )
+
+
+@pytest.mark.group(1)
+async def test_preflight_check_failure(ops_test: OpsTest) -> None:
+    """Verifies that the preflight check can run successfully."""
+    app_name = await get_app_name(ops_test)
+    unit = await find_unit(ops_test, leader=False, app_name=app_name)
+    leader_unit = await find_unit(ops_test, leader=True, app_name=app_name)
+    ha_helpers.cut_network_from_unit(await unit_hostname(ops_test, unit.name))
+
+    logger.info("Calling pre-upgrade-check")
+    action = await leader_unit.run_action("pre-upgrade-check")
+    await action.wait()
+    assert action.status == "failed", "pre-upgrade-check succeeded, expected to fail."
 
     await ops_test.model.wait_for_idle(
         apps=[app_name], status="active", timeout=1000, idle_period=120
