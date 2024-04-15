@@ -59,7 +59,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await ops_test.model.wait_for_idle()
 
 
-@pytest.mark.abort_on_fail
+@pytest.mark.group(1)
 async def test_consistency_between_workload_and_metadata(ops_test: OpsTest):
     """Verifies that the dependencies in the charm version are accurate."""
     # retrieve current version

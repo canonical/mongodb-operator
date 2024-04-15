@@ -24,8 +24,8 @@ async def continuous_writes(ops_test: OpsTest):
     await ha_helpers.clear_db_writes(ops_test)
 
 
-@pytest.mark.skip(reason="Must wait for stable channel to support upgrades before testing")
 @pytest.mark.group(1)
+@pytest.mark.skip(reason="Must wait for stable channel to support upgrades before testing")
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy one unit of MongoDB."""
     # it is possible for users to provide their own cluster for testing. Hence check if there
@@ -40,8 +40,8 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     )
 
 
-@pytest.mark.skip(reason="Must wait for stable channel to support upgrades before testing")
 @pytest.mark.group(1)
+@pytest.mark.skip(reason="Must wait for stable channel to support upgrades before testing")
 async def test_upgrade(ops_test: OpsTest, continuous_writes) -> None:
     """Verifies that the upgrade can run successfully."""
     app_name = await get_app_name(ops_test)
@@ -67,8 +67,8 @@ async def test_upgrade(ops_test: OpsTest, continuous_writes) -> None:
     assert total_expected_writes["number"] == actual_writes
 
 
-@pytest.mark.skip(reason="Must wait for stable channel to support upgrades before testing")
 @pytest.mark.group(1)
+@pytest.mark.skip(reason="Must wait for stable channel to support upgrades before testing")
 async def test_preflight_check(ops_test: OpsTest) -> None:
     """Verifies that the preflight check can run successfully."""
     app_name = await get_app_name(ops_test)
@@ -83,8 +83,8 @@ async def test_preflight_check(ops_test: OpsTest) -> None:
     )
 
 
-@pytest.mark.skip(reason="Must wait for stable channel to support upgrades before testing")
 @pytest.mark.group(1)
+@pytest.mark.skip(reason="Must wait for stable channel to support upgrades before testing")
 async def test_preflight_check_failure(ops_test: OpsTest) -> None:
     """Verifies that the preflight check can run successfully."""
     app_name = await get_app_name(ops_test)
