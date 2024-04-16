@@ -25,7 +25,6 @@ async def continuous_writes(ops_test: OpsTest):
 
 
 @pytest.mark.group(1)
-@pytest.mark.skip(reason="Must wait for stable channel to support upgrades before testing")
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy one unit of MongoDB."""
     # it is possible for users to provide their own cluster for testing. Hence check if there
@@ -34,14 +33,16 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     if app_name:
         return await check_or_scale_app(ops_test, app_name)
 
-    await ops_test.model.deploy("mongodb", channel="stable", num_units=3)
+    # TODO: When `6/stable` track supports upgrades deploy and test that revision instead.
+    await ops_test.model.deploy("mongodb", channel="edge", num_units=3)
+
     await ops_test.model.wait_for_idle(
         apps=["mongodb"], status="active", timeout=1000, idle_period=120
     )
+    app_name = await get_app_name(ops_test)
 
 
 @pytest.mark.group(1)
-@pytest.mark.skip(reason="Must wait for stable channel to support upgrades before testing")
 async def test_upgrade(ops_test: OpsTest, continuous_writes) -> None:
     """Verifies that the upgrade can run successfully."""
     app_name = await get_app_name(ops_test)
@@ -60,6 +61,7 @@ async def test_upgrade(ops_test: OpsTest, continuous_writes) -> None:
     await ops_test.model.wait_for_idle(
         apps=[app_name], status="active", timeout=1000, idle_period=120
     )
+    # verify that the cluster is actually correctly configured after upgrade
 
     # verify that the no writes were skipped
     total_expected_writes = await ha_helpers.stop_continous_writes(ops_test, app_name=app_name)
@@ -68,7 +70,6 @@ async def test_upgrade(ops_test: OpsTest, continuous_writes) -> None:
 
 
 @pytest.mark.group(1)
-@pytest.mark.skip(reason="Must wait for stable channel to support upgrades before testing")
 async def test_preflight_check(ops_test: OpsTest) -> None:
     """Verifies that the preflight check can run successfully."""
     app_name = await get_app_name(ops_test)
@@ -84,7 +85,6 @@ async def test_preflight_check(ops_test: OpsTest) -> None:
 
 
 @pytest.mark.group(1)
-@pytest.mark.skip(reason="Must wait for stable channel to support upgrades before testing")
 async def test_preflight_check_failure(ops_test: OpsTest) -> None:
     """Verifies that the preflight check can run successfully."""
     app_name = await get_app_name(ops_test)
