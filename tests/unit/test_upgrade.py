@@ -20,7 +20,7 @@ class TestCharm(unittest.TestCase):
         self.peer_rel_id = self.harness.add_relation("database-peers", "database-peers")
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charms.mongodb.v0.upgrade.MongoDBConnection")
+    @patch("events.upgrade.MongoDBConnection")
     def test_is_cluster_healthy(self, connection):
         """Test is_cluster_healthy function."""
 
@@ -56,7 +56,7 @@ class TestCharm(unittest.TestCase):
         assert self.harness.charm.upgrade.is_cluster_healthy()
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charms.mongodb.v0.upgrade.MongoDBConnection")
+    @patch("events.upgrade.MongoDBConnection")
     @patch("charm.MongoDBUpgrade.is_excepted_write_on_replica")
     def test_is_replica_set_able_read_write(self, is_excepted_write_on_replica, connection):
         """Test test_is_replica_set_able_read_write function."""
