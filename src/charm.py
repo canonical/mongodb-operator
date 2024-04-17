@@ -21,7 +21,6 @@ from charms.mongodb.v0.mongodb import (
 )
 from charms.mongodb.v0.mongodb_secrets import SecretCache, generate_secret_label
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
-from charms.mongodb.v0.upgrade import MongoDBDependencyModel, MongoDBUpgrade
 from charms.mongodb.v1.helpers import (
     KEY_FILE,
     TLS_EXT_CA_FILE,
@@ -77,6 +76,7 @@ from pymongo.errors import OperationFailure, ServerSelectionTimeoutError
 from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
 from config import Config, Package
+from events.upgrade import MongoDBDependencyModel, MongoDBUpgrade
 from exceptions import AdminUserCreationError, ApplicationHostNotFoundError
 from machine_helpers import MONGO_USER, ROOT_USER_GID, update_mongod_service
 

@@ -1,4 +1,4 @@
-# Copyright 2023 Canonical Ltd.
+# Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 """Manager for handling MongoDB in-place upgrades."""
@@ -29,15 +29,6 @@ logger = logging.getLogger(__name__)
 WRITE_KEY = "write_value"
 MONGOD_SERVICE = "mongod"
 
-# The unique Charmhub library identifier, never change it
-LIBID = "aad46b9f0ddb4cb392982a52a596ec9b"
-
-# Increment this major API version when introducing breaking changes
-LIBAPI = 0
-
-# Increment this PATCH version before using `charmcraft publish-lib` or reset
-# to 0 if you are raising the major API version
-LIBPATCH = 3
 
 ROLLBACK_INSTRUCTIONS = """Unit failed to upgrade and requires manual rollback to previous stable version.
     1. Re-run `pre-upgrade-check` action on the leader unit to enter 'recovery' state
