@@ -17,6 +17,8 @@ from pymongo.errors import PyMongoError, ServerSelectionTimeoutError
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError
 
+from config import Config
+
 from .ha_tests.helpers import kill_unit_process
 from .helpers import (
     PORT,
@@ -55,6 +57,22 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     my_charm = await ops_test.build_charm(".")
     await ops_test.model.deploy(my_charm, num_units=len(UNIT_IDS))
     await ops_test.model.wait_for_idle()
+
+
+@pytest.mark.group(1)
+async def test_consistency_between_workload_and_metadata(ops_test: OpsTest):
+    """Verifies that the dependencies in the charm version are accurate."""
+    # retrieve current version
+    app_name = await get_app_name(ops_test)
+    leader_unit = await find_unit(ops_test, leader=True, app_name=app_name)
+    password = await get_password(ops_test, app_name=app_name)
+    client = MongoClient(unit_uri(leader_unit.public_address, password, app_name))
+    # version has format x.y.z-a
+    mongod_version = client.server_info()["version"].split("-")[0]
+
+    assert (
+        mongod_version == Config.DEPENDENCIES["mongod_service"]["version"]
+    ), f"Version of mongod running does not match dependency matrix, update DEPENDENCIES in src/config.py to {mongod_version}"
 
 
 @pytest.mark.group(1)
