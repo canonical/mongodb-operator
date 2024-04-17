@@ -246,7 +246,7 @@ class ShardingProvider(Object):
             relation_shards = self._get_shards_from_relations(departed_shard_id)
             for shard in relation_shards - cluster_shards:
                 try:
-                    shard_hosts = self._get_shard_hosts(shard)
+                    shard_hosts = self.get_shard_hosts(shard)
                     if not len(shard_hosts):
                         logger.info("host info for shard %s not yet added, skipping", shard)
                         continue
@@ -407,7 +407,7 @@ class ShardingProvider(Object):
             ]
         )
 
-    def _get_shard_hosts(self, shard_name) -> List[str]:
+    def get_shard_hosts(self, shard_name) -> List[str]:
         """Retrieves the hosts for a specified shard."""
         relations = self.model.relations[self.relation_name]
         for relation in relations:
@@ -438,7 +438,7 @@ class ShardingProvider(Object):
             return unreachable_hosts
 
         for shard_name in self.get_related_shards():
-            shard_hosts = self._get_shard_hosts(shard_name)
+            shard_hosts = self.get_shard_hosts(shard_name)
             if not shard_hosts:
                 return unreachable_hosts
 

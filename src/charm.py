@@ -837,14 +837,24 @@ class MongodbOperatorCharm(CharmBase):
             tls_internal=internal_ca is not None,
         )
 
+    def get_mongodb_config_for_shard(self, shard_name: str) -> MongoDBConfiguration:
+        """Returns a MongoDBConfiguration object for a provided shard."""
+        # todo fail if:
+        # 1. not config-server
+        # 2. shard is not present
+        shard_hosts = self.config_server.get_shard_hosts(shard_name)
+        return self._get_mongodb_config_for_user(
+            OperatorUser, set(shard_hosts), replset=shard_name
+        )
+
     def _get_mongodb_config_for_user(
-        self, user: MongoDBUser, hosts: Set[str], standalone: bool = False
+        self, user: MongoDBUser, hosts: Set[str], standalone: bool = False, replset: str = None
     ) -> MongoDBConfiguration:
         external_ca, _ = self.tls.get_tls_files(internal=False)
         internal_ca, _ = self.tls.get_tls_files(internal=True)
 
         return MongoDBConfiguration(
-            replset=self.app.name,
+            replset=replset or self.app.name,
             database=user.get_database_name(),
             username=user.get_username(),
             password=self.get_secret(APP_SCOPE, user.get_password_key_name()),

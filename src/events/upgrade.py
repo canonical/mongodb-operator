@@ -14,6 +14,8 @@ from charms.data_platform_libs.v0.upgrade import (
     DependencyModel,
     UpgradeGrantedEvent,
 )
+from pymongo.errors import OperationFailure, ServerSelectionTimeoutError, PyMongoError
+from charms.mongodb.v1.mongos import MongosConnection, MongosConfiguration
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 from charms.operator_libs_linux.v1 import snap
 from ops.charm import CharmBase
@@ -70,16 +72,17 @@ class MongoDBUpgrade(DataUpgrade):
 
         if self.charm.is_role(Config.Role.SHARD):
             raise ClusterNotReadyError(
-                message=default_message,
+                message="Cannot run pre-upgrade check on shards, run this action on the related config-server.",
                 cause="Cannot run pre-upgrade check on shards",
                 resolution="Run this action on config-server.",
             )
 
+        # todo this check doesn't work in config-server
         if not self.is_cluster_healthy():
             raise ClusterNotReadyError(
                 message=default_message,
                 cause="Cluster is not healthy",
-                resolution="Please check juju status for information",
+                resolution="Please check juju debug for information",
             )
 
         if not self.is_cluster_able_to_read_write():
@@ -190,20 +193,59 @@ class MongoDBUpgrade(DataUpgrade):
             logger.debug("Cannot run full cluster health check on shards")
             return False
 
+        # TODO - find a way to check shard statuses from config-server
         charm_status = self.charm.process_statuses()
         return self.are_nodes_healthy() and isinstance(charm_status, ActiveStatus)
 
     def are_nodes_healthy(self) -> bool:
         """Returns True if all nodes in the MongoDB deployment are healthy."""
-        if self.charm.is_role(Config.Role.CONFIG_SERVER):
-            # TODO future PR implement this
-            pass
+        try:
+            if self.charm.is_role(Config.Role.CONFIG_SERVER):
+                return self.are_sharded_nodes_healthy()
+            if self.charm.is_role(Config.Role.REPLICATION):
+                return self.are_replica_set_nodes_healthy(self.charm.mongodb_config)
+        except (PyMongoError, OperationFailure, ServerSelectionTimeoutError) as e:
+            logger.debug(
+                "Cannot proceed with upgrade. Failed to check cluster health, error: %s", e
+            )
+            return False
 
-        if self.charm.is_role(Config.Role.REPLICATION):
-            with MongoDBConnection(self.charm.mongodb_config) as mongod:
-                rs_status = mongod.get_replset_status()
-                rs_status = mongod.client.admin.command("replSetGetStatus")
-                return not mongod.is_any_sync(rs_status)
+    def are_replica_set_nodes_healthy(self, mongodb_config: MongoDBConfiguration) -> bool:
+        with MongoDBConnection(mongodb_config) as mongod:
+            rs_status = mongod.get_replset_status()
+            rs_status = mongod.client.admin.command("replSetGetStatus")
+            return not mongod.is_any_sync(rs_status)
+
+    def are_sharded_nodes_healthy(self) -> bool:
+        """Returns True if all nodes in the sharded cluster are healthy."""
+        # verify all shards are healthy
+        if self.charm.config_server.get_unreachable_shards():
+            logger.debug("Cannot proceed with upgrade. Not all shards are reachable")
+            return False
+
+        with MongosConnection(self.charm.mongos_config) as mongos:
+            draining_shards = mongos.get_draining_shards()
+            shards = mongos.get_shard_members()
+
+        if draining_shards:
+            logger.debug(
+                "Cannot proceed with upgrade. Cluster actively draining shards %s", draining_shards
+            )
+            return False
+
+        # verify that all nodes in shards are healthy
+        for shard in shards:
+            replica_set_healthy = self.are_replica_set_nodes_healthy(
+                self.charm.get_mongodb_config_for_shard(shard)
+            )
+            if not replica_set_healthy:
+                logger.debug(
+                    "Cannot proceed with upgrade. Replica set nodes for shard %s are not healthy",
+                    shard,
+                )
+                return False
+
+        return True
 
     def is_cluster_able_to_read_write(self) -> bool:
         """Returns True if read and write is feasible for cluster."""
@@ -218,31 +260,39 @@ class MongoDBUpgrade(DataUpgrade):
     def is_replica_set_able_read_write(self) -> bool:
         """Returns True if is possible to write to primary and read from replicas."""
         collection_name, write_value = self.get_random_write_and_collection()
-        # add write to primary
-        self.add_write(self.charm.mongodb_config, collection_name, write_value)
-
-        # verify writes on secondaries
-        with MongoDBConnection(self.charm.mongodb_config) as mongod:
-            primary_ip = mongod.primary()
-
-        replica_ips = set(self.charm._unit_ips)
-        secondary_ips = replica_ips - set(primary_ip)
-        for secondary_ip in secondary_ips:
-            if not self.is_excepted_write_on_replica(secondary_ip, collection_name, write_value):
-                # do not return False immediately - as it is
-                logger.debug("Secondary with IP %s, does not contain the expected write.")
-                self.clear_tmp_collection(self.charm.mongodb_config, collection_name)
-                return False
-
+        self.add_write_to_replica_set(self.charm.mongodb_config, collection_name, write_value)
+        write_replicated = self.is_write_on_secondaries(
+            self.charm.mongodb_config, collection_name, write_value
+        )
         self.clear_tmp_collection(self.charm.mongodb_config, collection_name)
-        return True
+        return write_replicated
 
     def is_sharded_cluster_able_to_read_write(self) -> bool:
-        """Returns True if is possible to write each shard and read value from all nodes.
+        """Returns True if is possible to write each shard and read value from all nodes."""
+        collection_name, _ = self.get_random_write_and_collection()
+        db_name = f"db-{collection_name}"
 
-        TODO: Implement in a future PR.
-        """
-        return False
+        with MongosConnection(self.charm.mongos_config) as mongos:
+            shards = mongos.get_shard_members()
+
+        for shard in shards:
+            _, write_value = self.get_random_write_and_collection()
+            self.add_write_to_shard(
+                self.charm.mongos_config, db_name, collection_name, write_value, shard
+            )
+
+            writes_replicated = self.is_write_on_secondaries(
+                self.charm.get_mongodb_config_for_shard(shard),
+                collection_name,
+                write_value,
+                f"db-{collection_name}",
+            )
+            if not writes_replicated:
+                logger.debug("Writes not propogated on shard %s", shard)
+                break
+
+        self.clear_tmp_db(self.charm.mongos_config, db_name)
+        return writes_replicated
 
     def clear_tmp_collection(
         self, mongodb_config: MongoDBConfiguration, collection_name: str
@@ -252,14 +302,23 @@ class MongoDBUpgrade(DataUpgrade):
             db = mongod.client["admin"]
             db.drop_collection(collection_name)
 
+    def clear_tmp_db(self, mongos_config: MongosConfiguration, database_name: str) -> None:
+        """Clears the temporary database."""
+        with MongoDBConnection(mongos_config) as mongos:
+            mongos.client.drop_database(database_name)
+
     def is_excepted_write_on_replica(
-        self, host: str, collection: str, expected_write_value: str
+        self,
+        host: str,
+        db_name: str,
+        collection: str,
+        expected_write_value: str,
+        secondary_config: MongoDBConfiguration,
     ) -> bool:
         """Returns True if the replica contains the expected write in the provided collection."""
-        secondary_config = self.charm.mongodb_config
         secondary_config.hosts = {host}
         with MongoDBConnection(secondary_config, direct=True) as direct_seconary:
-            db = direct_seconary.client["admin"]
+            db = direct_seconary.client[db_name]
             test_collection = db[collection]
             query = test_collection.find({}, {WRITE_KEY: 1})
             return query[0][WRITE_KEY] == expected_write_value
@@ -267,11 +326,28 @@ class MongoDBUpgrade(DataUpgrade):
     def get_random_write_and_collection(self) -> Tuple[str, str]:
         """Returns a tutple for a random collection name and a unique write to add to it."""
         choices = string.ascii_letters + string.digits
-        collection_name = "collection_" + "".join([secrets.choice(choices) for _ in range(16)])
+        collection_name = "collection_" + "".join([secrets.choice(choices) for _ in range(32)])
         write_value = "unique_write_" + "".join([secrets.choice(choices) for _ in range(16)])
         return (collection_name, write_value)
 
-    def add_write(
+    def add_write_to_shard(
+        self,
+        mongos_config: MongosConfiguration,
+        db_name: str,
+        collection_name: str,
+        write_value: int,
+        shard_name: str,
+    ) -> None:
+        """Adds a the provided write to the admin database with the provided collection."""
+        with MongosConnection(mongos_config) as mongos:
+            db = mongos.client[db_name]
+            test_collection = db[collection_name]
+            write = {WRITE_KEY: write_value}
+            test_collection.insert_one(write)
+
+            mongos.client.admin.command("movePrimary", db_name, to=shard_name)
+
+    def add_write_to_replica_set(
         self, mongodb_config: MongoDBConfiguration, collection_name, write_value
     ) -> None:
         """Adds a the provided write to the admin database with the provided collection."""
@@ -280,3 +356,26 @@ class MongoDBUpgrade(DataUpgrade):
             test_collection = db[collection_name]
             write = {WRITE_KEY: write_value}
             test_collection.insert_one(write)
+
+    def is_write_on_secondaries(
+        self,
+        mongodb_config: MongoDBConfiguration,
+        collection_name,
+        expected_write_value,
+        db_name: str = "admin",
+    ):
+        """Returns true if the exepected write"""
+        with MongoDBConnection(mongodb_config) as mongod:
+            primary_ip = mongod.primary()
+
+        replica_ips = mongodb_config.hosts
+        secondary_ips = replica_ips - set(primary_ip)
+        for secondary_ip in secondary_ips:
+            if not self.is_excepted_write_on_replica(
+                secondary_ip, db_name, collection_name, expected_write_value, mongodb_config
+            ):
+                # do not return False immediately - as it is
+                logger.debug("Secondary with IP %s, does not contain the expected write.")
+                return False
+
+        return True
