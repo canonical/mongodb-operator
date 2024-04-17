@@ -81,11 +81,11 @@ class TestCharm(unittest.TestCase):
         assert self.harness.charm.upgrade.build_upgrade_stack() == [0, 1]
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charms.mongodb.v0.upgrade.Retrying")
+    @patch("events.upgrade.Retrying")
     @patch("charm.MongoDBUpgrade.is_excepted_write_on_replica")
     @patch("charm.MongodbOperatorCharm.restart_charm_services")
     @patch("charm.MongoDBConnection")
-    @patch("charms.mongodb.v0.upgrade.MongoDBConnection")
+    @patch("events.upgrade.MongoDBConnection")
     @patch("charm.MongodbOperatorCharm.install_snap_packages")
     @patch("charm.MongodbOperatorCharm.stop_charm_services")
     @patch("charm.MongoDBUpgrade.post_upgrade_check")
