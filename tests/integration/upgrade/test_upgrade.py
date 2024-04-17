@@ -31,7 +31,8 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     # is a pre-existing cluster.
     app_name = await get_app_name(ops_test)
     if app_name:
-        return await check_or_scale_app(ops_test, app_name)
+        await check_or_scale_app(ops_test, app_name, required_units=3)
+        return
 
     # TODO: When `6/stable` track supports upgrades deploy and test that revision instead.
     await ops_test.model.deploy("mongodb", channel="edge", num_units=3)
@@ -39,7 +40,6 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await ops_test.model.wait_for_idle(
         apps=["mongodb"], status="active", timeout=1000, idle_period=120
     )
-    app_name = await get_app_name(ops_test)
 
 
 @pytest.mark.group(1)
