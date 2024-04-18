@@ -76,7 +76,6 @@ from pymongo.errors import OperationFailure, ServerSelectionTimeoutError
 from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
 from config import Config, Package
-from events.upgrade import MongoDBDependencyModel, MongoDBUpgrade
 from exceptions import AdminUserCreationError, ApplicationHostNotFoundError
 from machine_helpers import MONGO_USER, ROOT_USER_GID, update_mongod_service
 
@@ -131,12 +130,6 @@ class MongodbOperatorCharm(CharmBase):
         self.legacy_client_relations = MongoDBLegacyProvider(self)
         self.tls = MongoDBTLS(self, Config.Relations.PEERS, substrate=Config.SUBSTRATE)
         self.backups = MongoDBBackups(self)
-        self.upgrade = MongoDBUpgrade(
-            self,
-            dependency_model=MongoDBDependencyModel(
-                **Config.DEPENDENCIES  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
-            ),
-        )  # TODO future PR add dependency_model
         self.config_server = ShardingProvider(self)
         self.cluster = ClusterProvider(self)
         self.shard = ConfigServerRequirer(self)
