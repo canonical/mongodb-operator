@@ -125,10 +125,6 @@ class MongoDBBackups(Object):
 
     def on_s3_relation_joined(self, event: RelationJoinedEvent) -> None:
         """Checks for valid integration for s3-integrations."""
-        if not self.charm.upgrade.idle:
-            logger.info("cannot process %s, upgrade is in progress", event)
-            event.defer()
-            return False
 
         if not self.is_valid_s3_integration():
             logger.debug(
@@ -329,11 +325,6 @@ class MongoDBBackups(Object):
 
         No matter what backup-action is being run, these requirements must be met.
         """
-        if not self.charm.upgrade.idle:
-            logger.info("cannot process %s, upgrade is in progress", event)
-            event.defer()
-            return False
-
         if not self.is_valid_s3_integration():
             self._fail_action_with_error_log(
                 event,

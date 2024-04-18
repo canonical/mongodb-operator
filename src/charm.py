@@ -368,7 +368,7 @@ class MongodbOperatorCharm(CharmBase):
         unresponsive therefore causing a cluster failure, error the component. This prevents it
         from executing other hooks with a new role.
         """
-        if self.upgrade.idle and self.is_role_changed():
+        if self.is_role_changed():
             # TODO in the future (24.04) support migration of components
             logger.error(
                 f"cluster migration currently not supported, cannot change from { self.model.config['role']} to {self.role}"
@@ -442,11 +442,6 @@ class MongodbOperatorCharm(CharmBase):
         if not self.unit.is_leader():
             return
 
-        if not self.upgrade.idle:
-            logger.info("cannot process %s, upgrade is in progress", event)
-            event.defer()
-            return
-
         self._on_relation_handler(event)
 
         self._update_related_hosts(event)
@@ -457,11 +452,6 @@ class MongodbOperatorCharm(CharmBase):
         Args:
             event: The triggering relation joined/changed event.
         """
-        if not self.upgrade.idle:
-            logger.info("cannot process %s, upgrade is in progress", event)
-            event.defer()
-            return
-
         # changing the monitor password will lead to non-leader units receiving a relation changed
         # event. We must update the monitor and pbm URI if the password changes so that COS/pbm
         # can continue to work
@@ -505,11 +495,6 @@ class MongodbOperatorCharm(CharmBase):
 
     def _on_leader_elected(self, event: LeaderElectedEvent) -> None:
         """Generates necessary keyfile and updates replica hosts."""
-        if not self.upgrade.idle:
-            logger.info("cannot process %s, upgrade is in progress", event)
-            event.defer()
-            return
-
         if not self.get_secret(APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME):
             self._generate_secrets()
 
@@ -523,11 +508,6 @@ class MongodbOperatorCharm(CharmBase):
         """
         # allow leader to update relation data and hosts if it isn't leaving
         if not self.unit.is_leader() or event.departing_unit == self.unit:
-            return
-
-        if not self.upgrade.idle:
-            logger.info("cannot process %s, upgrade is in progress", event)
-            event.defer()
             return
 
         self._update_hosts(event)
@@ -579,10 +559,6 @@ class MongodbOperatorCharm(CharmBase):
             logger.error("Failed to remove %s from replica set, error=%r", self.unit.name, e)
 
     def _on_update_status(self, event: UpdateStatusEvent):
-        if not self.upgrade.idle:
-            logger.info("Processing upgrade, wait to check status")
-            return
-
         # user-made mistakes might result in other incorrect statues. Prioritise informing users of
         # their mistake.
         invalid_integration_status = self.get_invalid_integration_status()
@@ -632,10 +608,6 @@ class MongodbOperatorCharm(CharmBase):
 
     def _on_set_password(self, event: ActionEvent) -> None:
         """Set the password for the admin user."""
-        if not self.upgrade.idle:
-            event.fail("Cannot set password, upgrade is in progress.")
-            return
-
         # check conditions for setting the password and fail if necessary
         if not self.pass_pre_set_password_checks(event):
             return
