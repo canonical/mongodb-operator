@@ -71,7 +71,8 @@ async def test_consistency_between_workload_and_metadata(ops_test: OpsTest):
     # version has format x.y.z-a
     mongod_version = client.server_info()["version"].split("-")[0]
 
-    # Future PR - change the dependency check to check the file for workload and charm version instead
+    # Future PR - change the dependency check to check the file for workload and charm version
+    # instead
     assert (
         mongod_version == Config.DEPENDENCIES["mongod_service"]["version"]
     ), f"Version of mongod running does not match dependency matrix, update DEPENDENCIES in src/config.py to {mongod_version}"

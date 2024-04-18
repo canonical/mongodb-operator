@@ -125,7 +125,6 @@ class MongoDBBackups(Object):
 
     def on_s3_relation_joined(self, event: RelationJoinedEvent) -> None:
         """Checks for valid integration for s3-integrations."""
-
         if not self.is_valid_s3_integration():
             logger.debug(
                 "Shard does not support s3 relations, please relate s3-integrator to config-server only."
