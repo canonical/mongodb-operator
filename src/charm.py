@@ -78,6 +78,7 @@ from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 from config import Config, Package
 from exceptions import AdminUserCreationError, ApplicationHostNotFoundError
 from machine_helpers import MONGO_USER, ROOT_USER_GID, update_mongod_service
+from upgrades.mongodb_upgrades import MongoDBUpgrade
 
 AUTH_FAILED_CODE = 18
 UNAUTHORISED_CODE = 13
@@ -130,6 +131,7 @@ class MongodbOperatorCharm(CharmBase):
         self.legacy_client_relations = MongoDBLegacyProvider(self)
         self.tls = MongoDBTLS(self, Config.Relations.PEERS, substrate=Config.SUBSTRATE)
         self.backups = MongoDBBackups(self)
+        self.upgrade = MongoDBUpgrade(self)
         self.config_server = ShardingProvider(self)
         self.cluster = ClusterProvider(self)
         self.shard = ConfigServerRequirer(self)
