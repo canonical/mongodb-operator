@@ -1,7 +1,7 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-"""In-place upgrades on machines
+"""In-place upgrades on machines.
 
 Derived from specification: DA058 - In-Place Upgrades - Kubernetes v2
 (https://docs.google.com/document/d/1tLjknwHudjcHs42nzPVBNkHs98XxAOT2BXGGpP7NyEU/)
@@ -11,22 +11,22 @@ import logging
 import time
 import typing
 
-import charms.opensearch.v0.constants_charm as constants_charm
 import ops
 
 import upgrade
-from opensearch import OpenSearchSnap
+from config import Config
 
 logger = logging.getLogger(__name__)
 
-_SNAP_REVISION = str(constants_charm.OPENSEARCH_SNAP_REVISION)
+_SNAP_REVISION = str(Config.SNAP_PACKAGES[0][3])
 
 
 class Upgrade(upgrade.Upgrade):
-    """In-place upgrades on machines"""
+    """In-place upgrades on machines."""
 
     @property
     def unit_state(self) -> typing.Optional[str]:
+        """Returns the unit state."""
         if (
             self._unit_workload_version is not None
             and self._unit_workload_version != self._app_workload_version
@@ -37,6 +37,7 @@ class Upgrade(upgrade.Upgrade):
 
     @unit_state.setter
     def unit_state(self, value: str) -> None:
+        """Sets the unit state."""
         if value == "healthy":
             # Set snap revision on first install
             self._unit_databag["snap_revision"] = _SNAP_REVISION
@@ -65,6 +66,7 @@ class Upgrade(upgrade.Upgrade):
 
     @property
     def app_status(self) -> typing.Optional[ops.StatusBase]:
+        """Returns the status of the upgrade for the application."""
         if not self.is_compatible:
             logger.info(
                 "Upgrade incompatible. If you accept potential *data loss* and *downtime*, you can continue by running `force-upgrade` action on each remaining unit"
@@ -76,7 +78,7 @@ class Upgrade(upgrade.Upgrade):
 
     @property
     def _unit_workload_versions(self) -> typing.Dict[str, str]:
-        """{Unit name: installed snap revision}"""
+        """{Unit name: installed snap revision}."""
         versions = {}
         for unit in self._sorted_units:
             if version := (self._peer_relation.data[unit].get("snap_revision")):
@@ -85,12 +87,12 @@ class Upgrade(upgrade.Upgrade):
 
     @property
     def _unit_workload_version(self) -> typing.Optional[str]:
-        """Installed snap revision for this unit"""
+        """Installed snap revision for this unit."""
         return self._unit_databag.get("snap_revision")
 
     @property
     def _app_workload_version(self) -> str:
-        """Snap revision for current charm code"""
+        """Snap revision for current charm code."""
         return _SNAP_REVISION
 
     def reconcile_partition(self, *, action_event: ops.ActionEvent = None) -> None:
@@ -103,7 +105,7 @@ class Upgrade(upgrade.Upgrade):
 
     @property
     def upgrade_resumed(self) -> bool:
-        """Whether user has resumed upgrade with Juju action
+        """Whether user has resumed upgrade with Juju action.
 
         Reset to `False` after each `juju refresh`
         """
@@ -120,6 +122,7 @@ class Upgrade(upgrade.Upgrade):
 
     @property
     def authorized(self) -> bool:
+        """Returns True if the unit is authorized to upgrade."""
         assert self._unit_workload_version != self._app_workload_version
         for index, unit in enumerate(self._sorted_units):
             if unit.name == self._unit.name:
@@ -137,7 +140,8 @@ class Upgrade(upgrade.Upgrade):
                 return False
         return False
 
-    def upgrade_unit(self, *, snap: OpenSearchSnap) -> None:
+    def upgrade_unit(self, *, snap) -> None:
+        """Runs the upgrade procedure."""
         logger.debug(f"Upgrading {self.authorized=}")
         self.unit_state = "upgrading"
         snap.install()

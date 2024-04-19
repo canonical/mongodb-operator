@@ -1,7 +1,7 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-"""In-place upgrades
+"""In-place upgrades.
 
 Based off specification: DA058 - In-Place Upgrades - Kubernetes v2
 (https://docs.google.com/document/d/1tLjknwHudjcHs42nzPVBNkHs98XxAOT2BXGGpP7NyEU/)
@@ -16,7 +16,6 @@ import typing
 
 import ops
 import poetry.core.constraints.version as poetry_version
-from charms.opensearch.v0.opensearch_distro import OpenSearchDistribution
 
 logger = logging.getLogger(__name__)
 
@@ -25,21 +24,21 @@ RESUME_ACTION_NAME = "resume-upgrade"
 
 
 def unit_number(unit_: ops.Unit) -> int:
-    """Get unit number"""
+    """Get unit number."""
     return int(unit_.name.split("/")[-1])
 
 
-class PeerRelationNotReady(Exception):
-    """Upgrade peer relation not available (to this unit)"""
+class PeerRelationNotReadyError(Exception):
+    """Upgrade peer relation not available (to this unit)."""
 
 
 class Upgrade(abc.ABC):
-    """In-place upgrades"""
+    """In-place upgrades."""
 
     def __init__(self, charm_: ops.CharmBase) -> None:
         relations = charm_.model.relations[PEER_RELATION_ENDPOINT_NAME]
         if not relations:
-            raise PeerRelationNotReady
+            raise PeerRelationNotReadyError
         assert len(relations) == 1
         self._peer_relation = relations[0]
         self._unit: ops.Unit = charm_.unit
@@ -55,16 +54,17 @@ class Upgrade(abc.ABC):
 
     @property
     def unit_state(self) -> typing.Optional[str]:
-        """Unit upgrade state"""
+        """Unit upgrade state."""
         return self._unit_databag.get("state")
 
     @unit_state.setter
     def unit_state(self, value: str) -> None:
+        """Set unit upgrade state."""
         self._unit_databag["state"] = value
 
     @property
     def is_compatible(self) -> bool:
-        """Whether upgrade is supported from previous versions"""
+        """Whether upgrade is supported from previous."""
         assert self.versions_set
         try:
             previous_version_strs: typing.Dict[str, str] = json.loads(
@@ -112,6 +112,7 @@ class Upgrade(abc.ABC):
 
     @property
     def in_progress(self) -> bool:
+        """Returns True if the upgrade is in progress."""
         logger.debug(f"{self._app_workload_version=} {self._unit_workload_versions=}")
         return any(
             version != self._app_workload_version
@@ -120,24 +121,26 @@ class Upgrade(abc.ABC):
 
     @property
     def _sorted_units(self) -> typing.List[ops.Unit]:
-        """Units sorted from highest to lowest unit number"""
+        """Units sorted from highest to lowest unit number."""
         return sorted((self._unit, *self._peer_relation.units), key=unit_number, reverse=True)
 
     @abc.abstractmethod
     def _get_unit_healthy_status(
         self, *, workload_status: typing.Optional[ops.StatusBase]
     ) -> ops.StatusBase:
-        """Status shown during upgrade if unit is healthy"""
+        """Status shown during upgrade if unit is healthy."""
 
     def get_unit_juju_status(
         self, *, workload_status: typing.Optional[ops.StatusBase]
     ) -> typing.Optional[ops.StatusBase]:
+        """Returns the unit status for the upgrade."""
         # TODO: revise status handling & priority
         if self.in_progress:
             return self._get_unit_healthy_status(workload_status=workload_status)
 
     @property
     def app_status(self) -> typing.Optional[ops.StatusBase]:
+        """Return the app status for the upgrade."""
         if not self.in_progress:
             return
         if not self.upgrade_resumed:
@@ -153,19 +156,19 @@ class Upgrade(abc.ABC):
 
     @property
     def versions_set(self) -> bool:
-        """Whether versions have been saved in app databag
+        """Whether versions have been saved in app databag.
 
-        Should only be `False` during first charm install
+        Should only be `False` during first charm install.
 
         If a user upgrades from a charm that does not set versions, this charm will get stuck.
         """
         return self._app_databag.get("versions") is not None
 
     def set_versions_in_app_databag(self) -> None:
-        """Save current versions in app databag
+        """Save current versions in app databag.
 
         Used after next upgrade to check compatibility (i.e. whether that upgrade should be
-        allowed)
+        allowed).
         """
         assert not self.in_progress
         logger.debug(f"Setting {self._current_versions=} in upgrade peer relation app databag")
@@ -175,12 +178,12 @@ class Upgrade(abc.ABC):
     @property
     @abc.abstractmethod
     def upgrade_resumed(self) -> bool:
-        """Whether user has resumed upgrade with Juju action"""
+        """Whether user has resumed upgrade with Juju action."""
 
     @property
     @abc.abstractmethod
     def _unit_workload_versions(self) -> typing.Dict[str, str]:
-        """{Unit name: unique identifier for unit's workload version}
+        """{Unit name: unique identifier for unit's workload version}.
 
         If and only if this version changes, the workload will restart (during upgrade or
         rollback).
@@ -195,7 +198,7 @@ class Upgrade(abc.ABC):
     @property
     @abc.abstractmethod
     def _app_workload_version(self) -> str:
-        """Unique identifier for the app's workload version
+        """Unique identifier for the app's workload version.
 
         This should match the workload version in the current Juju app charm version.
 
@@ -210,13 +213,13 @@ class Upgrade(abc.ABC):
     @property
     @abc.abstractmethod
     def authorized(self) -> bool:
-        """Whether this unit is authorized to upgrade
+        """Whether this unit is authorized to upgrade.
 
         Only applies to machine charm
         """
 
     @abc.abstractmethod
-    def upgrade_unit(self, *, snap: OpenSearchDistribution) -> None:
+    def upgrade_unit(self, *, snap) -> None:
         """Upgrade this unit.
 
         Only applies to machine charm
