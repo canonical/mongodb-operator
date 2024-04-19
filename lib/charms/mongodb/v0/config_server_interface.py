@@ -82,11 +82,6 @@ class ClusterProvider(Object):
             )
             return False
 
-        if not self.charm.upgrade.idle:
-            logger.info("cannot process %s, upgrade is in progress", event)
-            event.defer()
-            return False
-
         if not self.charm.unit.is_leader():
             return False
 
