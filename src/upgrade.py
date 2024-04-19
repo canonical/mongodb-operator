@@ -85,6 +85,7 @@ class Upgrade(abc.ABC):
             key: poetry_version.Version.parse(value) for key, value in current_version_strs.items()
         }
         try:
+            # TODO Future PR: change this > sign to support downgrades
             if (
                 previous_versions["charm"] > current_versions["charm"]
                 or previous_versions["charm"].major != current_versions["charm"].major
