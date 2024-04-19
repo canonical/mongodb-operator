@@ -18,7 +18,7 @@ from config import Config
 
 logger = logging.getLogger(__name__)
 
-_SNAP_REVISION = str(Config.SNAP_PACKAGES[0][3])
+_SNAP_REVISION = str(Config.SNAP_PACKAGES[0][2])
 
 
 class Upgrade(upgrade.Upgrade):
