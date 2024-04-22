@@ -584,7 +584,7 @@ class MongodbOperatorCharm(CharmBase):
         if self.unit.is_leader():
             self._handle_reconfigure(event)
 
-        self.unit.status = self.process_statuses()
+        self.unit.status = self.process_statuses(self.unit)
 
     def _on_get_primary_action(self, event: ActionEvent):
         event.set_results({"replica-set-primary": self.primary})
@@ -1417,7 +1417,7 @@ class MongodbOperatorCharm(CharmBase):
                 "Relation to s3-integrator is not supported, config role must be config-server"
             )
 
-    def get_statuses(self) -> Tuple:
+    def get_statuses(self, unit) -> Tuple:
         """Retrieves statuses for the different processes running inside the unit."""
         mongodb_status = build_unit_status(self.mongodb_config, self._unit_ip(self.unit))
         shard_status = self.shard.get_shard_status()
@@ -1444,7 +1444,7 @@ class MongodbOperatorCharm(CharmBase):
         # if all statuses are active report mongodb status over sharding status
         return mongodb_status
 
-    def process_statuses(self) -> StatusBase:
+    def process_statuses(self, unit) -> StatusBase:
         """Retrieves statuses from processes inside charm and returns the highest priority status.
 
         When a non-fatal error occurs while processing statuses, the error is processed and
@@ -1454,7 +1454,7 @@ class MongodbOperatorCharm(CharmBase):
         deployment_mode = "replica set" if self.is_role(Config.Role.REPLICATION) else "cluster"
         waiting_status = None
         try:
-            statuses = self.get_statuses()
+            statuses = self.get_statuses(unit)
         except OperationFailure as e:
             if e.code in [UNAUTHORISED_CODE, AUTH_FAILED_CODE]:
                 waiting_status = f"Waiting to sync passwords across the {deployment_mode}"

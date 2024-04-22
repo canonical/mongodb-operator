@@ -8,7 +8,12 @@ import secrets
 import string
 from typing import Tuple
 
-from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
+from charms.mongodb.v0.mongodb import (
+    FailedToMovePrimaryError,
+    MongoDBConfiguration,
+    MongoDBConnection,
+    NotReadyError,
+)
 from ops.charm import CharmBase
 from ops.framework import Object
 from ops.model import ActiveStatus
@@ -23,10 +28,6 @@ WRITE_KEY = "write_value"
 UPGRADE_RELATION = "upgrade"
 
 
-class FailedToMovePrimaryError(Exception):
-    """Raised when attempt to move a primary fails."""
-
-
 class MongoDBUpgrade(Object):
     """Handlers for upgrade events."""
 
@@ -38,23 +39,30 @@ class MongoDBUpgrade(Object):
     def on_pre_upgrade_check(self, event) -> None:
         """Verifies that an upgrade can be done on the MongoDB deployment."""
         # TODO Future PR - integrate this into the juju refresh procedure as to automatically run.
+        if not self.charm.unit.is_leader():
+            event.fail(
+                "Cannot run pre-upgrade check on non-leader units, run this action on the leader unit."
+            )
+            return
 
         if self.charm.is_role(Config.Role.SHARD):
             event.fail(
                 "Cannot run pre-upgrade check on shards, run this action on the related config-server."
             )
+            return
 
         if not self.is_cluster_healthy():
             event.fail(
                 "Cluster is not healthy, do not proceed with ugprade. Please check juju debug for information."
             )
+            return
 
         # We do not get to decide the order of units to upgrade, so we move the primary to the
         # last unit to upgrade. This prevents the primary from jumping around from unit to unit
         # during the upgrade procedure.
         try:
             self.move_primary_to_last_upgrade_unit()
-        except FailedToMovePrimaryError:
+        except (NotReadyError, FailedToMovePrimaryError):
             event.fail(
                 "Cluster failed to move primary before re-election. do not proceed with ugprade."
             )
@@ -69,8 +77,19 @@ class MongoDBUpgrade(Object):
     def move_primary_to_last_upgrade_unit(self) -> None:
         """Moves the primary to last unit that gets upgraded (the unit with the lowest id).
 
-        TODO implement in a future PR
+        Raises:
+            NotReadyError, FailedToMovePrimaryError
         """
+        lowest_unit = self.charm.unit
+        lowest_unit_id = self.charm.unit.name.split("/")[1]
+        for unit in self.charm.peers.units:
+            if unit.name.split("/")[1] < lowest_unit_id:
+                lowest_unit = unit
+                lowest_unit_id = unit.name.split("/")[1]
+
+        last_unit_upgraded_ip = self.charm._unit_ip(lowest_unit)
+        with MongoDBConnection(self.charm.mongodb_config) as mongod:
+            mongod.move_primary(f"{last_unit_upgraded_ip}:{Config.MONGODB_PORT}")
 
     def is_cluster_healthy(self) -> bool:
         """Returns True if all nodes in the cluster/replcia set are healthy."""
@@ -79,8 +98,14 @@ class MongoDBUpgrade(Object):
             return False
 
         # TODO Future PR - find a way to check shard statuses from config-server
-        charm_status = self.charm.process_statuses()
-        return self.are_nodes_healthy() and isinstance(charm_status, ActiveStatus)
+        all_units = self.charm.peers.units
+        all_units.add(self.charm.unit)
+
+        not_all_units_active = any(
+            not isinstance(self.charm.process_statuses(unit), ActiveStatus) for unit in all_units
+        )
+
+        return self.are_nodes_healthy() and not not_all_units_active
 
     def are_nodes_healthy(self) -> bool:
         """Returns True if all nodes in the MongoDB deployment are healthy."""
