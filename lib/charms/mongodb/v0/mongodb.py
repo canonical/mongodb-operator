@@ -322,11 +322,14 @@ class MongoDBConnection:
             # to ensure that we reset the replica set election priority.
             is_move_successful = False
 
-        # reset all replicas to the same priority
-        self.set_replicaset_election_priority(priority=1)
+        self.reset_replicaset_election_priority()
 
         if not is_move_successful:
             raise FailedToMovePrimaryError
+
+    def reset_replicaset_election_priority(self):
+        """Resets the replica set election priority back to 1 for all replica set members."""
+        self.set_replicaset_election_priority(priority=1, ignore_member=None)
 
     def set_replicaset_election_priority(self, priority: int, ignore_member: str = None) -> None:
         """Sets the replica set election priority to all members except the one provided."""

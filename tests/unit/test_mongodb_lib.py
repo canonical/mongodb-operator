@@ -214,12 +214,19 @@ class TestMongo(unittest.TestCase):
             (mock_client.return_value.close).assert_called()
 
     @patch("charms.mongodb.v0.mongodb.Retrying")
+    @patch("charms.mongodb.v0.mongodb.MongoDBConnection.reset_replicaset_election_priority")
     @patch("charms.mongodb.v0.mongodb.MongoDBConnection.set_replicaset_election_priority")
     @patch("charms.mongodb.v0.mongodb.MongoDBConnection.is_any_sync")
     @patch("charms.mongodb.v0.mongodb.MongoClient")
     @patch("charms.mongodb.v0.mongodb.MongoDBConfiguration")
     def test_move_primary(
-        self, config, mock_client, is_any_sync, set_replicaset_election_priority, retrying
+        self,
+        config,
+        mock_client,
+        is_any_sync,
+        set_replicaset_election_priority,
+        reset_replicaset_election_priority,
+        retrying,
     ):
         """Tests the move_primary function."""
         # test case 1: member is syncing - does not set priority and raises exception
@@ -238,4 +245,4 @@ class TestMongo(unittest.TestCase):
                 mongo.move_primary("hostname")
 
         # verify that we reset the priorities for re-elections
-        self.assertEqual(set_replicaset_election_priority.call_count, 2)
+        reset_replicaset_election_priority.assert_called()

@@ -582,7 +582,7 @@ class MongodbOperatorCharm(CharmBase):
         # cuts can lead to new IP addresses and therefore will require a reconfigure. Especially
         # in the case that the leader a change in IP address it will not receive a relation event.
         if self.unit.is_leader():
-            self._handle_reconfigure(event)
+            self.heartbeat_self_healing(event)
 
         self.unit.status = self.process_statuses(self.unit)
 
@@ -905,12 +905,13 @@ class MongodbOperatorCharm(CharmBase):
                 logger.error("Deferring process_unremoved_units: error=%r", e)
                 event.defer()
 
-    def _handle_reconfigure(self, event: UpdateStatusEvent):
-        """Reconfigures the replica set if necessary.
+    def heartbeat_self_healing(self, event: UpdateStatusEvent):
+        """Heartbeat function for self healing.
 
         Removes any mongod hosts that are no longer present in the replica set or adds hosts that
-        should exist in the replica set. This function is meant to be called periodically by the
-        leader in the update status hook to perform any necessary cluster healing.
+        should exist in the replica set. Resets any priorities when it comes to priorities
+        for re-election. This function is meant to be called periodically by the leader in the
+        update status hook to perform any necessary cluster healing.
         """
         if not self.unit.is_leader():
             logger.debug("only the leader can perform reconfigurations to the replica set.")
@@ -923,6 +924,16 @@ class MongodbOperatorCharm(CharmBase):
         # a unit.
         event.unit = self.unit
         self._on_relation_handler(event)
+
+        # make sure all replicas have the same priority when it comes to primary relection. This
+        # value gets set + reset during upgrade operations. In the rare case where it does not get
+        # reset, we reset it here.
+        # TODO future PRs:
+        # 1. check if upgrade is not idle.
+        # 2. if config-server, then reset all nodes to have the same priority.
+        if self.is_role(Config.Role.REPLICATION):
+            with MongoDBConnection(self.mongodb_config) as mongod:
+                mongod.reset_replicaset_election_priority()
 
     def _open_ports_tcp(self, ports: int) -> None:
         """Open the given port.
