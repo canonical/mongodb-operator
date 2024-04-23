@@ -12,7 +12,7 @@ import time
 import typing
 
 import ops
-import upgrade
+from upgrades import upgrade
 
 from config import Config
 

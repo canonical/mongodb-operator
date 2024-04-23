@@ -14,12 +14,14 @@ import logging
 import pathlib
 import typing
 
+from config import Config
+
 import ops
 import poetry.core.constraints.version as poetry_version
 
 logger = logging.getLogger(__name__)
 
-PEER_RELATION_ENDPOINT_NAME = "upgrade-version-a"
+PEER_RELATION_ENDPOINT_NAME = Config.Upgrade.RELATION_NAME
 RESUME_ACTION_NAME = "resume-upgrade"
 
 
@@ -131,13 +133,10 @@ class Upgrade(abc.ABC):
     ) -> ops.StatusBase:
         """Status shown during upgrade if unit is healthy."""
 
-    def get_unit_juju_status(
-        self, *, workload_status: typing.Optional[ops.StatusBase]
-    ) -> typing.Optional[ops.StatusBase]:
-        """Returns the unit status for the upgrade."""
-        # TODO: revise status handling & priority
+    def get_unit_juju_status(self) -> typing.Optional[ops.StatusBase]:
+        """Unit upgrade status"""
         if self.in_progress:
-            return self._get_unit_healthy_status(workload_status=workload_status)
+            return self._get_unit_healthy_status()
 
     @property
     def app_status(self) -> typing.Optional[ops.StatusBase]:

@@ -6,8 +6,8 @@
 import logging
 from typing import Optional
 
-import machine_upgrade
-import upgrade
+from upgrades import machine_upgrade
+from upgrades import upgrade
 from ops.charm import ActionEvent, CharmBase
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
@@ -28,17 +28,17 @@ class MongoDBUpgrade(Object):
         self.charm = charm
         super().__init__(charm, UPGRADE_RELATION)
         self.framework.observe(
-            self.on[Config.Upgrade.RELATION_NAME].relation_created,
+            charm.on[Config.Upgrade.RELATION_NAME].relation_created,
             self._on_upgrade_peer_relation_created,
         )
         self.framework.observe(
-            self.on[upgrade.PEER_RELATION_ENDPOINT_NAME].relation_changed, self._reconcile_upgrade
+            charm.on[Config.Upgrade.RELATION_NAME].relation_changed, self._reconcile_upgrade
         )
-        self.framework.observe(self.on.upgrade_charm, self._on_upgrade_charm)
+        self.framework.observe(charm.on.upgrade_charm, self._on_upgrade_charm)
         self.framework.observe(
-            self.on[upgrade.RESUME_ACTION_NAME].action, self._on_resume_upgrade_action
+            charm.on[upgrade.RESUME_ACTION_NAME].action, self._on_resume_upgrade_action
         )
-        self.framework.observe(self.on["force-upgrade"].action, self._on_force_upgrade_action)
+        self.framework.observe(charm.on["force-upgrade"].action, self._on_force_upgrade_action)
 
     # BEGIN: Event handlers
     def _on_upgrade_peer_relation_created(self, _) -> None:
@@ -127,19 +127,19 @@ class MongoDBUpgrade(Object):
             isinstance(self.charm.unit.status, WaitingStatus)
             and self.charm.unit.status.message.startswith("Charmed operator upgraded.")
         ):
-            self.status.set(self._upgrade.get_unit_juju_status() or ActiveStatus())
-        if not self.charm.unit.is_leader():  # TODO UNSUER ABOUT THIS
+            self.charm.unit.status = self._upgrade.get_unit_juju_status() or ActiveStatus()
+        if not self.charm.unit.is_leader():
             return
         # Set upgrade app status
         if status := self._upgrade.app_status:
-            self.status.set(status, app=True)
+            self.charm.app.status = status
         else:
             # Clear upgrade app status
             if (
-                isinstance(self.app.status, BlockedStatus)
-                or isinstance(self.app.status, MaintenanceStatus)
-            ) and self.app.status.message.startswith("Upgrad"):
-                self.status.set(ActiveStatus(), app=True)
+                isinstance(self.charm.app.status, BlockedStatus)
+                or isinstance(self.charm.app.status, MaintenanceStatus)
+            ) and self.charm.app.status.message.startswith("Upgrad"):
+                self.charm.app.status = ActiveStatus()
 
     # END: helpers
 
@@ -147,6 +147,6 @@ class MongoDBUpgrade(Object):
     @property
     def _upgrade(self) -> Optional[machine_upgrade.Upgrade]:
         try:
-            return machine_upgrade.Upgrade(self)
-        except upgrade.PeerRelationNotReady:
+            return machine_upgrade.Upgrade(self.charm)
+        except upgrade.PeerRelationNotReadyError:
             pass
