@@ -140,11 +140,12 @@ class Upgrade(upgrade.Upgrade):
                 return False
         return False
 
-    def upgrade_unit(self, *, snap) -> None:
+    def upgrade_unit(self) -> None:
         """Runs the upgrade procedure."""
-        # TODO: Future PR - run mongodb specific checks for upgrade
         logger.debug(f"Upgrading {self.authorized=}")
         self.unit_state = "upgrading"
-        snap.install()
+
+        # TODO: Future PR - run mongodb specific checks for upgrade and actually ugprade the snap
+
         self._unit_databag["snap_revision"] = _SNAP_REVISION
         logger.debug(f"Saved {_SNAP_REVISION} in unit databag after upgrade")

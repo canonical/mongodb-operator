@@ -58,3 +58,14 @@ set-tls-private-key:
 
 pre-upgrade-check:
   description: Run necessary pre-upgrade checks before executing a charm upgrade.
+
+resume-upgrade:
+  description: Upgrade remaining units (after you manually verified that upgraded units are healthy).
+
+force-upgrade:
+  description: Force upgrade of this unit.
+  params:
+    ignore-lock:
+      type: boolean
+      default: false
+      description: Allow unit to upgrade while another unit is starting or stopping
