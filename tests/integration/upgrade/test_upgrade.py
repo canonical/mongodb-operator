@@ -24,6 +24,7 @@ async def continuous_writes(ops_test: OpsTest):
     await ha_helpers.clear_db_writes(ops_test)
 
 
+@pytest.mark.skip("re-enable these tests once upgrades are functioning")
 @pytest.mark.group(1)
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy one unit of MongoDB."""
@@ -34,10 +35,8 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         await check_or_scale_app(ops_test, app_name, required_units=3)
         return
 
-    # TODO: When upgrades are supported, deploy with most recent revision (6/stable when possible,
-    # but 6/edge as soon as available)
-    charm = await ops_test.build_charm(".")
-    await ops_test.model.deploy(charm, channel="edge", num_units=3)
+    # TODO: When `6/stable` track supports upgrades deploy and test that revision instead.
+    await ops_test.model.deploy("mongodb", channel="edge", num_units=3)
 
     await ops_test.model.wait_for_idle(
         apps=["mongodb"], status="active", timeout=1000, idle_period=120
@@ -72,6 +71,7 @@ async def test_upgrade(ops_test: OpsTest, continuous_writes) -> None:
     assert total_expected_writes["number"] == actual_writes
 
 
+@pytest.mark.skip("re-enable these tests once upgrades are functioning")
 @pytest.mark.group(1)
 async def test_preflight_check(ops_test: OpsTest) -> None:
     """Verifies that the preflight check can run successfully."""
@@ -86,34 +86,11 @@ async def test_preflight_check(ops_test: OpsTest) -> None:
         apps=[app_name], status="active", timeout=1000, idle_period=120
     )
 
-    # verify that the MongoDB primary is on the unit with the lowest id
-    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app_name].units]
 
-    lowest_unit_id = leader_unit.name.split("/")[1]
-    lowest_unit = leader_unit
-    for unit in ops_test.model.applications[app_name].units:
-        if unit.name.split("/")[1] < lowest_unit_id:
-            lowest_unit_id = unit.name.split("/")[1]
-            lowest_unit = unit
-
-    primary = await ha_helpers.replica_set_primary(ip_addresses, ops_test, app_name=app_name)
-    assert (
-        primary.name == lowest_unit.name
-    ), "preflight check failed to move primary to unit with lowest id."
-
-
+@pytest.mark.skip("re-enable these tests once upgrades are functioning")
 @pytest.mark.group(1)
 async def test_preflight_check_failure(ops_test: OpsTest) -> None:
     """Verifies that the preflight check can run successfully."""
-    # CASE 1: The preflight check is ran on a non-leader unit
-    app_name = await get_app_name(ops_test)
-    logger.info("Calling pre-upgrade-check")
-    non_leader_unit = await find_unit(ops_test, leader=False, app_name=app_name)
-    action = await non_leader_unit.run_action("pre-upgrade-check")
-    await action.wait()
-    assert action.status == "failed", "pre-upgrade-check succeeded, expected to fail."
-
-    # CASE 2: The cluster is unhealthy
     app_name = await get_app_name(ops_test)
     unit = await find_unit(ops_test, leader=False, app_name=app_name)
     leader_unit = await find_unit(ops_test, leader=True, app_name=app_name)

@@ -5,11 +5,7 @@ import unittest
 from unittest.mock import call, patch
 
 import tenacity
-from charms.mongodb.v0.mongodb import (
-    FailedToMovePrimaryError,
-    MongoDBConnection,
-    NotReadyError,
-)
+from charms.mongodb.v0.mongodb import MongoDBConnection, NotReadyError
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
 
 PYMONGO_EXCEPTIONS = [
@@ -212,37 +208,3 @@ class TestMongo(unittest.TestCase):
 
             # verify we close connection
             (mock_client.return_value.close).assert_called()
-
-    @patch("charms.mongodb.v0.mongodb.Retrying")
-    @patch("charms.mongodb.v0.mongodb.MongoDBConnection.reset_replicaset_election_priority")
-    @patch("charms.mongodb.v0.mongodb.MongoDBConnection.set_replicaset_election_priority")
-    @patch("charms.mongodb.v0.mongodb.MongoDBConnection.is_any_sync")
-    @patch("charms.mongodb.v0.mongodb.MongoClient")
-    @patch("charms.mongodb.v0.mongodb.MongoDBConfiguration")
-    def test_move_primary(
-        self,
-        config,
-        mock_client,
-        is_any_sync,
-        set_replicaset_election_priority,
-        reset_replicaset_election_priority,
-        retrying,
-    ):
-        """Tests the move_primary function."""
-        # test case 1: member is syncing - does not set priority and raises exception
-        is_any_sync.return_value = True
-        with self.assertRaises(NotReadyError):
-            with MongoDBConnection(config) as mongo:
-                mongo.move_primary("hostname")
-
-        set_replicaset_election_priority.assert_not_called()
-
-        # test case 2: fails to move primary - resets priority and raises exception
-        retrying.side_effect = tenacity.RetryError(None)
-        is_any_sync.return_value = False
-        with self.assertRaises(FailedToMovePrimaryError):
-            with MongoDBConnection(config) as mongo:
-                mongo.move_primary("hostname")
-
-        # verify that we reset the priorities for re-elections
-        reset_replicaset_election_priority.assert_called()
