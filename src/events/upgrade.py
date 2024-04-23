@@ -15,7 +15,7 @@ from charms.data_platform_libs.v0.upgrade import (
     UpgradeGrantedEvent,
 )
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
-from charms.operator_libs_linux.v1 import snap
+from charms.operator_libs_linux.v2 import snap
 from ops.charm import CharmBase
 from ops.model import ActiveStatus
 from pydantic import BaseModel

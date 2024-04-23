@@ -5,7 +5,7 @@ from unittest import mock
 from unittest.mock import MagicMock, patch
 
 from charms.data_platform_libs.v0.upgrade import ClusterNotReadyError
-from charms.operator_libs_linux.v1 import snap
+from charms.operator_libs_linux.v2 import snap
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
 from ops.testing import Harness
 

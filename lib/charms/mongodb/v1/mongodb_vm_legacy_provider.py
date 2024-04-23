@@ -9,7 +9,8 @@ the expected relation data for legacy relations.
 import logging
 from typing import Optional
 
-from charms.operator_libs_linux.v1 import snap, systemd
+from charms.operator_libs_linux.v1 import systemd
+from charms.operator_libs_linux.v2 import snap
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
 
