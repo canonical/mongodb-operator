@@ -39,7 +39,6 @@ def update_mongod_service(
 
 def setup_logrotate_and_cron() -> None:
     """Create and write the logrotate config file."""
-
     logger.debug("Creating logrotate config file")
 
     with open("templates/logrotate.j2", "r") as file:
