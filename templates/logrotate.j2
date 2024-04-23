@@ -1,0 +1,17 @@
+{{logs_directory}}/*.log
+{
+  rotate 10
+  size 100M
+  missingok
+  notifempty
+  create 0600 {{mongo_user}} {{mongo_user}}
+  compress
+  nomail
+
+  nocopytruncate
+  sharedscripts
+  postrotate
+    sudo /bin/kill -SIGUSR1 $(sudo systemctl show -p MainPID --value snap.charmed-mongodb.mongod.service)
+  endscript
+}
+

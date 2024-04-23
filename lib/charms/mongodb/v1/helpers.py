@@ -140,7 +140,7 @@ def get_mongos_args(
         # config server is already using 27017
         f"--port {Config.MONGOS_PORT}",
         "--logRotate reopen",
-        "--logappend"
+        "--logappend",
     ]
 
     # TODO : generalise these into functions to be re-used
