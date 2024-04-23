@@ -58,14 +58,20 @@ async def mongo_tls_command(ops_test: OpsTest, app_name=None, mongos=False) -> s
 
 
 async def check_tls(
-    ops_test: OpsTest, unit: ops.model.Unit, enabled: bool, app_name=None, mongos=False
+    ops_test: OpsTest,
+    unit: ops.model.Unit,
+    enabled: bool,
+    app_name: str | None,
+    mongos: bool = False,
 ) -> bool:
-    """Returns whether TLS is enabled on the specific PostgreSQL instance.
+    """Returns whether TLS is enabled on the specific MongoDB instance.
 
     Args:
         ops_test: The ops test framework instance.
         unit: The unit to be checked.
         enabled: check if TLS is enabled/disabled
+        app_name: name of running mongodb app
+        mongos: whether sharded deployment of replica set
 
     Returns:
         Whether TLS is enabled/disabled.
@@ -91,7 +97,7 @@ async def check_tls(
         return False
 
 
-async def time_file_created(ops_test: OpsTest, unit_name: str, path: str) -> int:
+async def time_file_created(ops_test: OpsTest, unit_name: str, path: str) -> datetime:
     """Returns the unix timestamp of when a file was created on a specified unit."""
     time_cmd = f"exec --unit {unit_name} --  ls -l --time-style=full-iso {path} "
     return_code, ls_output, _ = await ops_test.juju(*time_cmd.split())
@@ -104,7 +110,7 @@ async def time_file_created(ops_test: OpsTest, unit_name: str, path: str) -> int
     return process_ls_time(ls_output)
 
 
-async def time_process_started(ops_test: OpsTest, unit_name: str, process_name: str) -> int:
+async def time_process_started(ops_test: OpsTest, unit_name: str, process_name: str) -> datetime:
     """Retrieves the time that a given process started according to systemd."""
     time_cmd = f"exec --unit {unit_name} --  systemctl show {process_name} --property=ActiveEnterTimestamp"
     return_code, systemctl_output, _ = await ops_test.juju(*time_cmd.split())
@@ -122,35 +128,26 @@ def process_ls_time(ls_output):
     time_as_str = "T".join(ls_output.split("\n")[0].split(" ")[5:7])
     # further strip down additional milliseconds
     time_as_str = time_as_str[0:-3]
-    d = datetime.strptime(time_as_str, "%Y-%m-%dT%H:%M:%S.%f")
-    return d
+    return datetime.strptime(time_as_str, "%Y-%m-%dT%H:%M:%S.%f")
 
 
-def process_systemctl_time(systemctl_output):
+def process_systemctl_time(systemctl_output) -> datetime:
     """Parse time representation as returned by the 'systemctl' command."""
     "ActiveEnterTimestamp=Thu 2022-09-22 10:00:00 UTC"
     time_as_str = "T".join(systemctl_output.split("=")[1].split(" ")[1:3])
-    d = datetime.strptime(time_as_str, "%Y-%m-%dT%H:%M:%S")
-    return d
+    return datetime.strptime(time_as_str, "%Y-%m-%dT%H:%M:%S")
 
 
-async def scp_file_preserve_ctime(ops_test: OpsTest, unit_name: str, path: str) -> int:
-    """Returns the unix timestamp of when a file was created on a specified unit."""
+async def scp_file(ops_test: OpsTest, unit_name: str, path: str) -> str:
+    """Returns the name of the file copied from the set path in the unit."""
     # Retrieving the file
     filename = path.split("/")[-1]
-    complete_command = f"scp --container mongod {unit_name}:{path} {filename}"
-    return_code, scp_output, stderr = await ops_test.juju(*complete_command.split())
 
-    if return_code != 0:
-        logger.error(stderr)
-        raise ProcessError(
-            "Expected command %s to succeed instead it failed: %s; %s",
-            complete_command,
-            return_code,
-            stderr,
-        )
+    file_content = await get_file_content(ops_test, unit_name, path)
+    with open(filename, mode="w") as f:
+        f.write(file_content)
 
-    return f"{filename}"
+    return filename
 
 
 async def check_certs_correctly_distributed(
@@ -161,12 +158,8 @@ async def check_certs_correctly_distributed(
     Verifying certificates downloaded on the charm against the ones distributed by the TLS operator
     """
     app_name = app_name or await get_app_name(ops_test)
-    app_secret_id = await get_secret_id(ops_test, app_name)
     unit_secret_id = await get_secret_id(ops_test, unit.name)
-    app_secret_content = await get_secret_content(ops_test, app_secret_id)
     unit_secret_content = await get_secret_content(ops_test, unit_secret_id)
-    app_current_crt = app_secret_content["csr-secret"]
-    unit_current_crt = unit_secret_content["csr-secret"]
 
     # Get the values for certs from the relation, as provided by TLS Charm
     certificates_raw_data = await get_application_relation_data(
@@ -174,42 +167,29 @@ async def check_certs_correctly_distributed(
     )
     certificates_data = json.loads(certificates_raw_data)
 
-    external_item = [
-        data
-        for data in certificates_data
-        if data["certificate_signing_request"].rstrip() == unit_current_crt.rstrip()
-    ][0]
-    internal_item = [
-        data
-        for data in certificates_data
-        if data["certificate_signing_request"].rstrip() == app_current_crt.rstrip()
-    ][0]
+    # compare the TLS resources stored on the disk of the unit with the ones from the TLS relation
+    for cert_type, cert_path in [("int", INTERNAL_CERT_PATH), ("ext", EXTERNAL_CERT_PATH)]:
+        unit_csr = unit_secret_content[f"{cert_type}-csr-secret"]
+        tls_item = [
+            data
+            for data in certificates_data
+            if data["certificate_signing_request"].rstrip() == unit_csr.rstrip()
+        ][0]
 
-    # Get a local copy of the external cert
-    external_copy_path = await scp_file_preserve_ctime(ops_test, unit.name, EXTERNAL_CERT_PATH)
+        # Read the content of the cert file stored in the unit
+        cert_file_content = await get_file_content(ops_test, unit.name, cert_path)
 
-    # Get the external cert value from the relation
-    relation_external_cert = "\n".join(external_item["chain"])
+        # Get the external cert value from the relation
+        relation_cert = "\n".join(tls_item["chain"]).strip()
 
-    # CHECK: Compare if they are the same
-    with open(external_copy_path) as f:
-        external_contents_file = f.read()
-        assert relation_external_cert == external_contents_file
-
-    # Get a local copy of the internal cert
-    internal_copy_path = await scp_file_preserve_ctime(ops_test, unit.name, INTERNAL_CERT_PATH)
-
-    # Get the external cert value from the relation
-    relation_internal_cert = "\n".join(internal_item["chain"])
-
-    # CHECK: Compare if they are the same
-    with open(internal_copy_path) as f:
-        internal_contents_file = f.read()
-        assert relation_internal_cert == internal_contents_file
+        # confirm that they match
+        assert (
+            relation_cert == cert_file_content
+        ), f"Relation Content for {cert_type}-cert:\n{relation_cert}\nFile Content:\n{cert_file_content}\nMismatch."
 
 
-async def get_file_contents(ops_test: OpsTest, unit: str, filepath: str) -> str:
+async def get_file_content(ops_test: OpsTest, unit_name: str, filepath: str) -> str:
     """Returns the contents of the provided filepath."""
-    mv_cmd = f"exec --unit {unit.name} sudo cat {filepath} "
-    _, stdout, _ = await ops_test.juju(*mv_cmd.split())
-    return stdout
+    cat_cmd = f"exec --unit {unit_name} -- sudo cat {filepath}"
+    _, stdout, _ = await ops_test.juju(*cat_cmd.split(), check=True)
+    return stdout.strip()
