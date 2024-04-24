@@ -19,7 +19,12 @@ from tenacity import RetryError
 
 from config import Config
 
-from .ha_tests.helpers import kill_unit_process
+from .ha_tests.helpers import (
+    clear_db_writes,
+    kill_unit_process,
+    start_continous_writes,
+    stop_continous_writes,
+)
 from .helpers import (
     PORT,
     UNIT_IDS,
@@ -372,14 +377,12 @@ async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
 
 
 @pytest.mark.group(1)
-@pytest.mark.skip("Skipping until write to log files enabled")
 async def test_audit_log(ops_test: OpsTest) -> None:
     """Test that audit log was created and contains actual audit data."""
     app_name = await get_app_name(ops_test)
-    leader_unit = await find_unit(ops_test, leader=True, app_name=app_name)
     audit_log_snap_path = "/var/snap/charmed-mongodb/common/var/log/mongodb/audit.log"
     audit_log = check_output(
-        f"JUJU_MODEL={ops_test.model_full_name} juju ssh {leader_unit.name} 'sudo cat {audit_log_snap_path}'",
+        f"JUJU_MODEL={ops_test.model_full_name} juju ssh {app_name}/leader 'sudo cat {audit_log_snap_path}'",
         stderr=subprocess.PIPE,
         shell=True,
         universal_newlines=True,
@@ -391,3 +394,26 @@ async def test_audit_log(ops_test: OpsTest) -> None:
         item = json.loads(line)
         # basic sanity check
         assert audit_log_line_sanity_check(item), "Audit sanity log check failed for first line"
+
+
+@pytest.mark.group(1)
+async def test_log_roate(ops_test: OpsTest) -> None:
+    """Test that log are being rotated."""
+    app_name = await get_app_name(ops_test)
+    await start_continous_writes(ops_test, 1)
+    # Note: this timeout out depends on max log size
+    # which is defined in "src/config.py::Config.MAX_LOG_SIZE"
+    time.sleep(60 * 10)
+    await stop_continous_writes(ops_test, down_unit=0, app_name=app_name)
+    # Just to make sure that logroate will run
+    time.sleep(60)
+    await clear_db_writes(ops_test)
+    audit_log_snap_path = "/var/snap/charmed-mongodb/common/var/log/mongodb/"
+    log_files = check_output(
+        f"JUJU_MODEL={ops_test.model_full_name} juju ssh {app_name}/leader 'sudo ls {audit_log_snap_path}'",
+        stderr=subprocess.PIPE,
+        shell=True,
+        universal_newlines=True,
+    )
+    log_rotated = "audit.log.1.gz" in log_files
+    assert log_rotated, f"Could not find rotated log in {log_files}"

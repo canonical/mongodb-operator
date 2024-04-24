@@ -40,10 +40,13 @@ def update_mongod_service(
 def setup_logrotate_and_cron() -> None:
     """Create and write the logrotate config file.
 
-    Logs will be rotated if they are bigger than 100M,
-    which is specified in 'templates/logrotate.j2'.
+    Logs will be rotated if they are bigger than Config.MAX_LOG_SIZE,
 
-    Cron job to for starting log rotation will be run every minute
+    Cron job to for starting log rotation will be run every minute.
+
+    Note: we split cron into 2 jobs to avoid error with logrotate
+    running 2 times on same minute at midnight due to default system
+    log rotation being run daily at 00:00 (and we want to keep it).
     """
     logger.debug("Creating logrotate config file")
 
@@ -53,11 +56,15 @@ def setup_logrotate_and_cron() -> None:
     rendered = template.render(
         logs_directory=f"{MONGODB_COMMON_DIR}/{LOG_DIR}",
         mongo_user=MONGO_USER,
+        max_log_size=Config.MAX_LOG_SIZE,
     )
 
     with open("/etc/logrotate.d/mongodb", "w") as file:
         file.write(rendered)
 
-    cron = "* * * * * root logrotate -f /etc/logrotate.d/mongodb\n"
+    cron = (
+        "* 1-23 * * * root logrotate /etc/logrotate.d/mongodb\n"
+        "1-59 0 * * * root logrotate /etc/logrotate.d/mongodb\n"
+    )
     with open("/etc/cron.d/mongodb", "w") as file:
         file.write(cron)

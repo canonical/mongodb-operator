@@ -1,7 +1,7 @@
 {{logs_directory}}/*.log
 {
   rotate 10
-  size 100M
+  size {{max_log_size}}
   missingok
   notifempty
   create 0600 {{mongo_user}} {{mongo_user}}

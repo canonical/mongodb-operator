@@ -29,6 +29,7 @@ class Config:
         },
         # TODO: Future PR - implement mongos deps when supporting sharding upgrades
     }
+    MAX_LOG_SIZE = "50M"
 
     # Keep these alphabetically sorted
     class Actions:
