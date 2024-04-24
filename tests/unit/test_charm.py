@@ -47,6 +47,7 @@ class TestCharm(unittest.TestCase):
         self.addCleanup(self.harness.cleanup)
         self.harness.begin()
         self.peer_rel_id = self.harness.add_relation("database-peers", "database-peers")
+        self.peer_rel_id = self.harness.add_relation("upgrade", "upgrade")
 
     @pytest.fixture
     def use_caplog(self, caplog):
