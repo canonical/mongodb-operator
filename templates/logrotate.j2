@@ -1,6 +1,6 @@
 {{logs_directory}}/*.log
 {
-  rotate 10
+  rotate {{max_rotations}}
   size {{max_log_size}}
   missingok
   notifempty

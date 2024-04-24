@@ -40,7 +40,7 @@ def update_mongod_service(
 def setup_logrotate_and_cron() -> None:
     """Create and write the logrotate config file.
 
-    Logs will be rotated if they are bigger than Config.MAX_LOG_SIZE,
+    Logs will be rotated if they are bigger than Config.LogRotate.MAX_LOG_SIZE,
 
     Cron job to for starting log rotation will be run every minute.
 
@@ -56,7 +56,8 @@ def setup_logrotate_and_cron() -> None:
     rendered = template.render(
         logs_directory=f"{MONGODB_COMMON_DIR}/{LOG_DIR}",
         mongo_user=MONGO_USER,
-        max_log_size=Config.MAX_LOG_SIZE,
+        max_log_size=Config.LogRotate.MAX_LOG_SIZE,
+        max_rotations=Config.LogRotate.MAX_ROTATIONS_TO_KEEP,
     )
 
     with open("/etc/logrotate.d/mongodb", "w") as file:
