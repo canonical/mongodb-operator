@@ -404,7 +404,7 @@ async def test_log_roate(ops_test: OpsTest) -> None:
     # Note: this timeout out depends on max log size
     # which is defined in "src/config.py::Config.MAX_LOG_SIZE"
     time.sleep(60 * 10)
-    await stop_continous_writes(ops_test, down_unit=0, app_name=app_name)
+    await stop_continous_writes(ops_test, down_unit="mongodb/0", app_name=app_name)
     # Just to make sure that logroate will run
     time.sleep(60)
     await clear_db_writes(ops_test)
