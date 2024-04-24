@@ -14,10 +14,10 @@ import logging
 import pathlib
 import typing
 
-from config import Config
-
 import ops
 import poetry.core.constraints.version as poetry_version
+
+from config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -134,7 +134,7 @@ class Upgrade(abc.ABC):
         """Status shown during upgrade if unit is healthy."""
 
     def get_unit_juju_status(self) -> typing.Optional[ops.StatusBase]:
-        """Unit upgrade status"""
+        """Unit upgrade status."""
         if self.in_progress:
             return self._get_unit_healthy_status()
 

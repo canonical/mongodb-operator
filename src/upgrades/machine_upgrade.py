@@ -12,9 +12,9 @@ import time
 import typing
 
 import ops
-from upgrades import upgrade
 
 from config import Config
+from upgrades import upgrade
 
 logger = logging.getLogger(__name__)
 

@@ -6,13 +6,12 @@
 import logging
 from typing import Optional
 
-from upgrades import machine_upgrade
-from upgrades import upgrade
 from ops.charm import ActionEvent, CharmBase
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 
 from config import Config
+from upgrades import machine_upgrade, upgrade
 
 logger = logging.getLogger(__name__)
 
