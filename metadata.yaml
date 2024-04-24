@@ -38,7 +38,8 @@ storage:
 peers:
   database-peers:
     interface: mongodb-peers
-  upgrade:
+  # this name corresponds to the version of the upgrade shared-code we currently support
+  upgrade-version-a:
     interface: upgrade
 
 requires:

@@ -8,16 +8,19 @@ from typing import Optional
 
 from ops.charm import ActionEvent, CharmBase
 from ops.framework import Object
-from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
+from ops.model import ActiveStatus
 
-from config import Config
 from upgrades import machine_upgrade, upgrade
 
 logger = logging.getLogger(__name__)
 
 
 WRITE_KEY = "write_value"
-UPGRADE_RELATION = "upgrade"
+
+# the naming here corresponds to both the upgrade relation name, but also the version of the
+# shared upgrade code we currently support. If there are breaking changes in the shared upgrade
+# code this will be incremented.
+UPGRADE_RELATION = "upgrade-version-a"
 
 
 class MongoDBUpgrade(Object):
@@ -27,11 +30,11 @@ class MongoDBUpgrade(Object):
         self.charm = charm
         super().__init__(charm, UPGRADE_RELATION)
         self.framework.observe(
-            charm.on[Config.Upgrade.RELATION_NAME].relation_created,
+            charm.on[UPGRADE_RELATION].relation_created,
             self._on_upgrade_peer_relation_created,
         )
         self.framework.observe(
-            charm.on[Config.Upgrade.RELATION_NAME].relation_changed, self._reconcile_upgrade
+            charm.on[UPGRADE_RELATION].relation_changed, self._reconcile_upgrade
         )
         self.framework.observe(charm.on.upgrade_charm, self._on_upgrade_charm)
         self.framework.observe(
@@ -41,6 +44,7 @@ class MongoDBUpgrade(Object):
 
     # BEGIN: Event handlers
     def _on_upgrade_peer_relation_created(self, _) -> None:
+        self._upgrade.save_snap_revision_after_first_install()
         if self.charm.unit.is_leader():
             if not self._upgrade.in_progress:
                 # Save versions on initial start
@@ -121,24 +125,15 @@ class MongoDBUpgrade(Object):
 
     # BEGIN: Helpers
     def _set_upgrade_status(self):
-        # Set/clear upgrade unit status if no other unit status
-        if isinstance(self.charm.unit.status, ActiveStatus) or (
-            isinstance(self.charm.unit.status, WaitingStatus)
-            and self.charm.unit.status.message.startswith("Charmed operator upgraded.")
-        ):
+        # In the future if we decide to support app statuses, we will need to handle this
+        # differently. Specifically ensuring that upgrade status for apps status has the lowest
+        # priority
+        self.charm.app.status = self._upgrade.app_status or ActiveStatus()
+
+        # Set/clear upgrade unit status if no other unit status - upgrade status for units should
+        # have the lowest priority.
+        if isinstance(self.charm.unit.status, ActiveStatus):
             self.charm.unit.status = self._upgrade.get_unit_juju_status() or ActiveStatus()
-        if not self.charm.unit.is_leader():
-            return
-        # Set upgrade app status
-        if status := self._upgrade.app_status:
-            self.charm.app.status = status
-        else:
-            # Clear upgrade app status
-            if (
-                isinstance(self.charm.app.status, BlockedStatus)
-                or isinstance(self.charm.app.status, MaintenanceStatus)
-            ) and self.charm.app.status.message.startswith("Upgrad"):
-                self.charm.app.status = ActiveStatus()
 
     # END: helpers
 

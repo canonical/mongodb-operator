@@ -17,11 +17,9 @@ import typing
 import ops
 import poetry.core.constraints.version as poetry_version
 
-from config import Config
-
 logger = logging.getLogger(__name__)
 
-PEER_RELATION_ENDPOINT_NAME = Config.Upgrade.RELATION_NAME
+PEER_RELATION_ENDPOINT_NAME = "upgrade-version-a"
 RESUME_ACTION_NAME = "resume-upgrade"
 
 

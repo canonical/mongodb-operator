@@ -90,6 +90,10 @@ class Upgrade(upgrade.Upgrade):
         """Installed snap revision for this unit."""
         return self._unit_databag.get("snap_revision")
 
+    @_unit_workload_version.setter
+    def _unit_workload_version(self, value: str):
+        self._unit_databag["workload_version"] = value
+
     @property
     def _app_workload_version(self) -> str:
         """Snap revision for current charm code."""
@@ -149,3 +153,11 @@ class Upgrade(upgrade.Upgrade):
 
         self._unit_databag["snap_revision"] = _SNAP_REVISION
         logger.debug(f"Saved {_SNAP_REVISION} in unit databag after upgrade")
+
+    def save_snap_revision_after_first_install(self):
+        """Set snap revision on first install."""
+        self._unit_workload_container_version = _SNAP_REVISION
+        self._unit_workload_version = self._current_versions["workload"]
+        logger.debug(
+            f'Saved {_SNAP_REVISION=} and {self._current_versions["workload"]=} in unit databag after first install'
+        )
