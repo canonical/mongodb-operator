@@ -17,24 +17,19 @@ logger = logging.getLogger(__name__)
 
 WRITE_KEY = "write_value"
 
-# the naming here corresponds to both the upgrade relation name, but also the version of the
-# shared upgrade code we currently support. If there are breaking changes in the shared upgrade
-# code this will be incremented.
-UPGRADE_RELATION = "upgrade-version-a"
-
 
 class MongoDBUpgrade(Object):
     """Handlers for upgrade events."""
 
     def __init__(self, charm: CharmBase):
         self.charm = charm
-        super().__init__(charm, UPGRADE_RELATION)
+        super().__init__(charm, upgrade.PEER_RELATION_ENDPOINT_NAME)
         self.framework.observe(
-            charm.on[UPGRADE_RELATION].relation_created,
+            charm.on[upgrade.PEER_RELATION_ENDPOINT_NAME].relation_created,
             self._on_upgrade_peer_relation_created,
         )
         self.framework.observe(
-            charm.on[UPGRADE_RELATION].relation_changed, self._reconcile_upgrade
+            charm.on[upgrade.PEER_RELATION_ENDPOINT_NAME].relation_changed, self._reconcile_upgrade
         )
         self.framework.observe(charm.on.upgrade_charm, self._on_upgrade_charm)
         self.framework.observe(
@@ -117,7 +112,7 @@ class MongoDBUpgrade(Object):
             return
         logger.debug("Forcing upgrade")
         event.log(f"Forcefully upgrading {self.unit.name}")
-        self._upgrade_opensearch_event.emit(ignore_lock=event.params["ignore-lock"])
+        self._upgrade.upgrade_unit()
         event.set_results({"result": f"Forcefully upgraded {self.unit.name}"})
         logger.debug("Forced upgrade")
 
@@ -143,5 +138,5 @@ class MongoDBUpgrade(Object):
     def _upgrade(self) -> Optional[machine_upgrade.Upgrade]:
         try:
             return machine_upgrade.Upgrade(self.charm)
-        except upgrade.PeerRelationNotReadyError:
+        except upgrade.PeerRelationNotReady:
             pass

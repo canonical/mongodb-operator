@@ -30,8 +30,9 @@ max-complexity = 10
 exclude = [".git", "__pycache__", ".tox", "build", "dist", "*.egg_info", "venv", "tests/integration/relation_tests/new_relations/application-charm/lib"]
 select = ["E", "W", "F", "C", "N", "R", "D", "H"]
 # Ignore W503, E501 because using black creates errors with this
+# Ignore N818 Exception should be named with an Error suffix
 # Ignore D107 Missing docstring in __init__
-ignore = ["W503", "E501", "D107"]
+ignore = ["W503", "E501", "D107",  "N818"]
 # D100, D101, D102, D103: Ignore missing docstrings in tests
 per-file-ignores = ["tests/*:D100,D101,D102,D103,D104"]
 docstring-convention = "google"
