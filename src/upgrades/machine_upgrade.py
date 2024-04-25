@@ -25,48 +25,33 @@ class Upgrade(upgrade.Upgrade):
     """In-place upgrades on machines."""
 
     @property
-    def unit_state(self) -> typing.Optional[str]:
+    def unit_state(self) -> typing.Optional[upgrade.UnitState]:
         """Returns the unit state."""
         if (
-            self._unit_workload_version is not None
-            and self._unit_workload_version != self._app_workload_version
+            self._unit_workload_container_version is not None
+            and self._unit_workload_container_version != self._app_workload_container_version
         ):
             logger.debug("Unit upgrade state: outdated")
-            return "outdated"
+            return upgrade.UnitState.OUTDATED
         return super().unit_state
 
     @unit_state.setter
-    def unit_state(self, value: str) -> None:
-        """Sets the unit state."""
-        if value == "healthy":
-            # Set snap revision on first install
-            self._unit_databag["snap_revision"] = _SNAP_REVISION
-            logger.debug(f"Saved {_SNAP_REVISION} in unit databag while setting state healthy")
+    def unit_state(self, value: upgrade.UnitState) -> None:
         # Super call
         upgrade.Upgrade.unit_state.fset(self, value)
 
-    def _get_unit_healthy_status(
-        self, *, workload_status: typing.Optional[ops.StatusBase]
-    ) -> ops.StatusBase:
-        if self._unit_workload_version == self._app_workload_version:
-            if isinstance(workload_status, ops.WaitingStatus):
-                return ops.WaitingStatus(
-                    f'Router {self._current_versions["workload"]} rev {self._unit_workload_version}'
-                )
+    def _get_unit_healthy_status(self) -> ops.StatusBase:
+        if self._unit_workload_container_version == self._app_workload_container_version:
             return ops.ActiveStatus(
-                f'Router {self._current_versions["workload"]} rev {self._unit_workload_version} running'
+                f'MongoDB {self._unit_workload_version} running; Snap rev {self._unit_workload_container_version}; Charmed operator {self._current_versions["charm"]}'
             )
-        if isinstance(workload_status, ops.WaitingStatus):
-            return ops.WaitingStatus(
-                f'Charmed operator upgraded. Router {self._current_versions["workload"]} rev {self._unit_workload_version}'
-            )
-        return ops.WaitingStatus(
-            f'Charmed operator upgraded. Router {self._current_versions["workload"]} rev {self._unit_workload_version} running'
+        return ops.ActiveStatus(
+            f'MongoDB {self._unit_workload_version} running; Snap rev {self._unit_workload_container_version} (outdated); Charmed operator {self._current_versions["charm"]}'
         )
 
     @property
     def app_status(self) -> typing.Optional[ops.StatusBase]:
-        """Returns the status of the upgrade for the application."""
+        """App upgrade status."""
         if not self.is_compatible:
             logger.info(
                 "Upgrade incompatible. If you accept potential *data loss* and *downtime*, you can continue by running `force-upgrade` action on each remaining unit"
@@ -77,7 +62,7 @@ class Upgrade(upgrade.Upgrade):
         return super().app_status
 
     @property
-    def _unit_workload_versions(self) -> typing.Dict[str, str]:
+    def _unit_workload_container_versions(self) -> typing.Dict[str, str]:
         """{Unit name: installed snap revision}."""
         versions = {}
         for unit in self._sorted_units:
@@ -86,18 +71,27 @@ class Upgrade(upgrade.Upgrade):
         return versions
 
     @property
-    def _unit_workload_version(self) -> typing.Optional[str]:
+    def _unit_workload_container_version(self) -> typing.Optional[str]:
         """Installed snap revision for this unit."""
         return self._unit_databag.get("snap_revision")
+
+    @_unit_workload_container_version.setter
+    def _unit_workload_container_version(self, value: str):
+        self._unit_databag["snap_revision"] = value
+
+    @property
+    def _app_workload_container_version(self) -> str:
+        """Snap revision for current charm code."""
+        return _SNAP_REVISION
+
+    @property
+    def _unit_workload_version(self) -> typing.Optional[str]:
+        """Installed OpenSearch version for this unit."""
+        return self._unit_databag.get("workload_version")
 
     @_unit_workload_version.setter
     def _unit_workload_version(self, value: str):
         self._unit_databag["workload_version"] = value
-
-    @property
-    def _app_workload_version(self) -> str:
-        """Snap revision for current charm code."""
-        return _SNAP_REVISION
 
     def reconcile_partition(self, *, action_event: ops.ActionEvent = None) -> None:
         """Handle Juju action to confirm first upgraded unit is healthy and resume upgrade."""
@@ -126,8 +120,11 @@ class Upgrade(upgrade.Upgrade):
 
     @property
     def authorized(self) -> bool:
-        """Returns True if the unit is authorized to upgrade."""
-        assert self._unit_workload_version != self._app_workload_version
+        """Whether this unit is authorized to upgrade.
+
+        Only applies to machine charm.
+        """
+        assert self._unit_workload_container_version != self._app_workload_container_version
         for index, unit in enumerate(self._sorted_units):
             if unit.name == self._unit.name:
                 # Higher number units have already upgraded
@@ -136,16 +133,23 @@ class Upgrade(upgrade.Upgrade):
                     logger.debug(f"Second unit authorized to upgrade if {self.upgrade_resumed=}")
                     return self.upgrade_resumed
                 return True
+            state = self._peer_relation.data[unit].get("state")
+            if state:
+                state = upgrade.UnitState(state)
             if (
-                self._unit_workload_versions.get(unit.name) != self._app_workload_version
-                or self._peer_relation.data[unit].get("state") != "healthy"
+                self._unit_workload_container_versions.get(unit.name)
+                != self._app_workload_container_version
+                or state is not upgrade.UnitState.HEALTHY
             ):
                 # Waiting for higher number units to upgrade
                 return False
         return False
 
     def upgrade_unit(self) -> None:
-        """Runs the upgrade procedure."""
+        """Runs the upgrade procedure.
+
+        Only applies to machine charm.
+        """
         logger.debug(f"Upgrading {self.authorized=}")
         self.unit_state = "upgrading"
 
@@ -160,11 +164,10 @@ class Upgrade(upgrade.Upgrade):
             # todo something with status which forces the user to run "force-upgrade"
             return
 
-        # todo: install snap
+        # todo question - do we set this on failed upgrades as well?
+        self._unit_databag["snap_revision"] = _SNAP_REVISION
+        self._unit_workload_version = self._current_versions["workload"]
 
-        self._unit_databag[
-            "snap_revision"
-        ] = _SNAP_REVISION  # todo question - do we set this on failed upgrades as well?
         logger.debug(f"Saved {_SNAP_REVISION} in unit databag after upgrade")
 
         try:

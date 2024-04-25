@@ -40,6 +40,9 @@ peers:
     interface: mongodb-peers
   # this name corresponds to the version of the upgrade shared-code we currently support
   upgrade-version-a:
+    # Relation versioning scheme:
+    # DA056 - Upgrading in-place upgrade protocol
+    # https://docs.google.com/document/d/1H7qy5SAwLiCOKO9xMQJbbQP5_-jGV6Lhi-mJOk4gZ08/edit
     interface: upgrade
 
 requires:

@@ -36,11 +36,6 @@ class Config:
         DESTINATION = "file"
         FILE_NAME = "audit.log"
 
-    class Upgrade:
-        """Backup related config for MongoDB Charm."""
-
-        RELATION_NAME = "upgrade"
-
     class Backup:
         """Backup related config for MongoDB Charm."""
 

@@ -9,6 +9,7 @@ Based off specification: DA058 - In-Place Upgrades - Kubernetes v2
 
 import abc
 import copy
+import enum
 import json
 import logging
 import pathlib
@@ -28,8 +29,17 @@ def unit_number(unit_: ops.Unit) -> int:
     return int(unit_.name.split("/")[-1])
 
 
-class PeerRelationNotReadyError(Exception):
+class PeerRelationNotReady(Exception):
     """Upgrade peer relation not available (to this unit)."""
+
+
+class UnitState(str, enum.Enum):
+    """Unit upgrade state."""
+
+    HEALTHY = "healthy"
+    RESTARTING = "restarting"  # Kubernetes only
+    UPGRADING = "upgrading"  # Machines only
+    OUTDATED = "outdated"  # Machines only
 
 
 class Upgrade(abc.ABC):
@@ -38,7 +48,7 @@ class Upgrade(abc.ABC):
     def __init__(self, charm_: ops.CharmBase) -> None:
         relations = charm_.model.relations[PEER_RELATION_ENDPOINT_NAME]
         if not relations:
-            raise PeerRelationNotReadyError
+            raise PeerRelationNotReady
         assert len(relations) == 1
         self._peer_relation = relations[0]
         self._unit: ops.Unit = charm_.unit
@@ -53,18 +63,18 @@ class Upgrade(abc.ABC):
             self._current_versions[version] = pathlib.Path(file_name).read_text().strip()
 
     @property
-    def unit_state(self) -> typing.Optional[str]:
+    def unit_state(self) -> typing.Optional[UnitState]:
         """Unit upgrade state."""
-        return self._unit_databag.get("state")
+        if state := self._unit_databag.get("state"):
+            return UnitState(state)
 
     @unit_state.setter
-    def unit_state(self, value: str) -> None:
-        """Set unit upgrade state."""
-        self._unit_databag["state"] = value
+    def unit_state(self, value: UnitState) -> None:
+        self._unit_databag["state"] = value.value
 
     @property
     def is_compatible(self) -> bool:
-        """Whether upgrade is supported from previous."""
+        """Whether upgrade is supported from previous versions."""
         assert self.versions_set
         try:
             previous_version_strs: typing.Dict[str, str] = json.loads(
@@ -97,7 +107,6 @@ class Upgrade(abc.ABC):
             if (
                 previous_versions["workload"] > current_versions["workload"]
                 or previous_versions["workload"].major != current_versions["workload"].major
-                or previous_versions["workload"].minor != current_versions["workload"].minor
             ):
                 logger.debug(
                     f'{previous_versions["workload"]=} incompatible with {current_versions["workload"]=}'
@@ -113,11 +122,13 @@ class Upgrade(abc.ABC):
 
     @property
     def in_progress(self) -> bool:
-        """Returns True if the upgrade is in progress."""
-        logger.debug(f"{self._app_workload_version=} {self._unit_workload_versions=}")
+        """Whether upgrade is in progress."""
+        logger.debug(
+            f"{self._app_workload_container_version=} {self._unit_workload_container_versions=}"
+        )
         return any(
-            version != self._app_workload_version
-            for version in self._unit_workload_versions.values()
+            version != self._app_workload_container_version
+            for version in self._unit_workload_container_versions.values()
         )
 
     @property
@@ -126,9 +137,7 @@ class Upgrade(abc.ABC):
         return sorted((self._unit, *self._peer_relation.units), key=unit_number, reverse=True)
 
     @abc.abstractmethod
-    def _get_unit_healthy_status(
-        self, *, workload_status: typing.Optional[ops.StatusBase]
-    ) -> ops.StatusBase:
+    def _get_unit_healthy_status(self) -> ops.StatusBase:
         """Status shown during upgrade if unit is healthy."""
 
     def get_unit_juju_status(self) -> typing.Optional[ops.StatusBase]:
@@ -138,7 +147,7 @@ class Upgrade(abc.ABC):
 
     @property
     def app_status(self) -> typing.Optional[ops.StatusBase]:
-        """Return the app status for the upgrade."""
+        """App upgrade status."""
         if not self.in_progress:
             return
         if not self.upgrade_resumed:
@@ -180,8 +189,8 @@ class Upgrade(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def _unit_workload_versions(self) -> typing.Dict[str, str]:
-        """{Unit name: unique identifier for unit's workload version}.
+    def _unit_workload_container_versions(self) -> typing.Dict[str, str]:
+        """{Unit name: unique identifier for unit's workload container version}.
 
         If and only if this version changes, the workload will restart (during upgrade or
         rollback).
@@ -189,19 +198,19 @@ class Upgrade(abc.ABC):
         On Kubernetes, the workload & charm are upgraded together
         On machines, the charm is upgraded before the workload
 
-        This identifier should be comparable to `_app_workload_version` to determine if the unit &
-        app are the same workload version.
+        This identifier should be comparable to `_app_workload_container_version` to determine if
+        the unit & app are the same workload container version.
         """
 
     @property
     @abc.abstractmethod
-    def _app_workload_version(self) -> str:
-        """Unique identifier for the app's workload version.
+    def _app_workload_container_version(self) -> str:
+        """Unique identifier for the app's workload container version.
 
         This should match the workload version in the current Juju app charm version.
 
-        This identifier should be comparable to `_get_unit_workload_version` to determine if the
-        app & unit are the same workload version.
+        This identifier should be comparable to `_unit_workload_container_versions` to determine if
+        the app & unit are the same workload container version.
         """
 
     @abc.abstractmethod
