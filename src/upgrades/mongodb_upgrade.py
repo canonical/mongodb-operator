@@ -128,7 +128,8 @@ class MongoDBUpgrade(Object):
         # In the future if we decide to support app statuses, we will need to handle this
         # differently. Specifically ensuring that upgrade status for apps status has the lowest
         # priority
-        self.charm.app.status = self._upgrade.app_status or ActiveStatus()
+        if self.charm.unit.is_leader():
+            self.charm.app.status = self._upgrade.app_status or ActiveStatus()
 
         # Set/clear upgrade unit status if no other unit status - upgrade status for units should
         # have the lowest priority.
