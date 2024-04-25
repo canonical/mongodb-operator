@@ -37,7 +37,7 @@ DB_PROCESS = "/usr/bin/mongod"
 MONGODB_LOG_PATH = f"{MONGO_COMMON_DIR}/var/log/mongodb/mongodb.log"
 MONGOD_SERVICE_DEFAULT_PATH = "/etc/systemd/system/snap.charmed-mongodb.mongod.service"
 TMP_SERVICE_PATH = "tests/integration/ha_tests/tmp.service"
-LOGGING_OPTIONS = "--logappend"
+LOGGING_OPTIONS = f"--logpath={MONGO_COMMON_DIR}/var/log/mongodb/mongodb.log --logappend"
 EXPORTER_PROC = "/usr/bin/mongodb_exporter"
 GREP_PROC = "grep"
 
@@ -138,7 +138,6 @@ async def fetch_primary(
         return None
     finally:
         client.close()
-
     primary = None
     # loop through all members in the replica set
     for member in status["members"]:
@@ -612,10 +611,7 @@ async def update_service_logging(ops_test: OpsTest, unit, logging: bool):
             continue
         line = line.replace("\n", "")
 
-        if logging:
-            if LOGGING_OPTIONS not in line:
-                mongodb_service[index] = line + " " + LOGGING_OPTIONS + "\n"
-        else:
+        if not logging:
             if LOGGING_OPTIONS in line:
                 mongodb_service[index] = line.replace(LOGGING_OPTIONS, "") + "\n"
 
