@@ -149,10 +149,36 @@ class Upgrade(upgrade.Upgrade):
         logger.debug(f"Upgrading {self.authorized=}")
         self.unit_state = "upgrading"
 
-        # TODO: Future PR - run mongodb specific checks for upgrade and actually ugprade the snap
+        # According to the MongoDB documentation, before upgrading the primary, we must ensure a
+        # safe primary re-election.
+        try:
+            if self.charm.unit.name == self.charm.primary:
+                logger.debug("Stepping down current primary, before upgrading service...")
+                self.step_down_primary_and_wait_reelection()
+        except self.FailedToElectNewPrimaryError:
+            logger.error("Failed to reelect primary before upgrading service.")
+            # todo something with status which forces the user to run "force-upgrade"
+            return
 
-        self._unit_databag["snap_revision"] = _SNAP_REVISION
+        # todo: install snap
+
+        self._unit_databag[
+            "snap_revision"
+        ] = _SNAP_REVISION  # todo question - do we set this on failed upgrades as well?
         logger.debug(f"Saved {_SNAP_REVISION} in unit databag after upgrade")
+
+        try:
+            if self.charm.unit.name == self.charm.primary:
+                logger.debug(
+                    "Running post upgrade checks to verify cluster is not broken after upgrade"
+                )
+                self.post_upgrade_check()
+        except self.ClusterNotHealthyError:
+            # todo something with status which forces the user to run "force-upgrade"
+            logger.error("Cluster is not healthy, after upgrading %s", self.charm.unit.name)
+            return
+
+        # todo set status to healthy?
 
     def save_snap_revision_after_first_install(self):
         """Set snap revision on first install."""

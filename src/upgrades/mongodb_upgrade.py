@@ -4,13 +4,19 @@
 """Manager for handling MongoDB in-place upgrades."""
 
 import logging
-from typing import Optional
-
+from typing import Optional, Tuple
+from tenacity import Retrying, retry, stop_after_attempt, wait_fixed
+import secrets
+import string
 from ops.charm import ActionEvent, CharmBase
 from ops.framework import Object
 from ops.model import ActiveStatus
 
+from config import Config
 from upgrades import machine_upgrade, upgrade
+from pymongo.errors import OperationFailure, PyMongoError, ServerSelectionTimeoutError
+
+from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +27,17 @@ WRITE_KEY = "write_value"
 # shared upgrade code we currently support. If there are breaking changes in the shared upgrade
 # code this will be incremented.
 UPGRADE_RELATION = "upgrade-version-a"
+
+# BEGIN: Execptions
+class FailedToElectNewPrimaryError(Exception):
+    """Raised when a new primary isn't elected after stepping down."""
+
+
+class ClusterNotHealthyError(Exception):
+    """Raised when the cluster is not healthy."""
+
+
+# END: Execptions
 
 
 class MongoDBUpgrade(Object):
@@ -136,6 +153,135 @@ class MongoDBUpgrade(Object):
         if isinstance(self.charm.unit.status, ActiveStatus):
             self.charm.unit.status = self._upgrade.get_unit_juju_status() or ActiveStatus()
 
+    def step_down_primary_and_wait_reelection(self):
+        pass
+
+    def post_upgrade_check(self):
+        if not self.is_cluster_healthy():
+            raise ClusterNotHealthyError()
+
+        if not self.is_cluster_able_to_read_write():
+            raise ClusterNotHealthyError()
+
+    def is_cluster_healthy(self) -> bool:
+        """Returns True if all nodes in the cluster/replcia set are healthy."""
+        if self.charm.is_role(Config.Role.SHARD):
+            logger.debug("Cannot run full cluster health check on shards")
+            return False
+
+        return self.are_nodes_healthy()
+
+    def are_nodes_healthy(self) -> bool:
+        """Returns True if all nodes in the MongoDB deployment are healthy."""
+        try:
+            if self.charm.is_role(Config.Role.CONFIG_SERVER):
+                # TODO Future PR - implement node healthy check for sharded cluster
+                pass
+            if self.charm.is_role(Config.Role.REPLICATION):
+                return self.are_replica_set_nodes_healthy(self.charm.mongodb_config)
+        except (PyMongoError, OperationFailure, ServerSelectionTimeoutError) as e:
+            logger.debug(
+                "Cannot proceed with upgrade. Failed to check cluster health, error: %s", e
+            )
+            return False
+
+    def is_cluster_able_to_read_write(self) -> bool:
+        """Returns True if read and write is feasible for cluster."""
+        if self.charm.is_role(Config.Role.SHARD):
+            logger.debug("Cannot run read/write check on shard, must run via config-server.")
+            return False
+        elif self.charm.is_role(Config.Role.CONFIG_SERVER):
+            # TODO Future PR - implement node healthy check for sharded cluster
+            pass
+        else:
+            return self.is_replica_set_able_read_write()
+
+    def is_replica_set_able_read_write(self) -> bool:
+        """Returns True if is possible to write to primary and read from replicas."""
+        collection_name, write_value = self.get_random_write_and_collection()
+        self.add_write_to_replica_set(self.charm.mongodb_config, collection_name, write_value)
+        write_replicated = self.is_write_on_secondaries(
+            self.charm.mongodb_config, collection_name, write_value
+        )
+        self.clear_tmp_collection(self.charm.mongodb_config, collection_name)
+        return write_replicated
+
+    def clear_tmp_collection(
+        self, mongodb_config: MongoDBConfiguration, collection_name: str
+    ) -> None:
+        """Clears the temporary collection."""
+        with MongoDBConnection(mongodb_config) as mongod:
+            db = mongod.client["admin"]
+            db.drop_collection(collection_name)
+
+    def is_excepted_write_on_replica(
+        self,
+        host: str,
+        db_name: str,
+        collection: str,
+        expected_write_value: str,
+        secondary_config: MongoDBConfiguration,
+    ) -> bool:
+        """Returns True if the replica contains the expected write in the provided collection."""
+        secondary_config.hosts = {host}
+        with MongoDBConnection(secondary_config, direct=True) as direct_seconary:
+            db = direct_seconary.client[db_name]
+            test_collection = db[collection]
+            query = test_collection.find({}, {WRITE_KEY: 1})
+            return query[0][WRITE_KEY] == expected_write_value
+
+    def get_random_write_and_collection(self) -> Tuple[str, str]:
+        """Returns a tutple for a random collection name and a unique write to add to it."""
+        choices = string.ascii_letters + string.digits
+        collection_name = "collection_" + "".join([secrets.choice(choices) for _ in range(32)])
+        write_value = "unique_write_" + "".join([secrets.choice(choices) for _ in range(16)])
+        return (collection_name, write_value)
+
+    def add_write_to_replica_set(
+        self, mongodb_config: MongoDBConfiguration, collection_name, write_value
+    ) -> None:
+        """Adds a the provided write to the admin database with the provided collection."""
+        with MongoDBConnection(mongodb_config) as mongod:
+            db = mongod.client["admin"]
+            test_collection = db[collection_name]
+            write = {WRITE_KEY: write_value}
+            test_collection.insert_one(write)
+
+    def is_write_on_secondaries(
+        self,
+        mongodb_config: MongoDBConfiguration,
+        collection_name,
+        expected_write_value,
+        db_name: str = "admin",
+    ):
+        """Returns true if the expected write."""
+        with MongoDBConnection(mongodb_config) as mongod:
+            primary_ip = mongod.primary()
+
+        replica_ips = mongodb_config.hosts
+        secondary_ips = replica_ips - set(primary_ip)
+        for secondary_ip in secondary_ips:
+            if not self.is_excepted_write_on_replica(
+                secondary_ip, db_name, collection_name, expected_write_value, mongodb_config
+            ):
+                # do not return False immediately - as it is
+                logger.debug("Secondary with IP %s, does not contain the expected write.")
+                return False
+
+        return True
+
+    def step_down_primary_and_wait_reelection(self) -> bool:
+        """Steps down the current primary and waits for a new one to be elected."""
+        old_primary = self.charm.primary
+        with MongoDBConnection(self.charm.mongodb_config) as mongod:
+            mongod.step_down_primary()
+
+        for attempt in Retrying(stop=stop_after_attempt(30), wait=wait_fixed(1), reraise=True):
+            with attempt:
+                new_primary = self.charm.primary
+                if new_primary != old_primary:
+                    raise FailedToElectNewPrimaryError()
+
     # END: helpers
 
     # BEGIN: properties
@@ -145,3 +291,5 @@ class MongoDBUpgrade(Object):
             return machine_upgrade.Upgrade(self.charm)
         except upgrade.PeerRelationNotReadyError:
             pass
+
+    # END: properties
