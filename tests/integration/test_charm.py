@@ -351,21 +351,38 @@ async def test_log_rotate(ops_test: OpsTest) -> None:
     # which is defined in "src/config.py::Config.MAX_LOG_SIZE"
     time_to_write_50m_of_data = 60 * 10
     logrotate_timeout = 60
-    app_name = await get_app_name(ops_test)
-    await start_continous_writes(ops_test, 1)
-    time.sleep(time_to_write_50m_of_data)
-    await stop_continous_writes(ops_test, app_name=app_name)
-    time.sleep(logrotate_timeout)  # Just to make sure that logroate will run
-    await clear_db_writes(ops_test)
     audit_log_snap_path = "/var/snap/charmed-mongodb/common/var/log/mongodb/"
+
+    app_name = await get_app_name(ops_test)
+
     log_files = check_output(
         f"JUJU_MODEL={ops_test.model_full_name} juju ssh {app_name}/leader 'sudo ls {audit_log_snap_path}'",
         stderr=subprocess.PIPE,
         shell=True,
         universal_newlines=True,
     )
+
+    log_not_rotated = "audit.log.1.gz" not in log_files
+    assert log_not_rotated, f"Found rotated log in {log_files}"
+
+    await start_continous_writes(ops_test, 1)
+    time.sleep(time_to_write_50m_of_data)
+    await stop_continous_writes(ops_test, app_name=app_name)
+    time.sleep(logrotate_timeout)  # Just to make sure that logroate will run
+    await clear_db_writes(ops_test)
+
+    log_files = check_output(
+        f"JUJU_MODEL={ops_test.model_full_name} juju ssh {app_name}/leader 'sudo ls {audit_log_snap_path}'",
+        stderr=subprocess.PIPE,
+        shell=True,
+        universal_newlines=True,
+    )
+
     log_rotated = "audit.log.1.gz" in log_files
     assert log_rotated, f"Could not find rotated log in {log_files}"
+
+    audit_log_exists = "audit.log" in log_files
+    assert audit_log_exists, f"Could not find audit.log log in {log_files}"
 
 
 @pytest.mark.group(1)

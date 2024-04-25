@@ -599,46 +599,6 @@ async def update_restart_delay(ops_test: OpsTest, unit, delay: int):
         raise ProcessError(f"Command: {reload_cmd} failed on unit: {unit.name}.")
 
 
-async def update_service_logging(ops_test: OpsTest, unit, logging: bool):
-    """Turns on/off logging in for the mongo daemon."""
-    # load the service file from the unit and update it with the new delay
-    await unit.scp_from(source=MONGOD_SERVICE_DEFAULT_PATH, destination=TMP_SERVICE_PATH)
-    with open(TMP_SERVICE_PATH, "r") as mongodb_service_file:
-        mongodb_service = mongodb_service_file.readlines()
-
-    for index, line in enumerate(mongodb_service):
-        if "ExecStart" not in line:
-            continue
-        line = line.replace("\n", "")
-
-        if not logging:
-            if LOGGING_OPTIONS in line:
-                mongodb_service[index] = line.replace(LOGGING_OPTIONS, "") + "\n"
-
-    with open(TMP_SERVICE_PATH, "w") as service_file:
-        service_file.writelines(mongodb_service)
-
-    # upload the changed file back to the unit, we cannot scp this file directly to
-    # MONGOD_SERVICE_DEFAULT_PATH since this directory has strict permissions, instead we scp it
-    # elsewhere and then move it to MONGOD_SERVICE_DEFAULT_PATH.
-    await unit.scp_to(source=TMP_SERVICE_PATH, destination="mongod.service")
-    mv_cmd = (
-        f"exec --unit {unit.name} mv /home/ubuntu/mongod.service {MONGOD_SERVICE_DEFAULT_PATH}"
-    )
-    return_code, _, _ = await ops_test.juju(*mv_cmd.split())
-    if return_code != 0:
-        raise ProcessError(f"Command: {mv_cmd} failed on unit: {unit.name}.")
-
-    # remove tmp file from machine
-    subprocess.call(["rm", TMP_SERVICE_PATH])
-
-    # reload the daemon for systemd otherwise changes are not saved
-    reload_cmd = f"exec --unit {unit.name} systemctl daemon-reload"
-    return_code, _, _ = await ops_test.juju(*reload_cmd.split())
-    if return_code != 0:
-        raise ProcessError(f"Command: {reload_cmd} failed on unit: {unit.name}.")
-
-
 async def stop_mongod(ops_test: OpsTest, unit) -> None:
     """Safely stops the mongod process."""
     stop_db_process = f"exec --unit {unit.name} snap stop charmed-mongodb.mongod"
