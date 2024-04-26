@@ -53,7 +53,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         await ops_test.model.deploy(db_charm, num_units=3)
 
     # deploy the s3 integrator charm
-    await ops_test.model.deploy(S3_APP_NAME, channel="edge")
+    await ops_test.model.deploy(S3_APP_NAME, channel="edge", revision=17)
 
     await ops_test.model.wait_for_idle()
 
