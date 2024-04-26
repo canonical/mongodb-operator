@@ -125,6 +125,13 @@ class MongoDBBackups(Object):
 
     def on_s3_relation_joined(self, event: RelationJoinedEvent) -> None:
         """Checks for valid integration for s3-integrations."""
+        if self.charm.upgrade_in_progress:
+            logger.warning(
+                "Adding s3-relations is not supported during an upgrade. The charm may be in a broken, unrecoverable state."
+            )
+            event.defer()
+            return
+
         if not self.is_valid_s3_integration():
             logger.debug(
                 "Shard does not support s3 relations, please relate s3-integrator to config-server only."
@@ -138,6 +145,13 @@ class MongoDBBackups(Object):
         # handling PBM configurations requires that MongoDB is running and the pbm snap is
         # installed.
         action = "configure-pbm"
+        if self.charm.upgrade_in_progress:
+            logger.warning(
+                "Adding s3-relations is not supported during an upgrade. The charm may be in a broken, unrecoverable state."
+            )
+            event.defer()
+            return
+
         if not self._pass_sanity_checks(event, action):
             return
 
@@ -157,6 +171,11 @@ class MongoDBBackups(Object):
 
     def _on_create_backup_action(self, event) -> None:
         action = "backup"
+        if self.charm.upgrade_in_progress:
+            logger.warning("Creating a backup is not supported during an upgrade.")
+            event.fail("Creating a backup is not supported during an upgrade.")
+            return
+
         if not self._pass_sanity_checks(event, action):
             return
 
@@ -236,6 +255,11 @@ class MongoDBBackups(Object):
 
     def _on_restore_action(self, event) -> None:
         action = "restore"
+        if self.charm.upgrade_in_progress:
+            logger.warning("Restoring a backup is not supported during an upgrade.")
+            event.fail("Restoring a backup is not supported during an upgrade.")
+            return
+
         if not self._pass_sanity_checks(event, action):
             return
 

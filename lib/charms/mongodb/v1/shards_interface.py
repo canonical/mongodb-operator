@@ -173,6 +173,12 @@ class ShardingProvider(Object):
             return False
 
         if isinstance(event, RelationBrokenEvent):
+            if self.charm.upgrade_in_progress:
+                # upgrades should not block the relation broken event
+                logger.warning(
+                    "Adding/Removing shards is not supported during an upgrade. The charm may be in a broken, unrecoverable state"
+                )
+
             if not self.charm.has_departed_run(event.relation.id):
                 logger.info(
                     "Deferring, must wait for relation departed hook to decide if relation should be removed."
@@ -182,6 +188,12 @@ class ShardingProvider(Object):
 
             if not self.charm.proceed_on_broken_event(event):
                 return False
+        elif self.charm.upgrade_in_progress:
+            logger.warning(
+                "Adding/Removing shards is not supported during an upgrade. The charm may be in a broken, unrecoverable state"
+            )
+            event.defer()
+            return False
 
         return True
 
@@ -715,6 +727,15 @@ class ConfigServerRequirer(Object):
 
         if isinstance(event, RelationBrokenEvent) and not mongos_hosts:
             logger.info("Config-server relation never set up, no need to process broken event.")
+            return False
+
+        if self.charm.upgrade_in_progress:
+            logger.warning(
+                "Adding/Removing shards is not supported during an upgrade. The charm may be in a broken, unrecoverable state"
+            )
+            if not isinstance(event, RelationBrokenEvent):
+                # upgrades should not block relation broken events
+                event.defer()
             return False
 
         if self.is_shard_tls_missing():

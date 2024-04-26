@@ -13,7 +13,7 @@ from ops.charm import ActionEvent, CharmBase
 from ops.framework import Object
 from ops.model import ActiveStatus
 from pymongo.errors import OperationFailure, PyMongoError, ServerSelectionTimeoutError
-from tenacity import Retrying, retry, stop_after_attempt, wait_fixed
+from tenacity import Retrying, stop_after_attempt, wait_fixed
 
 from config import Config
 from upgrades import machine_upgrade, upgrade
@@ -153,6 +153,7 @@ class MongoDBUpgrade(Object):
             self.charm.unit.status = self._upgrade.get_unit_juju_status() or ActiveStatus()
 
     def post_upgrade_check(self):
+        """Runs the post upgrade check to verify that the cluster is healthy."""
         if not self.is_cluster_healthy():
             raise ClusterNotHealthyError()
 

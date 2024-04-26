@@ -317,6 +317,13 @@ class MongodbOperatorCharm(CharmBase):
                 f"'db_initialised' must be a boolean value. Proivded: {value} is of type {type(value)}"
             )
 
+    @property
+    def upgrade_in_progress(self):
+        """Whether upgrade is in progress"""
+        if not self.upgrade._upgrade:
+            return False
+        return self.upgrade._upgrade.in_progress
+
     # END: properties
 
     # BEGIN: charm event handlers
@@ -364,6 +371,14 @@ class MongodbOperatorCharm(CharmBase):
         from executing other hooks with a new role.
         """
         if self.is_role_changed():
+
+            if self.upgrade_in_progress:
+                logger.warning(
+                    "Changing config options is not permitted during an upgrade. The charm may be in a broken, unrecoverable state."
+                )
+                event.defer()
+                return
+
             # TODO in the future (24.04) support migration of components
             logger.error(
                 f"cluster migration currently not supported, cannot change from { self.model.config['role']} to {self.role}"
@@ -437,6 +452,13 @@ class MongodbOperatorCharm(CharmBase):
         if not self.unit.is_leader():
             return
 
+        if self.upgrade_in_progress:
+            logger.warning(
+                "Adding replicas during an upgrade is not supported. The charm may be in a broken, unrecoverable state"
+            )
+            event.defer()
+            return
+
         self._on_relation_handler(event)
 
         self._update_related_hosts(event)
@@ -447,6 +469,13 @@ class MongodbOperatorCharm(CharmBase):
         Args:
             event: The triggering relation joined/changed event.
         """
+        if self.upgrade_in_progress:
+            logger.warning(
+                "Adding/Removing replicas during an upgrade is not supported. The charm may be in a broken, unrecoverable state"
+            )
+            event.defer()
+            return
+
         # changing the monitor password will lead to non-leader units receiving a relation changed
         # event. We must update the monitor and pbm URI if the password changes so that COS/pbm
         # can continue to work
@@ -505,6 +534,14 @@ class MongodbOperatorCharm(CharmBase):
         if not self.unit.is_leader() or event.departing_unit == self.unit:
             return
 
+        if self.upgrade_in_progress:
+            # do not defer or return here, if a user removes a unit, the config will be incorrect
+            # and lead to MongoDB reporting that the replica set is unhealthy, we should make an
+            # attempt to fix the replica set configuration even if an upgrade is occurring.
+            logger.warning(
+                "Removing replicas during an upgrade is not supported. The charm may be in a broken, unrecoverable state"
+            )
+
         self._update_hosts(event)
 
     def _on_storage_detaching(self, event: StorageDetachingEvent) -> None:
@@ -513,6 +550,12 @@ class MongodbOperatorCharm(CharmBase):
         If the removing unit is primary also allow it to step down and elect another unit as
         primary while it still has access to its storage.
         """
+        if self.upgrade_in_progress:
+            # We cannot defer and prevent a user from removing a unit, log a warning instead.
+            logger.warning(
+                "Removing replicas during an upgrade is not supported. The charm may be in a broken, unrecoverable state"
+            )
+
         # A single replica cannot step down as primary and we cannot reconfigure the replica set to
         # have 0 members.
         if self._is_removing_last_replica:
@@ -849,6 +892,11 @@ class MongodbOperatorCharm(CharmBase):
         if not self.unit.is_leader():
             event.fail("The action can be run only on leader unit.")
             return
+
+        if self.upgrade_in_progress:
+            logger.warning("Do not set the password while a backup/restore is in progress.")
+            event.fail("Cannot set passwords while an upgrade is in progress.")
+        return True
 
         return True
 
