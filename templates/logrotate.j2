@@ -10,7 +10,7 @@
   nocopytruncate
   sharedscripts
   postrotate
-    sudo /bin/kill -SIGUSR1 $(sudo systemctl show -p MainPID --value snap.charmed-mongodb.mongod.service)
+    /bin/kill -SIGUSR1 $(systemctl show -p MainPID --value snap.charmed-mongodb.mongod.service)
   endscript
 }
 
