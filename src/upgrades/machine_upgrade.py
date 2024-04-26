@@ -14,7 +14,7 @@ import typing
 import ops
 
 from config import Config
-from upgrades import upgrade
+from upgrades import mongodb_upgrade, upgrade
 
 logger = logging.getLogger(__name__)
 
@@ -145,43 +145,44 @@ class Upgrade(upgrade.Upgrade):
                 return False
         return False
 
-    def upgrade_unit(self) -> None:
+    def upgrade_unit(self, *, charm) -> None:
         """Runs the upgrade procedure.
 
         Only applies to machine charm.
         """
         logger.debug(f"Upgrading {self.authorized=}")
-        self.unit_state = "upgrading"
+        self.unit_state = upgrade.UnitState.UPGRADING
 
         # According to the MongoDB documentation, before upgrading the primary, we must ensure a
         # safe primary re-election.
         try:
-            if self.charm.unit.name == self.charm.primary:
+            if self._unit.name == charm.primary:
                 logger.debug("Stepping down current primary, before upgrading service...")
-                self.step_down_primary_and_wait_reelection()
-        except self.FailedToElectNewPrimaryError:
+                charm.upgrade.step_down_primary_and_wait_reelection()
+        except mongodb_upgrade.FailedToElectNewPrimaryError:
             logger.error("Failed to reelect primary before upgrading service.")
             # todo something with status which forces the user to run "force-upgrade"
             return
 
-        # todo question - do we set this on failed upgrades as well?
+        charm.install_snap_packages(packages=Config.SNAP_PACKAGES)
+
+        # todo question - do we set these on failed upgrades as well?
         self._unit_databag["snap_revision"] = _SNAP_REVISION
         self._unit_workload_version = self._current_versions["workload"]
-
         logger.debug(f"Saved {_SNAP_REVISION} in unit databag after upgrade")
 
         try:
-            if self.charm.unit.name == self.charm.primary:
-                logger.debug(
-                    "Running post upgrade checks to verify cluster is not broken after upgrade"
-                )
-                self.post_upgrade_check()
-        except self.ClusterNotHealthyError:
+            logger.debug(
+                "Running post upgrade checks to verify cluster is not broken after upgrade"
+            )
+            charm.upgrade.post_upgrade_check()
+        except mongodb_upgrade.ClusterNotHealthyError:
             # todo something with status which forces the user to run "force-upgrade"
-            logger.error("Cluster is not healthy, after upgrading %s", self.charm.unit.name)
+            logger.error("Cluster is not healthy, after upgrading %s", self._unit.name)
             return
 
-        # todo set status to healthy?
+        logger.debug("Upgrade for unit %s successfully completed", self._unit.name)
+        self.unit_state = upgrade.UnitState.HEALTHY
 
     def save_snap_revision_after_first_install(self):
         """Set snap revision on first install."""

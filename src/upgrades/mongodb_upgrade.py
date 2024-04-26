@@ -4,19 +4,19 @@
 """Manager for handling MongoDB in-place upgrades."""
 
 import logging
-from typing import Optional, Tuple
-from tenacity import Retrying, retry, stop_after_attempt, wait_fixed
 import secrets
 import string
+from typing import Optional, Tuple
+
+from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 from ops.charm import ActionEvent, CharmBase
 from ops.framework import Object
 from ops.model import ActiveStatus
+from pymongo.errors import OperationFailure, PyMongoError, ServerSelectionTimeoutError
+from tenacity import Retrying, retry, stop_after_attempt, wait_fixed
 
 from config import Config
 from upgrades import machine_upgrade, upgrade
-from pymongo.errors import OperationFailure, PyMongoError, ServerSelectionTimeoutError
-
-from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,8 @@ WRITE_KEY = "write_value"
 # code this will be incremented.
 UPGRADE_RELATION = "upgrade-version-a"
 
-# BEGIN: Execptions
+
+# BEGIN: Exceptions
 class FailedToElectNewPrimaryError(Exception):
     """Raised when a new primary isn't elected after stepping down."""
 
@@ -37,7 +38,7 @@ class ClusterNotHealthyError(Exception):
     """Raised when the cluster is not healthy."""
 
 
-# END: Execptions
+# END: Exceptions
 
 
 class MongoDBUpgrade(Object):
@@ -85,9 +86,7 @@ class MongoDBUpgrade(Object):
         if self._upgrade.unit_state == "outdated":
             if self._upgrade.authorized:
                 self._set_upgrade_status()
-
-                # TODO - check if we need to pass any arguments, also pass the snap
-                self._upgrade.upgrade_unit()
+                self._upgrade.upgrade_unit(charm=self.charm)
             else:
                 self._set_upgrade_status()
                 logger.debug("Waiting to upgrade")
@@ -105,7 +104,7 @@ class MongoDBUpgrade(Object):
 
     def _on_resume_upgrade_action(self, event: ActionEvent) -> None:
         if not self.charm.unit.is_leader():
-            message = f"Must run action on leader unit. (e.g. `juju run {self.app.name}/leader {upgrade.RESUME_ACTION_NAME}`)"
+            message = f"Must run action on leader unit. (e.g. `juju run {self.charm.app.name}/leader {upgrade.RESUME_ACTION_NAME}`)"
             logger.debug(f"Resume upgrade event failed: {message}")
             event.fail(message)
             return
@@ -134,7 +133,7 @@ class MongoDBUpgrade(Object):
             return
         logger.debug("Forcing upgrade")
         event.log(f"Forcefully upgrading {self.unit.name}")
-        self._upgrade.upgrade_unit()
+        self._upgrade.upgrade_unit(charm=self.charm)
         event.set_results({"result": f"Forcefully upgraded {self.unit.name}"})
         logger.debug("Forced upgrade")
 
@@ -152,9 +151,6 @@ class MongoDBUpgrade(Object):
         # have the lowest priority.
         if isinstance(self.charm.unit.status, ActiveStatus):
             self.charm.unit.status = self._upgrade.get_unit_juju_status() or ActiveStatus()
-
-    def step_down_primary_and_wait_reelection(self):
-        pass
 
     def post_upgrade_check(self):
         if not self.is_cluster_healthy():
@@ -184,6 +180,13 @@ class MongoDBUpgrade(Object):
                 "Cannot proceed with upgrade. Failed to check cluster health, error: %s", e
             )
             return False
+
+    def are_replica_set_nodes_healthy(self, mongodb_config: MongoDBConfiguration) -> bool:
+        """Returns true if all nodes in the MongoDB replica set are healthy."""
+        with MongoDBConnection(mongodb_config) as mongod:
+            rs_status = mongod.get_replset_status()
+            rs_status = mongod.client.admin.command("replSetGetStatus")
+            return not mongod.is_any_sync(rs_status)
 
     def is_cluster_able_to_read_write(self) -> bool:
         """Returns True if read and write is feasible for cluster."""
@@ -270,8 +273,14 @@ class MongoDBUpgrade(Object):
 
         return True
 
-    def step_down_primary_and_wait_reelection(self) -> bool:
+    def step_down_primary_and_wait_reelection(self) -> None:
         """Steps down the current primary and waits for a new one to be elected."""
+        if len(self.charm.mongodb_config.hosts) < 2:
+            logger.warning(
+                "No secondaries to become primary - upgrading primary without electing a new one, expect downtime."
+            )
+            return
+
         old_primary = self.charm.primary
         with MongoDBConnection(self.charm.mongodb_config) as mongod:
             mongod.step_down_primary()
@@ -279,7 +288,7 @@ class MongoDBUpgrade(Object):
         for attempt in Retrying(stop=stop_after_attempt(30), wait=wait_fixed(1), reraise=True):
             with attempt:
                 new_primary = self.charm.primary
-                if new_primary != old_primary:
+                if new_primary == old_primary:
                     raise FailedToElectNewPrimaryError()
 
     # END: helpers
