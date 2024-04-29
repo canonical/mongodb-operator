@@ -144,8 +144,8 @@ class ShardingProvider(Object):
 
         self.database_provides.update_relation_data(event.relation.id, relation_data)
 
-    def pass_hook_checks(self, event: EventBase) -> bool:
-        """Runs the pre-hooks checks for ShardingProvider, returns True if all pass."""
+    def pass_sanity_hook_checks(self, event: EventBase) -> bool:
+        """Returns True if all the sanity hook checks for sharding pass."""
         if not self.charm.db_initialised:
             logger.info("Deferring %s. db is not initialised.", str(type(event)))
             event.defer()
@@ -163,6 +163,14 @@ class ShardingProvider(Object):
             return False
 
         if not self.charm.unit.is_leader():
+            return False
+
+        return True
+
+    def pass_hook_checks(self, event: EventBase) -> bool:
+        """Runs the pre-hooks checks for ShardingProvider, returns True if all pass."""
+        proceed_complex_hook_checks = self.pass_sanity_hook_checks(event)
+        if not proceed_complex_hook_checks:
             return False
 
         # adding/removing shards while a backup/restore is in progress can be disastrous
@@ -703,24 +711,15 @@ class ConfigServerRequirer(Object):
 
         self.charm.app_peer_data["mongos_hosts"] = json.dumps(self.get_mongos_hosts())
 
-    def pass_hook_checks(self, event):
+    def pass_hook_checks(self, event: EventBase):
         """Runs the pre-hooks checks for ConfigServerRequirer, returns True if all pass."""
-        if not self.charm.db_initialised:
-            logger.info("Deferring %s. db is not initialised.", str(type(event)))
-            event.defer()
-            return False
-
-        if not self.charm.is_relation_feasible(self.relation_name):
-            logger.info("Skipping event %s , relation not feasible.", str(type(event)))
-            return False
-
-        if not self.charm.is_role(Config.Role.SHARD):
-            logger.info("skipping %s is only be executed by shards", str(type(event)))
+        proceed_complex_hook_checks = self.pass_sanity_hook_checks(event)
+        if not proceed_complex_hook_checks:
             return False
 
         # occasionally, broken events have no application, in these scenarios nothing should be
         # processed.
-        if not event.relation.app:
+        if not event.relation.app and isinstance(event, RelationBrokenEvent):
             return False
 
         mongos_hosts = event.relation.data[event.relation.app].get(HOSTS_KEY, None)
@@ -738,6 +737,27 @@ class ConfigServerRequirer(Object):
                 event.defer()
             return False
 
+        return self.pass_tls_hook_checks(event)
+
+    def pass_sanity_hook_checks(self, event: EventBase) -> bool:
+        """Returns True if all the sanity hook checks for sharding pass."""
+        if not self.charm.db_initialised:
+            logger.info("Deferring %s. db is not initialised.", str(type(event)))
+            event.defer()
+            return False
+
+        if not self.charm.is_relation_feasible(self.relation_name):
+            logger.info("Skipping event %s , relation not feasible.", str(type(event)))
+            return False
+
+        if not self.charm.is_role(Config.Role.SHARD):
+            logger.info("skipping %s is only be executed by shards", str(type(event)))
+            return False
+
+        return True
+
+    def pass_tls_hook_checks(self, event: EventBase) -> bool:
+        """Returns True if the TLS checks for sharding pass."""
         if self.is_shard_tls_missing():
             logger.info(
                 "Deferring %s. Config-server uses TLS, but shard does not. Please synchronise encryption methods.",
@@ -762,7 +782,6 @@ class ConfigServerRequirer(Object):
 
             event.defer()
             return False
-
         return True
 
     def _on_relation_broken(self, event: RelationBrokenEvent) -> None:

@@ -319,7 +319,7 @@ class MongodbOperatorCharm(CharmBase):
 
     @property
     def upgrade_in_progress(self):
-        """Whether upgrade is in progress"""
+        """Whether upgrade is in progress."""
         if not self.upgrade._upgrade:
             return False
         return self.upgrade._upgrade.in_progress
