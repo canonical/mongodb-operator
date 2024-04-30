@@ -60,7 +60,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 
     await ops_test.model.wait_for_idle(
         apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_THREE_APP_NAME],
-        idle_period=20,
+        idle_period=15,
         raise_on_blocked=False,
         timeout=TIMEOUT,
         raise_on_error=False,
@@ -71,13 +71,13 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         ops_test.model.wait_for_idle(
             apps=[CONFIG_SERVER_APP_NAME],
             status="blocked",
-            idle_period=20,
+            idle_period=15,
             timeout=TIMEOUT,
         ),
         ops_test.model.wait_for_idle(
             apps=[SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
             status="blocked",
-            idle_period=20,
+            idle_period=15,
             timeout=TIMEOUT,
         ),
     )
@@ -114,7 +114,7 @@ async def test_cluster_active(ops_test: OpsTest) -> None:
             SHARD_TWO_APP_NAME,
             SHARD_THREE_APP_NAME,
         ],
-        idle_period=20,
+        idle_period=15,
         status="active",
         timeout=TIMEOUT,
         raise_on_error=False,
@@ -150,7 +150,7 @@ async def test_set_operator_password(ops_test: OpsTest):
     await ops_test.model.wait_for_idle(
         apps=CLUSTER_APPS,
         status="active",
-        idle_period=20,
+        idle_period=15,
     ),
 
     for cluster_app_name in CLUSTER_APPS:
@@ -250,7 +250,7 @@ async def test_shard_removal(ops_test: OpsTest) -> None:
             SHARD_TWO_APP_NAME,
             SHARD_THREE_APP_NAME,
         ],
-        idle_period=20,
+        idle_period=15,
         status="active",
         timeout=TIMEOUT,
         raise_on_error=False,
@@ -291,7 +291,7 @@ async def test_removal_of_non_primary_shard(ops_test: OpsTest):
             SHARD_TWO_APP_NAME,
             SHARD_THREE_APP_NAME,
         ],
-        idle_period=20,
+        idle_period=15,
         status="active",
         timeout=TIMEOUT,
         raise_on_error=False,
@@ -304,7 +304,7 @@ async def test_removal_of_non_primary_shard(ops_test: OpsTest):
 
     await ops_test.model.wait_for_idle(
         apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
-        idle_period=20,
+        idle_period=15,
         status="active",
         timeout=TIMEOUT,
         raise_on_error=False,
@@ -342,7 +342,7 @@ async def test_unconventual_shard_removal(ops_test: OpsTest):
 
     await ops_test.model.wait_for_idle(
         apps=[SHARD_TWO_APP_NAME],
-        idle_period=20,
+        idle_period=15,
         status="active",
         timeout=TIMEOUT,
         raise_on_error=False,
@@ -351,7 +351,7 @@ async def test_unconventual_shard_removal(ops_test: OpsTest):
     await ops_test.model.applications[SHARD_TWO_APP_NAME].destroy_units(f"{SHARD_TWO_APP_NAME}/0")
     await ops_test.model.wait_for_idle(
         apps=[SHARD_TWO_APP_NAME],
-        idle_period=20,
+        idle_period=15,
         status="active",
         timeout=TIMEOUT,
         raise_on_error=False,
@@ -361,7 +361,7 @@ async def test_unconventual_shard_removal(ops_test: OpsTest):
 
     await ops_test.model.wait_for_idle(
         apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME],
-        idle_period=20,
+        idle_period=15,
         status="active",
         timeout=TIMEOUT,
         raise_on_error=False,
