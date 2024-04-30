@@ -13,10 +13,10 @@ import re
 import socket
 from typing import List, Optional, Tuple
 
-from charms.tls_certificates_interface.v1.tls_certificates import (
+from charms.tls_certificates_interface.v3.tls_certificates import (
     CertificateAvailableEvent,
     CertificateExpiringEvent,
-    TLSCertificatesRequiresV1,
+    TLSCertificatesRequiresV3,
     generate_csr,
     generate_private_key,
 )
@@ -52,7 +52,7 @@ class MongoDBTLS(Object):
         self.charm = charm
         self.substrate = substrate
         self.peer_relation = peer_relation
-        self.certs = TLSCertificatesRequiresV1(self.charm, Config.TLS.TLS_PEER_RELATION)
+        self.certs = TLSCertificatesRequiresV3(self.charm, Config.TLS.TLS_PEER_RELATION)
         self.framework.observe(
             self.charm.on.set_tls_private_key_action, self._on_set_tls_private_key
         )
