@@ -139,6 +139,8 @@ def get_mongos_args(
         f"--configdb {config_server_db}",
         # config server is already using 27017
         f"--port {Config.MONGOS_PORT}",
+        "--logRotate reopen",
+        "--logappend",
     ]
 
     # TODO : generalise these into functions to be re-used
@@ -202,6 +204,8 @@ def get_mongod_args(
         # port
         f"--port={Config.MONGODB_PORT}",
         "--setParameter processUmask=037",  # required for log files perminission (g+r)
+        "--logRotate reopen",
+        "--logappend",
         logging_options,
     ]
     cmd.extend(audit_log_settings)

@@ -19,7 +19,12 @@ from tenacity import RetryError
 
 from config import Config
 
-from .ha_tests.helpers import kill_unit_process
+from .ha_tests.helpers import (
+    clear_db_writes,
+    kill_unit_process,
+    start_continous_writes,
+    stop_continous_writes,
+)
 from .helpers import (
     PORT,
     UNIT_IDS,
@@ -323,6 +328,67 @@ async def test_no_password_change_on_invalid_password(ops_test: OpsTest) -> None
 
 
 @pytest.mark.group(1)
+async def test_audit_log(ops_test: OpsTest) -> None:
+    """Test that audit log was created and contains actual audit data."""
+    app_name = await get_app_name(ops_test)
+    audit_log_snap_path = "/var/snap/charmed-mongodb/common/var/log/mongodb/audit.log"
+    audit_log = check_output(
+        f"JUJU_MODEL={ops_test.model_full_name} juju ssh {app_name}/leader 'sudo cat {audit_log_snap_path}'",
+        stderr=subprocess.PIPE,
+        shell=True,
+        universal_newlines=True,
+    )
+
+    for line in audit_log.splitlines():
+        if not len(line):
+            continue
+        item = json.loads(line)
+        # basic sanity check
+        assert audit_log_line_sanity_check(item), "Audit sanity log check failed for first line"
+
+
+@pytest.mark.group(1)
+async def test_log_rotate(ops_test: OpsTest) -> None:
+    """Test that log are being rotated."""
+    # Note: this timeout out depends on max log size
+    # which is defined in "src/config.py::Config.MAX_LOG_SIZE"
+    time_to_write_50m_of_data = 60 * 10
+    logrotate_timeout = 60
+    audit_log_snap_path = "/var/snap/charmed-mongodb/common/var/log/mongodb/"
+
+    app_name = await get_app_name(ops_test)
+
+    log_files = check_output(
+        f"JUJU_MODEL={ops_test.model_full_name} juju ssh {app_name}/leader 'sudo ls {audit_log_snap_path}'",
+        stderr=subprocess.PIPE,
+        shell=True,
+        universal_newlines=True,
+    )
+
+    log_not_rotated = "audit.log.1.gz" not in log_files
+    assert log_not_rotated, f"Found rotated log in {log_files}"
+
+    await start_continous_writes(ops_test, 1)
+    time.sleep(time_to_write_50m_of_data)
+    await stop_continous_writes(ops_test, app_name=app_name)
+    time.sleep(logrotate_timeout)  # Just to make sure that logroate will run
+    await clear_db_writes(ops_test)
+
+    log_files = check_output(
+        f"JUJU_MODEL={ops_test.model_full_name} juju ssh {app_name}/leader 'sudo ls {audit_log_snap_path}'",
+        stderr=subprocess.PIPE,
+        shell=True,
+        universal_newlines=True,
+    )
+
+    log_rotated = "audit.log.1.gz" in log_files
+    assert log_rotated, f"Could not find rotated log in {log_files}"
+
+    audit_log_exists = "audit.log" in log_files
+    assert audit_log_exists, f"Could not find audit.log log in {log_files}"
+
+
+@pytest.mark.group(1)
 async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
     """Tests that there is exactly one replica set primary unit reported by juju."""
 
@@ -372,25 +438,3 @@ async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
 
     # cleanup, remove killed unit
     await ops_test.model.destroy_unit(target_unit)
-
-
-@pytest.mark.group(1)
-@pytest.mark.skip("Skipping until write to log files enabled")
-async def test_audit_log(ops_test: OpsTest) -> None:
-    """Test that audit log was created and contains actual audit data."""
-    app_name = await get_app_name(ops_test)
-    leader_unit = await find_unit(ops_test, leader=True, app_name=app_name)
-    audit_log_snap_path = "/var/snap/charmed-mongodb/common/var/log/mongodb/audit.log"
-    audit_log = check_output(
-        f"JUJU_MODEL={ops_test.model_full_name} juju ssh {leader_unit.name} 'sudo cat {audit_log_snap_path}'",
-        stderr=subprocess.PIPE,
-        shell=True,
-        universal_newlines=True,
-    )
-
-    for line in audit_log.splitlines():
-        if not len(line):
-            continue
-        item = json.loads(line)
-        # basic sanity check
-        assert audit_log_line_sanity_check(item), "Audit sanity log check failed for first line"

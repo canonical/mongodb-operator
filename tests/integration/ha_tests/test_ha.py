@@ -20,7 +20,6 @@ from ..helpers import (
     unit_uri,
 )
 from .helpers import (
-    MONGODB_LOG_PATH,
     add_unit_with_storage,
     all_db_processes_down,
     clear_db_writes,
@@ -44,13 +43,10 @@ from .helpers import (
     scale_and_verify,
     secondary_up_to_date,
     start_continous_writes,
-    start_mongod,
     stop_continous_writes,
-    stop_mongod,
     storage_id,
     storage_type,
     update_restart_delay,
-    update_service_logging,
     verify_replica_set_configuration,
     verify_writes,
     wait_network_restore,
@@ -447,7 +443,7 @@ async def test_freeze_db_process(ops_test, continuous_writes):
 
 
 @pytest.mark.group(1)
-async def test_restart_db_process(ops_test, continuous_writes, change_logging):
+async def test_restart_db_process(ops_test, continuous_writes):
     # locate primary unit
     app_name = await get_app_name(ops_test)
     ip_addresses = [unit.public_address for unit in ops_test.model.applications[app_name].units]
@@ -714,43 +710,6 @@ async def reset_restart_delay(ops_test: OpsTest):
     app_name = await get_app_name(ops_test)
     for unit in ops_test.model.applications[app_name].units:
         await update_restart_delay(ops_test, unit, ORIGINAL_RESTART_DELAY)
-
-
-@pytest.fixture()
-async def change_logging(ops_test: OpsTest):
-    """Enables appending logging for a test and resets the logging at the end of the test."""
-    app_name = await get_app_name(ops_test)
-    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app_name].units]
-    primary = await replica_set_primary(ip_addresses, ops_test)
-
-    for unit in ops_test.model.applications[app_name].units:
-        # tests which use this fixture restart the primary. Therefore the primary should not be
-        # restarted as to leave the restart testing to the test itself.
-        if unit.name == primary.name:
-            continue
-
-        # must restart unit to ensure that changes to logging are made
-        await stop_mongod(ops_test, unit)
-        await update_service_logging(ops_test, unit, logging=True)
-        await start_mongod(ops_test, unit)
-
-        # sleep long enough for the mongod to start up correctly
-        time.sleep(15)
-    yield
-
-    app_name = await get_app_name(ops_test)
-    for unit in ops_test.model.applications[app_name].units:
-        # must restart unit to ensure that changes to logging are made
-        await stop_mongod(ops_test, unit)
-        await update_service_logging(ops_test, unit, logging=False)
-        await start_mongod(ops_test, unit)
-
-        # sleep long enough for the mongod to start up correctly
-        time.sleep(15)
-
-        # remove the log file as to not clog up space on the replicas.
-        rm_cmd = f"exec --unit {unit.name} rm {MONGODB_LOG_PATH}"
-        await ops_test.juju(*rm_cmd.split())
 
 
 # Fixtures end
