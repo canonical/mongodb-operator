@@ -79,12 +79,11 @@ async def test_blocked_incorrect_creds(ops_test: OpsTest) -> None:
     )
 
     # verify that Charmed MongoDB is blocked and reports incorrect credentials
-    async with ops_test.fast_forward():
-        await asyncio.gather(
-            ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active"),
-            ops_test.model.wait_for_idle(apps=[db_app_name], status="blocked", idle_period=20),
-        )
-        db_unit = ops_test.model.applications[db_app_name].units[0]
+    await asyncio.gather(
+        ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active"),
+        ops_test.model.wait_for_idle(apps=[db_app_name], status="blocked", idle_period=20),
+    )
+    db_unit = ops_test.model.applications[db_app_name].units[0]
 
     assert db_unit.workload_status_message == "s3 credentials are incorrect."
 
@@ -99,11 +98,10 @@ async def test_blocked_incorrect_conf(ops_test: OpsTest, github_secrets) -> None
     await helpers.set_credentials(ops_test, github_secrets, cloud="AWS")
 
     # wait for both applications to be idle with the correct statuses
-    async with ops_test.fast_forward():
-        await asyncio.gather(
-            ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active"),
-            ops_test.model.wait_for_idle(apps=[db_app_name], status="blocked", idle_period=20),
-        )
+    await asyncio.gather(
+        ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active"),
+        ops_test.model.wait_for_idle(apps=[db_app_name], status="blocked", idle_period=20),
+    )
 
     db_unit = ops_test.model.applications[db_app_name].units[0]
     assert db_unit.workload_status_message == "s3 configurations are incompatible."
