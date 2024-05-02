@@ -11,7 +11,15 @@ import ops
 import yaml
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
-from tenacity import retry, retry_if_result, stop_after_attempt, wait_exponential
+from tenacity import (
+    Retrying,
+    retry,
+    retry_if_result,
+    stop_after_attempt,
+    stop_after_delay,
+    wait_exponential,
+    wait_fixed,
+)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
@@ -303,3 +311,14 @@ def audit_log_line_sanity_check(entry) -> bool:
             logger.error("Field '%s' not found in audit log entry \"%s\"", field, entry)
             return False
     return True
+
+
+def wait_for_mongodb_units_blocked(ops_test: OpsTest, db_app_name: str, timeout=20) -> None:
+    """Waits for units of MongoDB to be in the blocked state.
+
+    This is necessary because the MongoDB app can report a different status than the units.
+    """
+    for attempt in Retrying(stop=stop_after_delay(timeout), wait=wait_fixed(1), reraise=True):
+        with attempt:
+            for unit in ops_test.model.applications[db_app_name].units:
+                assert unit.workload_status == "blocked"

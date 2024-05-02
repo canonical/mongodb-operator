@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
-import asyncio
-
 import pytest
 from pytest_operator.plugin import OpsTest
 
-from ..helpers import get_leader_id, get_password, set_password
+from ..helpers import (
+    get_leader_id,
+    get_password,
+    set_password,
+    wait_for_mongodb_units_blocked,
+)
 from .helpers import (
     generate_mongodb_client,
     has_correct_shards,
@@ -59,28 +62,22 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     )
 
     await ops_test.model.wait_for_idle(
-        apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_THREE_APP_NAME],
-        idle_period=15,
+        apps=[
+            CONFIG_SERVER_APP_NAME,
+            SHARD_ONE_APP_NAME,
+            SHARD_TWO_APP_NAME,
+            SHARD_THREE_APP_NAME,
+        ],
+        idle_period=20,
         raise_on_blocked=False,
         timeout=TIMEOUT,
         raise_on_error=False,
     )
 
     # verify that Charmed MongoDB is blocked and reports incorrect credentials
-    await asyncio.gather(
-        ops_test.model.wait_for_idle(
-            apps=[CONFIG_SERVER_APP_NAME],
-            status="blocked",
-            idle_period=15,
-            timeout=TIMEOUT,
-        ),
-        ops_test.model.wait_for_idle(
-            apps=[SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
-            status="blocked",
-            idle_period=15,
-            timeout=TIMEOUT,
-        ),
-    )
+    wait_for_mongodb_units_blocked(ops_test, CONFIG_SERVER_APP_NAME, timeout=60)
+    wait_for_mongodb_units_blocked(ops_test, SHARD_ONE_APP_NAME, timeout=60)
+    wait_for_mongodb_units_blocked(ops_test, SHARD_TWO_APP_NAME, timeout=60)
 
     config_server_unit = ops_test.model.applications[CONFIG_SERVER_APP_NAME].units[0]
     assert config_server_unit.workload_status_message == "missing relation to shard(s)"
