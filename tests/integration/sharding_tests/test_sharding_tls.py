@@ -124,6 +124,11 @@ async def test_tls_inconsistent_rels(ops_test: OpsTest) -> None:
         raise_on_blocked=False,
     )
 
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=[SHARD_ONE_APP_NAME], status="blocked", timeout=1000
+        )
+
     shard_unit = ops_test.model.applications[SHARD_ONE_APP_NAME].units[0]
     assert (
         shard_unit.workload_status_message == "Shard requires TLS to be enabled."
@@ -155,6 +160,11 @@ async def test_tls_inconsistent_rels(ops_test: OpsTest) -> None:
         timeout=TIMEOUT,
         raise_on_blocked=False,
     )
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=[SHARD_ONE_APP_NAME], status="blocked", timeout=1000
+        )
+
     shard_unit = ops_test.model.applications[SHARD_ONE_APP_NAME].units[0]
     assert (
         shard_unit.workload_status_message == "Shard has TLS enabled, but config-server does not."
@@ -174,6 +184,11 @@ async def test_tls_inconsistent_rels(ops_test: OpsTest) -> None:
         timeout=TIMEOUT,
         raise_on_blocked=False,
     )
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=[SHARD_ONE_APP_NAME], status="blocked", timeout=1000
+        )
+
     shard_unit = ops_test.model.applications[SHARD_ONE_APP_NAME].units[0]
     assert (
         shard_unit.workload_status_message == "Shard CA and Config-Server CA don't match."
