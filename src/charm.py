@@ -77,7 +77,12 @@ from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
 from config import Config, Package
 from exceptions import AdminUserCreationError, ApplicationHostNotFoundError
-from machine_helpers import MONGO_USER, ROOT_USER_GID, update_mongod_service
+from machine_helpers import (
+    MONGO_USER,
+    ROOT_USER_GID,
+    setup_logrotate_and_cron,
+    update_mongod_service,
+)
 
 AUTH_FAILED_CODE = 18
 UNAUTHORISED_CODE = 13
@@ -350,7 +355,7 @@ class MongodbOperatorCharm(CharmBase):
             config=self.mongodb_config,
             role=self.role,
         )
-
+        setup_logrotate_and_cron()
         # add licenses
         copy_licenses_to_unit()
 
