@@ -11,7 +11,7 @@ from typing import Optional, Tuple
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 from ops.charm import ActionEvent, CharmBase
 from ops.framework import Object
-from ops.model import ActiveStatus
+from ops.model import ActiveStatus, BlockedStatus
 from pymongo.errors import OperationFailure, PyMongoError, ServerSelectionTimeoutError
 from tenacity import Retrying, stop_after_attempt, wait_fixed
 
@@ -49,6 +49,9 @@ class MongoDBUpgrade(Object):
         self.framework.observe(
             charm.on[upgrade.PEER_RELATION_ENDPOINT_NAME].relation_changed, self._reconcile_upgrade
         )
+        self.framework.observe(
+            self.on[upgrade.PRECHECK_ACTION_NAME].action, self._on_pre_upgrade_check_action
+        )
         self.framework.observe(charm.on.upgrade_charm, self._on_upgrade_charm)
         self.framework.observe(
             charm.on[upgrade.RESUME_ACTION_NAME].action, self._on_resume_upgrade_action
@@ -78,12 +81,19 @@ class MongoDBUpgrade(Object):
         if not self._upgrade.is_compatible:
             self._set_upgrade_status()
             return
-        if self._upgrade.unit_state == "outdated":
-            if self._upgrade.authorized:
+        if self._upgrade.unit_state == upgrade.UnitState.OUTDATED:
+            try:
+                authorized = self._upgrade.authorized
+            except upgrade.PrecheckFailed as exception:
                 self._set_upgrade_status()
+                self.unit.status = exception.status
+                logger.debug(f"Set unit status to {self.unit.status}")
+                logger.error(exception.status.message)
+                return
+            self._set_upgrade_status()
+            if authorized:
                 self._upgrade.upgrade_unit(charm=self.charm)
             else:
-                self._set_upgrade_status()
                 logger.debug("Waiting to upgrade")
                 return
         self._set_upgrade_status()
@@ -132,6 +142,30 @@ class MongoDBUpgrade(Object):
         event.set_results({"result": f"Forcefully upgraded {self.unit.name}"})
         logger.debug("Forced upgrade")
 
+    def _on_pre_upgrade_check_action(self, event: ActionEvent) -> None:
+        if not self._unit_lifecycle.authorized_leader:
+            message = f"Must run action on leader unit. (e.g. `juju run {self.app.name}/leader {upgrade.PRECHECK_ACTION_NAME}`)"
+            logger.debug(f"Pre-upgrade check event failed: {message}")
+            event.fail(message)
+            return
+        if not self._upgrade or self._upgrade.in_progress:
+            message = "Upgrade already in progress"
+            logger.debug(f"Pre-upgrade check event failed: {message}")
+            event.fail(message)
+            return
+        try:
+            self._upgrade.pre_upgrade_check()
+        except upgrade.PrecheckFailed as exception:
+            message = (
+                f"Charm is *not* ready for upgrade. Pre-upgrade check failed: {exception.message}"
+            )
+            logger.debug(f"Pre-upgrade check event failed: {message}")
+            event.fail(message)
+            return
+        message = "Charm is ready for upgrade"
+        event.set_results({"result": message})
+        logger.debug(f"Pre-upgrade check event succeeded: {message}")
+
     # END: Event handlers
 
     # BEGIN: Helpers
@@ -144,7 +178,12 @@ class MongoDBUpgrade(Object):
 
         # Set/clear upgrade unit status if no other unit status - upgrade status for units should
         # have the lowest priority.
-        if isinstance(self.charm.unit.status, ActiveStatus):
+        if isinstance(self.unit.status, ActiveStatus) or (
+            isinstance(self.unit.status, BlockedStatus)
+            and self.unit.status.message.startswith(
+                "Rollback with `juju refresh`. Pre-upgrade check failed:"
+            )
+        ):
             self.charm.unit.status = self._upgrade.get_unit_juju_status() or ActiveStatus()
 
     def post_upgrade_check(self):

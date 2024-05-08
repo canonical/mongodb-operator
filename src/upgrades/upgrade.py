@@ -17,16 +17,30 @@ import typing
 
 import ops
 import poetry.core.constraints.version as poetry_version
+import status_exception
 
 logger = logging.getLogger(__name__)
 
 PEER_RELATION_ENDPOINT_NAME = "upgrade-version-a"
 RESUME_ACTION_NAME = "resume-upgrade"
+PRECHECK_ACTION_NAME = "pre-upgrade-check"
 
 
 def unit_number(unit_: ops.Unit) -> int:
     """Get unit number."""
     return int(unit_.name.split("/")[-1])
+
+
+class PrecheckFailed(status_exception.StatusException):
+    """App is not ready to upgrade"""
+
+    def __init__(self, message: str):
+        self.message = message
+        super().__init__(
+            ops.BlockedStatus(
+                f"Rollback with `juju refresh`. Pre-upgrade check failed: {self.message}"
+            )
+        )
 
 
 class PeerRelationNotReady(Exception):
@@ -231,3 +245,26 @@ class Upgrade(abc.ABC):
 
         Only applies to machine charm
         """
+
+    def pre_upgrade_check(self) -> None:
+        """Check if this app is ready to upgrade.
+
+        Runs before any units are upgraded.
+        Does *not* run during rollback.
+        On machines, this runs before any units are upgraded (after `juju refresh`).
+        On machines & Kubernetes, this also runs during pre-upgrade-check action.
+        Can run on leader or non-leader unit.
+
+        Raises:
+            PrecheckFailed: App is not ready to upgrade.
+
+        TODO Kubernetes: Run (some) checks after `juju refresh` (in case user forgets to run
+        pre-upgrade-check action). Note: 1 unit will upgrade before we can run checks (checks may
+        need to be modified).
+        See https://chat.canonical.com/canonical/pl/cmf6uhm1rp8b7k8gkjkdsj4mya
+        """
+        logger.debug("Running pre-upgrade checks")
+        # TODO: implement checks
+        # e.g.
+        # if health != green:
+        #     raise PrecheckFailed("Cluster is not healthy")
