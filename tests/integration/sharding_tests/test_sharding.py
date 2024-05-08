@@ -75,16 +75,18 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     )
 
     # verify that Charmed MongoDB is blocked and reports incorrect credentials
-    wait_for_mongodb_units_blocked(ops_test, CONFIG_SERVER_APP_NAME, timeout=60)
-    wait_for_mongodb_units_blocked(ops_test, SHARD_ONE_APP_NAME, timeout=60)
-    wait_for_mongodb_units_blocked(ops_test, SHARD_TWO_APP_NAME, timeout=60)
-
-    config_server_unit = ops_test.model.applications[CONFIG_SERVER_APP_NAME].units[0]
-    assert config_server_unit.workload_status_message == "missing relation to shard(s)"
-
-    for shard_app_name in SHARD_APPS:
-        shard_unit = ops_test.model.applications[shard_app_name].units[0]
-        assert shard_unit.workload_status_message == "missing relation to config server"
+    await wait_for_mongodb_units_blocked(
+        ops_test, CONFIG_SERVER_APP_NAME, status="missing relation to shard(s)", timeout=100
+    )
+    await wait_for_mongodb_units_blocked(
+        ops_test, SHARD_ONE_APP_NAME, status="missing relation to config server", timeout=300
+    )
+    await wait_for_mongodb_units_blocked(
+        ops_test, SHARD_TWO_APP_NAME, status="missing relation to config server", timeout=300
+    )
+    await wait_for_mongodb_units_blocked(
+        ops_test, SHARD_THREE_APP_NAME, status="missing relation to config server", timeout=300
+    )
 
 
 @pytest.mark.group(1)
