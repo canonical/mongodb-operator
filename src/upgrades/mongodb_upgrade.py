@@ -23,11 +23,6 @@ logger = logging.getLogger(__name__)
 
 WRITE_KEY = "write_value"
 
-# the naming here corresponds to both the upgrade relation name, but also the version of the
-# shared upgrade code we currently support. If there are breaking changes in the shared upgrade
-# code this will be incremented.
-UPGRADE_RELATION = "upgrade-version-a"
-
 
 # BEGIN: Exceptions
 class FailedToElectNewPrimaryError(Exception):

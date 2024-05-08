@@ -45,8 +45,8 @@ from charms.mongodb.v1.users import (
     MonitorUser,
     OperatorUser,
 )
-from charms.operator_libs_linux.v1 import snap
 from charms.operator_libs_linux.v1.systemd import service_running
+from charms.operator_libs_linux.v2 import snap
 from ops.charm import (
     ActionEvent,
     CharmBase,
@@ -77,7 +77,12 @@ from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
 from config import Config, Package
 from exceptions import AdminUserCreationError, ApplicationHostNotFoundError
-from machine_helpers import MONGO_USER, ROOT_USER_GID, update_mongod_service
+from machine_helpers import (
+    MONGO_USER,
+    ROOT_USER_GID,
+    setup_logrotate_and_cron,
+    update_mongod_service,
+)
 from upgrades.mongodb_upgrade import MongoDBUpgrade
 
 AUTH_FAILED_CODE = 18
@@ -359,7 +364,7 @@ class MongodbOperatorCharm(CharmBase):
             config=self.mongodb_config,
             role=self.role,
         )
-
+        setup_logrotate_and_cron()
         # add licenses
         copy_licenses_to_unit()
 

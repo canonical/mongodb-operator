@@ -42,6 +42,12 @@ class Config:
         SERVICE_NAME = "pbm-agent"
         URI_PARAM_NAME = "pbm-uri"
 
+    class LogRotate:
+        """Log rotate related constants."""
+
+        MAX_LOG_SIZE = "50M"
+        MAX_ROTATIONS_TO_KEEP = 10
+
     class Monitoring:
         """Monitoring related config for MongoDB Charm."""
 

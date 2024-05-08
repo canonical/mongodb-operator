@@ -3,7 +3,7 @@
 name: Tests
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: "${{ github.workflow }}-${{ github.ref }}"
   cancel-in-progress: true
 
 on:
@@ -16,7 +16,7 @@ on:
 jobs:
   lint:
     name: Lint
-    uses: canonical/data-platform-workflows/.github/workflows/lint.yaml@v12.7.2
+    uses: canonical/data-platform-workflows/.github/workflows/lint.yaml@v13.1.1
 
   unit-test:
     name: Unit tests
@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@v3
       - name: Install tox
         # TODO: Consider replacing with custom image on self-hosted runner OR pinning version
-        run: python3 -m pip install tox
+        run: python3 -m pip install --upgrade pip; python3 -m pip install tox
       - name: Run tests
         run: tox run -e unit
 
@@ -85,7 +85,7 @@ jobs:
           - tests/integration/relation_tests/new_relations/application-charm
           - tests/integration/dummy_legacy_app
     name: Build charm
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v12.7.2
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v13.1.1
     with:
       path-to-charm-directory: ${{ matrix.path }}
       cache: true
@@ -96,11 +96,11 @@ jobs:
       - lint
       - unit-test
       - build
-    uses: canonical/data-platform-workflows/.github/workflows/integration_test_charm.yaml@v12.7.2
+    uses: canonical/data-platform-workflows/.github/workflows/integration_test_charm.yaml@v13.1.1
     with:
       artifact-prefix: packed-charm-cache-true
       cloud: lxd
-      juju-agent-version: 3.1.6
+      juju-agent-version: 3.1.7
     permissions:
       contents: write # Needed for Allure Report beta
     secrets:
