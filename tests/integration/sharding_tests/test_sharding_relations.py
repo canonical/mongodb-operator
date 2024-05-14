@@ -136,6 +136,7 @@ async def test_cannot_use_db_relation(ops_test: OpsTest) -> None:
 
     await ops_test.model.wait_for_idle(
         apps=SHARDING_COMPONENTS,
+        status="blocked",
         idle_period=20,
         raise_on_blocked=False,
         timeout=TIMEOUT,
@@ -172,6 +173,7 @@ async def test_cannot_use_legacy_db_relation(ops_test: OpsTest) -> None:
 
     await ops_test.model.wait_for_idle(
         apps=SHARDING_COMPONENTS,
+        status="blocked",
         idle_period=20,
         raise_on_blocked=False,
         timeout=TIMEOUT,
@@ -211,6 +213,7 @@ async def test_replication_config_server_relation(ops_test: OpsTest):
 
     await ops_test.model.wait_for_idle(
         apps=[REPLICATION_APP_NAME],
+        status="blocked",
         idle_period=20,
         raise_on_blocked=False,
         timeout=TIMEOUT,
@@ -240,6 +243,7 @@ async def test_replication_shard_relation(ops_test: OpsTest):
 
     await ops_test.model.wait_for_idle(
         apps=[REPLICATION_APP_NAME],
+        status="blocked",
         idle_period=20,
         raise_on_blocked=False,
         timeout=TIMEOUT,
@@ -277,6 +281,7 @@ async def test_replication_mongos_relation(ops_test: OpsTest) -> None:
     await ops_test.model.wait_for_idle(
         apps=[REPLICATION_APP_NAME],
         idle_period=20,
+        status="blocked",
         raise_on_blocked=False,
         timeout=TIMEOUT,
     )
@@ -313,6 +318,7 @@ async def test_shard_mongos_relation(ops_test: OpsTest) -> None:
 
     await ops_test.model.wait_for_idle(
         apps=[SHARD_ONE_APP_NAME],
+        status="blocked",
         idle_period=20,
         raise_on_blocked=False,
         timeout=TIMEOUT,
@@ -332,6 +338,7 @@ async def test_shard_mongos_relation(ops_test: OpsTest) -> None:
 
     await ops_test.model.wait_for_idle(
         apps=[SHARD_ONE_APP_NAME],
+        status="blocked",
         idle_period=20,
         raise_on_blocked=False,
         timeout=TIMEOUT,
@@ -351,6 +358,7 @@ async def test_shard_s3_relation(ops_test: OpsTest) -> None:
     await ops_test.model.wait_for_idle(
         apps=[SHARD_ONE_APP_NAME],
         idle_period=20,
+        status="blocked",
         raise_on_blocked=False,
         timeout=TIMEOUT,
     )
