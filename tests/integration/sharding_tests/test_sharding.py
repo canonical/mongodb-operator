@@ -75,7 +75,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
             timeout=TIMEOUT,
         ),
         ops_test.model.wait_for_idle(
-            apps=[SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
+            apps=[SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME, SHARD_THREE_APP_NAME],
             status="blocked",
             idle_period=20,
             timeout=TIMEOUT,
