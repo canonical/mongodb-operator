@@ -5,6 +5,8 @@ import pytest
 from juju.errors import JujuAPIError
 from pytest_operator.plugin import OpsTest
 
+from ..helpers import wait_for_mongodb_units_blocked
+
 S3_APP_NAME = "s3-integrator"
 SHARD_ONE_APP_NAME = "shard"
 CONFIG_SERVER_ONE_APP_NAME = "config-server-one"
@@ -134,20 +136,13 @@ async def test_cannot_use_db_relation(ops_test: OpsTest) -> None:
     for sharded_component in SHARDING_COMPONENTS:
         await ops_test.model.integrate(f"{APP_CHARM_NAME}:{DATABASE_REL_NAME}", sharded_component)
 
-    await ops_test.model.wait_for_idle(
-        apps=SHARDING_COMPONENTS,
-        status="blocked",
-        idle_period=20,
-        raise_on_blocked=False,
-        timeout=TIMEOUT,
-    )
-
     for sharded_component in SHARDING_COMPONENTS:
-        sharded_component_unit = ops_test.model.applications[sharded_component].units[0]
-        assert (
-            sharded_component_unit.workload_status_message
-            == "Sharding roles do not support database interface."
-        ), f"{sharded_component} cannot be related using the database relation"
+        await wait_for_mongodb_units_blocked(
+            ops_test,
+            sharded_component,
+            status="Sharding roles do not support database interface.",
+            timeout=300,
+        )
 
     # clean up relations
     for sharded_component in SHARDING_COMPONENTS:
@@ -171,20 +166,13 @@ async def test_cannot_use_legacy_db_relation(ops_test: OpsTest) -> None:
     for sharded_component in SHARDING_COMPONENTS:
         await ops_test.model.integrate(LEGACY_APP_CHARM_NAME, sharded_component)
 
-    await ops_test.model.wait_for_idle(
-        apps=SHARDING_COMPONENTS,
-        status="blocked",
-        idle_period=20,
-        raise_on_blocked=False,
-        timeout=TIMEOUT,
-    )
-
     for sharded_component in SHARDING_COMPONENTS:
-        sharded_component_unit = ops_test.model.applications[sharded_component].units[0]
-        assert (
-            sharded_component_unit.workload_status_message
-            == "Sharding roles do not support obsolete interface."
-        ), f"{sharded_component} cannot be related using the mongodb relation"
+        await wait_for_mongodb_units_blocked(
+            ops_test,
+            sharded_component,
+            status="Sharding roles do not support obsolete interface.",
+            timeout=300,
+        )
 
     # clean up relations
     for sharded_component in SHARDING_COMPONENTS:
@@ -211,18 +199,12 @@ async def test_replication_config_server_relation(ops_test: OpsTest):
         f"{CONFIG_SERVER_ONE_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
     )
 
-    await ops_test.model.wait_for_idle(
-        apps=[REPLICATION_APP_NAME],
-        status="blocked",
-        idle_period=20,
-        raise_on_blocked=False,
-        timeout=TIMEOUT,
+    await wait_for_mongodb_units_blocked(
+        ops_test,
+        REPLICATION_APP_NAME,
+        status="sharding interface cannot be used by replicas",
+        timeout=300,
     )
-
-    replication_unit = ops_test.model.applications[REPLICATION_APP_NAME].units[0]
-    assert (
-        replication_unit.workload_status_message == "sharding interface cannot be used by replicas"
-    ), "replication cannot be related to config server."
 
     # clean up relations
     await ops_test.model.applications[REPLICATION_APP_NAME].remove_relation(
@@ -241,18 +223,12 @@ async def test_replication_shard_relation(ops_test: OpsTest):
         f"{REPLICATION_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
     )
 
-    await ops_test.model.wait_for_idle(
-        apps=[REPLICATION_APP_NAME],
-        status="blocked",
-        idle_period=20,
-        raise_on_blocked=False,
-        timeout=TIMEOUT,
+    await wait_for_mongodb_units_blocked(
+        ops_test,
+        REPLICATION_APP_NAME,
+        status="sharding interface cannot be used by replicas",
+        timeout=300,
     )
-
-    replication_unit = ops_test.model.applications[REPLICATION_APP_NAME].units[0]
-    assert (
-        replication_unit.workload_status_message == "sharding interface cannot be used by replicas"
-    ), "replication cannot be related to config server."
 
     # clean up relation
     await ops_test.model.applications[REPLICATION_APP_NAME].remove_relation(
@@ -278,19 +254,12 @@ async def test_replication_mongos_relation(ops_test: OpsTest) -> None:
         f"{MONGOS_APP_NAME}",
     )
 
-    await ops_test.model.wait_for_idle(
-        apps=[REPLICATION_APP_NAME],
-        idle_period=20,
-        status="blocked",
-        raise_on_blocked=False,
-        timeout=TIMEOUT,
+    await wait_for_mongodb_units_blocked(
+        ops_test,
+        REPLICATION_APP_NAME,
+        status="Relation to mongos not supported, config role must be config-server",
+        timeout=300,
     )
-
-    replication_unit = ops_test.model.applications[REPLICATION_APP_NAME].units[0]
-    assert (
-        replication_unit.workload_status_message
-        == "Relation to mongos not supported, config role must be config-server"
-    ), "replica cannot be related to mongos."
 
     # clean up relations
     await ops_test.model.applications[REPLICATION_APP_NAME].remove_relation(
@@ -316,32 +285,17 @@ async def test_shard_mongos_relation(ops_test: OpsTest) -> None:
         f"{MONGOS_APP_NAME}",
     )
 
-    await ops_test.model.wait_for_idle(
-        apps=[SHARD_ONE_APP_NAME],
-        status="blocked",
-        idle_period=20,
-        raise_on_blocked=False,
-        timeout=TIMEOUT,
+    await wait_for_mongodb_units_blocked(
+        ops_test,
+        SHARD_ONE_APP_NAME,
+        status="Relation to mongos not supported, config role must be config-server",
+        timeout=300,
     )
-
-    shard_unit = ops_test.model.applications[SHARD_ONE_APP_NAME].units[0]
-    assert (
-        shard_unit.workload_status_message
-        == "Relation to mongos not supported, config role must be config-server"
-    ), "replica cannot be related to mongos."
 
     # clean up relations
     await ops_test.model.applications[SHARD_ONE_APP_NAME].remove_relation(
         f"{MONGOS_APP_NAME}:cluster",
         f"{SHARD_ONE_APP_NAME}:cluster",
-    )
-
-    await ops_test.model.wait_for_idle(
-        apps=[SHARD_ONE_APP_NAME],
-        status="blocked",
-        idle_period=20,
-        raise_on_blocked=False,
-        timeout=TIMEOUT,
     )
 
 
@@ -355,19 +309,12 @@ async def test_shard_s3_relation(ops_test: OpsTest) -> None:
         f"{S3_APP_NAME}",
     )
 
-    await ops_test.model.wait_for_idle(
-        apps=[SHARD_ONE_APP_NAME],
-        idle_period=20,
-        status="blocked",
-        raise_on_blocked=False,
-        timeout=TIMEOUT,
+    await wait_for_mongodb_units_blocked(
+        ops_test,
+        SHARD_ONE_APP_NAME,
+        status="Relation to s3-integrator is not supported, config role must be config-server",
+        timeout=300,
     )
-
-    shard_unit = ops_test.model.applications[SHARD_ONE_APP_NAME].units[0]
-    assert (
-        shard_unit.workload_status_message
-        == "Relation to s3-integrator is not supported, config role must be config-server"
-    ), "Shard cannot be related to s3-integrator."
 
     # clean up relations
     await ops_test.model.applications[SHARD_ONE_APP_NAME].remove_relation(
