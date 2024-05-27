@@ -13,7 +13,7 @@ from ops.charm import ActionEvent, CharmBase
 from ops.framework import Object
 from ops.model import ActiveStatus
 from pymongo.errors import OperationFailure, PyMongoError, ServerSelectionTimeoutError
-from tenacity import Retrying, stop_after_attempt, wait_fixed
+from tenacity import Retrying, stop_after_attempt, wait_fixed, retry, RetryError
 
 from config import Config
 from upgrades import machine_upgrade, upgrade
@@ -213,7 +213,12 @@ class MongoDBUpgrade(Object):
             db = mongod.client["admin"]
             db.drop_collection(collection_name)
 
-    def is_excepted_write_on_replica(
+    @retry(
+        stop=stop_after_attempt(10),
+        wait=wait_fixed(1),
+        reraise=True,
+    )
+    def confirm_excepted_write_on_replica(
         self,
         host: str,
         db_name: str,
@@ -227,7 +232,8 @@ class MongoDBUpgrade(Object):
             db = direct_seconary.client[db_name]
             test_collection = db[collection]
             query = test_collection.find({}, {WRITE_KEY: 1})
-            return query[0][WRITE_KEY] == expected_write_value
+            if query[0][WRITE_KEY] != expected_write_value:
+                raise ClusterNotHealthyError
 
     def get_random_write_and_collection(self) -> Tuple[str, str]:
         """Returns a tutple for a random collection name and a unique write to add to it."""
@@ -260,9 +266,11 @@ class MongoDBUpgrade(Object):
         replica_ips = mongodb_config.hosts
         secondary_ips = replica_ips - set(primary_ip)
         for secondary_ip in secondary_ips:
-            if not self.is_excepted_write_on_replica(
-                secondary_ip, db_name, collection_name, expected_write_value, mongodb_config
-            ):
+            try:
+                self.confirm_excepted_write_on_replica(
+                    secondary_ip, db_name, collection_name, expected_write_value, mongodb_config
+                )
+            except RetryError:
                 # do not return False immediately - as it is
                 logger.debug("Secondary with IP %s, does not contain the expected write.")
                 return False
