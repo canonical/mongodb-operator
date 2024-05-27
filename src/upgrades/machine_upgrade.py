@@ -160,9 +160,9 @@ class Upgrade(upgrade.Upgrade):
                 logger.debug("Stepping down current primary, before upgrading service...")
                 charm.upgrade.step_down_primary_and_wait_reelection()
         except mongodb_upgrade.FailedToElectNewPrimaryError:
+            # by not setting the snap revision and immediately returning, this function will be
+            # called again, and an empty re-elect a primary will occur again.
             logger.error("Failed to reelect primary before upgrading service.")
-            # todo is it necessary to do something with status which forces the user to run
-            # "force-upgrade"
             return
 
         charm.install_snap_packages(packages=Config.SNAP_PACKAGES)
@@ -178,8 +178,8 @@ class Upgrade(upgrade.Upgrade):
             )
             charm.upgrade.post_upgrade_check()
         except mongodb_upgrade.ClusterNotHealthyError:
-            # todo is it necessary to do something with status which forces the user to run
-            # "force-upgrade"
+            # by returning before setting unit state to HEALTHY, the user will have to run the
+            # force-upgrade action.
             logger.error("Cluster is not healthy, after upgrading %s", self._unit.name)
             return
 
