@@ -13,7 +13,7 @@ from ops.charm import ActionEvent, CharmBase
 from ops.framework import Object
 from ops.model import ActiveStatus
 from pymongo.errors import OperationFailure, PyMongoError, ServerSelectionTimeoutError
-from tenacity import Retrying, stop_after_attempt, wait_fixed, retry, RetryError
+from tenacity import RetryError, Retrying, retry, stop_after_attempt, wait_fixed
 
 from config import Config
 from upgrades import machine_upgrade, upgrade

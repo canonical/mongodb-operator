@@ -161,7 +161,8 @@ class Upgrade(upgrade.Upgrade):
                 charm.upgrade.step_down_primary_and_wait_reelection()
         except mongodb_upgrade.FailedToElectNewPrimaryError:
             logger.error("Failed to reelect primary before upgrading service.")
-            # todo is it necessary to do something with status which forces the user to run "force-upgrade"
+            # todo is it necessary to do something with status which forces the user to run
+            # "force-upgrade"
             return
 
         charm.install_snap_packages(packages=Config.SNAP_PACKAGES)
