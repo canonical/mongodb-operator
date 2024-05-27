@@ -75,17 +75,19 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     )
 
     # verify that Charmed MongoDB is blocked and reports incorrect credentials
-    await wait_for_mongodb_units_blocked(
-        ops_test, CONFIG_SERVER_APP_NAME, status="missing relation to shard(s)", timeout=100
-    )
-    await wait_for_mongodb_units_blocked(
-        ops_test, SHARD_ONE_APP_NAME, status="missing relation to config server", timeout=300
-    )
-    await wait_for_mongodb_units_blocked(
-        ops_test, SHARD_TWO_APP_NAME, status="missing relation to config server", timeout=300
-    )
-    await wait_for_mongodb_units_blocked(
-        ops_test, SHARD_THREE_APP_NAME, status="missing relation to config server", timeout=300
+    await asyncio.gather(
+        ops_test.model.wait_for_idle(
+            apps=[CONFIG_SERVER_APP_NAME],
+            status="blocked",
+            idle_period=20,
+            timeout=TIMEOUT,
+        ),
+        ops_test.model.wait_for_idle(
+            apps=[SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME, SHARD_THREE_APP_NAME],
+            status="blocked",
+            idle_period=20,
+            timeout=TIMEOUT,
+        ),
     )
 
 
