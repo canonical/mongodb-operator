@@ -18,9 +18,11 @@ import typing
 import ops
 import status_exception
 import poetry.core.constraints.version as poetry_version
+from upgrades import mongodb_upgrade
 
 logger = logging.getLogger(__name__)
 
+SHARD = "shard"
 PEER_RELATION_ENDPOINT_NAME = "upgrade-version-a"
 PRECHECK_ACTION_NAME = "pre-upgrade-check"
 RESUME_ACTION_NAME = "resume-upgrade"
@@ -65,6 +67,7 @@ class Upgrade(abc.ABC):
             raise PeerRelationNotReady
         assert len(relations) == 1
         self._peer_relation = relations[0]
+        self._charm = charm_
         self._unit: ops.Unit = charm_.unit
         self._unit_databag = self._peer_relation.data[self._unit]
         self._app_databag = self._peer_relation.data[charm_.app]
@@ -255,13 +258,35 @@ class Upgrade(abc.ABC):
         Can run on leader or non-leader unit
         Raises:
             PrecheckFailed: App is not ready to upgrade
+
         TODO Kubernetes: Run (some) checks after `juju refresh` (in case user forgets to run
         pre-upgrade-check action). Note: 1 unit will upgrade before we can run checks (checks may
         need to be modified).
         See https://chat.canonical.com/canonical/pl/cmf6uhm1rp8b7k8gkjkdsj4mya
         """
         logger.debug("Running pre-upgrade checks")
-        # TODO: implement checks
-        # e.g.
-        # if health != green:
-        #     raise PrecheckFailed("Cluster is not healthy")
+
+        if self._charm.is_role(SHARD):
+            raise PrecheckFailed(
+                "Cannot run pre-upgrade check on shards, run this action on the related config-server."
+            )
+
+        if not self._charm.upgrade.is_cluster_healthy():
+            raise PrecheckFailed(
+                "Cluster is not healthy, do not proceed with ugprade. Please check juju debug for information."
+            )
+
+        # We do not get to decide the order of units to upgrade, so we move the primary to the
+        # last unit to upgrade. This prevents the primary from jumping around from unit to unit
+        # during the upgrade procedure.
+        try:
+            self._charm.upgrade.move_primary_to_last_upgrade_unit()
+        except mongodb_upgrade.FailedToMovePrimaryError:
+            raise PrecheckFailed(
+                "Cluster failed to move primary before re-election. do not proceed with ugprade."
+            )
+
+        if not self._charm.upgrade.is_cluster_able_to_read_write():
+            raise PrecheckFailed(
+                "Cluster is not healthy cannot read/write to replicas, do not proceed with ugprade. Please check juju debug for information."
+            )

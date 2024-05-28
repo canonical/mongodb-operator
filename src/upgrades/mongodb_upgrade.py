@@ -11,7 +11,7 @@ from typing import Optional, Tuple
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 from ops.charm import ActionEvent, CharmBase
 from ops.framework import Object
-from ops.model import ActiveStatus
+from ops.model import ActiveStatus, BlockedStatus
 from pymongo.errors import OperationFailure, PyMongoError, ServerSelectionTimeoutError
 from tenacity import RetryError, Retrying, retry, stop_after_attempt, wait_fixed
 
@@ -25,6 +25,10 @@ WRITE_KEY = "write_value"
 
 
 # BEGIN: Exceptions
+class FailedToMovePrimaryError(Exception):
+    """Raised when attempt to move a primary fails."""
+
+
 class FailedToElectNewPrimaryError(Exception):
     """Raised when a new primary isn't elected after stepping down."""
 
@@ -42,6 +46,10 @@ class MongoDBUpgrade(Object):
     def __init__(self, charm: CharmBase):
         self.charm = charm
         super().__init__(charm, upgrade.PEER_RELATION_ENDPOINT_NAME)
+        self.framework.observe(
+            charm.on[upgrade.PRECHECK_ACTION_NAME].action, self._on_pre_upgrade_check_action
+        )
+
         self.framework.observe(
             charm.on[upgrade.PEER_RELATION_ENDPOINT_NAME].relation_created,
             self._on_upgrade_peer_relation_created,
@@ -78,8 +86,16 @@ class MongoDBUpgrade(Object):
         if not self._upgrade.is_compatible:
             self._set_upgrade_status()
             return
-        if self._upgrade.unit_state == "outdated":
-            if self._upgrade.authorized:
+        if self._upgrade.unit_state is upgrade.UnitState.OUTDATED:
+            try:
+                authorized = self._upgrade.authorized
+            except upgrade.PrecheckFailed as exception:
+                self._set_upgrade_status()
+                self.unit.status = exception.status
+                logger.debug(f"Set unit status to {self.unit.status}")
+                logger.error(exception.status.message)
+                return
+            if authorized:
                 self._set_upgrade_status()
                 self._upgrade.upgrade_unit(charm=self.charm)
             else:
@@ -96,6 +112,30 @@ class MongoDBUpgrade(Object):
             # Only call `_reconcile_upgrade` on leader unit to avoid race conditions with
             # `upgrade_resumed`
             self._reconcile_upgrade()
+
+    def _on_pre_upgrade_check_action(self, event: ActionEvent) -> None:
+        if not self.charm.unit.is_leader():
+            message = f"Must run action on leader unit. (e.g. `juju run {self.app.name}/leader {upgrade.PRECHECK_ACTION_NAME}`)"
+            logger.debug(f"Pre-upgrade check event failed: {message}")
+            event.fail(message)
+            return
+        if not self._upgrade or self._upgrade.in_progress:
+            message = "Upgrade already in progress"
+            logger.debug(f"Pre-upgrade check event failed: {message}")
+            event.fail(message)
+            return
+        try:
+            self._upgrade.pre_upgrade_check()
+        except upgrade.PrecheckFailed as exception:
+            message = (
+                f"Charm is *not* ready for upgrade. Pre-upgrade check failed: {exception.message}"
+            )
+            logger.debug(f"Pre-upgrade check event failed: {message}")
+            event.fail(message)
+            return
+        message = "Charm is ready for upgrade"
+        event.set_results({"result": message})
+        logger.debug(f"Pre-upgrade check event succeeded: {message}")
 
     def _on_resume_upgrade_action(self, event: ActionEvent) -> None:
         if not self.charm.unit.is_leader():
@@ -135,6 +175,11 @@ class MongoDBUpgrade(Object):
     # END: Event handlers
 
     # BEGIN: Helpers
+    def move_primary_to_last_upgrade_unit(self) -> None:
+        """Moves the primary to last unit that gets upgraded (the unit with the lowest id).
+        TODO implement in a future PR
+        """
+
     def _set_upgrade_status(self):
         # In the future if we decide to support app statuses, we will need to handle this
         # differently. Specifically ensuring that upgrade status for apps status has the lowest
@@ -144,7 +189,12 @@ class MongoDBUpgrade(Object):
 
         # Set/clear upgrade unit status if no other unit status - upgrade status for units should
         # have the lowest priority.
-        if isinstance(self.charm.unit.status, ActiveStatus):
+        if isinstance(self.charm.unit.status, ActiveStatus) or (
+            isinstance(self.charm.unit.status, BlockedStatus)
+            and self.charm.unit.status.message.startswith(
+                "Rollback with `juju refresh`. Pre-upgrade check failed:"
+            )
+        ):
             self.charm.unit.status = self._upgrade.get_unit_juju_status() or ActiveStatus()
 
     def post_upgrade_check(self):
