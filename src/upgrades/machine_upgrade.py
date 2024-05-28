@@ -167,24 +167,13 @@ class Upgrade(upgrade.Upgrade):
 
         charm.install_snap_packages(packages=Config.SNAP_PACKAGES)
 
-        # todo question - do we set these on failed upgrades as well?
         self._unit_databag["snap_revision"] = _SNAP_REVISION
         self._unit_workload_version = self._current_versions["workload"]
         logger.debug(f"Saved {_SNAP_REVISION} in unit databag after upgrade")
 
-        try:
-            logger.debug(
-                "Running post upgrade checks to verify cluster is not broken after upgrade"
-            )
-            charm.upgrade.post_upgrade_check()
-        except mongodb_upgrade.ClusterNotHealthyError:
-            # by returning before setting unit state to HEALTHY, the user will have to run the
-            # force-upgrade action.
-            logger.error("Cluster is not healthy, after upgrading %s", self._unit.name)
-            return
-
-        logger.debug("Upgrade for unit %s successfully completed", self._unit.name)
-        self.unit_state = upgrade.UnitState.HEALTHY
+        # post upgrade check should be retried in case of failure, for this it is necessary to
+        # emit a separate event.
+        charm.upgrade.post_upgrade_event.emit()
 
     def save_snap_revision_after_first_install(self):
         """Set snap revision on first install."""
