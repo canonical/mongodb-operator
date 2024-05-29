@@ -150,9 +150,6 @@ class Upgrade(upgrade.Upgrade):
 
         Only applies to machine charm.
         """
-        logger.debug(f"Upgrading {self.authorized=}")
-        self.unit_state = upgrade.UnitState.UPGRADING
-
         # According to the MongoDB documentation, before upgrading the primary, we must ensure a
         # safe primary re-election.
         try:
@@ -162,11 +159,12 @@ class Upgrade(upgrade.Upgrade):
         except mongodb_upgrade.FailedToElectNewPrimaryError:
             # by not setting the snap revision and immediately returning, this function will be
             # called again, and an empty re-elect a primary will occur again.
-            logger.error("Failed to reelect primary before upgrading service.")
+            logger.error("Failed to reelect primary before upgrading unit.")
             return
 
+        logger.debug(f"Upgrading {self.authorized=}")
+        self.unit_state = upgrade.UnitState.UPGRADING
         charm.install_snap_packages(packages=Config.SNAP_PACKAGES)
-
         self._unit_databag["snap_revision"] = _SNAP_REVISION
         self._unit_workload_version = self._current_versions["workload"]
         logger.debug(f"Saved {_SNAP_REVISION} in unit databag after upgrade")

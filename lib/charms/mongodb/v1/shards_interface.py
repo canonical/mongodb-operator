@@ -735,7 +735,7 @@ class ConfigServerRequirer(Object):
             if not isinstance(event, RelationBrokenEvent):
                 # upgrades should not block relation broken events
                 event.defer()
-            return False
+                return False
 
         return self.pass_tls_hook_checks(event)
 
