@@ -172,7 +172,7 @@ class MongoDBBackups(Object):
     def _on_create_backup_action(self, event) -> None:
         action = "backup"
         if self.charm.upgrade_in_progress:
-            logger.warning("Creating a backup is not supported during an upgrade.")
+            logger.debug("Creating a backup is not supported during an upgrade.")
             event.fail("Creating a backup is not supported during an upgrade.")
             return
 
@@ -256,7 +256,7 @@ class MongoDBBackups(Object):
     def _on_restore_action(self, event) -> None:
         action = "restore"
         if self.charm.upgrade_in_progress:
-            logger.warning("Restoring a backup is not supported during an upgrade.")
+            logger.debug("Restoring a backup is not supported during an upgrade.")
             event.fail("Restoring a backup is not supported during an upgrade.")
             return
 
