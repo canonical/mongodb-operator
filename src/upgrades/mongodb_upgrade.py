@@ -11,7 +11,7 @@ from typing import Optional, Tuple
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 from ops.charm import ActionEvent, CharmBase
 from ops.framework import EventBase, EventSource, Object
-from ops.model import ActiveStatus
+from ops.model import ActiveStatus, BlockedStatus
 from pymongo.errors import OperationFailure, PyMongoError, ServerSelectionTimeoutError
 from tenacity import RetryError, Retrying, retry, stop_after_attempt, wait_fixed
 
@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 WRITE_KEY = "write_value"
+ROLLBACK_INSTRUCTIONS = "To rollback, `juju refresh` to the previous revision"
 
 
 # BEGIN: Exceptions
@@ -156,6 +157,8 @@ class MongoDBUpgrade(Object):
                 "Cluster is not healthy after upgrading unit %s, nodes are still syncing. Will retry next juju event.",
                 self.charm.unit.name,
             )
+            logger.info(ROLLBACK_INSTRUCTIONS)
+            self.charm.unit.status = BlockedStatus("Unhealthy after upgrade.")
             event.defer()
 
         if not self.is_cluster_able_to_read_write():
@@ -163,6 +166,8 @@ class MongoDBUpgrade(Object):
                 "Cluster is not healthy after upgrading unit %s, writes not propagated throughout cluster. Deferring post upgrade check.",
                 self.charm.unit.name,
             )
+            logger.info(ROLLBACK_INSTRUCTIONS)
+            self.charm.unit.status = BlockedStatus("Unhealthy after upgrade.")
             event.defer()
 
         self._upgrade.unit_state = upgrade.UnitState.HEALTHY
