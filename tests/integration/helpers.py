@@ -428,7 +428,7 @@ async def check_all_units_blocked_with_status(
 
 
 async def wait_for_mongodb_units_blocked(
-    ops_test: OpsTest, db_app_name: str, status: Optional[str], timeout=20
+    ops_test: OpsTest, db_app_name: str, status: Optional[str] = None, timeout=20
 ) -> None:
     """Waits for units of MongoDB to be in the blocked state.
 

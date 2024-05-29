@@ -12,7 +12,6 @@ Package: TypeAlias = tuple[str, str, str]
 class Config:
     """Configuration for MongoDB Charm."""
 
-    HEALTHY = "healthy"
     MONGOS_PORT = 27018
     MONGODB_PORT = 27017
     SUBSTRATE = "vm"

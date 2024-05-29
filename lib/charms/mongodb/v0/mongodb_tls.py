@@ -82,8 +82,8 @@ class MongoDBTLS(Object):
             return
 
         if self.charm.upgrade_in_progress:
-            logger.warning("Setting TLS key during an ugprade is not supported.")
-            event.fail("Setting TLS key during an ugprade is not supported.")
+            logger.warning("Setting TLS key during an upgrade is not supported.")
+            event.fail("Setting TLS key during an upgrade is not supported.")
             return
 
         try:

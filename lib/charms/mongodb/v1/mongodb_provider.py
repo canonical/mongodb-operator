@@ -110,7 +110,7 @@ class MongoDBProvider(Object):
                 "Adding relations is not supported during an upgrade. The charm may be in a broken, unrecoverable state."
             )
             event.defer()
-            return
+            return False
 
         return True
 

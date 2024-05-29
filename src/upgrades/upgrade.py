@@ -244,7 +244,7 @@ class Upgrade(abc.ABC):
         """
 
     @abc.abstractmethod
-    def upgrade_unit(self, charm) -> None:
+    def upgrade_unit(self, *, charm) -> None:
         """Upgrade this unit.
 
         Only applies to machine charm
