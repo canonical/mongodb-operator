@@ -722,7 +722,7 @@ class ConfigServerRequirer(Object):
         if not event.relation.app and isinstance(event, RelationBrokenEvent):
             return False
 
-        mongos_hosts = event.relation.data[event.relation.app].get(HOSTS_KEY, None)
+        mongos_hosts = event.relation.data[event.relation.app].get(HOSTS_KEY)
 
         if isinstance(event, RelationBrokenEvent) and not mongos_hosts:
             logger.info("Config-server relation never set up, no need to process broken event.")

@@ -147,7 +147,7 @@ class MongoDBUpgrade(Object):
 
         By deferring before setting unit state to HEALTHY, the user will either:
             1. have to wait for the unit to resolve itself.
-            2. have to run the force-upgrade action.
+            2. have to run the force-upgrade action (to upgrade the next unit).
         """
         logger.debug("Running post upgrade checks to verify cluster is not broken after upgrade")
 
@@ -264,7 +264,7 @@ class MongoDBUpgrade(Object):
                 raise ClusterNotHealthyError
 
     def get_random_write_and_collection(self) -> Tuple[str, str]:
-        """Returns a tutple for a random collection name and a unique write to add to it."""
+        """Returns a tuple for a random collection name and a unique write to add to it."""
         choices = string.ascii_letters + string.digits
         collection_name = "collection_" + "".join([secrets.choice(choices) for _ in range(32)])
         write_value = "unique_write_" + "".join([secrets.choice(choices) for _ in range(16)])
