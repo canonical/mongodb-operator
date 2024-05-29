@@ -16,9 +16,10 @@ import pathlib
 import typing
 
 import ops
-import status_exception
 import poetry.core.constraints.version as poetry_version
-from upgrades import mongodb_upgrade
+from charms.mongodb.v0.mongodb import FailedToMovePrimaryError
+
+import status_exception
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ def unit_number(unit_: ops.Unit) -> int:
 
 
 class PrecheckFailed(status_exception.StatusException):
-    """App is not ready to upgrade"""
+    """App is not ready to upgrade."""
 
     def __init__(self, message: str):
         self.message = message
@@ -250,7 +251,8 @@ class Upgrade(abc.ABC):
         """
 
     def pre_upgrade_check(self) -> None:
-        """Check if this app is ready to upgrade
+        """Check if this app is ready to upgrade.
+
         Runs before any units are upgraded
         Does *not* run during rollback
         On machines, this runs before any units are upgraded (after `juju refresh`)
@@ -281,7 +283,7 @@ class Upgrade(abc.ABC):
         # during the upgrade procedure.
         try:
             self._charm.upgrade.move_primary_to_last_upgrade_unit()
-        except mongodb_upgrade.FailedToMovePrimaryError:
+        except FailedToMovePrimaryError:
             raise PrecheckFailed(
                 "Cluster failed to move primary before re-election. do not proceed with ugprade."
             )

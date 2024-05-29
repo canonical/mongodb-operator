@@ -11,7 +11,7 @@ from typing import Optional, Tuple
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 from ops.charm import ActionEvent, CharmBase
 from ops.framework import Object
-from ops.model import ActiveStatus, BlockedStatus
+from ops.model import ActiveStatus, BlockedStatus, Unit
 from pymongo.errors import OperationFailure, PyMongoError, ServerSelectionTimeoutError
 from tenacity import RetryError, Retrying, retry, stop_after_attempt, wait_fixed
 
@@ -25,8 +25,6 @@ WRITE_KEY = "write_value"
 
 
 # BEGIN: Exceptions
-class FailedToMovePrimaryError(Exception):
-    """Raised when attempt to move a primary fails."""
 
 
 class FailedToElectNewPrimaryError(Exception):
@@ -175,10 +173,33 @@ class MongoDBUpgrade(Object):
     # END: Event handlers
 
     # BEGIN: Helpers
+    def find_last_unit_to_upgrade(self) -> Unit:
+        """Returns the unit that will be the last to be upgraded (ie the one with the lowest id."""
+        unit_with_lowest_id = self.charm.unit
+        lowest_unit_id = unit_with_lowest_id.name.split("/")[1]
+        for unit in self.charm.peers.units:
+            unit_id = unit.name.split("/")[1]
+            if unit_id < lowest_unit_id:
+                unit_with_lowest_id = unit
+                lowest_unit_id = unit_id
+
+        return unit_with_lowest_id
+
     def move_primary_to_last_upgrade_unit(self) -> None:
         """Moves the primary to last unit that gets upgraded (the unit with the lowest id).
-        TODO implement in a future PR
+
+        Raises FailedToMovePrimaryError
         """
+        with MongoDBConnection(self.charm.mongodb_config) as mongod:
+            unit_with_lowest_id = self.find_last_unit_to_upgrade()
+            if mongod.primary() == self.charm.unit_ip(unit_with_lowest_id):
+                logger.debug(
+                    "Not moving Primary before upgrade, primary is already on the last unit to upgrade."
+                )
+                return
+
+            logger.debug("Moving primary to unit: %s", unit_with_lowest_id)
+            mongod.move_primary(new_primary=self.charm.unit_ip(unit_with_lowest_id))
 
     def _set_upgrade_status(self):
         # In the future if we decide to support app statuses, we will need to handle this

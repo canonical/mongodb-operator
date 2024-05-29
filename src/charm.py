@@ -161,7 +161,7 @@ class MongodbOperatorCharm(CharmBase):
                 "static_configs": [
                     {
                         "targets": [
-                            f"{self._unit_ip(self.unit)}:{Config.Monitoring.MONGODB_EXPORTER_PORT}"
+                            f"{self.unit_ip(self.unit)}:{Config.Monitoring.MONGODB_EXPORTER_PORT}"
                         ],
                         "labels": {"cluster": self.app.name, "replication_set": self.app.name},
                     }
@@ -180,12 +180,12 @@ class MongodbOperatorCharm(CharmBase):
             return None
 
         # check if current unit matches primary ip
-        if primary_ip == self._unit_ip(self.unit):
+        if primary_ip == self.unit_ip(self.unit):
             return self.unit.name
 
         # check if peer unit matches primary ip
         for unit in self.peers.units:
-            if primary_ip == self._unit_ip(unit):
+            if primary_ip == self.unit_ip(unit):
                 return unit.name
 
         return None
@@ -200,7 +200,7 @@ class MongodbOperatorCharm(CharmBase):
         return self.unit_peer_data.get("drained", False)
 
     @property
-    def _unit_ips(self) -> List[str]:
+    def unit_ips(self) -> List[str]:
         """Retrieve IP addresses associated with MongoDB application.
 
         Returns:
@@ -208,10 +208,10 @@ class MongodbOperatorCharm(CharmBase):
         """
         peer_addresses = []
         if self.peers:
-            peer_addresses = [self._unit_ip(unit) for unit in self.peers.units]
+            peer_addresses = [self.unit_ip(unit) for unit in self.peers.units]
 
         logger.debug("peer addresses: %s", peer_addresses)
-        self_address = self._unit_ip(self.unit)
+        self_address = self.unit_ip(self.unit)
         logger.debug("unit address: %s", self_address)
         addresses = []
         if peer_addresses:
@@ -231,7 +231,7 @@ class MongodbOperatorCharm(CharmBase):
     @property
     def mongos_config(self) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for mongos in the deployment of MongoDB."""
-        return self._get_mongos_config_for_user(OperatorUser, set(self._unit_ips))
+        return self._get_mongos_config_for_user(OperatorUser, set(self.unit_ips))
 
     def remote_mongos_config(self, hosts) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for mongos in the deployment of MongoDB."""
@@ -242,7 +242,7 @@ class MongodbOperatorCharm(CharmBase):
     @property
     def mongodb_config(self) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for this deployment of MongoDB."""
-        return self._get_mongodb_config_for_user(OperatorUser, set(self._unit_ips))
+        return self._get_mongodb_config_for_user(OperatorUser, set(self.unit_ips))
 
     @property
     def monitor_config(self) -> MongoDBConfiguration:
@@ -360,7 +360,7 @@ class MongodbOperatorCharm(CharmBase):
         # Construct the mongod startup commandline args for systemd and reload the daemon.
         update_mongod_service(
             auth=auth,
-            machine_ip=self._unit_ip(self.unit),
+            machine_ip=self.unit_ip(self.unit),
             config=self.mongodb_config,
             role=self.role,
         )
@@ -584,7 +584,7 @@ class MongodbOperatorCharm(CharmBase):
         try:
             # retries over a period of 10 minutes in an attempt to resolve race conditions it is
             # not possible to defer in storage detached.
-            logger.debug("Removing %s from replica set", self._unit_ip(self.unit))
+            logger.debug("Removing %s from replica set", self.unit_ip(self.unit))
             for attempt in Retrying(
                 stop=stop_after_attempt(10),
                 wait=wait_fixed(1),
@@ -593,7 +593,7 @@ class MongodbOperatorCharm(CharmBase):
                 with attempt:
                     # remove_replset_member retries for 60 seconds
                     with MongoDBConnection(self.mongodb_config) as mongo:
-                        mongo.remove_replset_member(self._unit_ip(self.unit))
+                        mongo.remove_replset_member(self.unit_ip(self.unit))
         except NotReadyError:
             logger.info(
                 "Failed to remove %s from replica set, another member is syncing", self.unit.name
@@ -626,12 +626,7 @@ class MongodbOperatorCharm(CharmBase):
                     self.unit.status = WaitingStatus("Waiting for MongoDB to start")
                     return
 
-        # leader should periodically handle configuring the replica set. Incidents such as network
-        # cuts can lead to new IP addresses and therefore will require a reconfigure. Especially
-        # in the case that the leader a change in IP address it will not receive a relation event.
-        if self.unit.is_leader():
-            self._handle_reconfigure(event)
-
+        self.perform_self_healing(event)
         self.unit.status = self.process_statuses()
 
     def _on_get_primary_action(self, event: ActionEvent):
@@ -928,7 +923,7 @@ class MongodbOperatorCharm(CharmBase):
             return
 
         self.process_unremoved_units(event)
-        self.app_peer_data["replica_set_hosts"] = json.dumps(self._unit_ips)
+        self.app_peer_data["replica_set_hosts"] = json.dumps(self.unit_ips)
 
         self._update_related_hosts(event)
 
@@ -958,12 +953,12 @@ class MongodbOperatorCharm(CharmBase):
                 logger.error("Deferring process_unremoved_units: error=%r", e)
                 event.defer()
 
-    def _handle_reconfigure(self, event: UpdateStatusEvent):
+    def perform_self_healing(self, event: UpdateStatusEvent):
         """Reconfigures the replica set if necessary.
 
-        Removes any mongod hosts that are no longer present in the replica set or adds hosts that
-        should exist in the replica set. This function is meant to be called periodically by the
-        leader in the update status hook to perform any necessary cluster healing.
+        Incidents such as network cuts can lead to new IP addresses and therefore will require a
+        reconfigure. Especially in the case that the leader a change in IP address it will not
+        receive a relation event.
         """
         if not self.unit.is_leader():
             logger.debug("only the leader can perform reconfigurations to the replica set.")
@@ -976,6 +971,12 @@ class MongodbOperatorCharm(CharmBase):
         # a unit.
         event.unit = self.unit
         self._on_relation_handler(event)
+
+        # make sure all nodes in the replica set have the same priority for re-election. This is
+        # necessary in the case that pre-upgrade hook fails to reset the priority of election for
+        # cluster nodes.
+        with MongoDBConnection(self.mongodb_config) as mongod:
+            mongod.set_replicaset_election_priority(priority=1)
 
     def _open_ports_tcp(self, ports: int) -> None:
         """Open the given port.
@@ -1191,7 +1192,7 @@ class MongodbOperatorCharm(CharmBase):
                 logger.info("Replica Set initialization")
                 direct_mongo.init_replset()
                 self.peers.data[self.app]["replica_set_hosts"] = json.dumps(
-                    [self._unit_ip(self.unit)]
+                    [self.unit_ip(self.unit)]
                 )
 
                 logger.info("User initialization")
@@ -1221,7 +1222,7 @@ class MongodbOperatorCharm(CharmBase):
             self.db_initialised = True
             self.unit.status = ActiveStatus()
 
-    def _unit_ip(self, unit: Unit) -> str:
+    def unit_ip(self, unit: Unit) -> str:
         """Returns the ip address of a given unit."""
         # check if host is current host
         if unit == self.unit:
@@ -1317,7 +1318,7 @@ class MongodbOperatorCharm(CharmBase):
             self.stop_charm_services()
             update_mongod_service(
                 auth,
-                self._unit_ip(self.unit),
+                self.unit_ip(self.unit),
                 config=self.mongodb_config,
                 role=self.role,
             )
@@ -1472,7 +1473,7 @@ class MongodbOperatorCharm(CharmBase):
 
     def get_statuses(self) -> Tuple:
         """Retrieves statuses for the different processes running inside the unit."""
-        mongodb_status = build_unit_status(self.mongodb_config, self._unit_ip(self.unit))
+        mongodb_status = build_unit_status(self.mongodb_config, self.unit_ip(self.unit))
         shard_status = self.shard.get_shard_status()
         config_server_status = self.config_server.get_config_server_status()
         pbm_status = self.backups.get_pbm_status()
