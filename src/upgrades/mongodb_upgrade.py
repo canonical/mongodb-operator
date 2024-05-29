@@ -153,7 +153,7 @@ class MongoDBUpgrade(Object):
 
         if not self.is_cluster_healthy():
             logger.error(
-                "Cluster is not healthy after upgrading unit %s, nodes are still syncing. Deferring post upgrade check.",
+                "Cluster is not healthy after upgrading unit %s, nodes are still syncing. Will retry next juju event.",
                 self.charm.unit.name,
             )
             event.defer()
@@ -187,6 +187,7 @@ class MongoDBUpgrade(Object):
         """Returns True if all nodes in the cluster/replcia set are healthy."""
         if self.charm.is_role(Config.Role.SHARD):
             logger.debug("Cannot run full cluster health check on shards")
+            # TODO Future PR - implement cgecj healthy check for single shard
             return False
 
         return self.are_nodes_healthy()
@@ -196,7 +197,7 @@ class MongoDBUpgrade(Object):
         try:
             if self.charm.is_role(Config.Role.CONFIG_SERVER):
                 # TODO Future PR - implement node healthy check for sharded cluster
-                pass
+                return False
             if self.charm.is_role(Config.Role.REPLICATION):
                 return self.are_replica_set_nodes_healthy(self.charm.mongodb_config)
         except (PyMongoError, OperationFailure, ServerSelectionTimeoutError) as e:
