@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 WRITE_KEY = "write_value"
 ROLLBACK_INSTRUCTIONS = "To rollback, `juju refresh` to the previous revision"
+UNHEALTHY_UPGRADE = BlockedStatus("Unhealthy after upgrade.")
 
 
 # BEGIN: Exceptions
@@ -158,8 +159,9 @@ class MongoDBUpgrade(Object):
                 self.charm.unit.name,
             )
             logger.info(ROLLBACK_INSTRUCTIONS)
-            self.charm.unit.status = BlockedStatus("Unhealthy after upgrade.")
+            self.charm.unit.status = UNHEALTHY_UPGRADE
             event.defer()
+            return
 
         if not self.is_cluster_able_to_read_write():
             logger.error(
@@ -167,8 +169,12 @@ class MongoDBUpgrade(Object):
                 self.charm.unit.name,
             )
             logger.info(ROLLBACK_INSTRUCTIONS)
-            self.charm.unit.status = BlockedStatus("Unhealthy after upgrade.")
+            self.charm.unit.status = UNHEALTHY_UPGRADE
             event.defer()
+            return
+
+        if self.charm.unit.status == UNHEALTHY_UPGRADE:
+            self.charm.unit.status = ActiveStatus()
 
         self._upgrade.unit_state = upgrade.UnitState.HEALTHY
         logger.debug("Cluster is healthy after upgrading unit %s", self.charm.unit.name)
