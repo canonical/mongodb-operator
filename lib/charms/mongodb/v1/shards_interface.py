@@ -712,8 +712,7 @@ class ConfigServerRequirer(Object):
 
     def pass_hook_checks(self, event: EventBase):
         """Runs the pre-hooks checks for ConfigServerRequirer, returns True if all pass."""
-        proceed_complex_hook_checks = self.pass_sanity_hook_checks(event)
-        if not proceed_complex_hook_checks:
+        if not self.pass_sanity_hook_checks(event):
             return False
 
         # occasionally, broken events have no application, in these scenarios nothing should be
