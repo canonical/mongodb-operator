@@ -10,8 +10,8 @@ from typing import Optional, Tuple
 
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 from ops.charm import ActionEvent, CharmBase
-from ops.model import ActiveStatus, BlockedStatus, Unit
 from ops.framework import EventBase, EventSource, Object
+from ops.model import ActiveStatus, BlockedStatus, Unit
 from pymongo.errors import OperationFailure, PyMongoError, ServerSelectionTimeoutError
 from tenacity import RetryError, Retrying, retry, stop_after_attempt, wait_fixed
 
@@ -261,7 +261,8 @@ class MongoDBUpgrade(Object):
             # TODO Future PR - implement cgecj healthy check for single shard
             return False
 
-        return self.are_nodes_healthy()
+        charm_status = self.charm.process_statuses()
+        return self.are_nodes_healthy() and isinstance(charm_status, ActiveStatus)
 
     def are_nodes_healthy(self) -> bool:
         """Returns True if all nodes in the MongoDB deployment are healthy."""
