@@ -85,6 +85,13 @@ class ClusterProvider(Object):
         if not self.charm.unit.is_leader():
             return False
 
+        if self.charm.upgrade_in_progress:
+            logger.warning(
+                "Processing mongos applications is not supported during an upgrade. The charm may be in a broken, unrecoverable state."
+            )
+            event.defer()
+            return False
+
         return True
 
     def is_valid_mongos_integration(self) -> bool:
@@ -130,6 +137,11 @@ class ClusterProvider(Object):
         self.database_provides.update_relation_data(event.relation.id, relation_data)
 
     def _on_relation_broken(self, event) -> None:
+        if self.charm.upgrade_in_progress:
+            logger.warning(
+                "Removing integration to mongos is not supported during an upgrade. The charm may be in a broken, unrecoverable state."
+            )
+
         # Only relation_deparated events can check if scaling down
         departed_relation_id = event.relation.id
         if not self.charm.has_departed_run(departed_relation_id):

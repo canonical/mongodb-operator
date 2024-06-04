@@ -105,6 +105,13 @@ class MongoDBProvider(Object):
         if not self.charm.unit.is_leader():
             return False
 
+        if self.charm.upgrade_in_progress:
+            logger.warning(
+                "Adding relations is not supported during an upgrade. The charm may be in a broken, unrecoverable state."
+            )
+            event.defer()
+            return False
+
         return True
 
     def _on_relation_event(self, event):

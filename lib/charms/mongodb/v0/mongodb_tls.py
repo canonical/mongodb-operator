@@ -81,6 +81,11 @@ class MongoDBTLS(Object):
             event.fail("Mongos cannot set TLS keys until integrated to config-server.")
             return
 
+        if self.charm.upgrade_in_progress:
+            logger.warning("Setting TLS key during an upgrade is not supported.")
+            event.fail("Setting TLS key during an upgrade is not supported.")
+            return
+
         try:
             self.request_certificate(event.params.get("external-key", None), internal=False)
             self.request_certificate(event.params.get("internal-key", None), internal=True)
@@ -141,12 +146,23 @@ class MongoDBTLS(Object):
             event.defer()
             return
 
+        if self.charm.upgrade_in_progress:
+            logger.warning(
+                "Enabling TLS is not supported during an upgrade. The charm may be in a broken, unrecoverable state."
+            )
+            event.defer()
+            return
+
         self.request_certificate(None, internal=True)
         self.request_certificate(None, internal=False)
 
     def _on_tls_relation_broken(self, event: RelationBrokenEvent) -> None:
         """Disable TLS when TLS relation broken."""
         logger.debug("Disabling external and internal TLS for unit: %s", self.charm.unit.name)
+        if self.charm.upgrade_in_progress:
+            logger.warning(
+                "Disabling TLS is not supported during an upgrade. The charm may be in a broken, unrecoverable state."
+            )
 
         for internal in [True, False]:
             self.set_tls_secret(internal, Config.TLS.SECRET_CA_LABEL, None)

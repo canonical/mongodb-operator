@@ -14,7 +14,7 @@ import typing
 import ops
 
 from config import Config
-from upgrades import upgrade
+from upgrades import mongodb_upgrade, upgrade
 
 logger = logging.getLogger(__name__)
 
@@ -145,20 +145,33 @@ class Upgrade(upgrade.Upgrade):
                 return False
         return False
 
-    def upgrade_unit(self) -> None:
+    def upgrade_unit(self, *, charm) -> None:
         """Runs the upgrade procedure.
 
         Only applies to machine charm.
         """
+        # According to the MongoDB documentation, before upgrading the primary, we must ensure a
+        # safe primary re-election.
+        try:
+            if self._unit.name == charm.primary:
+                logger.debug("Stepping down current primary, before upgrading service...")
+                charm.upgrade.step_down_primary_and_wait_reelection()
+        except mongodb_upgrade.FailedToElectNewPrimaryError:
+            # by not setting the snap revision and immediately returning, this function will be
+            # called again, and an empty re-elect a primary will occur again.
+            logger.error("Failed to reelect primary before upgrading unit.")
+            return
+
         logger.debug(f"Upgrading {self.authorized=}")
         self.unit_state = upgrade.UnitState.UPGRADING
-
-        # TODO: Future PR - run mongodb specific checks for upgrade and actually ugprade the snap
-
+        charm.install_snap_packages(packages=Config.SNAP_PACKAGES)
         self._unit_databag["snap_revision"] = _SNAP_REVISION
         self._unit_workload_version = self._current_versions["workload"]
-
         logger.debug(f"Saved {_SNAP_REVISION} in unit databag after upgrade")
+
+        # post upgrade check should be retried in case of failure, for this it is necessary to
+        # emit a separate event.
+        charm.upgrade.post_upgrade_event.emit()
 
     def save_snap_revision_after_first_install(self):
         """Set snap revision on first install."""
