@@ -169,8 +169,7 @@ class ShardingProvider(Object):
 
     def pass_hook_checks(self, event: EventBase) -> bool:
         """Runs the pre-hooks checks for ShardingProvider, returns True if all pass."""
-        proceed_complex_hook_checks = self.pass_sanity_hook_checks(event)
-        if not proceed_complex_hook_checks:
+        if not self.pass_sanity_hook_checks(event):
             return False
 
         # adding/removing shards while a backup/restore is in progress can be disastrous
@@ -184,7 +183,7 @@ class ShardingProvider(Object):
             if self.charm.upgrade_in_progress:
                 # upgrades should not block the relation broken event
                 logger.warning(
-                    "Adding/Removing shards is not supported during an upgrade. The charm may be in a broken, unrecoverable state"
+                    "Removing shards is not supported during an upgrade. The charm may be in a broken, unrecoverable state"
                 )
 
             if not self.charm.has_departed_run(event.relation.id):
@@ -198,7 +197,7 @@ class ShardingProvider(Object):
                 return False
         elif self.charm.upgrade_in_progress:
             logger.warning(
-                "Adding/Removing shards is not supported during an upgrade. The charm may be in a broken, unrecoverable state"
+                "Adding/Removing/Updating shards is not supported during an upgrade. The charm may be in a broken, unrecoverable state"
             )
             event.defer()
             return False
@@ -713,8 +712,7 @@ class ConfigServerRequirer(Object):
 
     def pass_hook_checks(self, event: EventBase):
         """Runs the pre-hooks checks for ConfigServerRequirer, returns True if all pass."""
-        proceed_complex_hook_checks = self.pass_sanity_hook_checks(event)
-        if not proceed_complex_hook_checks:
+        if not self.pass_sanity_hook_checks(event):
             return False
 
         # occasionally, broken events have no application, in these scenarios nothing should be

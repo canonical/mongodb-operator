@@ -13,7 +13,7 @@ from ops.charm import ActionEvent, CharmBase
 from ops.framework import EventBase, EventSource, Object
 from ops.model import ActiveStatus, BlockedStatus, Unit
 from pymongo.errors import OperationFailure, PyMongoError, ServerSelectionTimeoutError
-from tenacity import RetryError, Retrying, retry, stop_after_attempt, wait_fixed
+from tenacity import Retrying, retry, stop_after_attempt, wait_fixed
 
 from config import Config
 from upgrades import machine_upgrade, upgrade
@@ -22,11 +22,11 @@ logger = logging.getLogger(__name__)
 
 
 WRITE_KEY = "write_value"
+ROLLBACK_INSTRUCTIONS = "To rollback, `juju refresh` to the previous revision"
+UNHEALTHY_UPGRADE = BlockedStatus("Unhealthy after upgrade.")
 
 
 # BEGIN: Exceptions
-
-
 class FailedToElectNewPrimaryError(Exception):
     """Raised when a new primary isn't elected after stepping down."""
 
@@ -165,7 +165,7 @@ class MongoDBUpgrade(Object):
             event.fail(message)
             return
         if not self._upgrade.upgrade_resumed:
-            message = f"Run `juju run {self.app.name}/leader resume-upgrade` before trying to force upgrade"
+            message = f"Run `juju run {self.charm.app.name}/leader resume-upgrade` before trying to force upgrade"
             logger.debug(f"Force upgrade event failed: {message}")
             event.fail(message)
             return
@@ -175,9 +175,9 @@ class MongoDBUpgrade(Object):
             event.fail(message)
             return
         logger.debug("Forcing upgrade")
-        event.log(f"Forcefully upgrading {self.unit.name}")
+        event.log(f"Forcefully upgrading {self.charm.unit.name}")
         self._upgrade.upgrade_unit(charm=self.charm)
-        event.set_results({"result": f"Forcefully upgraded {self.unit.name}"})
+        event.set_results({"result": f"Forcefully upgraded {self.charm.unit.name}"})
         logger.debug("Forced upgrade")
 
     def post_upgrade_check(self, event: EventBase):
@@ -194,14 +194,23 @@ class MongoDBUpgrade(Object):
                 "Cluster is not healthy after upgrading unit %s, nodes are still syncing. Will retry next juju event.",
                 self.charm.unit.name,
             )
+            logger.info(ROLLBACK_INSTRUCTIONS)
+            self.charm.unit.status = UNHEALTHY_UPGRADE
             event.defer()
+            return
 
         if not self.is_cluster_able_to_read_write():
             logger.error(
                 "Cluster is not healthy after upgrading unit %s, writes not propagated throughout cluster. Deferring post upgrade check.",
                 self.charm.unit.name,
             )
+            logger.info(ROLLBACK_INSTRUCTIONS)
+            self.charm.unit.status = UNHEALTHY_UPGRADE
             event.defer()
+            return
+
+        if self.charm.unit.status == UNHEALTHY_UPGRADE:
+            self.charm.unit.status = ActiveStatus()
 
         self._upgrade.unit_state = upgrade.UnitState.HEALTHY
         logger.debug("Cluster is healthy after upgrading unit %s", self.charm.unit.name)
@@ -258,14 +267,24 @@ class MongoDBUpgrade(Object):
         """Returns True if all nodes in the cluster/replcia set are healthy."""
         if self.charm.is_role(Config.Role.SHARD):
             logger.debug("Cannot run full cluster health check on shards")
-            # TODO Future PR - implement cgecj healthy check for single shard
+            # TODO Future PR - implement healthy check for single shard
             return False
 
-        charm_status = self.charm.process_statuses()
-        return self.are_nodes_healthy() and isinstance(charm_status, ActiveStatus)
+        # Cannot check more advanced MongoDB statuses if mongod hasn't started.
+        with MongoDBConnection(
+            self.charm.mongodb_config, "localhost", direct=True
+        ) as direct_mongo:
+            if not direct_mongo.is_ready:
+                logger.debug("Cannot proceed with upgrade. Service mongod is not running")
+                return False
 
-    def are_nodes_healthy(self) -> bool:
-        """Returns True if all nodes in the MongoDB deployment are healthy."""
+        unit_state = self.charm.process_statuses()
+        if not isinstance(unit_state, ActiveStatus):
+            logger.debug(
+                "Cannot proceed with upgrade. Unit is not in Active state, in: %s.", unit_state
+            )
+            return False
+
         try:
             if self.charm.is_role(Config.Role.CONFIG_SERVER):
                 # TODO Future PR - implement node healthy check for sharded cluster
@@ -371,7 +390,7 @@ class MongoDBUpgrade(Object):
                 self.confirm_excepted_write_on_replica(
                     secondary_ip, db_name, collection_name, expected_write_value, mongodb_config
                 )
-            except RetryError:
+            except ClusterNotHealthyError:
                 # do not return False immediately - as it is
                 logger.debug("Secondary with IP %s, does not contain the expected write.")
                 return False
