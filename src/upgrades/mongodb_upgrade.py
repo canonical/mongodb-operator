@@ -201,10 +201,6 @@ class MongoDBUpgrade(Object):
             # TODO Future PR - implement cgecj healthy check for single shard
             return False
 
-        return self.are_nodes_healthy()
-
-    def are_nodes_healthy(self) -> bool:
-        """Returns True if all nodes in the MongoDB deployment are healthy."""
         try:
             if self.charm.is_role(Config.Role.CONFIG_SERVER):
                 # TODO Future PR - implement node healthy check for sharded cluster
