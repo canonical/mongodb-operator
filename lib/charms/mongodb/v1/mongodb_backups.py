@@ -147,7 +147,7 @@ class MongoDBBackups(Object):
         action = "configure-pbm"
         if self.charm.upgrade_in_progress:
             logger.warning(
-                "Adding s3-relations is not supported during an upgrade. The charm may be in a broken, unrecoverable state."
+                "Changing s3-credentials is not supported during an upgrade. The charm may be in a broken, unrecoverable state."
             )
             event.defer()
             return

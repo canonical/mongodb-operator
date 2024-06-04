@@ -139,7 +139,7 @@ class ClusterProvider(Object):
     def _on_relation_broken(self, event) -> None:
         if self.charm.upgrade_in_progress:
             logger.warning(
-                "disabling TLS is not supported during an upgrade. The charm may be in a broken, unrecoverable state."
+                "Removing integration to mongos is not supported during an upgrade. The charm may be in a broken, unrecoverable state."
             )
 
         # Only relation_deparated events can check if scaling down

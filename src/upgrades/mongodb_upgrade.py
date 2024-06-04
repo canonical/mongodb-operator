@@ -13,7 +13,7 @@ from ops.charm import ActionEvent, CharmBase
 from ops.framework import EventBase, EventSource, Object
 from ops.model import ActiveStatus, BlockedStatus
 from pymongo.errors import OperationFailure, PyMongoError, ServerSelectionTimeoutError
-from tenacity import RetryError, Retrying, retry, stop_after_attempt, wait_fixed
+from tenacity import Retrying, retry, stop_after_attempt, wait_fixed
 
 from config import Config
 from upgrades import machine_upgrade, upgrade
@@ -129,7 +129,7 @@ class MongoDBUpgrade(Object):
             event.fail(message)
             return
         if not self._upgrade.upgrade_resumed:
-            message = f"Run `juju run {self.app.name}/leader resume-upgrade` before trying to force upgrade"
+            message = f"Run `juju run {self.charm.app.name}/leader resume-upgrade` before trying to force upgrade"
             logger.debug(f"Force upgrade event failed: {message}")
             event.fail(message)
             return
@@ -139,9 +139,9 @@ class MongoDBUpgrade(Object):
             event.fail(message)
             return
         logger.debug("Forcing upgrade")
-        event.log(f"Forcefully upgrading {self.unit.name}")
+        event.log(f"Forcefully upgrading {self.charm.unit.name}")
         self._upgrade.upgrade_unit(charm=self.charm)
-        event.set_results({"result": f"Forcefully upgraded {self.unit.name}"})
+        event.set_results({"result": f"Forcefully upgraded {self.charm.unit.name}"})
         logger.debug("Forced upgrade")
 
     def post_upgrade_check(self, event: EventBase):
@@ -310,7 +310,7 @@ class MongoDBUpgrade(Object):
                 self.confirm_excepted_write_on_replica(
                     secondary_ip, db_name, collection_name, expected_write_value, mongodb_config
                 )
-            except RetryError:
+            except ClusterNotHealthyError:
                 # do not return False immediately - as it is
                 logger.debug("Secondary with IP %s, does not contain the expected write.")
                 return False

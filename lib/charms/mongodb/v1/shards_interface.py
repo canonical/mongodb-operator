@@ -183,7 +183,7 @@ class ShardingProvider(Object):
             if self.charm.upgrade_in_progress:
                 # upgrades should not block the relation broken event
                 logger.warning(
-                    "Adding/Removing shards is not supported during an upgrade. The charm may be in a broken, unrecoverable state"
+                    "Removing shards is not supported during an upgrade. The charm may be in a broken, unrecoverable state"
                 )
 
             if not self.charm.has_departed_run(event.relation.id):
@@ -197,7 +197,7 @@ class ShardingProvider(Object):
                 return False
         elif self.charm.upgrade_in_progress:
             logger.warning(
-                "Adding/Removing shards is not supported during an upgrade. The charm may be in a broken, unrecoverable state"
+                "Adding/Removing/Updating shards is not supported during an upgrade. The charm may be in a broken, unrecoverable state"
             )
             event.defer()
             return False

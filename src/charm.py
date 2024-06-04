@@ -476,7 +476,7 @@ class MongodbOperatorCharm(CharmBase):
         """
         if self.upgrade_in_progress:
             logger.warning(
-                "Adding/Removing replicas during an upgrade is not supported. The charm may be in a broken, unrecoverable state"
+                "Adding/Removing/Changing replicas during an upgrade is not supported. The charm may be in a broken, unrecoverable state"
             )
             event.defer()
             return
@@ -885,23 +885,23 @@ class MongodbOperatorCharm(CharmBase):
         """Checks conditions for setting the password and fail if necessary."""
         if self.is_role(Config.Role.SHARD):
             event.fail("Cannot set password on shard, please set password on config-server.")
-            return
+            return False
 
         # changing the backup password while a backup/restore is in progress can be disastrous
         pbm_status = self.backups.get_pbm_status()
         if isinstance(pbm_status, MaintenanceStatus):
             event.fail("Cannot change password while a backup/restore is in progress.")
-            return
+            return False
 
         # only leader can write the new password into peer relation.
         if not self.unit.is_leader():
             event.fail("The action can be run only on leader unit.")
-            return
+            return False
 
         if self.upgrade_in_progress:
             logger.debug("Do not set the password while a backup/restore is in progress.")
             event.fail("Cannot set passwords while an upgrade is in progress.")
-        return True
+            return False
 
         return True
 
