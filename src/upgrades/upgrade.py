@@ -254,10 +254,14 @@ class Upgrade(abc.ABC):
         """Check if this app is ready to upgrade.
 
         Runs before any units are upgraded
+
         Does *not* run during rollback
+
         On machines, this runs before any units are upgraded (after `juju refresh`)
         On machines & Kubernetes, this also runs during pre-upgrade-check action
+
         Can run on leader or non-leader unit
+
         Raises:
             PrecheckFailed: App is not ready to upgrade
 
