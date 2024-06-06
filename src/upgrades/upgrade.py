@@ -18,6 +18,7 @@ import typing
 import ops
 import poetry.core.constraints.version as poetry_version
 from charms.mongodb.v0.mongodb import FailedToMovePrimaryError
+from tenacity import RetryError
 
 import status_exception
 
@@ -275,7 +276,9 @@ class Upgrade(abc.ABC):
         # TODO In future PR when we support upgrades on sharded clusters, have the shard verify
         # that the config-server has already upgraded.
 
-        if not self._charm.upgrade.is_cluster_healthy():
+        try:
+            self._charm.upgrade.wait_for_cluster_healthy()
+        except RetryError:
             logger.error("Cluster is not healthy")
             raise PrecheckFailed("Cluster is not healthy")
 
@@ -286,7 +289,7 @@ class Upgrade(abc.ABC):
             self._charm.upgrade.move_primary_to_last_upgrade_unit()
         except FailedToMovePrimaryError:
             logger.error("Cluster failed to move primary before re-election.")
-            raise PrecheckFailed("Primary not on lowest unit")
+            raise PrecheckFailed("Primary switchover failed")
 
         if not self._charm.upgrade.is_cluster_able_to_read_write():
             logger.error("Cluster cannot read/write to replicas")

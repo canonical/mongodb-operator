@@ -13,7 +13,7 @@ from ops.charm import ActionEvent, CharmBase
 from ops.framework import EventBase, EventSource, Object
 from ops.model import ActiveStatus, BlockedStatus
 from pymongo.errors import OperationFailure, PyMongoError, ServerSelectionTimeoutError
-from tenacity import Retrying, retry, stop_after_attempt, wait_fixed
+from tenacity import RetryError, Retrying, retry, stop_after_attempt, wait_fixed
 
 from config import Config
 from upgrades import machine_upgrade, upgrade
@@ -189,7 +189,9 @@ class MongoDBUpgrade(Object):
         """
         logger.debug("Running post upgrade checks to verify cluster is not broken after upgrade")
 
-        if not self.is_cluster_healthy():
+        try:
+            self.wait_for_cluster_healthy()
+        except RetryError:
             logger.error(
                 "Cluster is not healthy after upgrading unit %s. Will retry next juju event.",
                 self.charm.unit.name,
@@ -251,6 +253,19 @@ class MongoDBUpgrade(Object):
         ):
             self.charm.unit.status = self._upgrade.get_unit_juju_status() or ActiveStatus()
 
+    def wait_for_cluster_healthy(self) -> None:
+        """Waits until the cluster is healthy after upgrading.
+
+        After a unit restarts it can take some time for the cluster to settle.
+
+        Raises:
+            ClusterNotHealthyError.
+        """
+        for attempt in Retrying(stop=stop_after_attempt(10), wait=wait_fixed(1)):
+            with attempt:
+                if not self.is_cluster_healthy():
+                    raise ClusterNotHealthyError()
+
     def is_cluster_healthy(self) -> bool:
         """Returns True if all nodes in the cluster/replcia set are healthy."""
         with MongoDBConnection(
@@ -260,13 +275,6 @@ class MongoDBUpgrade(Object):
                 logger.error("Cannot proceed with upgrade. Service mongod is not running")
                 return False
 
-        unit_state = self.charm.process_statuses()
-        if not isinstance(unit_state, ActiveStatus):
-            logger.error(
-                "Cannot proceed with upgrade. Unit is not in Active state, in: %s.", unit_state
-            )
-            return False
-
         try:
             if self.charm.is_role(Config.Role.CONFIG_SERVER) or self.charm.is_role(
                 Config.Role.SHARD
@@ -274,12 +282,22 @@ class MongoDBUpgrade(Object):
                 # TODO Future PR - implement node healthy check for entire cluster
                 return False
             if self.charm.is_role(Config.Role.REPLICATION):
-                return self.are_replica_set_nodes_healthy(self.charm.mongodb_config)
+                node_healthy = self.are_replica_set_nodes_healthy(self.charm.mongodb_config)
         except (PyMongoError, OperationFailure, ServerSelectionTimeoutError) as e:
             logger.error(
                 "Cannot proceed with upgrade. Failed to check cluster health, error: %s", e
             )
             return False
+
+        # unit status should be
+        unit_state = self.charm.process_statuses()
+        if not isinstance(unit_state, ActiveStatus):
+            logger.error(
+                "Cannot proceed with upgrade. Unit is not in Active state, in: %s.", unit_state
+            )
+            return False
+
+        return node_healthy
 
     def are_replica_set_nodes_healthy(self, mongodb_config: MongoDBConfiguration) -> bool:
         """Returns true if all nodes in the MongoDB replica set are healthy."""
