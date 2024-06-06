@@ -272,15 +272,12 @@ class Upgrade(abc.ABC):
         """
         logger.debug("Running pre-upgrade checks")
 
-        if self._charm.is_role(SHARD):
-            raise PrecheckFailed(
-                "Cannot run pre-upgrade check on shards, run this action on the related config-server."
-            )
+        # TODO In future PR when we support upgrades on sharded clusters, have the shard verify
+        # that the config-server has already upgraded.
 
         if not self._charm.upgrade.is_cluster_healthy():
-            raise PrecheckFailed(
-                "Cluster is not healthy, do not proceed with ugprade. Please check juju debug for information."
-            )
+            logger.error("Cluster is not healthy")
+            raise PrecheckFailed("Cluster is not healthy")
 
         # We do not get to decide the order of units to upgrade, so we move the primary to the
         # last unit to upgrade. This prevents the primary from jumping around from unit to unit
@@ -288,11 +285,9 @@ class Upgrade(abc.ABC):
         try:
             self._charm.upgrade.move_primary_to_last_upgrade_unit()
         except FailedToMovePrimaryError:
-            raise PrecheckFailed(
-                "Cluster failed to move primary before re-election. do not proceed with ugprade."
-            )
+            logger.error("Cluster failed to move primary before re-election.")
+            raise PrecheckFailed("Primary not on lowest unit")
 
         if not self._charm.upgrade.is_cluster_able_to_read_write():
-            raise PrecheckFailed(
-                "Cluster is not healthy cannot read/write to replicas, do not proceed with ugprade. Please check juju debug for information."
-            )
+            logger.error("Cluster cannot read/write to replicas")
+            raise PrecheckFailed("Cluster is not healthy")

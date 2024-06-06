@@ -133,17 +133,10 @@ class Upgrade(upgrade.Upgrade):
             if unit.name == self._unit.name:
                 # Higher number units have already upgraded
                 if index == 0:
-                    if (
-                        json.loads(self._app_databag["versions"])["charm"]
-                        == self._current_versions["charm"]
-                    ):
-                        # Assumes charm version uniquely identifies charm revision
-                        logger.debug("Rollback detected. Skipping pre-upgrade check")
-                    else:
-                        # Run pre-upgrade check
-                        # (in case user forgot to run pre-upgrade-check action)
-                        self.pre_upgrade_check()
-                        logger.debug("Pre-upgrade check after `juju refresh` successful")
+                    # Run pre-upgrade check
+                    # (in case user forgot to run pre-upgrade-check action)
+                    self.pre_upgrade_check()
+                    logger.debug("Pre-upgrade check after `juju refresh` successful")
                 elif index == 1:
                     # User confirmation needed to resume upgrade (i.e. upgrade second unit)
                     logger.debug(f"Second unit authorized to upgrade if {self.upgrade_resumed=}")

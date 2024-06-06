@@ -11,7 +11,7 @@ from typing import Optional, Tuple
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 from ops.charm import ActionEvent, CharmBase
 from ops.framework import EventBase, EventSource, Object
-from ops.model import ActiveStatus, BlockedStatus, Unit
+from ops.model import ActiveStatus, BlockedStatus
 from pymongo.errors import OperationFailure, PyMongoError, ServerSelectionTimeoutError
 from tenacity import Retrying, retry, stop_after_attempt, wait_fixed
 
@@ -191,7 +191,7 @@ class MongoDBUpgrade(Object):
 
         if not self.is_cluster_healthy():
             logger.error(
-                "Cluster is not healthy after upgrading unit %s, nodes are still syncing. Will retry next juju event.",
+                "Cluster is not healthy after upgrading unit %s. Will retry next juju event.",
                 self.charm.unit.name,
             )
             logger.info(ROLLBACK_INSTRUCTIONS)
@@ -218,25 +218,13 @@ class MongoDBUpgrade(Object):
     # END: Event handlers
 
     # BEGIN: Helpers
-    def find_last_unit_to_upgrade(self) -> Unit:
-        """Returns the unit that will be the last to be upgraded (ie the one with the lowest id."""
-        unit_with_lowest_id = self.charm.unit
-        lowest_unit_id = unit_with_lowest_id.name.split("/")[1]
-        for unit in self.charm.peers.units:
-            unit_id = unit.name.split("/")[1]
-            if unit_id < lowest_unit_id:
-                unit_with_lowest_id = unit
-                lowest_unit_id = unit_id
-
-        return unit_with_lowest_id
-
     def move_primary_to_last_upgrade_unit(self) -> None:
         """Moves the primary to last unit that gets upgraded (the unit with the lowest id).
 
         Raises FailedToMovePrimaryError
         """
         with MongoDBConnection(self.charm.mongodb_config) as mongod:
-            unit_with_lowest_id = self.find_last_unit_to_upgrade()
+            unit_with_lowest_id = self._upgrade._sorted_units[-1]
             if mongod.primary() == self.charm.unit_ip(unit_with_lowest_id):
                 logger.debug(
                     "Not moving Primary before upgrade, primary is already on the last unit to upgrade."
@@ -265,34 +253,30 @@ class MongoDBUpgrade(Object):
 
     def is_cluster_healthy(self) -> bool:
         """Returns True if all nodes in the cluster/replcia set are healthy."""
-        if self.charm.is_role(Config.Role.SHARD):
-            logger.debug("Cannot run full cluster health check on shards")
-            # TODO Future PR - implement healthy check for single shard
-            return False
-
-        # Cannot check more advanced MongoDB statuses if mongod hasn't started.
         with MongoDBConnection(
             self.charm.mongodb_config, "localhost", direct=True
         ) as direct_mongo:
             if not direct_mongo.is_ready:
-                logger.debug("Cannot proceed with upgrade. Service mongod is not running")
+                logger.error("Cannot proceed with upgrade. Service mongod is not running")
                 return False
 
         unit_state = self.charm.process_statuses()
         if not isinstance(unit_state, ActiveStatus):
-            logger.debug(
+            logger.error(
                 "Cannot proceed with upgrade. Unit is not in Active state, in: %s.", unit_state
             )
             return False
 
         try:
-            if self.charm.is_role(Config.Role.CONFIG_SERVER):
-                # TODO Future PR - implement node healthy check for sharded cluster
+            if self.charm.is_role(Config.Role.CONFIG_SERVER) or self.charm.is_role(
+                Config.Role.SHARD
+            ):
+                # TODO Future PR - implement node healthy check for entire cluster
                 return False
             if self.charm.is_role(Config.Role.REPLICATION):
                 return self.are_replica_set_nodes_healthy(self.charm.mongodb_config)
         except (PyMongoError, OperationFailure, ServerSelectionTimeoutError) as e:
-            logger.debug(
+            logger.error(
                 "Cannot proceed with upgrade. Failed to check cluster health, error: %s", e
             )
             return False
