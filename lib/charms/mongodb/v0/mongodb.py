@@ -298,7 +298,7 @@ class MongoDBConnection:
         """Forcibly moves the primary to the new primary provided.
 
         Args:
-            new_primary: str of the ip address which the new primary should belong.
+            new_primary: ip address of the unit chosen to be the new primary.
         """
         # Do not move a priary unless the cluster is in sync
         rs_status = self.client.admin.command("replSetGetStatus")
