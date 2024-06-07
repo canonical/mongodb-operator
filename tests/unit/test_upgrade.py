@@ -21,8 +21,9 @@ class TestCharm(unittest.TestCase):
         self.peer_rel_id = self.harness.add_relation("upgrade-version-a", "upgrade-version-a")
 
     @patch_network_get(private_address="1.1.1.1")
+    @patch("charms.mongodb.v1.helpers.MongoDBConnection")
     @patch("upgrades.mongodb_upgrade.MongoDBConnection")
-    def test_is_cluster_healthy(self, connection):
+    def test_is_cluster_healthy(self, connection, connection_ready):
         """Test is_cluster_healthy function."""
 
         def is_shard_mock_call(*args):
@@ -41,18 +42,23 @@ class TestCharm(unittest.TestCase):
         self.harness.charm.is_role = is_shard_mock_call
         assert not self.harness.charm.upgrade.is_cluster_healthy()
 
-        # case 2: cluster is still syncing
+        # case 2: unit is not ready after restarting
+        connection_ready.return_value.__enter__.return_value.is_ready = False
+        assert not self.harness.charm.upgrade.is_cluster_healthy()
+
+        # case 3: cluster is still syncing
+        connection_ready.return_value.__enter__.return_value.is_ready = True
         self.harness.charm.is_role = is_replication_mock_call
         self.harness.charm.process_statuses = active_status
         connection.return_value.__enter__.return_value.is_any_sync.return_value = True
         assert not self.harness.charm.upgrade.is_cluster_healthy()
 
-        # case 3: unit is not active
+        # case 4: unit is not active
         self.harness.charm.process_statuses = blocked_status
         connection.return_value.__enter__.return_value.is_any_sync.return_value = False
         assert not self.harness.charm.upgrade.is_cluster_healthy()
 
-        # # case 4: cluster is helathy
+        # case 5: cluster is helathy
         self.harness.charm.process_statuses = active_status
         assert self.harness.charm.upgrade.is_cluster_healthy()
 
