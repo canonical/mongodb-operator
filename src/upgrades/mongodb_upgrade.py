@@ -234,7 +234,7 @@ class MongoDBUpgrade(Object):
                 return
 
             logger.debug("Moving primary to unit: %s", unit_with_lowest_id)
-            mongod.move_primary(new_primary=self.charm.unit_ip(unit_with_lowest_id))
+            mongod.move_primary(new_primary_ip=self.charm.unit_ip(unit_with_lowest_id))
 
     def _set_upgrade_status(self):
         # In the future if we decide to support app statuses, we will need to handle this
