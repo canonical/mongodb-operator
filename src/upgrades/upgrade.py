@@ -282,9 +282,11 @@ class Upgrade(abc.ABC):
             logger.error("Cluster is not healthy")
             raise PrecheckFailed("Cluster is not healthy")
 
-        # We do not get to decide the order of units to upgrade, so we move the primary to the
-        # last unit to upgrade. This prevents the primary from jumping around from unit to unit
-        # during the upgrade procedure.
+        # On VM charms we can choose the order to upgrade, but not on K8s. In order to keep the
+        # two charms in sync we decided to have the VM charm have the same upgrade order as the K8s
+        # charm (i.e. highest to lowest.) Hence, we move the primary to the last unit to upgrade.
+        # This prevents the primary from jumping around from unit to unit during the upgrade
+        # procedure.
         try:
             self._charm.upgrade.move_primary_to_last_upgrade_unit()
         except FailedToMovePrimaryError:

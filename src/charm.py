@@ -898,11 +898,6 @@ class MongodbOperatorCharm(CharmBase):
             event.fail("Cannot set passwords while an upgrade is in progress.")
             return False
 
-        if self.upgrade_in_progress:
-            logger.debug("Do not set the password while a backup/restore is in progress.")
-            event.fail("Cannot set passwords while an upgrade is in progress.")
-            return False
-
         return True
 
     def _check_or_set_user_password(self, user: MongoDBUser) -> None:

@@ -294,11 +294,11 @@ class MongoDBConnection:
         """Steps down the current primary, forcing a re-election."""
         self.client.admin.command("replSetStepDown", {"stepDownSecs": "60"})
 
-    def move_primary(self, new_primary: str) -> None:
+    def move_primary(self, new_primary_ip: str) -> None:
         """Forcibly moves the primary to the new primary provided.
 
         Args:
-            new_primary: ip address of the unit chosen to be the new primary.
+            new_primary_ip: ip address of the unit chosen to be the new primary.
         """
         # Do not move a priary unless the cluster is in sync
         rs_status = self.client.admin.command("replSetGetStatus")
@@ -307,12 +307,12 @@ class MongoDBConnection:
             raise NotReadyError
 
         is_move_successful = True
-        self.set_replicaset_election_priority(priority=0.5, ignore_member=new_primary)
+        self.set_replicaset_election_priority(priority=0.5, ignore_member=new_primary_ip)
         try:
             for attempt in Retrying(stop=stop_after_delay(180), wait=wait_fixed(3)):
                 with attempt:
                     self.step_down_primary()
-                    if self.primary() != new_primary:
+                    if self.primary() != new_primary_ip:
                         raise FailedToMovePrimaryError
         except RetryError:
             # catch all possible exceptions when failing to step down primary. We do this in order

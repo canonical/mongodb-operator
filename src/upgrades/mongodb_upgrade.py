@@ -275,20 +275,6 @@ class MongoDBUpgrade(Object):
                 logger.error("Cannot proceed with upgrade. Service mongod is not running")
                 return False
 
-        try:
-            if self.charm.is_role(Config.Role.CONFIG_SERVER) or self.charm.is_role(
-                Config.Role.SHARD
-            ):
-                # TODO Future PR - implement node healthy check for entire cluster
-                return False
-            if self.charm.is_role(Config.Role.REPLICATION):
-                node_healthy = self.are_replica_set_nodes_healthy(self.charm.mongodb_config)
-        except (PyMongoError, OperationFailure, ServerSelectionTimeoutError) as e:
-            logger.error(
-                "Cannot proceed with upgrade. Failed to check cluster health, error: %s", e
-            )
-            return False
-
         # unit status should be
         unit_state = self.charm.process_statuses()
         if not isinstance(unit_state, ActiveStatus):
@@ -297,7 +283,19 @@ class MongoDBUpgrade(Object):
             )
             return False
 
-        return node_healthy
+        try:
+            if self.charm.is_role(Config.Role.CONFIG_SERVER) or self.charm.is_role(
+                Config.Role.SHARD
+            ):
+                # TODO Future PR - implement node healthy check for entire cluster
+                return False
+            if self.charm.is_role(Config.Role.REPLICATION):
+                return self.are_replica_set_nodes_healthy(self.charm.mongodb_config)
+        except (PyMongoError, OperationFailure, ServerSelectionTimeoutError) as e:
+            logger.error(
+                "Cannot proceed with upgrade. Failed to check cluster health, error: %s", e
+            )
+            return False
 
     def are_replica_set_nodes_healthy(self, mongodb_config: MongoDBConfiguration) -> bool:
         """Returns true if all nodes in the MongoDB replica set are healthy."""
