@@ -225,6 +225,10 @@ class MongoDBUpgrade(Object):
 
         Raises FailedToMovePrimaryError
         """
+        # no need to move primary in the scenario of one unit
+        if len(self._upgrade._sorted_units) < 2:
+            return
+
         with MongoDBConnection(self.charm.mongodb_config) as mongod:
             unit_with_lowest_id = self._upgrade._sorted_units[-1]
             if mongod.primary() == self.charm.unit_ip(unit_with_lowest_id):
