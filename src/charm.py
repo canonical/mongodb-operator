@@ -962,7 +962,7 @@ class MongodbOperatorCharm(CharmBase):
         """Reconfigures the replica set if necessary.
 
         Incidents such as network cuts can lead to new IP addresses and therefore will require a
-        reconfigure. Especially in the case that the leader a change in IP address it will not
+        reconfigure. Especially in the case that the leader's IP address changed, it will not
         receive a relation event.
         """
         if not self.unit.is_leader():
