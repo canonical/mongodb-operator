@@ -331,11 +331,20 @@ class MongoDBConnection:
         rs_config = rs_config["config"]
         rs_config["version"] += 1
 
+        # keep track of the original configuration before setting the priority, reconfiguring the
+        # replica set can result in primary re-election, which would would like to avoid when
+        # possible.
+        original_rs_config = rs_config
+
         for member in rs_config["members"]:
             if member["host"] == ignore_member:
                 continue
 
             member["priority"] = priority
+
+        if original_rs_config == rs_config:
+            return
+
         logger.debug("rs_config: %r", rs_config)
         self.client.admin.command("replSetReconfig", rs_config)
 
