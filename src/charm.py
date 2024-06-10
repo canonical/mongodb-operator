@@ -626,7 +626,14 @@ class MongodbOperatorCharm(CharmBase):
                     self.unit.status = WaitingStatus("Waiting for MongoDB to start")
                     return
 
-        self.perform_self_healing(event)
+        try:
+            self.perform_self_healing(event)
+        except ServerSelectionTimeoutError:
+            # health checks that are performed too early will fail if the hasn't elected a primary
+            # yet. This can occur if the deployment has restarted or is undergoing a re-election
+            deployment_mode = "replica set" if self.is_role(Config.Role.REPLICATION) else "cluster"
+            WaitingStatus(f"Waiting to sync internal membership across the {deployment_mode}")
+
         self.unit.status = self.process_statuses()
 
     def _on_get_primary_action(self, event: ActionEvent):
