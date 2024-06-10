@@ -85,6 +85,8 @@ from machine_helpers import (
     update_mongod_service,
 )
 
+from revision_check import CrossAppVersionChecker, get_charm_revision
+
 AUTH_FAILED_CODE = 18
 UNAUTHORISED_CODE = 13
 TLS_CANNOT_FIND_PRIMARY = 133
@@ -142,6 +144,18 @@ class MongodbOperatorCharm(CharmBase):
                 **Config.DEPENDENCIES  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
             ),
         )  # TODO future PR add dependency_model
+
+        # TODO future PR - support pinning mongos version
+        self.version_checker = CrossAppVersionChecker(
+            self,
+            # TODO future PR add ops model revision variable:
+            # https://github.com/canonical/operator/issues/1255
+            version=get_charm_revision(self.unit),
+            relations_to_check=[
+                Config.Relations.SHARDING_RELATIONS_NAME,
+                Config.Relations.CONFIG_SERVER_RELATIONS_NAME,
+            ],
+        )
         self.config_server = ShardingProvider(self)
         self.cluster = ClusterProvider(self)
         self.shard = ConfigServerRequirer(self)
