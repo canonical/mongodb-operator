@@ -4,26 +4,27 @@
 """Class used to determine if a relevant version attribute across related applications are valid.
 
 There are many potential applications for this. Here are a few examples:
-1. in a sharded cluster where is is important that the shards and cluster manager have the same 
+1. in a sharded cluster where is is important that the shards and cluster manager have the same
 components.
-2. kafka connect and kafka broker apps working together and needing to have the same ubnderlying 
+2. kafka connect and kafka broker apps working together and needing to have the same ubnderlying
 version.
 
 How to use:
 
 1. in src/charm.py
-    in constructor [REQUIRED]: 
+    in constructor [REQUIRED]:
     self.version_checker = self.CrossAppVersionChecker(
         self,
-        version=x, # can be a revision of a charm, a version of a snap, a version of a workload, etc
-        relations_to_check=[x,y,z], 
+        version=x, # can be a revision of a charm, version of a snap, version of a workload, etc
+        relations_to_check=[x,y,z],
         # only use if the version doesn't not need to exactly match our current version
-        version_validity_range={"x": "<a,>b"}) 
+        version_validity_range={"x": "<a,>b"})
 
     in update status hook [OPTIONAL]:
     if not self.version_checker.are_related_apps_valid():
         logger.debug(
-            "Warning relational version check failed, these relations have a mismatched version: %s",
+            "Warning relational version check failed, these relations have mismatched versions",
+            "%s",
             self.version_checker(self.version_checker.get_invalid_versions())
         )
         # can set status, instruct user to change
@@ -33,7 +34,7 @@ How to use:
         # do something - i.e. fail event or log message
 
 3. in upgrade handler [REQUIRED]:
-    if [last unit to upgrade]: 
+    if [last unit to upgrade]:
         self.charm.version.set_version_across_all_relations()
 """
 import logging
@@ -54,7 +55,6 @@ def get_charm_revision(unit: Unit) -> int:
 
     TODO: Keep this until ops framework supports: https://github.com/canonical/operator/issues/1255
     """
-
     file_path = f"{PREFIX_DIR}/unit-{unit.name.replace('/','-')}/charm/.juju-charm"
     with open(file_path) as f:
         charm_path = f.read().rstrip()
@@ -83,13 +83,13 @@ class CrossAppVersionChecker(Object):
         """Constructor for CrossAppVersionChecker object.
 
         Args:
+            charm: charm to inherit from
             version: (int), the current version of the desired attribute of the charm
             relations_to_check: (List), a list of relations who should have compatible versions
                 with the current charm
             version_validity_range: (Optional Dict), a list of ranges for valid version ranges.
                 If not provided it is assumed that relations on the provided interface must have
                 the same version.
-
         """
         self.charm = charm
         super().__init__(self.charm, None)
@@ -174,7 +174,7 @@ class CrossAppVersionChecker(Object):
 
 
 class CrossAppVersionCheckerError(Exception):
-    pass
+    """Parent class for errors raised in CrossAppVersionChecker class."""
 
 
 class RelationInvalidError(CrossAppVersionCheckerError):
