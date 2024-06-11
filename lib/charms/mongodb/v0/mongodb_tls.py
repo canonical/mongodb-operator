@@ -336,7 +336,7 @@ class MongoDBTLS(Object):
     def get_host(self, unit: Unit):
         """Retrieves the hostname of the unit based on the substrate."""
         if self.substrate == "vm":
-            return self.charm._unit_ip(unit)
+            return self.charm.unit_ip(unit)
         else:
             return self.charm.get_hostname_for_unit(unit)
 

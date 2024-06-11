@@ -123,12 +123,28 @@ class Upgrade(upgrade.Upgrade):
         """Whether this unit is authorized to upgrade.
 
         Only applies to machine charm.
+
+        Raises:
+            PrecheckFailed: App is not ready to upgrade
         """
         assert self._unit_workload_container_version != self._app_workload_container_version
+        assert self.versions_set
         for index, unit in enumerate(self._sorted_units):
             if unit.name == self._unit.name:
                 # Higher number units have already upgraded
-                if index == 1:
+                if index == 0:
+                    if (
+                        json.loads(self._app_databag["versions"])["charm"]
+                        == self._current_versions["charm"]
+                    ):
+                        # Assumes charm version uniquely identifies charm revision
+                        logger.debug("Rollback detected. Skipping pre-upgrade check")
+                    else:
+                        # Run pre-upgrade check
+                        # (in case user forgot to run pre-upgrade-check action)
+                        self.pre_upgrade_check()
+                        logger.debug("Pre-upgrade check after `juju refresh` successful")
+                elif index == 1:
                     # User confirmation needed to resume upgrade (i.e. upgrade second unit)
                     logger.debug(f"Second unit authorized to upgrade if {self.upgrade_resumed=}")
                     return self.upgrade_resumed
@@ -153,7 +169,7 @@ class Upgrade(upgrade.Upgrade):
         # According to the MongoDB documentation, before upgrading the primary, we must ensure a
         # safe primary re-election.
         try:
-            if self._unit.name == charm.primary:
+            if self._unit.name == charm.primary and len(self._sorted_units) > 1:
                 logger.debug("Stepping down current primary, before upgrading service...")
                 charm.upgrade.step_down_primary_and_wait_reelection()
         except mongodb_upgrade.FailedToElectNewPrimaryError:

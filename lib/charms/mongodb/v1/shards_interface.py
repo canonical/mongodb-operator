@@ -132,7 +132,7 @@ class ShardingProvider(Object):
             KEYFILE_KEY: self.charm.get_secret(
                 Config.Relations.APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME
             ),
-            HOSTS_KEY: json.dumps(self.charm._unit_ips),
+            HOSTS_KEY: json.dumps(self.charm.unit_ips),
         }
 
         # if tls enabled
@@ -331,7 +331,7 @@ class ShardingProvider(Object):
             return
 
         for relation in self.charm.model.relations[self.relation_name]:
-            self._update_relation_data(relation.id, {HOSTS_KEY: json.dumps(self.charm._unit_ips)})
+            self._update_relation_data(relation.id, {HOSTS_KEY: json.dumps(self.charm.unit_ips)})
 
     def update_ca_secret(self, new_ca: str) -> None:
         """Updates the new CA for all related shards."""
@@ -467,7 +467,7 @@ class ShardingProvider(Object):
 
     def is_mongos_running(self) -> bool:
         """Returns true if mongos service is running."""
-        mongos_hosts = ",".join(self.charm._unit_ips)
+        mongos_hosts = ",".join(self.charm.unit_ips)
         uri = f"mongodb://{mongos_hosts}"
         with MongosConnection(None, uri) as mongo:
             return mongo.is_ready

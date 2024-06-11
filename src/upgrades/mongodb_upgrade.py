@@ -13,7 +13,7 @@ from ops.charm import ActionEvent, CharmBase
 from ops.framework import EventBase, EventSource, Object
 from ops.model import ActiveStatus, BlockedStatus
 from pymongo.errors import OperationFailure, PyMongoError, ServerSelectionTimeoutError
-from tenacity import Retrying, retry, stop_after_attempt, wait_fixed
+from tenacity import RetryError, Retrying, retry, stop_after_attempt, wait_fixed
 
 from config import Config
 from upgrades import machine_upgrade, upgrade
@@ -54,6 +54,10 @@ class MongoDBUpgrade(Object):
         self.charm = charm
         super().__init__(charm, upgrade.PEER_RELATION_ENDPOINT_NAME)
         self.framework.observe(
+            charm.on[upgrade.PRECHECK_ACTION_NAME].action, self._on_pre_upgrade_check_action
+        )
+
+        self.framework.observe(
             charm.on[upgrade.PEER_RELATION_ENDPOINT_NAME].relation_created,
             self._on_upgrade_peer_relation_created,
         )
@@ -90,8 +94,16 @@ class MongoDBUpgrade(Object):
         if not self._upgrade.is_compatible:
             self._set_upgrade_status()
             return
-        if self._upgrade.unit_state == "outdated":
-            if self._upgrade.authorized:
+        if self._upgrade.unit_state is upgrade.UnitState.OUTDATED:
+            try:
+                authorized = self._upgrade.authorized
+            except upgrade.PrecheckFailed as exception:
+                self._set_upgrade_status()
+                self.unit.status = exception.status
+                logger.debug(f"Set unit status to {self.unit.status}")
+                logger.error(exception.status.message)
+                return
+            if authorized:
                 self._set_upgrade_status()
                 self._upgrade.upgrade_unit(charm=self.charm)
             else:
@@ -108,6 +120,30 @@ class MongoDBUpgrade(Object):
             # Only call `_reconcile_upgrade` on leader unit to avoid race conditions with
             # `upgrade_resumed`
             self._reconcile_upgrade()
+
+    def _on_pre_upgrade_check_action(self, event: ActionEvent) -> None:
+        if not self.charm.unit.is_leader():
+            message = f"Must run action on leader unit. (e.g. `juju run {self.app.name}/leader {upgrade.PRECHECK_ACTION_NAME}`)"
+            logger.debug(f"Pre-upgrade check event failed: {message}")
+            event.fail(message)
+            return
+        if not self._upgrade or self._upgrade.in_progress:
+            message = "Upgrade already in progress"
+            logger.debug(f"Pre-upgrade check event failed: {message}")
+            event.fail(message)
+            return
+        try:
+            self._upgrade.pre_upgrade_check()
+        except upgrade.PrecheckFailed as exception:
+            message = (
+                f"Charm is *not* ready for upgrade. Pre-upgrade check failed: {exception.message}"
+            )
+            logger.debug(f"Pre-upgrade check event failed: {message}")
+            event.fail(message)
+            return
+        message = "Charm is ready for upgrade"
+        event.set_results({"result": message})
+        logger.debug(f"Pre-upgrade check event succeeded: {message}")
 
     def _on_resume_upgrade_action(self, event: ActionEvent) -> None:
         if not self.charm.unit.is_leader():
@@ -153,9 +189,11 @@ class MongoDBUpgrade(Object):
         """
         logger.debug("Running post upgrade checks to verify cluster is not broken after upgrade")
 
-        if not self.is_cluster_healthy():
+        try:
+            self.wait_for_cluster_healthy()
+        except RetryError:
             logger.error(
-                "Cluster is not healthy after upgrading unit %s, nodes are still syncing. Will retry next juju event.",
+                "Cluster is not healthy after upgrading unit %s. Will retry next juju event.",
                 self.charm.unit.name,
             )
             logger.info(ROLLBACK_INSTRUCTIONS)
@@ -182,6 +220,26 @@ class MongoDBUpgrade(Object):
     # END: Event handlers
 
     # BEGIN: Helpers
+    def move_primary_to_last_upgrade_unit(self) -> None:
+        """Moves the primary to last unit that gets upgraded (the unit with the lowest id).
+
+        Raises FailedToMovePrimaryError
+        """
+        # no need to move primary in the scenario of one unit
+        if len(self._upgrade._sorted_units) < 2:
+            return
+
+        with MongoDBConnection(self.charm.mongodb_config) as mongod:
+            unit_with_lowest_id = self._upgrade._sorted_units[-1]
+            if mongod.primary() == self.charm.unit_ip(unit_with_lowest_id):
+                logger.debug(
+                    "Not moving Primary before upgrade, primary is already on the last unit to upgrade."
+                )
+                return
+
+            logger.debug("Moving primary to unit: %s", unit_with_lowest_id)
+            mongod.move_primary(new_primary_ip=self.charm.unit_ip(unit_with_lowest_id))
+
     def _set_upgrade_status(self):
         # In the future if we decide to support app statuses, we will need to handle this
         # differently. Specifically ensuring that upgrade status for apps status has the lowest
@@ -191,24 +249,54 @@ class MongoDBUpgrade(Object):
 
         # Set/clear upgrade unit status if no other unit status - upgrade status for units should
         # have the lowest priority.
-        if isinstance(self.charm.unit.status, ActiveStatus):
+        if isinstance(self.charm.unit.status, ActiveStatus) or (
+            isinstance(self.charm.unit.status, BlockedStatus)
+            and self.charm.unit.status.message.startswith(
+                "Rollback with `juju refresh`. Pre-upgrade check failed:"
+            )
+        ):
             self.charm.unit.status = self._upgrade.get_unit_juju_status() or ActiveStatus()
+
+    def wait_for_cluster_healthy(self) -> None:
+        """Waits until the cluster is healthy after upgrading.
+
+        After a unit restarts it can take some time for the cluster to settle.
+
+        Raises:
+            ClusterNotHealthyError.
+        """
+        for attempt in Retrying(stop=stop_after_attempt(10), wait=wait_fixed(1)):
+            with attempt:
+                if not self.is_cluster_healthy():
+                    raise ClusterNotHealthyError()
 
     def is_cluster_healthy(self) -> bool:
         """Returns True if all nodes in the cluster/replcia set are healthy."""
-        if self.charm.is_role(Config.Role.SHARD):
-            logger.debug("Cannot run full cluster health check on shards")
-            # TODO Future PR - implement cgecj healthy check for single shard
+        with MongoDBConnection(
+            self.charm.mongodb_config, "localhost", direct=True
+        ) as direct_mongo:
+            if not direct_mongo.is_ready:
+                logger.error("Cannot proceed with upgrade. Service mongod is not running")
+                return False
+
+        # unit status should be
+        unit_state = self.charm.process_statuses()
+        if not isinstance(unit_state, ActiveStatus):
+            logger.error(
+                "Cannot proceed with upgrade. Unit is not in Active state, in: %s.", unit_state
+            )
             return False
 
         try:
-            if self.charm.is_role(Config.Role.CONFIG_SERVER):
-                # TODO Future PR - implement node healthy check for sharded cluster
+            if self.charm.is_role(Config.Role.CONFIG_SERVER) or self.charm.is_role(
+                Config.Role.SHARD
+            ):
+                # TODO Future PR - implement node healthy check for entire cluster
                 return False
             if self.charm.is_role(Config.Role.REPLICATION):
                 return self.are_replica_set_nodes_healthy(self.charm.mongodb_config)
         except (PyMongoError, OperationFailure, ServerSelectionTimeoutError) as e:
-            logger.debug(
+            logger.error(
                 "Cannot proceed with upgrade. Failed to check cluster health, error: %s", e
             )
             return False

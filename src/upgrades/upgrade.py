@@ -17,16 +17,34 @@ import typing
 
 import ops
 import poetry.core.constraints.version as poetry_version
+from charms.mongodb.v0.mongodb import FailedToMovePrimaryError
+from tenacity import RetryError
+
+import status_exception
 
 logger = logging.getLogger(__name__)
 
+SHARD = "shard"
 PEER_RELATION_ENDPOINT_NAME = "upgrade-version-a"
+PRECHECK_ACTION_NAME = "pre-upgrade-check"
 RESUME_ACTION_NAME = "resume-upgrade"
 
 
 def unit_number(unit_: ops.Unit) -> int:
     """Get unit number."""
     return int(unit_.name.split("/")[-1])
+
+
+class PrecheckFailed(status_exception.StatusException):
+    """App is not ready to upgrade."""
+
+    def __init__(self, message: str):
+        self.message = message
+        super().__init__(
+            ops.BlockedStatus(
+                f"Rollback with `juju refresh`. Pre-upgrade check failed: {self.message}"
+            )
+        )
 
 
 class PeerRelationNotReady(Exception):
@@ -51,6 +69,7 @@ class Upgrade(abc.ABC):
             raise PeerRelationNotReady
         assert len(relations) == 1
         self._peer_relation = relations[0]
+        self._charm = charm_
         self._unit: ops.Unit = charm_.unit
         self._unit_databag = self._peer_relation.data[self._unit]
         self._app_databag = self._peer_relation.data[charm_.app]
@@ -154,8 +173,12 @@ class Upgrade(abc.ABC):
             # User confirmation needed to resume upgrade (i.e. upgrade second unit)
             # Statuses over 120 characters are truncated in `juju status` as of juju 3.1.6 and
             # 2.9.45
+            if len(self._sorted_units) > 1:
+                resume_string = (
+                    "Verify highest unit is healthy & run `{RESUME_ACTION_NAME}` action. "
+                )
             return ops.BlockedStatus(
-                f"Upgrading. Verify highest unit is healthy & run `{RESUME_ACTION_NAME}` action. To rollback, `juju refresh` to last revision"
+                f"Upgrading. {resume_string}To rollback, `juju refresh` to last revision"
             )
         return ops.MaintenanceStatus(
             "Upgrading. To rollback, `juju refresh` to the previous revision"
@@ -231,3 +254,49 @@ class Upgrade(abc.ABC):
 
         Only applies to machine charm
         """
+
+    def pre_upgrade_check(self) -> None:
+        """Check if this app is ready to upgrade.
+
+        Runs before any units are upgraded
+
+        Does *not* run during rollback
+
+        On machines, this runs before any units are upgraded (after `juju refresh`)
+        On machines & Kubernetes, this also runs during pre-upgrade-check action
+
+        Can run on leader or non-leader unit
+
+        Raises:
+            PrecheckFailed: App is not ready to upgrade
+
+        TODO Kubernetes: Run (some) checks after `juju refresh` (in case user forgets to run
+        pre-upgrade-check action). Note: 1 unit will upgrade before we can run checks (checks may
+        need to be modified).
+        See https://chat.canonical.com/canonical/pl/cmf6uhm1rp8b7k8gkjkdsj4mya
+        """
+        logger.debug("Running pre-upgrade checks")
+
+        # TODO In future PR when we support upgrades on sharded clusters, have the shard verify
+        # that the config-server has already upgraded.
+
+        try:
+            self._charm.upgrade.wait_for_cluster_healthy()
+        except RetryError:
+            logger.error("Cluster is not healthy")
+            raise PrecheckFailed("Cluster is not healthy")
+
+        # On VM charms we can choose the order to upgrade, but not on K8s. In order to keep the
+        # two charms in sync we decided to have the VM charm have the same upgrade order as the K8s
+        # charm (i.e. highest to lowest.) Hence, we move the primary to the last unit to upgrade.
+        # This prevents the primary from jumping around from unit to unit during the upgrade
+        # procedure.
+        try:
+            self._charm.upgrade.move_primary_to_last_upgrade_unit()
+        except FailedToMovePrimaryError:
+            logger.error("Cluster failed to move primary before re-election.")
+            raise PrecheckFailed("Primary switchover failed")
+
+        if not self._charm.upgrade.is_cluster_able_to_read_write():
+            logger.error("Cluster cannot read/write to replicas")
+            raise PrecheckFailed("Cluster is not healthy")
