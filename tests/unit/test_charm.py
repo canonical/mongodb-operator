@@ -47,6 +47,7 @@ class TestCharm(unittest.TestCase):
         self.addCleanup(self.harness.cleanup)
         self.harness.begin()
         self.peer_rel_id = self.harness.add_relation("database-peers", "database-peers")
+        self.peer_rel_id = self.harness.add_relation("upgrade-version-a", "upgrade-version-a")
 
     @pytest.fixture
     def use_caplog(self, caplog):
@@ -198,7 +199,7 @@ class TestCharm(unittest.TestCase):
         self.harness.add_relation_unit(rel_id, "mongodb/1")
         self.harness.update_relation_data(rel_id, "mongodb/1", PEER_ADDR)
 
-        resulting_ips = self.harness.charm._unit_ips
+        resulting_ips = self.harness.charm.unit_ips
         expected_ips = ["127.4.5.6", "1.1.1.1"]
         self.assertEqual(resulting_ips, expected_ips)
 
@@ -625,16 +626,16 @@ class TestCharm(unittest.TestCase):
 
     @patch("charm.MongodbOperatorCharm.get_secret")
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongodbOperatorCharm._unit_ips")
+    @patch("charm.MongodbOperatorCharm.unit_ips")
     @patch("charm.MongoDBConnection")
-    def test_process_unremoved_units_handles_errors(self, connection, _unit_ips, get_secret):
+    def test_process_unremoved_units_handles_errors(self, connection, unit_ips, get_secret):
         """Test failures in process_unremoved_units are handled and not raised."""
         get_secret.return_value = "pass123"
         connection.return_value.__enter__.return_value.get_replset_members.return_value = {
             "1.1.1.1",
             "2.2.2.2",
         }
-        self.harness.charm._unit_ips = ["2.2.2.2"]
+        self.harness.charm.unit_ips = ["2.2.2.2"]
 
         for exception in [PYMONGO_EXCEPTIONS, NotReadyError]:
             connection.return_value.__enter__.return_value.remove_replset_member.side_effect = (

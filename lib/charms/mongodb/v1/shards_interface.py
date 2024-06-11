@@ -132,7 +132,7 @@ class ShardingProvider(Object):
             KEYFILE_KEY: self.charm.get_secret(
                 Config.Relations.APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME
             ),
-            HOSTS_KEY: json.dumps(self.charm._unit_ips),
+            HOSTS_KEY: json.dumps(self.charm.unit_ips),
         }
 
         # if tls enabled
@@ -144,13 +144,8 @@ class ShardingProvider(Object):
 
         self.database_provides.update_relation_data(event.relation.id, relation_data)
 
-    def pass_hook_checks(self, event: EventBase) -> bool:
-        """Runs the pre-hooks checks for ShardingProvider, returns True if all pass."""
-        if not self.charm.upgrade.idle:
-            logger.info("cannot process %s, upgrade is in progress", event)
-            event.defer()
-            return False
-
+    def pass_sanity_hook_checks(self, event: EventBase) -> bool:
+        """Returns True if all the sanity hook checks for sharding pass."""
         if not self.charm.db_initialised:
             logger.info("Deferring %s. db is not initialised.", str(type(event)))
             event.defer()
@@ -170,6 +165,13 @@ class ShardingProvider(Object):
         if not self.charm.unit.is_leader():
             return False
 
+        return True
+
+    def pass_hook_checks(self, event: EventBase) -> bool:
+        """Runs the pre-hooks checks for ShardingProvider, returns True if all pass."""
+        if not self.pass_sanity_hook_checks(event):
+            return False
+
         # adding/removing shards while a backup/restore is in progress can be disastrous
         pbm_status = self.charm.backups.get_pbm_status()
         if isinstance(pbm_status, MaintenanceStatus):
@@ -178,6 +180,12 @@ class ShardingProvider(Object):
             return False
 
         if isinstance(event, RelationBrokenEvent):
+            if self.charm.upgrade_in_progress:
+                # upgrades should not block the relation broken event
+                logger.warning(
+                    "Removing shards is not supported during an upgrade. The charm may be in a broken, unrecoverable state"
+                )
+
             if not self.charm.has_departed_run(event.relation.id):
                 logger.info(
                     "Deferring, must wait for relation departed hook to decide if relation should be removed."
@@ -187,6 +195,12 @@ class ShardingProvider(Object):
 
             if not self.charm.proceed_on_broken_event(event):
                 return False
+        elif self.charm.upgrade_in_progress:
+            logger.warning(
+                "Adding/Removing/Updating shards is not supported during an upgrade. The charm may be in a broken, unrecoverable state"
+            )
+            event.defer()
+            return False
 
         return True
 
@@ -317,7 +331,7 @@ class ShardingProvider(Object):
             return
 
         for relation in self.charm.model.relations[self.relation_name]:
-            self._update_relation_data(relation.id, {HOSTS_KEY: json.dumps(self.charm._unit_ips)})
+            self._update_relation_data(relation.id, {HOSTS_KEY: json.dumps(self.charm.unit_ips)})
 
     def update_ca_secret(self, new_ca: str) -> None:
         """Updates the new CA for all related shards."""
@@ -453,7 +467,7 @@ class ShardingProvider(Object):
 
     def is_mongos_running(self) -> bool:
         """Returns true if mongos service is running."""
-        mongos_hosts = ",".join(self.charm._unit_ips)
+        mongos_hosts = ",".join(self.charm.unit_ips)
         uri = f"mongodb://{mongos_hosts}"
         with MongosConnection(None, uri) as mongo:
             return mongo.is_ready
@@ -547,11 +561,6 @@ class ConfigServerRequirer(Object):
         Changes in secrets do not re-trigger a relation changed event, so it is necessary to listen
         to secret changes events.
         """
-        if not self.charm.upgrade.idle:
-            logger.info("cannot process %s, upgrade is in progress", event)
-            event.defer()
-            return False
-
         if (
             not self.charm.unit.is_leader()
             or not event.secret.label
@@ -655,11 +664,6 @@ class ConfigServerRequirer(Object):
 
     def _on_relation_joined(self, event: RelationJoinedEvent):
         """Sets status and flags in relation data relevant to sharding."""
-        if not self.charm.upgrade.idle:
-            logger.info("cannot process %s, upgrade is in progress", event)
-            event.defer()
-            return
-
         # if re-using an old shard, re-set flags.
         self.charm.unit_peer_data["drained"] = json.dumps(False)
         self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
@@ -706,13 +710,35 @@ class ConfigServerRequirer(Object):
 
         self.charm.app_peer_data["mongos_hosts"] = json.dumps(self.get_mongos_hosts())
 
-    def pass_hook_checks(self, event):
+    def pass_hook_checks(self, event: EventBase):
         """Runs the pre-hooks checks for ConfigServerRequirer, returns True if all pass."""
-        if not self.charm.upgrade.idle:
-            logger.info("cannot process %s, upgrade is in progress", event)
-            event.defer()
+        if not self.pass_sanity_hook_checks(event):
             return False
 
+        # occasionally, broken events have no application, in these scenarios nothing should be
+        # processed.
+        if not event.relation.app and isinstance(event, RelationBrokenEvent):
+            return False
+
+        mongos_hosts = event.relation.data[event.relation.app].get(HOSTS_KEY)
+
+        if isinstance(event, RelationBrokenEvent) and not mongos_hosts:
+            logger.info("Config-server relation never set up, no need to process broken event.")
+            return False
+
+        if self.charm.upgrade_in_progress:
+            logger.warning(
+                "Adding/Removing shards is not supported during an upgrade. The charm may be in a broken, unrecoverable state"
+            )
+            if not isinstance(event, RelationBrokenEvent):
+                # upgrades should not block relation broken events
+                event.defer()
+                return False
+
+        return self.pass_tls_hook_checks(event)
+
+    def pass_sanity_hook_checks(self, event: EventBase) -> bool:
+        """Returns True if all the sanity hook checks for sharding pass."""
         if not self.charm.db_initialised:
             logger.info("Deferring %s. db is not initialised.", str(type(event)))
             event.defer()
@@ -726,17 +752,10 @@ class ConfigServerRequirer(Object):
             logger.info("skipping %s is only be executed by shards", str(type(event)))
             return False
 
-        # occasionally, broken events have no application, in these scenarios nothing should be
-        # processed.
-        if not event.relation.app:
-            return False
+        return True
 
-        mongos_hosts = event.relation.data[event.relation.app].get(HOSTS_KEY, None)
-
-        if isinstance(event, RelationBrokenEvent) and not mongos_hosts:
-            logger.info("Config-server relation never set up, no need to process broken event.")
-            return False
-
+    def pass_tls_hook_checks(self, event: EventBase) -> bool:
+        """Returns True if the TLS checks for sharding pass."""
         if self.is_shard_tls_missing():
             logger.info(
                 "Deferring %s. Config-server uses TLS, but shard does not. Please synchronise encryption methods.",
@@ -761,7 +780,6 @@ class ConfigServerRequirer(Object):
 
             event.defer()
             return False
-
         return True
 
     def _on_relation_broken(self, event: RelationBrokenEvent) -> None:

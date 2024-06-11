@@ -76,7 +76,6 @@ from pymongo.errors import OperationFailure, ServerSelectionTimeoutError
 from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
 from config import Config, Package
-from events.upgrade import MongoDBDependencyModel, MongoDBUpgrade
 from exceptions import AdminUserCreationError, ApplicationHostNotFoundError
 from machine_helpers import (
     MONGO_USER,
@@ -84,6 +83,7 @@ from machine_helpers import (
     setup_logrotate_and_cron,
     update_mongod_service,
 )
+from upgrades.mongodb_upgrade import MongoDBUpgrade
 
 AUTH_FAILED_CODE = 18
 UNAUTHORISED_CODE = 13
@@ -136,12 +136,7 @@ class MongodbOperatorCharm(CharmBase):
         self.legacy_client_relations = MongoDBLegacyProvider(self)
         self.tls = MongoDBTLS(self, Config.Relations.PEERS, substrate=Config.SUBSTRATE)
         self.backups = MongoDBBackups(self)
-        self.upgrade = MongoDBUpgrade(
-            self,
-            dependency_model=MongoDBDependencyModel(
-                **Config.DEPENDENCIES  # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
-            ),
-        )  # TODO future PR add dependency_model
+        self.upgrade = MongoDBUpgrade(self)
         self.config_server = ShardingProvider(self)
         self.cluster = ClusterProvider(self)
         self.shard = ConfigServerRequirer(self)
@@ -166,7 +161,7 @@ class MongodbOperatorCharm(CharmBase):
                 "static_configs": [
                     {
                         "targets": [
-                            f"{self._unit_ip(self.unit)}:{Config.Monitoring.MONGODB_EXPORTER_PORT}"
+                            f"{self.unit_ip(self.unit)}:{Config.Monitoring.MONGODB_EXPORTER_PORT}"
                         ],
                         "labels": {"cluster": self.app.name, "replication_set": self.app.name},
                     }
@@ -185,12 +180,12 @@ class MongodbOperatorCharm(CharmBase):
             return None
 
         # check if current unit matches primary ip
-        if primary_ip == self._unit_ip(self.unit):
+        if primary_ip == self.unit_ip(self.unit):
             return self.unit.name
 
         # check if peer unit matches primary ip
         for unit in self.peers.units:
-            if primary_ip == self._unit_ip(unit):
+            if primary_ip == self.unit_ip(unit):
                 return unit.name
 
         return None
@@ -205,7 +200,7 @@ class MongodbOperatorCharm(CharmBase):
         return self.unit_peer_data.get("drained", False)
 
     @property
-    def _unit_ips(self) -> List[str]:
+    def unit_ips(self) -> List[str]:
         """Retrieve IP addresses associated with MongoDB application.
 
         Returns:
@@ -213,10 +208,10 @@ class MongodbOperatorCharm(CharmBase):
         """
         peer_addresses = []
         if self.peers:
-            peer_addresses = [self._unit_ip(unit) for unit in self.peers.units]
+            peer_addresses = [self.unit_ip(unit) for unit in self.peers.units]
 
         logger.debug("peer addresses: %s", peer_addresses)
-        self_address = self._unit_ip(self.unit)
+        self_address = self.unit_ip(self.unit)
         logger.debug("unit address: %s", self_address)
         addresses = []
         if peer_addresses:
@@ -236,7 +231,7 @@ class MongodbOperatorCharm(CharmBase):
     @property
     def mongos_config(self) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for mongos in the deployment of MongoDB."""
-        return self._get_mongos_config_for_user(OperatorUser, set(self._unit_ips))
+        return self._get_mongos_config_for_user(OperatorUser, set(self.unit_ips))
 
     def remote_mongos_config(self, hosts) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for mongos in the deployment of MongoDB."""
@@ -247,7 +242,7 @@ class MongodbOperatorCharm(CharmBase):
     @property
     def mongodb_config(self) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for this deployment of MongoDB."""
-        return self._get_mongodb_config_for_user(OperatorUser, set(self._unit_ips))
+        return self._get_mongodb_config_for_user(OperatorUser, set(self.unit_ips))
 
     @property
     def monitor_config(self) -> MongoDBConfiguration:
@@ -327,6 +322,13 @@ class MongodbOperatorCharm(CharmBase):
                 f"'db_initialised' must be a boolean value. Proivded: {value} is of type {type(value)}"
             )
 
+    @property
+    def upgrade_in_progress(self):
+        """Whether upgrade is in progress."""
+        if not self.upgrade._upgrade:
+            return False
+        return self.upgrade._upgrade.in_progress
+
     # END: properties
 
     # BEGIN: charm event handlers
@@ -358,7 +360,7 @@ class MongodbOperatorCharm(CharmBase):
         # Construct the mongod startup commandline args for systemd and reload the daemon.
         update_mongod_service(
             auth=auth,
-            machine_ip=self._unit_ip(self.unit),
+            machine_ip=self.unit_ip(self.unit),
             config=self.mongodb_config,
             role=self.role,
         )
@@ -373,7 +375,15 @@ class MongodbOperatorCharm(CharmBase):
         unresponsive therefore causing a cluster failure, error the component. This prevents it
         from executing other hooks with a new role.
         """
-        if self.upgrade.idle and self.is_role_changed():
+        if self.is_role_changed():
+
+            if self.upgrade_in_progress:
+                logger.warning(
+                    "Changing config options is not permitted during an upgrade. The charm may be in a broken, unrecoverable state."
+                )
+                event.defer()
+                return
+
             # TODO in the future (24.04) support migration of components
             logger.error(
                 f"cluster migration currently not supported, cannot change from { self.model.config['role']} to {self.role}"
@@ -447,8 +457,10 @@ class MongodbOperatorCharm(CharmBase):
         if not self.unit.is_leader():
             return
 
-        if not self.upgrade.idle:
-            logger.info("cannot process %s, upgrade is in progress", event)
+        if self.upgrade_in_progress:
+            logger.warning(
+                "Adding replicas during an upgrade is not supported. The charm may be in a broken, unrecoverable state"
+            )
             event.defer()
             return
 
@@ -462,8 +474,10 @@ class MongodbOperatorCharm(CharmBase):
         Args:
             event: The triggering relation joined/changed event.
         """
-        if not self.upgrade.idle:
-            logger.info("cannot process %s, upgrade is in progress", event)
+        if self.upgrade_in_progress:
+            logger.warning(
+                "Adding/Removing/Changing replicas during an upgrade is not supported. The charm may be in a broken, unrecoverable state"
+            )
             event.defer()
             return
 
@@ -510,11 +524,6 @@ class MongodbOperatorCharm(CharmBase):
 
     def _on_leader_elected(self, event: LeaderElectedEvent) -> None:
         """Generates necessary keyfile and updates replica hosts."""
-        if not self.upgrade.idle:
-            logger.info("cannot process %s, upgrade is in progress", event)
-            event.defer()
-            return
-
         if not self.get_secret(APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME):
             self._generate_secrets()
 
@@ -530,10 +539,13 @@ class MongodbOperatorCharm(CharmBase):
         if not self.unit.is_leader() or event.departing_unit == self.unit:
             return
 
-        if not self.upgrade.idle:
-            logger.info("cannot process %s, upgrade is in progress", event)
-            event.defer()
-            return
+        if self.upgrade_in_progress:
+            # do not defer or return here, if a user removes a unit, the config will be incorrect
+            # and lead to MongoDB reporting that the replica set is unhealthy, we should make an
+            # attempt to fix the replica set configuration even if an upgrade is occurring.
+            logger.warning(
+                "Removing replicas during an upgrade is not supported. The charm may be in a broken, unrecoverable state"
+            )
 
         self._update_hosts(event)
 
@@ -543,6 +555,12 @@ class MongodbOperatorCharm(CharmBase):
         If the removing unit is primary also allow it to step down and elect another unit as
         primary while it still has access to its storage.
         """
+        if self.upgrade_in_progress:
+            # We cannot defer and prevent a user from removing a unit, log a warning instead.
+            logger.warning(
+                "Removing replicas during an upgrade is not supported. The charm may be in a broken, unrecoverable state"
+            )
+
         # A single replica cannot step down as primary and we cannot reconfigure the replica set to
         # have 0 members.
         if self._is_removing_last_replica:
@@ -566,7 +584,7 @@ class MongodbOperatorCharm(CharmBase):
         try:
             # retries over a period of 10 minutes in an attempt to resolve race conditions it is
             # not possible to defer in storage detached.
-            logger.debug("Removing %s from replica set", self._unit_ip(self.unit))
+            logger.debug("Removing %s from replica set", self.unit_ip(self.unit))
             for attempt in Retrying(
                 stop=stop_after_attempt(10),
                 wait=wait_fixed(1),
@@ -575,7 +593,7 @@ class MongodbOperatorCharm(CharmBase):
                 with attempt:
                     # remove_replset_member retries for 60 seconds
                     with MongoDBConnection(self.mongodb_config) as mongo:
-                        mongo.remove_replset_member(self._unit_ip(self.unit))
+                        mongo.remove_replset_member(self.unit_ip(self.unit))
         except NotReadyError:
             logger.info(
                 "Failed to remove %s from replica set, another member is syncing", self.unit.name
@@ -584,10 +602,6 @@ class MongodbOperatorCharm(CharmBase):
             logger.error("Failed to remove %s from replica set, error=%r", self.unit.name, e)
 
     def _on_update_status(self, event: UpdateStatusEvent):
-        if not self.upgrade.idle:
-            logger.info("Processing upgrade, wait to check status")
-            return
-
         # user-made mistakes might result in other incorrect statues. Prioritise informing users of
         # their mistake.
         invalid_integration_status = self.get_invalid_integration_status()
@@ -612,11 +626,13 @@ class MongodbOperatorCharm(CharmBase):
                     self.unit.status = WaitingStatus("Waiting for MongoDB to start")
                     return
 
-        # leader should periodically handle configuring the replica set. Incidents such as network
-        # cuts can lead to new IP addresses and therefore will require a reconfigure. Especially
-        # in the case that the leader a change in IP address it will not receive a relation event.
-        if self.unit.is_leader():
-            self._handle_reconfigure(event)
+        try:
+            self.perform_self_healing(event)
+        except ServerSelectionTimeoutError:
+            # health checks that are performed too early will fail if the hasn't elected a primary
+            # yet. This can occur if the deployment has restarted or is undergoing a re-election
+            deployment_mode = "replica set" if self.is_role(Config.Role.REPLICATION) else "cluster"
+            WaitingStatus(f"Waiting to sync internal membership across the {deployment_mode}")
 
         self.unit.status = self.process_statuses()
 
@@ -637,10 +653,6 @@ class MongodbOperatorCharm(CharmBase):
 
     def _on_set_password(self, event: ActionEvent) -> None:
         """Set the password for the admin user."""
-        if not self.upgrade.idle:
-            event.fail("Cannot set password, upgrade is in progress.")
-            return
-
         # check conditions for setting the password and fail if necessary
         if not self.pass_pre_set_password_checks(event):
             return
@@ -875,18 +887,23 @@ class MongodbOperatorCharm(CharmBase):
         """Checks conditions for setting the password and fail if necessary."""
         if self.is_role(Config.Role.SHARD):
             event.fail("Cannot set password on shard, please set password on config-server.")
-            return
+            return False
 
         # changing the backup password while a backup/restore is in progress can be disastrous
         pbm_status = self.backups.get_pbm_status()
         if isinstance(pbm_status, MaintenanceStatus):
             event.fail("Cannot change password while a backup/restore is in progress.")
-            return
+            return False
 
         # only leader can write the new password into peer relation.
         if not self.unit.is_leader():
             event.fail("The action can be run only on leader unit.")
-            return
+            return False
+
+        if self.upgrade_in_progress:
+            logger.debug("Do not set the password while a backup/restore is in progress.")
+            event.fail("Cannot set passwords while an upgrade is in progress.")
+            return False
 
         return True
 
@@ -913,7 +930,7 @@ class MongodbOperatorCharm(CharmBase):
             return
 
         self.process_unremoved_units(event)
-        self.app_peer_data["replica_set_hosts"] = json.dumps(self._unit_ips)
+        self.app_peer_data["replica_set_hosts"] = json.dumps(self.unit_ips)
 
         self._update_related_hosts(event)
 
@@ -943,12 +960,12 @@ class MongodbOperatorCharm(CharmBase):
                 logger.error("Deferring process_unremoved_units: error=%r", e)
                 event.defer()
 
-    def _handle_reconfigure(self, event: UpdateStatusEvent):
+    def perform_self_healing(self, event: UpdateStatusEvent):
         """Reconfigures the replica set if necessary.
 
-        Removes any mongod hosts that are no longer present in the replica set or adds hosts that
-        should exist in the replica set. This function is meant to be called periodically by the
-        leader in the update status hook to perform any necessary cluster healing.
+        Incidents such as network cuts can lead to new IP addresses and therefore will require a
+        reconfigure. Especially in the case that the leader's IP address changed, it will not
+        receive a relation event.
         """
         if not self.unit.is_leader():
             logger.debug("only the leader can perform reconfigurations to the replica set.")
@@ -961,6 +978,12 @@ class MongodbOperatorCharm(CharmBase):
         # a unit.
         event.unit = self.unit
         self._on_relation_handler(event)
+
+        # make sure all nodes in the replica set have the same priority for re-election. This is
+        # necessary in the case that pre-upgrade hook fails to reset the priority of election for
+        # cluster nodes.
+        with MongoDBConnection(self.mongodb_config) as mongod:
+            mongod.set_replicaset_election_priority(priority=1)
 
     def _open_ports_tcp(self, ports: int) -> None:
         """Open the given port.
@@ -1176,7 +1199,7 @@ class MongodbOperatorCharm(CharmBase):
                 logger.info("Replica Set initialization")
                 direct_mongo.init_replset()
                 self.peers.data[self.app]["replica_set_hosts"] = json.dumps(
-                    [self._unit_ip(self.unit)]
+                    [self.unit_ip(self.unit)]
                 )
 
                 logger.info("User initialization")
@@ -1206,7 +1229,7 @@ class MongodbOperatorCharm(CharmBase):
             self.db_initialised = True
             self.unit.status = ActiveStatus()
 
-    def _unit_ip(self, unit: Unit) -> str:
+    def unit_ip(self, unit: Unit) -> str:
         """Returns the ip address of a given unit."""
         # check if host is current host
         if unit == self.unit:
@@ -1302,7 +1325,7 @@ class MongodbOperatorCharm(CharmBase):
             self.stop_charm_services()
             update_mongod_service(
                 auth,
-                self._unit_ip(self.unit),
+                self.unit_ip(self.unit),
                 config=self.mongodb_config,
                 role=self.role,
             )
@@ -1457,7 +1480,7 @@ class MongodbOperatorCharm(CharmBase):
 
     def get_statuses(self) -> Tuple:
         """Retrieves statuses for the different processes running inside the unit."""
-        mongodb_status = build_unit_status(self.mongodb_config, self._unit_ip(self.unit))
+        mongodb_status = build_unit_status(self.mongodb_config, self.unit_ip(self.unit))
         shard_status = self.shard.get_shard_status()
         config_server_status = self.config_server.get_config_server_status()
         pbm_status = self.backups.get_pbm_status()

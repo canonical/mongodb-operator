@@ -89,11 +89,6 @@ class MongoDBProvider(Object):
         """Runs the pre-hooks checks for MongoDBProvider, returns True if all pass."""
         # We shouldn't try to create or update users if the database is not
         # initialised. We will create users as part of initialisation.
-        if not self.charm.upgrade.idle:
-            logger.info("cannot process %s, upgrade is in progress", event)
-            event.defer()
-            return False
-
         if not self.charm.db_initialised:
             return False
 
@@ -108,6 +103,13 @@ class MongoDBProvider(Object):
             return False
 
         if not self.charm.unit.is_leader():
+            return False
+
+        if self.charm.upgrade_in_progress:
+            logger.warning(
+                "Adding relations is not supported during an upgrade. The charm may be in a broken, unrecoverable state."
+            )
+            event.defer()
             return False
 
         return True

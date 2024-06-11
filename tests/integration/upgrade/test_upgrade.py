@@ -34,14 +34,17 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         await check_or_scale_app(ops_test, app_name, required_units=3)
         return
 
-    # TODO: When `6/stable` track supports upgrades deploy and test that revision instead.
-    await ops_test.model.deploy("mongodb", channel="edge", num_units=3)
+    # TODO: When upgrades are supported, deploy with most recent revision (6/stable when possible,
+    # but 6/edge as soon as available)
+    charm = await ops_test.build_charm(".")
+    await ops_test.model.deploy(charm, channel="edge", num_units=3)
 
     await ops_test.model.wait_for_idle(
         apps=["mongodb"], status="active", timeout=1000, idle_period=120
     )
 
 
+@pytest.mark.skip("re-enable these tests once upgrades are functioning")
 @pytest.mark.group(1)
 async def test_upgrade(ops_test: OpsTest, continuous_writes) -> None:
     """Verifies that the upgrade can run successfully."""

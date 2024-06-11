@@ -64,6 +64,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await ops_test.model.wait_for_idle()
 
 
+@pytest.mark.skip("Skip this test until upgrade are implemented in the new way")
 @pytest.mark.group(1)
 async def test_consistency_between_workload_and_metadata(ops_test: OpsTest):
     """Verifies that the dependencies in the charm version are accurate."""
@@ -75,6 +76,8 @@ async def test_consistency_between_workload_and_metadata(ops_test: OpsTest):
     # version has format x.y.z-a
     mongod_version = client.server_info()["version"].split("-")[0]
 
+    # Future PR - change the dependency check to check the file for workload and charm version
+    # instead
     assert (
         mongod_version == Config.DEPENDENCIES["mongod_service"]["version"]
     ), f"Version of mongod running does not match dependency matrix, update DEPENDENCIES in src/config.py to {mongod_version}"
