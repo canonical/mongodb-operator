@@ -42,6 +42,7 @@ S3_RELATION_NAME = "s3-credentials"
 
 
 class TestCharm(unittest.TestCase):
+    @patch("charm.get_charm_revision")
     def setUp(self, *unused):
         self.harness = Harness(MongodbOperatorCharm)
         self.addCleanup(self.harness.cleanup)
