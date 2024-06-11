@@ -84,7 +84,7 @@ from machine_helpers import (
     setup_logrotate_and_cron,
     update_mongod_service,
 )
-from version_check import CrossAppVersionChecker, get_charm_revision, NoVersionError
+from version_check import CrossAppVersionChecker, NoVersionError, get_charm_revision
 
 AUTH_FAILED_CODE = 18
 UNAUTHORISED_CODE = 13
