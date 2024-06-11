@@ -12,7 +12,7 @@ version.
 How to use:
 
 1. in src/charm.py
-    in constructor: 
+    in constructor [REQUIRED]: 
     self.version_checker = self.CrossAppVersionChecker(
         self,
         version=x, # can be a revision of a charm, a version of a snap, a version of a workload, etc
@@ -20,7 +20,7 @@ How to use:
         # only use if the version doesn't not need to exactly match our current version
         version_validity_range={"x": "<a,>b"}) 
 
-    in update status hook:
+    in update status hook [OPTIONAL]:
     if not self.version_checker.are_related_apps_valid():
         logger.debug(
             "Warning relational version check failed, these relations have a mismatched version: %s",
@@ -28,11 +28,11 @@ How to use:
         )
         # can set status, instruct user to change
 
-2. other areas of the charm:
+2. other areas of the charm (i.e. joined events, action events, etc) [OPTIONAL]:
     if not self.charm.version_checker.are_related_apps_valid():
         # do something - i.e. fail event or log message
 
-3. in upgrade handler
+3. in upgrade handler [REQUIRED]:
     if [last unit to upgrade]: 
         self.charm.version.set_version_across_all_relations()
 """
@@ -40,17 +40,17 @@ import logging
 from typing import Dict, List, Optional, Tuple
 
 from ops.framework import Object
+from ops.model import Unit
 
 logger = logging.getLogger(__name__)
 
 VERSION_CONST = "version"
 PREFIX_DIR = "/var/lib/juju/agents/"
+LOCAL_BUILT_CHARM_PREFIX = "local"
 
 
-def get_charm_revision(unit):
-    """Returns the charm revision as according to the file XXX.YYY
-
-    Args: unit name where unit name is what is returned by
+def get_charm_revision(unit: Unit) -> int:
+    """Returns the charm revision.
 
     TODO: Keep this until ops framework supports: https://github.com/canonical/operator/issues/1255
     """
@@ -59,13 +59,20 @@ def get_charm_revision(unit):
     with open(file_path) as f:
         charm_path = f.read().rstrip()
 
+    # revision of charm in a locally built chamr is unreliable:
+    # https://chat.canonical.com/canonical/pl/ro9935ayxbyyxn9hn6opy4f4xw
+    if charm_path.split(":")[0] == LOCAL_BUILT_CHARM_PREFIX:
+        logger.debug("Charm is locally built. Cannot determine revision number.")
+        return 0
+
     # charm_path is of the format ch:amd64/jammy/<charm-name>-<revision number>
     revision = charm_path.split("-")[-1]
-
     return int(revision)
 
 
 class CrossAppVersionChecker(Object):
+    """Verifies versions across multiple integrated applications."""
+
     def __init__(
         self,
         charm,
@@ -111,15 +118,27 @@ class CrossAppVersionChecker(Object):
         invalid_relations = []
         for relation_name in self.relations_to_check:
             for relation in self.charm.model.relations[relation_name]:
-                related_version = relation.data[relation.app.name].get(VERSION_CONST)
-                if int(related_version) != self.charm_version:
+                related_version = relation.data[relation.app].get(VERSION_CONST)
+                if int(related_version) != self.version:
                     invalid_relations.append((relation.app.name, related_version))
 
         return invalid_relations
 
+    def get_version_of_related_app(self, related_app_name: str) -> int:
+        """Returns a int for the version of the related app."""
+        try:
+            for relation_name in self.relations_to_check:
+                for rel in self.charm.model.relations[relation_name]:
+                    if rel.app.name == related_app_name:
+                        return int(rel.data[rel.app][VERSION_CONST])
+        except KeyError:
+            pass
+
+        raise NoVersionError(f"Expected {related_app_name} to have version info.")
+
     def are_related_apps_valid(self) -> bool:
         """Returns True if a related app has a version that's incompatible with the current app."""
-        return self.get_invalid_relations_version == []
+        return self.get_invalid_versions() == []
 
     def set_version_across_all_relations(self) -> None:
         """Sets the version number across all related apps, prvided by relations_to_check."""
@@ -141,7 +160,7 @@ class CrossAppVersionChecker(Object):
                 rel.data[self.charm.model.app][VERSION_CONST] = str(self.version)
 
     def set_version_on_relation_created(self, event) -> None:
-        """Todo
+        """Shares the charm's revision to the newly integrated application.
 
         Raises:
             RelationInvalidError
@@ -159,4 +178,8 @@ class CrossAppVersionCheckerError(Exception):
 
 
 class RelationInvalidError(CrossAppVersionCheckerError):
-    pass
+    """Raised if a relation is not in the provided set of relations to check."""
+
+
+class NoVersionError(CrossAppVersionCheckerError):
+    """Raised if an application does not contain any version information."""

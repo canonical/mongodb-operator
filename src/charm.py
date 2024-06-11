@@ -85,7 +85,7 @@ from machine_helpers import (
     update_mongod_service,
 )
 
-from revision_check import CrossAppVersionChecker, get_charm_revision
+from version_check import CrossAppVersionChecker, get_charm_revision
 
 AUTH_FAILED_CODE = 18
 UNAUTHORISED_CODE = 13
@@ -1469,6 +1469,9 @@ class MongodbOperatorCharm(CharmBase):
                 "Relation to s3-integrator is not supported, config role must be config-server"
             )
 
+        if self.get_cluster_mismatched_revision_status():
+            return self.get_cluster_mismatched_revision_status()
+
     def get_statuses(self) -> Tuple:
         """Retrieves statuses for the different processes running inside the unit."""
         mongodb_status = build_unit_status(self.mongodb_config, self._unit_ip(self.unit))
@@ -1549,11 +1552,35 @@ class MongodbOperatorCharm(CharmBase):
             )
             return False
 
+        if self.get_cluster_mismatched_revision_status():
+            self.unit.status = self.get_cluster_mismatched_revision_status()
+            return False
+
         return True
 
     def is_sharding_component(self) -> bool:
         """Returns true if charm is running as a sharded component."""
         return self.is_role(Config.Role.SHARD) or self.is_role(Config.Role.CONFIG_SERVER)
+
+    def get_cluster_mismatched_revision_status(self) -> Optional[StatusBase]:
+        """Returns a Status if the cluster has mismatched revisions."""
+        if not self.version_checker.are_related_apps_valid():
+            # check for invalid versions in sharding integrations, i.e. a shard running on
+            # revision  88 and a config-server running on revision 110
+            if self.is_role(Config.Role.SHARD):
+                config_server_revision = self.version_checker.get_version_of_related_app(
+                    self.get_config_server_name()
+                )
+                shard_revision = get_charm_revision(self.unit)
+                return BlockedStatus(
+                    f"Charm revision ({shard_revision}) is not up-to date with config-server ({config_server_revision})"
+                )
+
+            if self.is_role(Config.Role.CONFIG_SERVER):
+                # TODO Future PR add handling for integrated mongos charms
+                return WaitingStatus(
+                    f"Waiting for shards to upgrade/downgrade to revision {get_charm_revision(self.unit)}"
+                )
 
     def get_config_server_name(self) -> Optional[str]:
         """Returns the name of the Juju Application that the shard is using as a config server."""
