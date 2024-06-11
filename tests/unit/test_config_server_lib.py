@@ -87,7 +87,8 @@ class TestConfigServerInterface(unittest.TestCase):
         self.harness.charm.cluster.update_config_server_db(mock.Mock())
         self.harness.charm.cluster.database_provides.update_relation_data.assert_not_called()
 
-    def test_pass_hooks_check_waits_for_start_config_server(self):
+    @mock.patch("charm.get_charm_revision")
+    def test_pass_hooks_check_waits_for_start_config_server(self, get_rev):
         """Ensure that pass_hooks defers until the database is initialized.
 
         Note: in some cases sharding related hooks execute before config and leader elected hooks,
