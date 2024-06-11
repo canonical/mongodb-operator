@@ -36,6 +36,8 @@ How to use:
 3. in upgrade handler [REQUIRED]:
     if [last unit to upgrade]:
         self.charm.version.set_version_across_all_relations()
+
+
 """
 import logging
 from typing import Dict, List, Optional, Tuple
@@ -114,18 +116,28 @@ class CrossAppVersionChecker(Object):
 
         Mismatches are decided based on version_validity_range, if version_validity_range is not
         provided, then the mismatch is expected to match this current app's version number.
+
+        Raises:
+            NoVersionError.
         """
-        invalid_relations = []
-        for relation_name in self.relations_to_check:
-            for relation in self.charm.model.relations[relation_name]:
-                related_version = relation.data[relation.app].get(VERSION_CONST)
-                if int(related_version) != self.version:
-                    invalid_relations.append((relation.app.name, related_version))
+        try:
+            invalid_relations = []
+            for relation_name in self.relations_to_check:
+                for relation in self.charm.model.relations[relation_name]:
+                    related_version = relation.data[relation.app][VERSION_CONST]
+                    if int(related_version) != self.version:
+                        invalid_relations.append((relation.app.name, related_version))
+        except KeyError:
+            raise NoVersionError(f"Expected {relation.app.name} to have version info.")
 
         return invalid_relations
 
     def get_version_of_related_app(self, related_app_name: str) -> int:
-        """Returns a int for the version of the related app."""
+        """Returns a int for the version of the related app.
+
+        Raises:
+            NoVersionError.
+        """
         try:
             for relation_name in self.relations_to_check:
                 for rel in self.charm.model.relations[relation_name]:
@@ -137,7 +149,11 @@ class CrossAppVersionChecker(Object):
         raise NoVersionError(f"Expected {related_app_name} to have version info.")
 
     def are_related_apps_valid(self) -> bool:
-        """Returns True if a related app has a version that's incompatible with the current app."""
+        """Returns True if a related app has a version that's incompatible with the current app.
+
+        Raises:
+            NoVersionError.
+        """
         return self.get_invalid_versions() == []
 
     def set_version_across_all_relations(self) -> None:
