@@ -11,7 +11,7 @@ version.
 
 How to use:
 
-1. in src/charm.py
+1. in src/charm.py of requirer + provider 
     in constructor [REQUIRED]:
     self.version_checker = self.CrossAppVersionChecker(
         self,
@@ -33,7 +33,7 @@ How to use:
     if not self.charm.version_checker.are_related_apps_valid():
         # do something - i.e. fail event or log message
 
-3. in upgrade handler [REQUIRED]:
+3. in upgrade handler of requirer + provider [REQUIRED]:
     if [last unit to upgrade]:
         self.charm.version.set_version_across_all_relations()
 
