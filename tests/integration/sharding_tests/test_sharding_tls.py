@@ -7,6 +7,7 @@ import pytest
 from pytest_operator.plugin import OpsTest
 from tenacity import Retrying, stop_after_attempt, wait_fixed
 
+from ..helpers import wait_for_mongodb_units_blocked
 from ..tls_tests import helpers as tls_helpers
 
 MONGOD_SERVICE = "snap.charmed-mongodb.mongod.service"
@@ -124,15 +125,9 @@ async def test_tls_inconsistent_rels(ops_test: OpsTest) -> None:
         raise_on_blocked=False,
     )
 
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=[SHARD_ONE_APP_NAME], status="blocked", timeout=1000
-        )
-
-    shard_unit = ops_test.model.applications[SHARD_ONE_APP_NAME].units[0]
-    assert (
-        shard_unit.workload_status_message == "Shard requires TLS to be enabled."
-    ), "Shard fails to report TLS inconsistencies."
+    await wait_for_mongodb_units_blocked(
+        ops_test, SHARD_ONE_APP_NAME, status="Shard requires TLS to be enabled.", timeout=300
+    )
 
     # Re-integrate to bring cluster back to steady state
     await ops_test.model.integrate(
@@ -160,15 +155,12 @@ async def test_tls_inconsistent_rels(ops_test: OpsTest) -> None:
         timeout=TIMEOUT,
         raise_on_blocked=False,
     )
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=[SHARD_ONE_APP_NAME], status="blocked", timeout=1000
-        )
-
-    shard_unit = ops_test.model.applications[SHARD_ONE_APP_NAME].units[0]
-    assert (
-        shard_unit.workload_status_message == "Shard has TLS enabled, but config-server does not."
-    ), "Shard fails to report TLS inconsistencies."
+    await wait_for_mongodb_units_blocked(
+        ops_test,
+        SHARD_ONE_APP_NAME,
+        status="Shard has TLS enabled, but config-server does not.",
+        timeout=300,
+    )
 
     # CASE 3: Cluster components are using different CA's
 
@@ -184,15 +176,12 @@ async def test_tls_inconsistent_rels(ops_test: OpsTest) -> None:
         timeout=TIMEOUT,
         raise_on_blocked=False,
     )
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=[SHARD_ONE_APP_NAME], status="blocked", timeout=1000
-        )
-
-    shard_unit = ops_test.model.applications[SHARD_ONE_APP_NAME].units[0]
-    assert (
-        shard_unit.workload_status_message == "Shard CA and Config-Server CA don't match."
-    ), "Shard fails to report TLS inconsistencies."
+    await wait_for_mongodb_units_blocked(
+        ops_test,
+        SHARD_ONE_APP_NAME,
+        status="Shard CA and Config-Server CA don't match.",
+        timeout=300,
+    )
 
 
 async def check_cluster_tls_disabled(ops_test: OpsTest) -> None:

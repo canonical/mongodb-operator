@@ -73,16 +73,17 @@ class MongoDBTLS(Object):
 
     def _on_set_tls_private_key(self, event: ActionEvent) -> None:
         """Set the TLS private key, which will be used for requesting the certificate."""
-        if not self.charm.upgrade.idle:
-            event.fail("Cannot set TLS key - upgrade is in progress.")
-            return
-
         logger.debug("Request to set TLS private key received.")
         if self.charm.is_role(Config.Role.MONGOS) and not self.charm.has_config_server():
             logger.error(
                 "mongos is not running (not integrated to config-server) deferring renewal of certificates."
             )
             event.fail("Mongos cannot set TLS keys until integrated to config-server.")
+            return
+
+        if self.charm.upgrade_in_progress:
+            logger.warning("Setting TLS key during an upgrade is not supported.")
+            event.fail("Setting TLS key during an upgrade is not supported.")
             return
 
         try:
@@ -145,8 +146,10 @@ class MongoDBTLS(Object):
             event.defer()
             return
 
-        if not self.charm.upgrade.idle:
-            logger.info("cannot process %s, upgrade is in progress", event)
+        if self.charm.upgrade_in_progress:
+            logger.warning(
+                "Enabling TLS is not supported during an upgrade. The charm may be in a broken, unrecoverable state."
+            )
             event.defer()
             return
 
@@ -155,12 +158,11 @@ class MongoDBTLS(Object):
 
     def _on_tls_relation_broken(self, event: RelationBrokenEvent) -> None:
         """Disable TLS when TLS relation broken."""
-        if not self.charm.upgrade.idle:
-            logger.info("cannot process %s, upgrade is in progress", event)
-            event.defer()
-            return
-
         logger.debug("Disabling external and internal TLS for unit: %s", self.charm.unit.name)
+        if self.charm.upgrade_in_progress:
+            logger.warning(
+                "Disabling TLS is not supported during an upgrade. The charm may be in a broken, unrecoverable state."
+            )
 
         for internal in [True, False]:
             self.set_tls_secret(internal, Config.TLS.SECRET_CA_LABEL, None)
@@ -179,11 +181,6 @@ class MongoDBTLS(Object):
 
     def _on_certificate_available(self, event: CertificateAvailableEvent) -> None:
         """Enable TLS when TLS certificate available."""
-        if not self.charm.upgrade.idle:
-            logger.info("cannot process %s, upgrade is in progress", event)
-            event.defer()
-            return
-
         if self.charm.is_role(Config.Role.MONGOS) and not self.charm.config_server_db:
             logger.debug(
                 "mongos requires config-server in order to start, do not restart with TLS until integrated to config-server"
@@ -251,11 +248,6 @@ class MongoDBTLS(Object):
 
     def _on_certificate_expiring(self, event: CertificateExpiringEvent) -> None:
         """Request the new certificate when old certificate is expiring."""
-        if not self.charm.upgrade.idle:
-            logger.info("cannot process %s, upgrade is in progress", event)
-            event.defer()
-            return
-
         if self.charm.is_role(Config.Role.MONGOS) and not self.charm.has_config_server():
             logger.info(
                 "mongos is not running (not integrated to config-server) deferring renewal of certificates."
@@ -344,7 +336,7 @@ class MongoDBTLS(Object):
     def get_host(self, unit: Unit):
         """Retrieves the hostname of the unit based on the substrate."""
         if self.substrate == "vm":
-            return self.charm._unit_ip(unit)
+            return self.charm.unit_ip(unit)
         else:
             return self.charm.get_hostname_for_unit(unit)
 

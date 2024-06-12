@@ -82,12 +82,14 @@ class ClusterProvider(Object):
             )
             return False
 
-        if not self.charm.upgrade.idle:
-            logger.info("cannot process %s, upgrade is in progress", event)
-            event.defer()
+        if not self.charm.unit.is_leader():
             return False
 
-        if not self.charm.unit.is_leader():
+        if self.charm.upgrade_in_progress:
+            logger.warning(
+                "Processing mongos applications is not supported during an upgrade. The charm may be in a broken, unrecoverable state."
+            )
+            event.defer()
             return False
 
         return True
@@ -135,6 +137,11 @@ class ClusterProvider(Object):
         self.database_provides.update_relation_data(event.relation.id, relation_data)
 
     def _on_relation_broken(self, event) -> None:
+        if self.charm.upgrade_in_progress:
+            logger.warning(
+                "Removing integration to mongos is not supported during an upgrade. The charm may be in a broken, unrecoverable state."
+            )
+
         # Only relation_deparated events can check if scaling down
         departed_relation_id = event.relation.id
         if not self.charm.has_departed_run(departed_relation_id):
@@ -177,7 +184,7 @@ class ClusterProvider(Object):
         """Generates the config server database for mongos to connect to."""
         replica_set_name = self.charm.app.name
         hosts = []
-        for host in self.charm._unit_ips:
+        for host in self.charm.unit_ips:
             hosts.append(f"{host}:{Config.MONGODB_PORT}")
 
         hosts = ",".join(hosts)

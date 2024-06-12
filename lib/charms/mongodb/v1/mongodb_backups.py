@@ -125,10 +125,12 @@ class MongoDBBackups(Object):
 
     def on_s3_relation_joined(self, event: RelationJoinedEvent) -> None:
         """Checks for valid integration for s3-integrations."""
-        if not self.charm.upgrade.idle:
-            logger.info("cannot process %s, upgrade is in progress", event)
+        if self.charm.upgrade_in_progress:
+            logger.warning(
+                "Adding s3-relations is not supported during an upgrade. The charm may be in a broken, unrecoverable state."
+            )
             event.defer()
-            return False
+            return
 
         if not self.is_valid_s3_integration():
             logger.debug(
@@ -143,6 +145,13 @@ class MongoDBBackups(Object):
         # handling PBM configurations requires that MongoDB is running and the pbm snap is
         # installed.
         action = "configure-pbm"
+        if self.charm.upgrade_in_progress:
+            logger.warning(
+                "Changing s3-credentials is not supported during an upgrade. The charm may be in a broken, unrecoverable state."
+            )
+            event.defer()
+            return
+
         if not self._pass_sanity_checks(event, action):
             return
 
@@ -162,6 +171,11 @@ class MongoDBBackups(Object):
 
     def _on_create_backup_action(self, event) -> None:
         action = "backup"
+        if self.charm.upgrade_in_progress:
+            logger.debug("Creating a backup is not supported during an upgrade.")
+            event.fail("Creating a backup is not supported during an upgrade.")
+            return
+
         if not self._pass_sanity_checks(event, action):
             return
 
@@ -241,6 +255,11 @@ class MongoDBBackups(Object):
 
     def _on_restore_action(self, event) -> None:
         action = "restore"
+        if self.charm.upgrade_in_progress:
+            logger.debug("Restoring a backup is not supported during an upgrade.")
+            event.fail("Restoring a backup is not supported during an upgrade.")
+            return
+
         if not self._pass_sanity_checks(event, action):
             return
 
@@ -329,11 +348,6 @@ class MongoDBBackups(Object):
 
         No matter what backup-action is being run, these requirements must be met.
         """
-        if not self.charm.upgrade.idle:
-            logger.info("cannot process %s, upgrade is in progress", event)
-            event.defer()
-            return False
-
         if not self.is_valid_s3_integration():
             self._fail_action_with_error_log(
                 event,
@@ -729,7 +743,7 @@ class MongoDBBackups(Object):
 
             for host_info in cluster["nodes"]:
                 replica_info = (
-                    f"mongodb/{self.charm._unit_ip(self.charm.unit)}:{Config.MONGOS_PORT}"
+                    f"mongodb/{self.charm.unit_ip(self.charm.unit)}:{Config.MONGOS_PORT}"
                 )
                 if host_info["host"] == replica_info:
                     break
