@@ -11,7 +11,7 @@ version.
 
 How to use:
 
-1. in src/charm.py of requirer + provider 
+1. in src/charm.py of requirer + provider
     in constructor [REQUIRED]:
     self.version_checker = self.CrossAppVersionChecker(
         self,
@@ -152,7 +152,8 @@ class CrossAppVersionChecker(Object):
     def get_deployment_prefix(self) -> str:
         """Returns the deployment prefix, indicating if the charm is locally deployred or not.
 
-        TODO: Keep this until ops framework supports: https://github.com/canonical/operator/issues/1255
+        TODO: Keep this until ops framework supports:
+            https://github.com/canonical/operator/issues/1255
         """
         file_path = f"{PREFIX_DIR}/unit-{self.charm.unit.name.replace('/','-')}/charm/.juju-charm"
         with open(file_path) as f:
@@ -203,6 +204,7 @@ class CrossAppVersionChecker(Object):
         self.set_version_on_related_app(event.relation.name, event.app.name)
 
     def is_local_charm(self, app_name: str) -> bool:
+        """Returns a boolean value indicating whether the deployment is a local charm."""
         if self.charm.app.name == app_name:
             return self.get_deployment_prefix() == LOCAL_BUILT_CHARM_PREFIX
 
