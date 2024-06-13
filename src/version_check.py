@@ -58,7 +58,7 @@ def get_charm_revision(unit: Unit) -> int:
 
     TODO: Keep this until ops framework supports: https://github.com/canonical/operator/issues/1255
     """
-    file_path = f"{PREFIX_DIR}/unit-{unit.name.replace('/','-')}/charm/.juju-charm"
+    file_path = f"{PREFIX_DIR}unit-{unit.name.replace('/','-')}/charm/.juju-charm"
     with open(file_path) as f:
         charm_path = f.read().rstrip()
 
@@ -203,8 +203,21 @@ class CrossAppVersionChecker(Object):
 
         self.set_version_on_related_app(event.relation.name, event.app.name)
 
+    def is_integrated_to_locally_built_charm(self) -> bool:
+        """Returns a boolean value indicating whether the charm is integrated is a local charm.
+
+        NOTE: this function ONLY checks relations on the provided interfaces in
+        relations_to_check.
+        """
+        for relation_name in self.relations_to_check:
+            for rel in self.charm.model.relations[relation_name]:
+                if rel.data[rel.app][DEPLOYMENT_TYPE] == LOCAL_BUILT_CHARM_PREFIX:
+                    return True
+
+        return False
+
     def is_local_charm(self, app_name: str) -> bool:
-        """Returns a boolean value indicating whether the deployment is a local charm."""
+        """Returns a boolean value indicating whether the provided app is a local charm."""
         if self.charm.app.name == app_name:
             return self.get_deployment_prefix() == LOCAL_BUILT_CHARM_PREFIX
 
@@ -212,7 +225,7 @@ class CrossAppVersionChecker(Object):
             for relation_name in self.relations_to_check:
                 for rel in self.charm.model.relations[relation_name]:
                     if rel.app.name == app_name:
-                        return int(rel.data[rel.app][DEPLOYMENT_TYPE])
+                        return rel.data[rel.app][DEPLOYMENT_TYPE] == LOCAL_BUILT_CHARM_PREFIX
         except KeyError:
             pass
 

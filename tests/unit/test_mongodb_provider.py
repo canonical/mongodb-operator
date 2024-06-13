@@ -58,12 +58,20 @@ class TestMongoProvider(unittest.TestCase):
         defer.assert_not_called()
 
     @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
     @patch("charm.get_charm_revision")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider.oversee_users")
     @patch("charm.MongodbOperatorCharm.auth_enabled", return_value=True)
     def test_relation_event_oversee_users_mongo_failure(
-        self, auth_enabled, oversee_users, defer, get_rev
+        self,
+        auth_enabled,
+        oversee_users,
+        defer,
+        get_rev,
+        is_local,
+        is_integrated_to_local,
     ):
         """Tests the errors related to pymongo when overseeing users result in a defer."""
         # presets
@@ -86,12 +94,20 @@ class TestMongoProvider(unittest.TestCase):
 
     # oversee_users raises AssertionError when unable to attain users from relation
     @patch_network_get(private_address="1.1.1.1")
+    @patch("version_check.CrossAppVersionChecker.is_local_charm")
+    @patch("version_check.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
     @patch("charm.get_charm_revision")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider.oversee_users")
     @patch("charm.MongodbOperatorCharm.auth_enabled", return_value=True)
     def test_relation_event_oversee_users_fails_to_get_relation(
-        self, auth_enabled, oversee_users, defer, get_rev
+        self,
+        auth_enabled,
+        oversee_users,
+        defer,
+        get_rev,
+        is_local,
+        is_integrated_to_local,
     ):
         """Verifies that when users are formatted incorrectly an assertion error is raised."""
         # presets

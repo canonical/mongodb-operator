@@ -341,6 +341,8 @@ class TestCharm(unittest.TestCase):
             self.assertTrue(isinstance(self.harness.charm.unit.status, WaitingStatus))
 
     @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
     @patch("charm.get_charm_revision")
     @patch("charms.mongodb.v1.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
@@ -355,6 +357,8 @@ class TestCharm(unittest.TestCase):
         connection,
         status_connection,
         get_charm_revision,
+        is_local,
+        is_integrated_to_local,
     ):
         """Tests that when MongoDB is not active, that is reported instead of pbm."""
         # assume leader has already initialised the replica set
@@ -383,6 +387,8 @@ class TestCharm(unittest.TestCase):
                 self.assertEqual(self.harness.charm.unit.status, mongodb_status)
 
     @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
     @patch("charm.get_charm_revision")
     @patch("charms.mongodb.v1.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
@@ -390,7 +396,15 @@ class TestCharm(unittest.TestCase):
     @patch("charm.build_unit_status")
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
     def test_update_status_pbm_error(
-        self, _, get_mongodb_status, get_pbm_status, connection, status_connection, get_rev
+        self,
+        _,
+        get_mongodb_status,
+        get_pbm_status,
+        connection,
+        status_connection,
+        get_rev,
+        is_local,
+        is_integrated_to_local,
     ):
         """Tests when MongoDB is active and pbm is in the error state, pbm status is reported."""
         # assume leader has already initialised the replica set
@@ -414,6 +428,8 @@ class TestCharm(unittest.TestCase):
                 self.assertEqual(self.harness.charm.unit.status, pbm_status)
 
     @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
     @patch("charm.get_charm_revision")
     @patch("charms.mongodb.v1.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
@@ -421,7 +437,15 @@ class TestCharm(unittest.TestCase):
     @patch("charm.build_unit_status")
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
     def test_update_status_pbm_and_mongodb_ready(
-        self, _, get_mongodb_status, get_pbm_status, connection, status_connection, get_rev
+        self,
+        _,
+        get_mongodb_status,
+        get_pbm_status,
+        connection,
+        status_connection,
+        get_rev,
+        is_local,
+        is_integrated_to_local,
     ):
         """Tests when both Mongodb and pbm are ready that MongoDB status is reported."""
         # assume leader has already initialised the replica set
@@ -437,6 +461,8 @@ class TestCharm(unittest.TestCase):
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus("mongodb"))
 
     @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
     @patch("charm.get_charm_revision")
     @patch("charms.mongodb.v1.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
@@ -444,7 +470,15 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongodbOperatorCharm.has_backup_service")
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
     def test_update_status_no_s3(
-        self, _, has_backup_service, get_mongodb_status, connection, status_connection, get_rev
+        self,
+        _,
+        has_backup_service,
+        get_mongodb_status,
+        connection,
+        status_connection,
+        get_rev,
+        is_local,
+        is_integrated_to_local,
     ):
         """Tests when the s3 relation isn't present that the MongoDB status is reported."""
         # assume leader has already initialised the replica set
@@ -458,12 +492,23 @@ class TestCharm(unittest.TestCase):
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus("mongodb"))
 
     @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
     @patch("charm.get_charm_revision")
     @patch("charms.mongodb.v1.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBBackups.get_pbm_status")
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
-    def test_update_status_primary(self, _, pbm_status, connection, status_connection, get_rev):
+    def test_update_status_primary(
+        self,
+        _,
+        pbm_status,
+        connection,
+        status_connection,
+        get_rev,
+        is_local,
+        is_integrated_to_local,
+    ):
         """Tests that update status identifies the primary unit and updates status."""
         # assume leader has already initialised the replica set
         self.harness.set_leader(True)
@@ -479,12 +524,23 @@ class TestCharm(unittest.TestCase):
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus("Primary"))
 
     @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
     @patch("charm.get_charm_revision")
     @patch("charms.mongodb.v1.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBBackups.get_pbm_status")
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
-    def test_update_status_secondary(self, _, pbm_status, connection, status_connection, get_rev):
+    def test_update_status_secondary(
+        self,
+        _,
+        pbm_status,
+        connection,
+        status_connection,
+        get_rev,
+        is_local,
+        is_integrated_to_local,
+    ):
         """Tests that update status identifies secondary units and doesn't update status."""
         # assume leader has already initialised the replica set
         self.harness.set_leader(True)
@@ -500,13 +556,22 @@ class TestCharm(unittest.TestCase):
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus(""))
 
     @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
     @patch("charm.get_charm_revision")
     @patch("charms.mongodb.v1.helpers.MongoDBConnection")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBBackups.get_pbm_status")
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
     def test_update_status_additional_messages(
-        self, _, pbm_status, connection, status_connection, get_rev
+        self,
+        _,
+        pbm_status,
+        connection,
+        status_connection,
+        get_rev,
+        is_local,
+        is_integrated_to_local,
     ):
         """Tests status updates are correct for non-primary and non-secondary cases."""
         # assume leader has already initialised the replica set
@@ -543,11 +608,15 @@ class TestCharm(unittest.TestCase):
         self.harness.charm.on.update_status.emit()
         self.assertEqual(self.harness.charm.unit.status, BlockedStatus("unknown"))
 
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
     @patch("charm.get_charm_revision")
     @patch("charm.MongodbOperatorCharm.get_secret")
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
-    def test_update_status_not_ready(self, connection, get_secret, get_rev):
+    def test_update_status_not_ready(
+        self, connection, get_secret, get_rev, is_local, is_integrated_to_local
+    ):
         """Tests that if mongod is not running on this unit it restarts it."""
         get_secret.return_value = "pass123"
         connection.return_value.__enter__.return_value.is_ready = False
