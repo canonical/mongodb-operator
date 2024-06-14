@@ -1498,8 +1498,7 @@ class MongodbOperatorCharm(CharmBase):
                 "Relation to s3-integrator is not supported, config role must be config-server"
             )
 
-        if self.get_cluster_mismatched_revision_status():
-            return self.get_cluster_mismatched_revision_status()
+        return self.get_cluster_mismatched_revision_status()
 
     def get_statuses(self) -> Tuple:
         """Retrieves statuses for the different processes running inside the unit."""
@@ -1581,8 +1580,8 @@ class MongodbOperatorCharm(CharmBase):
             )
             return False
 
-        if self.get_cluster_mismatched_revision_status():
-            self.unit.status = self.get_cluster_mismatched_revision_status()
+        if (revision_mismatch_status := self.get_cluster_mismatched_revision_status()):
+            self.unit.status = revision_mismatch_status
             return False
 
         return True

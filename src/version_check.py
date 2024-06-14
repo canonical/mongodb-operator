@@ -78,12 +78,12 @@ class CrossAppVersionChecker(Object):
 
     def __init__(
         self,
-        charm,
+        charm: CharmBase,
         version: int,
         relations_to_check: List[str],
         version_validity_range: Optional[Dict] = None,
     ) -> None:
-        """Constructor for CrossAppVersionChecker object.
+        """Constructor for CrossAppVersionChecker.
 
         Args:
             charm: charm to inherit from
@@ -113,7 +113,7 @@ class CrossAppVersionChecker(Object):
         self.version_validity_range = version_validity_range
 
     def get_invalid_versions(self) -> List[Tuple[str, int]]:
-        """Returns a tuple of (app name, version number), if the version number mismatches.
+        """Returns a list of (app name, version number) pairs, if the version number mismatches.
 
         Mismatches are decided based on version_validity_range, if version_validity_range is not
         provided, then the mismatch is expected to match this current app's version number.
