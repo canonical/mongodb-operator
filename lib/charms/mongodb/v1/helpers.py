@@ -226,18 +226,18 @@ def get_mongod_args(
             [
                 f"--tlsCAFile={full_conf_dir}/{TLS_EXT_CA_FILE}",
                 f"--tlsCertificateKeyFile={full_conf_dir}/{TLS_EXT_PEM_FILE}",
-                # allow non-TLS connections
-                "--tlsMode=preferTLS",
+                "--tlsMode=requireTLS",
+                "--tlsAllowConnectionsWithoutCertificates",
                 "--tlsDisabledProtocols=TLS1_0,TLS1_1",
             ]
         )
+     
 
     # internal TLS can be enabled only in external is enabled
     if config.tls_internal and config.tls_external:
         cmd.extend(
             [
                 "--clusterAuthMode=x509",
-                "--tlsAllowInvalidCertificates",
                 f"--tlsClusterCAFile={full_conf_dir}/{TLS_INT_CA_FILE}",
                 f"--tlsClusterFile={full_conf_dir}/{TLS_INT_PEM_FILE}",
             ]

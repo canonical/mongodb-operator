@@ -244,6 +244,12 @@ class MongodbOperatorCharm(CharmBase):
         """Generates a MongoDBConfiguration object for this deployment of MongoDB."""
         return self._get_mongodb_config_for_user(OperatorUser, set(self.unit_ips))
 
+    @property 
+    def local_mongodb_config(self) -> MongoDBConfiguration:
+        """Generates a MongoDBConfiguration object for local unit"""
+        self_ip = self._unit_ip(self.unit)
+        return self._get_mongodb_config_for_user(OperatorUser, {self_ip})
+        
     @property
     def monitor_config(self) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for monitoring."""
@@ -423,10 +429,10 @@ class MongodbOperatorCharm(CharmBase):
             return
 
         # check if this unit's deployment of MongoDB is ready
-        with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
+        with MongoDBConnection(self.local_mongodb_config, self._unit_ip(self.unit), direct=True) as direct_mongo:
             if not direct_mongo.is_ready:
                 logger.debug("mongodb service is not ready yet.")
-                self.unit.status = WaitingStatus("waiting for MongoDB to start")
+                self.unit.status = WaitingStatus("Waiting for MongoDB to start")
                 event.defer()
                 return
 
@@ -614,7 +620,7 @@ class MongodbOperatorCharm(CharmBase):
             return
 
         # Cannot check more advanced MongoDB statuses if mongod hasn't started.
-        with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
+        with MongoDBConnection(self.local_mongodb_config, self._unit_ip(self.unit), direct=True) as direct_mongo:
             if not direct_mongo.is_ready:
                 # edge case: mongod will fail to run if 1. they are running as shard and 2. they
                 # have already been added to the cluster with internal membership via TLS and 3.
