@@ -1580,7 +1580,7 @@ class MongodbOperatorCharm(CharmBase):
             )
             return False
 
-        if (revision_mismatch_status := self.get_cluster_mismatched_revision_status()):
+        if revision_mismatch_status := self.get_cluster_mismatched_revision_status():
             self.unit.status = revision_mismatch_status
             return False
 
@@ -1600,10 +1600,10 @@ class MongodbOperatorCharm(CharmBase):
             logger.warning(INTEGRATED_TO_LOCALLY_BUIT_CHARM_WARNING)
             return
 
+        # check for invalid versions in sharding integrations, i.e. a shard running on
+        # revision  88 and a config-server running on revision 110
+        current_charms_version = get_charm_revision(self.unit)
         try:
-            # check for invalid versions in sharding integrations, i.e. a shard running on
-            # revision  88 and a config-server running on revision 110
-            this_charms_version = get_charm_revision(self.unit)
             if self.version_checker.are_related_apps_valid():
                 return
         except NoVersionError as e:
@@ -1613,7 +1613,7 @@ class MongodbOperatorCharm(CharmBase):
             logger.debug(e)
             if self.is_role(Config.Role.SHARD):
                 return BlockedStatus(
-                    f"Charm revision ({this_charms_version}) is not up-to date with config-server."
+                    f"Charm revision ({current_charms_version}) is not up-to date with config-server."
                 )
 
         if self.is_role(Config.Role.SHARD):
@@ -1621,13 +1621,13 @@ class MongodbOperatorCharm(CharmBase):
                 self.get_config_server_name()
             )
             return BlockedStatus(
-                f"Charm revision ({this_charms_version}) is not up-to date with config-server ({config_server_revision})."
+                f"Charm revision ({current_charms_version}) is not up-to date with config-server ({config_server_revision})."
             )
 
         if self.is_role(Config.Role.CONFIG_SERVER):
             # TODO Future PR add handling for integrated mongos charms
             return WaitingStatus(
-                f"Waiting for shards to upgrade/downgrade to revision {this_charms_version}."
+                f"Waiting for shards to upgrade/downgrade to revision {current_charms_version}."
             )
 
     def get_config_server_name(self) -> Optional[str]:

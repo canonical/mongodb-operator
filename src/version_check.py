@@ -42,6 +42,7 @@ How to use:
 import logging
 from typing import Dict, List, Optional, Tuple
 
+from ops.charm import CharmBase
 from ops.framework import Object
 from ops.model import Unit
 
@@ -94,8 +95,8 @@ class CrossAppVersionChecker(Object):
                 If not provided it is assumed that relations on the provided interface must have
                 the same version.
         """
+        super().__init__(charm, None)
         self.charm = charm
-        super().__init__(self.charm, None)
         # Future PR: upgrade this to a dictionary name versions
         self.version = version
         self.relations_to_check = relations_to_check
@@ -124,7 +125,7 @@ class CrossAppVersionChecker(Object):
         try:
             invalid_relations = []
             for relation_name in self.relations_to_check:
-                for relation in self.charm.model.relations[relation_name]:
+                for relation in self.charm.model.get_relation(relation_name):
                     related_version = relation.data[relation.app][VERSION_CONST]
                     if int(related_version) != self.version:
                         invalid_relations.append((relation.app.name, related_version))
@@ -141,7 +142,7 @@ class CrossAppVersionChecker(Object):
         """
         try:
             for relation_name in self.relations_to_check:
-                for rel in self.charm.model.relations[relation_name]:
+                for rel in self.charm.model.get_relation(relation_name):
                     if rel.app.name == related_app_name:
                         return int(rel.data[rel.app][VERSION_CONST])
         except KeyError:
@@ -175,7 +176,7 @@ class CrossAppVersionChecker(Object):
             return
 
         for relation_name in self.relations_to_check:
-            for rel in self.charm.model.relations[relation_name]:
+            for rel in self.charm.model.get_relation(relation_name):
                 rel.data[self.charm.model.app][VERSION_CONST] = str(self.version)
                 rel.data[self.charm.model.app][DEPLOYMENT_TYPE] = str(self.get_deployment_prefix())
 
@@ -184,8 +185,7 @@ class CrossAppVersionChecker(Object):
         if not self.charm.unit.is_leader():
             return
 
-        relations = self.charm.model.relations[relation_name]
-        for rel in relations:
+        for rel in self.charm.model.get_relation(relation_name):
             if rel.app.name == related_app_name:
                 rel.data[self.charm.model.app][VERSION_CONST] = str(self.version)
                 rel.data[self.charm.model.app][DEPLOYMENT_TYPE] = str(self.get_deployment_prefix())
@@ -210,7 +210,7 @@ class CrossAppVersionChecker(Object):
         relations_to_check.
         """
         for relation_name in self.relations_to_check:
-            for rel in self.charm.model.relations[relation_name]:
+            for rel in self.charm.model.get_relation(relation_name):
                 if rel.data[rel.app][DEPLOYMENT_TYPE] == LOCAL_BUILT_CHARM_PREFIX:
                     return True
 
@@ -223,7 +223,7 @@ class CrossAppVersionChecker(Object):
 
         try:
             for relation_name in self.relations_to_check:
-                for rel in self.charm.model.relations[relation_name]:
+                for rel in self.charm.model.get_relation(relation_name):
                     if rel.app.name == app_name:
                         return rel.data[rel.app][DEPLOYMENT_TYPE] == LOCAL_BUILT_CHARM_PREFIX
         except KeyError:
