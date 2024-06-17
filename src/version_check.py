@@ -126,9 +126,6 @@ class CrossAppVersionChecker(Object):
             invalid_relations = []
             for relation_name in self.relations_to_check:
                 for relation in self.charm.model.relations[relation_name]:
-                    print(relation.app)
-                    print(relation.data[relation.app])
-                    print(relation.data[self.charm.app])
                     related_version = relation.data[relation.app][VERSION_CONST]
                     if int(related_version) != self.version:
                         invalid_relations.append((relation.app.name, int(related_version)))
@@ -228,7 +225,6 @@ class CrossAppVersionChecker(Object):
             for relation_name in self.relations_to_check:
                 for rel in self.charm.model.relations[relation_name]:
                     if rel.app.name == app_name:
-                        print(rel.data[rel.app])
                         return rel.data[rel.app][DEPLOYMENT_TYPE] == LOCAL_BUILT_CHARM_PREFIX
         except KeyError:
             pass
