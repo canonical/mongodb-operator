@@ -257,7 +257,7 @@ class ShardingProvider(Object):
         failed_to_add_shard = None
         with MongosConnection(self.charm.mongos_config) as mongo:
             cluster_shards = mongo.get_shard_members()
-            relation_shards = self._get_shards_from_relations(departed_shard_id)
+            relation_shards = self.get_shards_from_relations(departed_shard_id)
             for shard in relation_shards - cluster_shards:
                 try:
                     shard_hosts = self._get_shard_hosts(shard)
@@ -299,7 +299,7 @@ class ShardingProvider(Object):
         retry_removal = False
         with MongosConnection(self.charm.mongos_config) as mongo:
             cluster_shards = mongo.get_shard_members()
-            relation_shards = self._get_shards_from_relations(departed_shard_id)
+            relation_shards = self.get_shards_from_relations(departed_shard_id)
 
             for shard in cluster_shards - relation_shards:
                 try:
@@ -410,7 +410,7 @@ class ShardingProvider(Object):
         """
         self.database_provides.update_relation_data(relation_id, data)
 
-    def _get_shards_from_relations(self, departed_shard_id: Optional[int]):
+    def get_shards_from_relations(self, departed_shard_id: Optional[int] = None):
         """Returns a list of the shards related to the config-server."""
         relations = self.model.relations[self.relation_name]
         return set(
