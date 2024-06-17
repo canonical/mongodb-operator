@@ -13,8 +13,9 @@ RELATION_NAME = "s3-credentials"
 
 
 class TestConfigServerInterface(unittest.TestCase):
+    @mock.patch("charm.get_charm_revision")
     @patch_network_get(private_address="1.1.1.1")
-    def setUp(self):
+    def setUp(self, *unused):
         self.harness = Harness(MongodbOperatorCharm)
         self.harness.begin()
         self.harness.add_relation("database-peers", "database-peers")
@@ -86,7 +87,15 @@ class TestConfigServerInterface(unittest.TestCase):
         self.harness.charm.cluster.update_config_server_db(mock.Mock())
         self.harness.charm.cluster.database_provides.update_relation_data.assert_not_called()
 
-    def test_pass_hooks_check_waits_for_start_config_server(self):
+    @mock.patch("version_check.CrossAppVersionChecker.is_local_charm")
+    @mock.patch("version_check.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
+    @mock.patch("charm.get_charm_revision")
+    def test_pass_hooks_check_waits_for_start_config_server(
+        self,
+        get_rev,
+        is_local,
+        is_integrated_to_local,
+    ):
         """Ensure that pass_hooks defers until the database is initialized.
 
         Note: in some cases sharding related hooks execute before config and leader elected hooks,
