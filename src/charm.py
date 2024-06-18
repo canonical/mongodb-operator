@@ -634,6 +634,8 @@ class MongodbOperatorCharm(CharmBase):
                     self.unit.status = WaitingStatus("Waiting for MongoDB to start")
                     return
 
+        # pre-upgrade-check turns off the balancer and waits for cluster to complete upgrade
+        # before being re-enabled.
         if self.upgrade.is_config_server_waiting_for_resfresh():
             self.unit.status = Config.Status.CONFIG_SERVER_WAITING_FOR_REFRESH
             return

@@ -128,7 +128,7 @@ class MongoDBUpgrade(Object):
                 # performance i.e. disabling the balancer. Users should NOT run the
                 # pre-upgrade-check action and never run the juju refresh command. Once the users
                 # have ran the refresh we no longer have to worry about having to wait
-                self.charm.app_peer_data[Config.Upgrade.WAITING_FOR_REFRESH_KEY] = None
+                del self.charm.app_peer_data[Config.Upgrade.WAITING_FOR_REFRESH_KEY]
 
             self._upgrade.upgrade_resumed = False
             # Only call `_reconcile_upgrade` on leader unit to avoid race conditions with
@@ -303,12 +303,10 @@ class MongoDBUpgrade(Object):
             return False
 
         try:
-            if self.charm.is_role(Config.Role.CONFIG_SERVER) or self.charm.is_role(
-                Config.Role.SHARD
-            ):
-                return self.are_cluster_nodes_healthy()
             if self.charm.is_role(Config.Role.REPLICATION):
                 return self.are_replica_set_nodes_healthy(self.charm.mongodb_config)
+            else:
+                return self.are_cluster_nodes_healthy()
         except (PyMongoError, OperationFailure, ServerSelectionTimeoutError) as e:
             logger.error(
                 "Cannot proceed with upgrade. Failed to check cluster health, error: %s", e
@@ -437,6 +435,14 @@ class MongoDBUpgrade(Object):
         parsed_ips = [host.split(":")[0] for host in shard_hosts.split(",")]
         return self.charm.remote_mongodb_config(parsed_ips, replset=shard_entry[SHARD_NAME_INDEX])
 
+    def get_cluster_mongos(self) -> MongosConfiguration:
+        """Return a mongos configuration for the sharded cluster."""
+        return (
+            self.charm.mongos_config
+            if self.charm.is_role(Config.Role.CONFIG_SERVER)
+            else self.charm.remote_mongos_config(self.charm.shard.get_mongos_hosts())
+        )
+
     def is_replica_set_able_read_write(self) -> bool:
         """Returns True if is possible to write to primary and read from replicas."""
         _, collection_name, write_value = self.get_random_write_and_collection()
@@ -548,14 +554,6 @@ class MongoDBUpgrade(Object):
                 if new_primary == old_primary:
                     raise FailedToElectNewPrimaryError()
 
-    def get_cluster_mongos(self) -> MongosConfiguration:
-        """Return a mongos configuration for the sharded cluster."""
-        return (
-            self.charm.mongos_config
-            if self.charm.is_role(Config.Role.CONFIG_SERVER)
-            else self.charm.remote_mongos_config(self.charm.shard.get_mongos_hosts())
-        )
-
     def are_pre_upgrade_operations_config_server_successful(self):
         """Runs pre-upgrade operations for config-server and returns True if successful."""
         if not self.charm.is_role(Config.Role.CONFIG_SERVER):
@@ -590,7 +588,6 @@ class MongoDBUpgrade(Object):
         Note it is NOT sufficient to check only mongos or the individual shards. It is necessary to
         check each node according to MongoDB upgrade docs.
         """
-        # LOOP OVER ALL REPLICAS WITH
         for replica_set_config in self.get_all_replica_set_configs_in_cluster():
             for single_host in replica_set_config.hosts:
                 single_replica_config = self.charm.remote_mongodb_config(
