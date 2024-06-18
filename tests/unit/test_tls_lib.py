@@ -15,8 +15,9 @@ RELATION_NAME = "certificates"
 
 
 class TestMongoTLS(unittest.TestCase):
+    @patch("charm.get_charm_revision")
     @patch_network_get(private_address="1.1.1.1")
-    def setUp(self):
+    def setUp(self, *unused):
         self.harness = Harness(MongodbOperatorCharm)
         self.harness.begin()
         self.harness.add_relation("database-peers", "database-peers")
