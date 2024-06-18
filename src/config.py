@@ -6,6 +6,8 @@
 
 from typing import Literal, TypeAlias
 
+from ops.model import WaitingStatus
+
 Package: TypeAlias = tuple[str, str, str]
 
 
@@ -107,3 +109,17 @@ class Config:
         SECRET_INTERNAL_LABEL = "internal-secret"
         SECRET_DELETED_LABEL = "None"
         MAX_PASSWORD_LENGTH = 4096
+
+    class Status:
+        """Status related constants.
+
+        TODO: move all status messages here.
+        """
+
+        CONFIG_SERVER_WAITING_FOR_REFRESH = WaitingStatus("Waiting for refresh command.")
+
+    class Upgrade:
+        """Upgrade related constants."""
+
+        WAITING_FOR_REFRESH_KEY = "waiting_for_refresh"
+        FEATURE_VERSION_6 = "6.0"

@@ -6,10 +6,10 @@
 import logging
 import secrets
 import string
-from typing import Optional, Tuple, List
+from typing import List, Optional, Tuple
 
-from charms.mongodb.v1.mongos import MongosConfiguration
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
+from charms.mongodb.v1.mongos import MongosConfiguration, MongosConnection
 from ops.charm import ActionEvent, CharmBase
 from ops.framework import EventBase, EventSource, Object
 from ops.model import ActiveStatus, BlockedStatus
@@ -19,8 +19,6 @@ from tenacity import RetryError, Retrying, retry, stop_after_attempt, wait_fixed
 from config import Config
 from upgrades import machine_upgrade, upgrade
 
-from charms.mongodb.v1.mongos import MongosConnection
-
 logger = logging.getLogger(__name__)
 
 
@@ -29,6 +27,7 @@ ROLLBACK_INSTRUCTIONS = "To rollback, `juju refresh` to the previous revision"
 UNHEALTHY_UPGRADE = BlockedStatus("Unhealthy after upgrade.")
 SHARD_NAME_INDEX = "_id"
 
+
 # BEGIN: Exceptions
 class FailedToElectNewPrimaryError(Exception):
     """Raised when a new primary isn't elected after stepping down."""
@@ -36,6 +35,10 @@ class FailedToElectNewPrimaryError(Exception):
 
 class ClusterNotHealthyError(Exception):
     """Raised when the cluster is not healthy."""
+
+
+class BalancerStillRunningError(Exception):
+    """Raised when the balancer is still running after stopping it."""
 
 
 # END: Exceptions
@@ -119,6 +122,14 @@ class MongoDBUpgrade(Object):
         if self.charm.unit.is_leader():
             if not self._upgrade.in_progress:
                 logger.info("Charm upgraded. MongoDB version unchanged")
+
+            if self.charm.is_role(Config.Role.CONFIG_SERVER):
+                # The actions performed as a pre-upgrade check negatively impact cluster
+                # performance i.e. disabling the balancer. Users should NOT run the
+                # pre-upgrade-check action and never run the juju refresh command. Once the users
+                # have ran the refresh we no longer have to worry about having to wait
+                self.charm.app_peer_data[Config.Upgrade.WAITING_FOR_REFRESH_KEY] = None
+
             self._upgrade.upgrade_resumed = False
             # Only call `_reconcile_upgrade` on leader unit to avoid race conditions with
             # `upgrade_resumed`
@@ -325,7 +336,7 @@ class MongoDBUpgrade(Object):
     def are_replicas_in_sharded_cluster_healthy(self, mongos_config: MongosConfiguration) -> bool:
         """Returns True if all replicas in the sharded cluster are healthy."""
         # dictionary of all replica sets in the sharded cluster
-        for mongodb_config in self.get_all_replica_set_configs_in_cluster(mongos_config):
+        for mongodb_config in self.get_all_replica_set_configs_in_cluster():
             if not self.are_replica_set_nodes_healthy(mongodb_config):
                 logger.debug(f"Replica set: {mongodb_config.replset} contains unhealthy nodes.")
                 return False
@@ -355,11 +366,9 @@ class MongoDBUpgrade(Object):
 
         return True
 
-    def get_all_replica_set_configs_in_cluster(
-        self, mongos_config: MongosConfiguration
-    ) -> List[MongoDBConfiguration]:
+    def get_all_replica_set_configs_in_cluster(self) -> List[MongoDBConfiguration]:
         """Returns a list of all the mongodb_configurations for each application in the cluster."""
-
+        mongos_config = self.get_cluster_mongos()
         mongodb_configurations = []
         if self.charm.is_role(Config.Role.SHARD):
             # the hosts of the integrated mongos application are also the config-server hosts
@@ -545,6 +554,83 @@ class MongoDBUpgrade(Object):
             if self.charm.is_role(Config.Role.CONFIG_SERVER)
             else self.charm.remote_mongos_config(self.charm.shard.get_mongos_hosts())
         )
+
+    def are_pre_upgrade_operations_config_server_successful(self):
+        """Runs pre-upgrade operations for config-server and returns True if successful."""
+        if not self.charm.is_role(Config.Role.CONFIG_SERVER):
+            return False
+
+        if not self.is_feature_compatibility_version(Config.Upgrade.FEATURE_VERSION_6):
+            logger.debug(
+                "Not all replicas have the expected feature compatibility: %s",
+                Config.Upgrade.FEATURE_VERSION_6,
+            )
+            return False
+
+        self.set_mongos_feature_compatibilty_version(Config.Upgrade.FEATURE_VERSION_6)
+
+        try:
+            self.turn_off_and_wait_for_balancer()
+        except BalancerStillRunningError:
+            logger.debug("Balancer is still running. Please try the pre-upgrade check later.")
+            return False
+
+        # The actions performed as a pre-upgrade check negatively impact cluster performance i.e.
+        # disabling the balancer. Users should NOT run the pre-upgrade-check action and never run
+        # the juju refresh command
+        self.charm.app_peer_data[Config.Upgrade.WAITING_FOR_REFRESH_KEY] = str(True)
+        self.charm.unit.status = Config.Status.CONFIG_SERVER_WAITING_FOR_REFRESH
+
+        return True
+
+    def is_feature_compatibility_version(self, expected_feature_version) -> bool:
+        """Returns True if all nodes in the sharded cluster have the expected_feature_version.
+
+        Note it is NOT sufficent to check only mongos or the individual shards. It is necessary to
+        check each node according to MongoDB upgrade docs.
+        """
+        # LOOP OVER ALL REPLICAS WITH
+        for replica_set_config in self.get_all_replica_set_configs_in_cluster():
+            for single_host in replica_set_config.hosts:
+                single_replica_config = self.charm.remote_mongodb_config(
+                    single_host, replset=replica_set_config.replset, standalone=True
+                )
+                with MongoDBConnection(single_replica_config) as mongod:
+                    version = mongod.client.admin.command(
+                        ({"getParameter": 1, "featureCompatibilityVersion": 1})
+                    )
+                    if (
+                        version["featureCompatibilityVersion"]["version"]
+                        != expected_feature_version
+                    ):
+                        return False
+
+        return True
+
+    def set_mongos_feature_compatibilty_version(self, feature_version) -> None:
+        """Sets the mongos feature compatibility version."""
+        with MongosConnection(self.charm.mongos_config) as mongos:
+            mongos.client.admin.command("setFeatureCompatibilityVersion", "6.0")
+
+    @retry(
+        stop=stop_after_attempt(10),
+        wait=wait_fixed(1),
+        reraise=True,
+    )
+    def turn_off_and_wait_for_balancer(self):
+        """Sends the stop command to the balancer and wait for it to stop running."""
+        with MongosConnection(self.charm.mongos_config) as mongos:
+            mongos.client.admin.command("balancerStop")
+            balancer_state = mongos.client.admin.command("balancerStatus")
+            if balancer_state["mode"] != "off":
+                raise BalancerStillRunningError("balancer is still Running.")
+
+    def is_config_server_waiting_for_resfresh(self) -> bool:
+        """Returns true if the pre-upgrade check ran and the config-server is waiting to be refreshed."""
+        if not self.charm.is_role(Config.Role.CONFIG_SERVER):
+            return False
+
+        return Config.Upgrade.WAITING_FOR_REFRESH_KEY in self.charm.app_peer_data
 
     # END: helpers
 

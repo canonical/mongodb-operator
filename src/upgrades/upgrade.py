@@ -21,6 +21,7 @@ from charms.mongodb.v0.mongodb import FailedToMovePrimaryError
 from tenacity import RetryError
 
 import status_exception
+from config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -277,9 +278,7 @@ class Upgrade(abc.ABC):
         """
         logger.debug("Running pre-upgrade checks")
 
-        # TODO In future PR when we support upgrades on sharded clusters, have the shard verify
-        # that the config-server has already upgraded.
-
+        # TODO if shard is getting upgraded but BOTH have same revision, then fail
         try:
             self._charm.upgrade.wait_for_cluster_healthy()
         except RetryError:
@@ -300,3 +299,7 @@ class Upgrade(abc.ABC):
         if not self._charm.upgrade.is_cluster_able_to_read_write():
             logger.error("Cluster cannot read/write to replicas")
             raise PrecheckFailed("Cluster is not healthy")
+
+        if self._charm.is_role(Config.Role.CONFIG_SERVER):
+            if not self._charm.upgrade.are_pre_upgrade_operations_config_server_successful():
+                raise PrecheckFailed("Pre-upgrade operations on config-server failed.")

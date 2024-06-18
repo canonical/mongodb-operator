@@ -239,11 +239,13 @@ class MongodbOperatorCharm(CharmBase):
         # hosts
         return self._get_mongos_config_for_user(OperatorUser, hosts)
 
-    def remote_mongodb_config(self, hosts, replset) -> MongoDBConfiguration:
+    def remote_mongodb_config(self, hosts, replset=None, standalone=None) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for mongod in the deployment of MongoDB."""
         # mongos that are part of the cluster have the same username and password, but different
         # hosts
-        return self._get_mongodb_config_for_user(OperatorUser, hosts, replset=replset)
+        return self._get_mongodb_config_for_user(
+            OperatorUser, hosts, replset=replset, standalone=standalone
+        )
 
     @property
     def mongodb_config(self) -> MongoDBConfiguration:
@@ -631,6 +633,10 @@ class MongodbOperatorCharm(CharmBase):
                 else:
                     self.unit.status = WaitingStatus("Waiting for MongoDB to start")
                     return
+
+        if self.upgrade.is_config_server_waiting_for_resfresh():
+            self.unit.status = Config.Status.CONFIG_SERVER_WAITING_FOR_REFRESH
+            return
 
         try:
             self.perform_self_healing(event)
