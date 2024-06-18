@@ -5,7 +5,7 @@
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Set, Tuple
+from typing import List, Optional, Set, Tuple
 from urllib.parse import quote_plus
 
 from charms.mongodb.v0.mongodb import NotReadyError
@@ -305,7 +305,6 @@ class MongosConnection:
             sc_status: current state of shard cluster status as reported by mongos.
             ignore_shard: shard to ignore
         """
-
         sc_status = self.client.admin.command("listShards")
         return any(
             # check draining status of all shards except the one to be ignored.

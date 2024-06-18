@@ -403,13 +403,13 @@ class MongoDBUpgrade(Object):
             return self.is_sharded_cluster_able_to_read_write()
 
     def is_sharded_cluster_able_to_read_write(self) -> bool:
-        """Returns True if is possible to write all shards in the cluster and read from all replicas."""
+        """Returns True if possible to write all cluster shards and read from all replicas."""
         mongos_config = self.get_cluster_mongos()
         with MongosConnection(mongos_config) as mongos:
             sc_status = mongos.client.admin.command("listShards")
             for shard in sc_status["shards"]:
                 # force a write to a specific shard to ensure the primary on that shard can
-                # recieve writes
+                # receive writes
                 db_name, collection_name, write_value = self.get_random_write_and_collection()
                 self.add_write_to_sharded_cluster(
                     mongos_config, db_name, collection_name, write_value
@@ -450,7 +450,7 @@ class MongoDBUpgrade(Object):
     def clear_db_collection(self, mongos_config: MongosConfiguration, db_name: str) -> None:
         """Clears the temporary collection."""
         with MongoDBConnection(mongos_config) as mongos:
-            db = mongos.client.drop_database(db_name)
+            mongos.client.drop_database(db_name)
 
     def clear_tmp_collection(
         self, mongodb_config: MongoDBConfiguration, collection_name: str
@@ -549,6 +549,7 @@ class MongoDBUpgrade(Object):
                     raise FailedToElectNewPrimaryError()
 
     def get_cluster_mongos(self) -> MongosConfiguration:
+        """Return a mongos configuration for the sharded cluster."""
         return (
             self.charm.mongos_config
             if self.charm.is_role(Config.Role.CONFIG_SERVER)
@@ -586,7 +587,7 @@ class MongoDBUpgrade(Object):
     def is_feature_compatibility_version(self, expected_feature_version) -> bool:
         """Returns True if all nodes in the sharded cluster have the expected_feature_version.
 
-        Note it is NOT sufficent to check only mongos or the individual shards. It is necessary to
+        Note it is NOT sufficient to check only mongos or the individual shards. It is necessary to
         check each node according to MongoDB upgrade docs.
         """
         # LOOP OVER ALL REPLICAS WITH
@@ -626,7 +627,7 @@ class MongoDBUpgrade(Object):
                 raise BalancerStillRunningError("balancer is still Running.")
 
     def is_config_server_waiting_for_resfresh(self) -> bool:
-        """Returns true if the pre-upgrade check ran and the config-server is waiting to be refreshed."""
+        """Returns true if pre-upgrade check ran and config-server is waiting to be refreshed."""
         if not self.charm.is_role(Config.Role.CONFIG_SERVER):
             return False
 
