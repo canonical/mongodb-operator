@@ -128,7 +128,7 @@ class CrossAppVersionChecker(Object):
                 for relation in self.charm.model.relations[relation_name]:
                     related_version = relation.data[relation.app][VERSION_CONST]
                     if int(related_version) != self.version:
-                        invalid_relations.append((relation.app.name, related_version))
+                        invalid_relations.append((relation.app.name, int(related_version)))
         except KeyError:
             raise NoVersionError(f"Expected {relation.app.name} to have version info.")
 
