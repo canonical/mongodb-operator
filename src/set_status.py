@@ -1,0 +1,122 @@
+from config import Config
+
+from ops.model import StatusBase
+from ops.charm import CharmBase
+from ops.framework import Object
+
+
+class MongoDBStatusHanlder(Object):
+    """Verifies versions across multiple integrated applications."""
+
+    def __init__(
+        self,
+        charm: CharmBase,
+    ) -> None:
+        """Constructor for CrossAppVersionChecker.
+
+        Args:
+            charm: charm to inherit from
+            version: (int), the current version of the desired attribute of the charm
+            relations_to_check: (List), a list of relations who should have compatible versions
+                with the current charm
+            version_validity_range: (Optional Dict), a list of ranges for valid version ranges.
+                If not provided it is assumed that relations on the provided interface must have
+                the same version.
+        """
+        super().__init__(charm, None)
+        self.charm = charm
+
+        # TODO Future PR: handle update_status
+
+    ### BEGIN Helpers
+
+    def set_and_share_status(self, status: StatusBase):
+        """Sets the charm status and shares to app status and config-server if applicable."""
+        # TODO Future Feature/Epic: process other statuses, i.e. only set provided status if its
+        # appropriate.
+        self.charm.unit.status = status
+
+        self.set_app_status()
+
+        if self.charm.is_role(Config.Role.SHARD):
+            self.share_status_to_config_server()
+
+    def set_app_status(self):
+        """TODO Future Feature/Epic: parse statuses and set a status for the entire app."""
+
+    def are_charm_units_all_active_or_waiting_for_upgrade(self) -> bool:
+        """Returns True if all charm units status's show that they are ready for upgrade."""
+        goal_state = self.charm.model._backend._run(
+            "goal-state", return_output=True, use_json=True
+        )
+        for _, unit_state in goal_state["units"].items():
+            if unit_state["status"] == "active":
+                continue
+            if unit_state["status"] != "waiting":
+                return False
+
+            if not self.charm.get_cluster_mismatched_revision_status():
+                return False
+
+        return True
+
+    def are_shards_status_active_or_waiting_for_upgrade(self) -> bool:
+        """Returns True if all integrated shards status's show that they are ready for upgrade.
+
+        A shard is ready for upgrade if it is either in the waiting for upgrade status or active
+        status.
+        """
+        if not self.charm.is_role(Config.Role.CONFIG_SERVER):
+            return False
+
+        for sharding_relation in self.charm.config_server.get_all_sharding_relations():
+            for _, unit_data in sharding_relation.data.items():
+                status_type = unit_data.get(Config.Status.STATUS_TYPE_KEY, None)
+                status_messge = unit_data.get(Config.Status.STATUS_MESSAGE_KEY, None)
+                if status_type == None:
+                    return False
+                if "ActiveStatus" in status_type:
+                    continue
+                if "WaitingStatus" not in status_type:
+                    return False
+
+                if (
+                    status_messge
+                    and status_messge != Config.Status.CONFIG_SERVER_WAITING_FOR_REFRESH.message
+                ):
+                    return False
+
+        return True
+
+    def share_status_to_config_server(self):
+        """Shares this shards status info to the config server."""
+        if not self.charm.is_role(Config.Role.SHARD):
+            return
+
+        config_relation = self.charm.shard.get_config_server_relation()
+
+        if not config_relation:
+            return
+
+        # prevent changing data and causing an unnecessary relation changed hook
+        current_status_type = config_relation.data[self.charm.unit].get(
+            Config.Status.STATUS_TYPE_KEY, None
+        )
+        current_status_message = config_relation.data[self.charm.unit].get(
+            Config.Status.STATUS_MESSAGE_KEY, None
+        )
+        if (
+            current_status_message == self.charm.unit.status.message
+            and type(self.charm.unit.status) == current_status_type
+        ):
+            return
+
+        config_relation.data[self.charm.unit][Config.Status.STATUS_TYPE_KEY] = str(
+            type(self.charm.unit.status)
+        )
+
+        config_relation.data[self.charm.unit][Config.Status.STATUS_MESSAGE_KEY] = str(
+            self.charm.unit.status.message
+        )
+
+    ### END: Helpers

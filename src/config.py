@@ -3,7 +3,7 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-
+from ops.model import WaitingStatus
 from typing import Literal, TypeAlias
 
 Package: TypeAlias = tuple[str, str, str]
@@ -107,3 +107,13 @@ class Config:
         SECRET_INTERNAL_LABEL = "internal-secret"
         SECRET_DELETED_LABEL = "None"
         MAX_PASSWORD_LENGTH = 4096
+
+    class Status:
+        """Status related constants.
+
+        TODO: move all status messages here.
+        """
+
+        STATUS_TYPE_KEY = "status-type"
+        STATUS_MESSAGE_KEY = "status-message"
+        CONFIG_SERVER_WAITING_FOR_REFRESH = WaitingStatus("Waiting for refresh command.")

@@ -86,6 +86,8 @@ from machine_helpers import (
 from upgrades.mongodb_upgrade import MongoDBUpgrade
 from version_check import CrossAppVersionChecker, NoVersionError, get_charm_revision
 
+from set_status import MongoDBStatusHanlder
+
 AUTH_FAILED_CODE = 18
 UNAUTHORISED_CODE = 13
 TLS_CANNOT_FIND_PRIMARY = 133
@@ -160,6 +162,7 @@ class MongodbOperatorCharm(CharmBase):
         self.config_server = ShardingProvider(self)
         self.cluster = ClusterProvider(self)
         self.shard = ConfigServerRequirer(self)
+        self.status = MongoDBStatusHanlder(self)
 
         # relation events for Prometheus metrics are handled in the MetricsEndpointProvider
         self._grafana_agent = COSAgentProvider(
@@ -355,12 +358,12 @@ class MongodbOperatorCharm(CharmBase):
 
     def _on_install(self, event: InstallEvent) -> None:
         """Handle the install event (fired on startup)."""
-        self.unit.status = MaintenanceStatus("installing MongoDB")
+        self.status.set_and_share_status(MaintenanceStatus("installing MongoDB"))
         try:
             self.install_snap_packages(packages=Config.SNAP_PACKAGES)
 
         except snap.SnapError:
-            self.unit.status = BlockedStatus("couldn't install MongoDB")
+            self.status.set_and_share_status(BlockedStatus("couldn't install MongoDB"))
             return
 
         # if a new unit is joining a cluster with a legacy relation it should start without auth
@@ -374,7 +377,7 @@ class MongodbOperatorCharm(CharmBase):
             with open(Config.MONGOD_CONF_FILE_PATH, "r+") as f:
                 f.truncate(0)
         except IOError:
-            self.unit.status = BlockedStatus("Could not install MongoDB")
+            self.status.set_and_share_status(BlockedStatus("Could not install MongoDB"))
             return
 
         # Construct the mongod startup commandline args for systemd and reload the daemon.
@@ -424,12 +427,12 @@ class MongodbOperatorCharm(CharmBase):
 
         try:
             logger.debug("starting MongoDB.")
-            self.unit.status = MaintenanceStatus("starting MongoDB")
+            self.status.set_and_share_status(MaintenanceStatus("starting MongoDB"))
             self.start_charm_services()
-            self.unit.status = ActiveStatus()
+            self.status.set_and_share_status(ActiveStatus())
         except snap.SnapError as e:
             logger.error("An exception occurred when starting mongod agent, error: %s.", str(e))
-            self.unit.status = BlockedStatus("couldn't start MongoDB")
+            self.status.set_and_share_status(BlockedStatus("couldn't start MongoDB"))
             return
 
         try:
@@ -439,19 +442,19 @@ class MongodbOperatorCharm(CharmBase):
 
             self._open_ports_tcp(ports)
         except subprocess.CalledProcessError:
-            self.unit.status = BlockedStatus("failed to open TCP port for MongoDB")
+            self.status.set_and_share_status(BlockedStatus("failed to open TCP port for MongoDB"))
             return
 
         # check if this unit's deployment of MongoDB is ready
         with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
             if not direct_mongo.is_ready:
                 logger.debug("mongodb service is not ready yet.")
-                self.unit.status = WaitingStatus("waiting for MongoDB to start")
+                self.status.set_and_share_status(WaitingStatus("waiting for MongoDB to start"))
                 event.defer()
                 return
 
         # mongod is now active
-        self.unit.status = ActiveStatus()
+        self.status.set_and_share_status(ActiveStatus())
 
         try:
             self._connect_mongodb_exporter()
@@ -459,7 +462,7 @@ class MongodbOperatorCharm(CharmBase):
             logger.error(
                 "An exception occurred when starting mongodb exporter, error: %s.", str(e)
             )
-            self.unit.status = BlockedStatus("couldn't start mongodb exporter")
+            self.status.set_and_share_status(BlockedStatus("couldn't start mongodb exporter"))
             return
 
         # only leader should initialise the replica set
@@ -527,18 +530,24 @@ class MongodbOperatorCharm(CharmBase):
                         self.mongodb_config, member, direct=True
                     ) as direct_mongo:
                         if not direct_mongo.is_ready:
-                            self.unit.status = WaitingStatus("waiting to reconfigure replica set")
+                            self.status.set_and_share_status(
+                                WaitingStatus("waiting to reconfigure replica set")
+                            )
                             logger.debug("Deferring reconfigure: %s is not ready yet.", member)
                             event.defer()
                             return
                     mongo.add_replset_member(member)
-                    self.unit.status = ActiveStatus()
+                    self.status.set_and_share_status(ActiveStatus())
             except NotReadyError:
-                self.unit.status = WaitingStatus("waiting to reconfigure replica set")
+                self.status.set_and_share_status(
+                    WaitingStatus("waiting to reconfigure replica set")
+                )
                 logger.error("Deferring reconfigure: another member doing sync right now")
                 event.defer()
             except PyMongoError as e:
-                self.unit.status = WaitingStatus("waiting to reconfigure replica set")
+                self.status.set_and_share_status(
+                    WaitingStatus("waiting to reconfigure replica set")
+                )
                 logger.error("Deferring reconfigure: error=%r", e)
                 event.defer()
 
@@ -594,7 +603,7 @@ class MongodbOperatorCharm(CharmBase):
             # cannot drain shard after storage detached.
             if self.is_role(Config.Role.SHARD) and self.shard.has_config_server():
                 logger.info("Wait for shard to drain before detaching storage.")
-                self.unit.status = MaintenanceStatus("Draining shard from cluster")
+                self.status.set_and_share_status(MaintenanceStatus("Draining shard from cluster"))
                 mongos_hosts = self.shard.get_mongos_hosts()
                 self.shard.wait_for_draining(mongos_hosts)
                 logger.info("Shard successfully drained storage.")
@@ -626,7 +635,7 @@ class MongodbOperatorCharm(CharmBase):
         # their mistake.
         invalid_integration_status = self.get_invalid_integration_status()
         if invalid_integration_status:
-            self.unit.status = invalid_integration_status
+            self.status.set_and_share_status(invalid_integration_status)
             return
 
         # no need to report on replica set status until initialised
@@ -640,10 +649,12 @@ class MongodbOperatorCharm(CharmBase):
                 # have already been added to the cluster with internal membership via TLS and 3.
                 # they remove support for TLS
                 if self.is_role(Config.Role.SHARD) and self.shard.is_shard_tls_missing():
-                    self.unit.status = BlockedStatus("Shard requires TLS to be enabled.")
+                    self.status.set_and_share_status(
+                        BlockedStatus("Shard requires TLS to be enabled.")
+                    )
                     return
                 else:
-                    self.unit.status = WaitingStatus("Waiting for MongoDB to start")
+                    self.status.set_and_share_status(WaitingStatus("Waiting for MongoDB to start"))
                     return
 
         try:
@@ -654,7 +665,7 @@ class MongodbOperatorCharm(CharmBase):
             deployment_mode = "replica set" if self.is_role(Config.Role.REPLICATION) else "cluster"
             WaitingStatus(f"Waiting to sync internal membership across the {deployment_mode}")
 
-        self.unit.status = self.process_statuses()
+        self.status.set_and_share_status(self.process_statuses())
 
     def _on_get_primary_action(self, event: ActionEvent):
         event.set_results({"replica-set-primary": self.primary})
@@ -1237,17 +1248,21 @@ class MongodbOperatorCharm(CharmBase):
                     "Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr
                 )
                 event.defer()
-                self.unit.status = WaitingStatus("waiting to initialise replica set")
+                self.status.set_and_share_status(
+                    WaitingStatus("waiting to initialise replica set")
+                )
                 return
             except PyMongoError as e:
                 logger.error("Deferring on_start since: error=%r", e)
                 event.defer()
-                self.unit.status = WaitingStatus("waiting to initialise replica set")
+                self.status.set_and_share_status(
+                    WaitingStatus("waiting to initialise replica set")
+                )
                 return
 
             # replica set initialised properly and ready to go
             self.db_initialised = True
-            self.unit.status = ActiveStatus()
+            self.status.set_and_share_status(ActiveStatus())
 
     def unit_ip(self, unit: Unit) -> str:
         """Returns the ip address of a given unit."""
@@ -1352,7 +1367,7 @@ class MongodbOperatorCharm(CharmBase):
             self.start_charm_services()
         except snap.SnapError as e:
             logger.error("An exception occurred when starting mongod agent, error: %s.", str(e))
-            self.unit.status = BlockedStatus("couldn't start MongoDB")
+            self.status.set_and_share_status(BlockedStatus("couldn't start MongoDB"))
             return
 
     def auth_enabled(self) -> bool:
@@ -1558,8 +1573,8 @@ class MongodbOperatorCharm(CharmBase):
     def is_relation_feasible(self, rel_interface) -> bool:
         """Returns true if the proposed relation is feasible."""
         if self.is_sharding_component() and rel_interface in Config.Relations.DB_RELATIONS:
-            self.unit.status = BlockedStatus(
-                f"Sharding roles do not support {rel_interface} interface."
+            self.status.set_and_share_status(
+                BlockedStatus(f"Sharding roles do not support {rel_interface} interface.")
             )
             logger.error(
                 "Charm is in sharding role: %s. Does not support %s interface.",
@@ -1572,7 +1587,9 @@ class MongodbOperatorCharm(CharmBase):
             not self.is_sharding_component()
             and rel_interface == Config.Relations.SHARDING_RELATIONS_NAME
         ):
-            self.unit.status = BlockedStatus("sharding interface cannot be used by replicas")
+            self.status.set_and_share_status(
+                BlockedStatus("sharding interface cannot be used by replicas")
+            )
             logger.error(
                 "Charm is in sharding role: %s. Does not support %s interface.",
                 self.role,
@@ -1581,7 +1598,7 @@ class MongodbOperatorCharm(CharmBase):
             return False
 
         if revision_mismatch_status := self.get_cluster_mismatched_revision_status():
-            self.unit.status = revision_mismatch_status
+            self.status.set_and_share_status(revision_mismatch_status)
             return False
 
         return True

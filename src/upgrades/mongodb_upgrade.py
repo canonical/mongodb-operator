@@ -99,7 +99,7 @@ class MongoDBUpgrade(Object):
                 authorized = self._upgrade.authorized
             except upgrade.PrecheckFailed as exception:
                 self._set_upgrade_status()
-                self.unit.status = exception.status
+                self.charm.status.set_and_share_status(exception.status)
                 logger.debug(f"Set unit status to {self.unit.status}")
                 logger.error(exception.status.message)
                 return
@@ -123,7 +123,7 @@ class MongoDBUpgrade(Object):
 
     def _on_pre_upgrade_check_action(self, event: ActionEvent) -> None:
         if not self.charm.unit.is_leader():
-            message = f"Must run action on leader unit. (e.g. `juju run {self.app.name}/leader {upgrade.PRECHECK_ACTION_NAME}`)"
+            message = f"Must run action on leader unit. (e.g. `juju run {self.charm.app.name}/leader {upgrade.PRECHECK_ACTION_NAME}`)"
             logger.debug(f"Pre-upgrade check event failed: {message}")
             event.fail(message)
             return
@@ -197,7 +197,7 @@ class MongoDBUpgrade(Object):
                 self.charm.unit.name,
             )
             logger.info(ROLLBACK_INSTRUCTIONS)
-            self.charm.unit.status = UNHEALTHY_UPGRADE
+            self.charm.status.set_and_share_status(UNHEALTHY_UPGRADE)
             event.defer()
             return
 
@@ -207,12 +207,12 @@ class MongoDBUpgrade(Object):
                 self.charm.unit.name,
             )
             logger.info(ROLLBACK_INSTRUCTIONS)
-            self.charm.unit.status = UNHEALTHY_UPGRADE
+            self.charm.status.set_and_share_status(UNHEALTHY_UPGRADE)
             event.defer()
             return
 
         if self.charm.unit.status == UNHEALTHY_UPGRADE:
-            self.charm.unit.status = ActiveStatus()
+            self.charm.status.set_and_share_status(ActiveStatus())
 
         self._upgrade.unit_state = upgrade.UnitState.HEALTHY
         logger.debug("Cluster is healthy after upgrading unit %s", self.charm.unit.name)
@@ -255,7 +255,9 @@ class MongoDBUpgrade(Object):
                 "Rollback with `juju refresh`. Pre-upgrade check failed:"
             )
         ):
-            self.charm.unit.status = self._upgrade.get_unit_juju_status() or ActiveStatus()
+            self.charm.status.set_and_share_status(
+                self._upgrade.get_unit_juju_status() or ActiveStatus()
+            )
 
     def wait_for_cluster_healthy(self) -> None:
         """Waits until the cluster is healthy after upgrading.
@@ -279,13 +281,18 @@ class MongoDBUpgrade(Object):
                 logger.error("Cannot proceed with upgrade. Service mongod is not running")
                 return False
 
-        # unit status should be
-        unit_state = self.charm.process_statuses()
-        if not isinstance(unit_state, ActiveStatus):
+        if not self.charm.status.are_charm_units_all_active_or_waiting_for_upgrade():
             logger.error(
-                "Cannot proceed with upgrade. Unit is not in Active state, in: %s.", unit_state
+                "Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade."
             )
             return False
+
+        if self.charm.is_role(Config.Role.CONFIG_SERVER):
+            if not self.charm.status.are_shards_status_active_or_waiting_for_upgrade():
+                logger.error(
+                    "Cannot proceed with upgrade. Status of shard units do not show active / waiting for upgrade."
+                )
+                return False
 
         try:
             if self.charm.is_role(Config.Role.CONFIG_SERVER) or self.charm.is_role(
