@@ -307,20 +307,17 @@ class MongoDBUpgrade(Object):
             return False
 
         try:
-            if self.charm.is_role(Config.Role.REPLICATION):
-                return self.are_replica_set_nodes_healthy(self.charm.mongodb_config)
-            else:
-                return self.are_cluster_nodes_healthy()
+            return self.are_nodes_healthy()
         except (PyMongoError, OperationFailure, ServerSelectionTimeoutError) as e:
             logger.error(
                 "Cannot proceed with upgrade. Failed to check cluster health, error: %s", e
             )
             return False
 
-    def are_cluster_nodes_healthy(self) -> bool:
-        """Returns true if all nodes in the MongoDB sharded cluster are healthy."""
+    def are_nodes_healthy(self) -> bool:
+        """Returns true if all nodes in the MongoDB deployment are healthy."""
         if self.charm.is_role(Config.Role.REPLICATION):
-            return False
+            return self.are_replica_set_nodes_healthy(self.charm.mongodb_config)
 
         mongos_config = self.get_cluster_mongos()
         if not self.are_shards_healthy(mongos_config):
@@ -572,17 +569,16 @@ class MongoDBUpgrade(Object):
 
         self.set_mongos_feature_compatibilty_version(Config.Upgrade.FEATURE_VERSION_6)
 
-        try:
-            self.turn_off_and_wait_for_balancer()
-        except BalancerStillRunningError:
-            logger.debug("Balancer is still running. Please try the pre-upgrade check later.")
-            return False
-
-        # The actions performed as a pre-upgrade check negatively impact cluster performance i.e.
-        # disabling the balancer. Users should NOT run the pre-upgrade-check action and never run
-        # the juju refresh command
-        self.charm.app_peer_data[Config.Upgrade.WAITING_FOR_REFRESH_KEY] = str(True)
-        self.charm.unit.status = Config.Status.CONFIG_SERVER_WAITING_FOR_REFRESH
+        # pre-upgrade sequence runs twice. Once when the user runs the pre-upgrade action and
+        # again automatically on refresh (just in case the user forgot to). Disabling the balancer
+        # can negatively impact the cluster, so we only disable it once the upgrade sequence has
+        # begun.
+        if self._upgrade.in_progress:
+            try:
+                self.turn_off_and_wait_for_balancer()
+            except BalancerStillRunningError:
+                logger.debug("Balancer is still running. Please try the pre-upgrade check later.")
+                return False
 
         return True
 
@@ -612,7 +608,7 @@ class MongoDBUpgrade(Object):
     def set_mongos_feature_compatibilty_version(self, feature_version) -> None:
         """Sets the mongos feature compatibility version."""
         with MongosConnection(self.charm.mongos_config) as mongos:
-            mongos.client.admin.command("setFeatureCompatibilityVersion", "6.0")
+            mongos.client.admin.command("setFeatureCompatibilityVersion", feature_version)
 
     @retry(
         stop=stop_after_attempt(10),
@@ -627,7 +623,7 @@ class MongoDBUpgrade(Object):
             if balancer_state["mode"] != "off":
                 raise BalancerStillRunningError("balancer is still Running.")
 
-    def is_config_server_waiting_for_resfresh(self) -> bool:
+    def is_config_server_waiting_for_refresh(self) -> bool:
         """Returns true if pre-upgrade check ran and config-server is waiting to be refreshed."""
         if not self.charm.is_role(Config.Role.CONFIG_SERVER):
             return False

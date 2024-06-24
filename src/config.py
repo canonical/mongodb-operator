@@ -6,8 +6,6 @@
 
 from typing import Literal, TypeAlias
 
-from ops.model import WaitingStatus
-
 Package: TypeAlias = tuple[str, str, str]
 
 
@@ -115,8 +113,6 @@ class Config:
 
         TODO: move all status messages here.
         """
-
-        CONFIG_SERVER_WAITING_FOR_REFRESH = WaitingStatus("Waiting for refresh command.")
 
     class Upgrade:
         """Upgrade related constants."""
