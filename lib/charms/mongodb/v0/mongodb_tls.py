@@ -201,13 +201,6 @@ class MongoDBTLS(Object):
             logger.error("An unknown certificate is available -- ignoring.")
             return
 
-        if self.waiting_for_certs():
-            logger.debug(
-                "Defer till both internal and external TLS certificates available to avoid second restart."
-            )
-            event.defer()
-            return
-
         self.set_tls_secret(
             internal,
             Config.TLS.SECRET_CHAIN_LABEL,
@@ -219,6 +212,12 @@ class MongoDBTLS(Object):
         if self.charm.is_role(Config.Role.CONFIG_SERVER) and internal:
             self.charm.cluster.update_ca_secret(new_ca=event.ca)
             self.charm.config_server.update_ca_secret(new_ca=event.ca)
+
+        if self.waiting_for_certs():
+            logger.debug(
+                "Defer till both internal and external TLS certificates available to avoid second restart."
+            )
+            return
 
         logger.info("Restarting mongod with TLS enabled.")
 
