@@ -38,7 +38,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 14
+LIBPATCH = 15
 
 logger = logging.getLogger(__name__)
 
@@ -217,7 +217,6 @@ class MongoDBTLS(Object):
             logger.debug(
                 "Defer till both internal and external TLS certificates available to avoid second restart."
             )
-            event.defer()
             return
 
         logger.info("Restarting mongod with TLS enabled.")
