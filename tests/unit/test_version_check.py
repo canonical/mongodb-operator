@@ -3,10 +3,14 @@
 import unittest
 from unittest.mock import patch
 
+from data_platform_helpers.version_check import (
+    DEPLOYMENT_TYPE,
+    VERSION_CONST,
+    NoVersionError,
+)
 from ops.testing import Harness
 
 from charm import MongodbOperatorCharm
-from version_check import DEPLOYMENT_TYPE, VERSION_CONST, NoVersionError
 
 from .helpers import patch_network_get
 

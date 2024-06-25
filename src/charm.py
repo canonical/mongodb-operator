@@ -47,6 +47,11 @@ from charms.mongodb.v1.users import (
 )
 from charms.operator_libs_linux.v1.systemd import service_running
 from charms.operator_libs_linux.v2 import snap
+from data_platform_helpers.version_check import (
+    CrossAppVersionChecker,
+    NoVersionError,
+    get_charm_revision,
+)
 from ops.charm import (
     ActionEvent,
     CharmBase,
@@ -84,7 +89,6 @@ from machine_helpers import (
     update_mongod_service,
 )
 from upgrades.mongodb_upgrade import MongoDBUpgrade
-from version_check import CrossAppVersionChecker, NoVersionError, get_charm_revision
 
 AUTH_FAILED_CODE = 18
 UNAUTHORISED_CODE = 13
