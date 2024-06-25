@@ -87,8 +87,10 @@ class TestConfigServerInterface(unittest.TestCase):
         self.harness.charm.cluster.update_config_server_db(mock.Mock())
         self.harness.charm.cluster.database_provides.update_relation_data.assert_not_called()
 
-    @mock.patch("version_check.CrossAppVersionChecker.is_local_charm")
-    @mock.patch("version_check.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
+    @mock.patch("data_platform_helpers.version_check.CrossAppVersionChecker.is_local_charm")
+    @mock.patch(
+        "data_platform_helpers.version_check.CrossAppVersionChecker.is_integrated_to_locally_built_charm"
+    )
     @mock.patch("charm.get_charm_revision")
     def test_pass_hooks_check_waits_for_start_config_server(
         self,
