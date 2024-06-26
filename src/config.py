@@ -3,8 +3,9 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-from ops.model import WaitingStatus
 from typing import Literal, TypeAlias
+
+from ops.model import WaitingStatus
 
 Package: TypeAlias = tuple[str, str, str]
 

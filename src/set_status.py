@@ -1,8 +1,13 @@
-from config import Config
+#!/usr/bin/env python3
+"""Code for handing statuses in the app and unit."""
+# Copyright 2024 Canonical Ltd.
+# See LICENSE file for licensing details.
 
-from ops.model import StatusBase
 from ops.charm import CharmBase
 from ops.framework import Object
+from ops.model import StatusBase
+
+from config import Config
 
 
 class MongoDBStatusHanlder(Object):
@@ -28,7 +33,7 @@ class MongoDBStatusHanlder(Object):
 
         # TODO Future PR: handle update_status
 
-    ### BEGIN Helpers
+    # BEGIN Helpers
 
     def set_and_share_status(self, status: StatusBase):
         """Sets the charm status and shares to app status and config-server if applicable."""
@@ -73,7 +78,7 @@ class MongoDBStatusHanlder(Object):
             for _, unit_data in sharding_relation.data.items():
                 status_type = unit_data.get(Config.Status.STATUS_TYPE_KEY, None)
                 status_messge = unit_data.get(Config.Status.STATUS_MESSAGE_KEY, None)
-                if status_type == None:
+                if status_type is None:
                     return False
                 if "ActiveStatus" in status_type:
                     continue
@@ -107,7 +112,7 @@ class MongoDBStatusHanlder(Object):
         )
         if (
             current_status_message == self.charm.unit.status.message
-            and type(self.charm.unit.status) == current_status_type
+            and self.charm.unit.status == current_status_type
         ):
             return
 
@@ -119,4 +124,4 @@ class MongoDBStatusHanlder(Object):
             self.charm.unit.status.message
         )
 
-    ### END: Helpers
+    # END: Helpers

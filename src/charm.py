@@ -88,9 +88,8 @@ from machine_helpers import (
     setup_logrotate_and_cron,
     update_mongod_service,
 )
-from upgrades.mongodb_upgrade import MongoDBUpgrade
-
 from set_status import MongoDBStatusHanlder
+from upgrades.mongodb_upgrade import MongoDBUpgrade
 
 AUTH_FAILED_CODE = 18
 UNAUTHORISED_CODE = 13
