@@ -21,6 +21,7 @@ from charms.mongodb.v0.mongodb import (
 )
 from charms.mongodb.v0.mongodb_secrets import SecretCache, generate_secret_label
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
+from charms.mongodb.v0.set_status import MongoDBStatusHanlder
 from charms.mongodb.v1.helpers import (
     KEY_FILE,
     TLS_EXT_CA_FILE,
@@ -33,7 +34,6 @@ from charms.mongodb.v1.helpers import (
     generate_password,
     get_create_user_cmd,
 )
-from charms.mongodb.v0.set_status import MongoDBStatusHanlder
 from charms.mongodb.v1.mongodb_backups import MongoDBBackups
 from charms.mongodb.v1.mongodb_provider import MongoDBProvider
 from charms.mongodb.v1.mongodb_vm_legacy_provider import MongoDBLegacyProvider
