@@ -20,7 +20,7 @@ LIBAPI = 0
 LIBPATCH = 1
 
 
-class MongoDBStatusHanlder(Object):
+class MongoDBStatusHandler(Object):
     """Verifies versions across multiple integrated applications."""
 
     def __init__(
