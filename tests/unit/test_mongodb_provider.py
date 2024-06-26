@@ -94,8 +94,10 @@ class TestMongoProvider(unittest.TestCase):
 
     # oversee_users raises AssertionError when unable to attain users from relation
     @patch_network_get(private_address="1.1.1.1")
-    @patch("version_check.CrossAppVersionChecker.is_local_charm")
-    @patch("version_check.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
+    @patch("data_platform_helpers.version_check.CrossAppVersionChecker.is_local_charm")
+    @patch(
+        "data_platform_helpers.version_check.CrossAppVersionChecker.is_integrated_to_locally_built_charm"
+    )
     @patch("charm.get_charm_revision")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider.oversee_users")
