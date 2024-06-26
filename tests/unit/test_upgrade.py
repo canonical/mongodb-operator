@@ -23,9 +23,13 @@ class TestCharm(unittest.TestCase):
         self.peer_rel_id = self.harness.add_relation("upgrade-version-a", "upgrade-version-a")
 
     @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongoDBStatusHanlder.are_charm_units_all_active_or_waiting_for_upgrade")
     @patch("charms.mongodb.v1.helpers.MongoDBConnection")
     @patch("upgrades.mongodb_upgrade.MongoDBConnection")
-    def test_is_cluster_healthy(self, connection, connection_ready):
+    @patch("charms.mongodb.v0.mongodb.MongoDBConnection.is_any_sync")
+    def test_is_cluster_healthy(
+        self, is_any_sync, connection, connection_ready, are_all_units_active
+    ):
         """Test is_cluster_healthy function."""
 
         def is_shard_mock_call(*args):
@@ -40,6 +44,9 @@ class TestCharm(unittest.TestCase):
         blocked_status = mock.Mock()
         blocked_status.return_value = BlockedStatus()
 
+        self.harness.charm.status.are_charm_units_all_active_or_waiting_for_upgrade.return_value = (
+            True
+        )
         # case 1: running on a shard
         self.harness.charm.is_role = is_shard_mock_call
         assert not self.harness.charm.upgrade.is_cluster_healthy()
@@ -52,17 +59,24 @@ class TestCharm(unittest.TestCase):
         connection_ready.return_value.__enter__.return_value.is_ready = True
         self.harness.charm.is_role = is_replication_mock_call
         self.harness.charm.process_statuses = active_status
-        connection.return_value.__enter__.return_value.is_any_sync.return_value = True
+        is_any_sync.return_value = True
         assert not self.harness.charm.upgrade.is_cluster_healthy()
 
         # case 4: unit is not active
         self.harness.charm.process_statuses = blocked_status
-        connection.return_value.__enter__.return_value.is_any_sync.return_value = False
+        is_any_sync.return_value = False
         assert not self.harness.charm.upgrade.is_cluster_healthy()
 
         # case 5: cluster is helathy
         self.harness.charm.process_statuses = active_status
+        connection.return_value.__enter__.return_value.is_any_sync.return_value = False
         assert self.harness.charm.upgrade.is_cluster_healthy()
+
+        # case 6: not all units are active
+        self.harness.charm.status.are_charm_units_all_active_or_waiting_for_upgrade.return_value = (
+            False
+        )
+        assert not self.harness.charm.upgrade.is_cluster_healthy()
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("upgrades.mongodb_upgrade.MongoDBConnection")
