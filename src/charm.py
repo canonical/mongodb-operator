@@ -33,6 +33,7 @@ from charms.mongodb.v1.helpers import (
     generate_password,
     get_create_user_cmd,
 )
+from charms.mongodb.v0.set_status import MongoDBStatusHanlder
 from charms.mongodb.v1.mongodb_backups import MongoDBBackups
 from charms.mongodb.v1.mongodb_provider import MongoDBProvider
 from charms.mongodb.v1.mongodb_vm_legacy_provider import MongoDBLegacyProvider
@@ -88,7 +89,6 @@ from machine_helpers import (
     setup_logrotate_and_cron,
     update_mongod_service,
 )
-from set_status import MongoDBStatusHanlder
 from upgrades.mongodb_upgrade import MongoDBUpgrade
 
 AUTH_FAILED_CODE = 18
