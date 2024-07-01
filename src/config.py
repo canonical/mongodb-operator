@@ -107,3 +107,15 @@ class Config:
         SECRET_INTERNAL_LABEL = "internal-secret"
         SECRET_DELETED_LABEL = "None"
         MAX_PASSWORD_LENGTH = 4096
+
+    class Status:
+        """Status related constants.
+
+        TODO: move all status messages here.
+        """
+
+    class Upgrade:
+        """Upgrade related constants."""
+
+        WAITING_FOR_REFRESH_KEY = "waiting_for_refresh"
+        FEATURE_VERSION_6 = "6.0"
