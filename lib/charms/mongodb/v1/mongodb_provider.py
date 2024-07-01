@@ -31,7 +31,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 5
+LIBPATCH = 6
 
 logger = logging.getLogger(__name__)
 REL_NAME = "database"
@@ -98,7 +98,9 @@ class MongoDBProvider(Object):
 
         # legacy relations have auth disabled, which new relations require
         if self.model.get_relation(LEGACY_REL_NAME):
-            self.charm.unit.status = BlockedStatus("cannot have both legacy and new relations")
+            self.charm.status.set_and_share_status(
+                BlockedStatus("cannot have both legacy and new relations")
+            )
             logger.error("Auth disabled due to existing connections to legacy relations")
             return False
 
@@ -130,9 +132,9 @@ class MongoDBProvider(Object):
         # users have left and auth can be re-enabled.
         if self.substrate == "vm" and not self.charm.auth_enabled():
             logger.debug("Enabling authentication.")
-            self.charm.unit.status = MaintenanceStatus("re-enabling authentication")
+            self.charm.status.set_and_share_status(MaintenanceStatus("re-enabling authentication"))
             self.charm.restart_charm_services(auth=True)
-            self.charm.unit.status = ActiveStatus()
+            self.charm.status.set_and_share_status(ActiveStatus())
 
         departed_relation_id = None
         if type(event) is RelationBrokenEvent:
@@ -182,7 +184,9 @@ class MongoDBProvider(Object):
         # This hook gets called from other contexts within the charm so it is necessary to check
         # for legacy relations which have auth disabled, which new relations require
         if self.model.get_relation(LEGACY_REL_NAME):
-            self.charm.unit.status = BlockedStatus("cannot have both legacy and new relations")
+            self.charm.status.set_and_share_status(
+                BlockedStatus("cannot have both legacy and new relations")
+            )
             logger.error("Auth disabled due to existing connections to legacy relations")
             return
 

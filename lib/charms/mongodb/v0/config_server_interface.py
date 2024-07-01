@@ -42,7 +42,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 12
+LIBPATCH = 13
 
 
 class ClusterProvider(Object):
@@ -109,8 +109,10 @@ class ClusterProvider(Object):
         """Handles providing mongos with KeyFile and hosts."""
         if not self.pass_hook_checks(event):
             if not self.is_valid_mongos_integration():
-                self.charm.unit.status = BlockedStatus(
-                    "Relation to mongos not supported, config role must be config-server"
+                self.charm.status.set_and_share_status(
+                    BlockedStatus(
+                        "Relation to mongos not supported, config role must be config-server"
+                    )
                 )
             logger.info("Skipping relation joined event: hook checks did not pass")
             return
@@ -259,7 +261,9 @@ class ClusterRequirer(Object):
             event.relation.id, CONFIG_SERVER_DB_KEY
         )
         if not key_file_contents or not config_server_db_uri:
-            self.charm.unit.status = WaitingStatus("Waiting for secrets from config-server")
+            self.charm.status.set_and_share_status(
+                WaitingStatus("Waiting for secrets from config-server")
+            )
             return
 
         updated_keyfile = self.update_keyfile(key_file_contents=key_file_contents)
@@ -271,17 +275,17 @@ class ClusterRequirer(Object):
 
         # mongos is not available until it is using new secrets
         logger.info("Restarting mongos with new secrets")
-        self.charm.unit.status = MaintenanceStatus("starting mongos")
+        self.charm.status.set_and_share_status(MaintenanceStatus("starting mongos"))
         self.charm.restart_charm_services()
 
         # restart on high loaded databases can be very slow (e.g. up to 10-20 minutes).
         if not self.is_mongos_running():
             logger.info("mongos has not started, deferring")
-            self.charm.unit.status = WaitingStatus("Waiting for mongos to start")
+            self.charm.status.set_and_share_status(WaitingStatus("Waiting for mongos to start"))
             event.defer()
             return
 
-        self.charm.unit.status = ActiveStatus()
+        self.charm.status.set_and_share_status(ActiveStatus())
 
     def _on_relation_broken(self, event: RelationBrokenEvent) -> None:
         # Only relation_deparated events can check if scaling down

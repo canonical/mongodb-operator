@@ -38,7 +38,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 14
+LIBPATCH = 15
 
 logger = logging.getLogger(__name__)
 
@@ -174,10 +174,10 @@ class MongoDBTLS(Object):
             self.charm.config_server.update_ca_secret(new_ca=None)
 
         logger.info("Restarting mongod with TLS disabled.")
-        self.charm.unit.status = MaintenanceStatus("disabling TLS")
+        self.charm.status.set_and_share_status(MaintenanceStatus("disabling TLS"))
         self.charm.delete_tls_certificate_from_workload()
         self.charm.restart_charm_services()
-        self.charm.unit.status = ActiveStatus()
+        self.charm.status.set_and_share_status(ActiveStatus())
 
     def _on_certificate_available(self, event: CertificateAvailableEvent) -> None:
         """Enable TLS when TLS certificate available."""
@@ -224,16 +224,16 @@ class MongoDBTLS(Object):
 
         self.charm.delete_tls_certificate_from_workload()
         self.charm.push_tls_certificate_to_workload()
-        self.charm.unit.status = MaintenanceStatus("enabling TLS")
+        self.charm.status.set_and_share_status(MaintenanceStatus("enabling TLS"))
         self.charm.restart_charm_services()
 
         if not self.charm.is_db_service_ready():
-            self.charm.unit.status = WaitingStatus("Waiting for MongoDB to start")
+            self.charm.status.set_and_share_status(WaitingStatus("Waiting for MongoDB to start"))
         elif self.charm.unit.status == WaitingStatus(
             "Waiting for MongoDB to start"
         ) or self.charm.unit.status == MaintenanceStatus("enabling TLS"):
             # clear waiting status if db service is ready
-            self.charm.unit.status = ActiveStatus()
+            self.charm.status.set_and_share_status(ActiveStatus())
 
     def waiting_for_certs(self):
         """Returns a boolean indicating whether additional certs are needed."""
