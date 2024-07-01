@@ -22,7 +22,7 @@ class TestCharm(unittest.TestCase):
         self.addCleanup(self.harness.cleanup)
         self.harness.begin()
 
-    def test_are_charm_units_all_active_or_waiting_for_upgrade(self) -> None:
+    def test_are_all_units_ready_for_upgrade(self) -> None:
         """Verify that status handler returns the correct status."""
         # case 1: all juju units are ready for upgrade
         goal_state = {"units": {"unit_0": {"status": "active"}}}
@@ -30,7 +30,7 @@ class TestCharm(unittest.TestCase):
         run_mock._run.return_value = goal_state
         self.harness.charm.model._backend = run_mock
 
-        assert self.harness.charm.status.are_charm_units_all_active_or_waiting_for_upgrade()
+        assert self.harness.charm.status.are_all_units_ready_for_upgrade()
 
         # case 2: not all juju units are ready for upgrade
         goal_state = {"units": {"unit_0": {"status": "active"}, "unit_1": {"status": "blocked"}}}
@@ -38,4 +38,4 @@ class TestCharm(unittest.TestCase):
         run_mock._run.return_value = goal_state
         self.harness.charm.model._backend = run_mock
 
-        assert not self.harness.charm.status.are_charm_units_all_active_or_waiting_for_upgrade()
+        assert not self.harness.charm.status.are_all_units_ready_for_upgrade()

@@ -281,14 +281,14 @@ class MongoDBUpgrade(Object):
                 logger.error("Cannot proceed with upgrade. Service mongod is not running")
                 return False
 
-        if not self.charm.status.are_charm_units_all_active_or_waiting_for_upgrade():
+        if not self.charm.status.are_all_units_ready_for_upgrade():
             logger.error(
                 "Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade."
             )
             return False
 
         if self.charm.is_role(Config.Role.CONFIG_SERVER):
-            if not self.charm.status.are_shards_status_active_or_waiting_for_upgrade():
+            if not self.charm.status.are_shards_status_ready_for_upgrade():
                 logger.error(
                     "Cannot proceed with upgrade. Status of shard units do not show active / waiting for upgrade."
                 )
