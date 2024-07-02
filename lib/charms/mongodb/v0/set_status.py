@@ -59,13 +59,14 @@ class MongoDBStatusHandler(Object):
         goal_state = self.charm.model._backend._run(
             "goal-state", return_output=True, use_json=True
         )
+        is_different_revision = self.charm.get_cluster_mismatched_revision_status()
         for _, unit_state in goal_state["units"].items():
             if unit_state["status"] == "active":
                 continue
             if unit_state["status"] != "waiting":
                 return False
 
-            if not self.charm.get_cluster_mismatched_revision_status():
+            if not is_different_revision:
                 return False
 
         return True
