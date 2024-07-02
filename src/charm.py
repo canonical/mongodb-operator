@@ -259,11 +259,19 @@ class MongodbOperatorCharm(CharmBase):
         """Generates a MongoDBConfiguration object for mongos in the deployment of MongoDB."""
         return self._get_mongos_config_for_user(OperatorUser, set(self.unit_ips))
 
-    def remote_mongos_config(self, hosts) -> MongoDBConfiguration:
-        """Generates a MongoDBConfiguration object for mongos in the deployment of MongoDB."""
+    def remote_mongos_config(self, hosts) -> MongosConfiguration:
+        """Generates a MongosConfiguration object for mongos in the deployment of MongoDB."""
         # mongos that are part of the cluster have the same username and password, but different
         # hosts
         return self._get_mongos_config_for_user(OperatorUser, hosts)
+
+    def remote_mongodb_config(self, hosts, replset=None, standalone=None) -> MongoDBConfiguration:
+        """Generates a MongoDBConfiguration object for mongod in the deployment of MongoDB."""
+        # mongos that are part of the cluster have the same username and password, but different
+        # hosts
+        return self._get_mongodb_config_for_user(
+            OperatorUser, hosts, replset=replset, standalone=standalone
+        )
 
     @property
     def mongodb_config(self) -> MongoDBConfiguration:
@@ -889,13 +897,13 @@ class MongodbOperatorCharm(CharmBase):
         )
 
     def _get_mongodb_config_for_user(
-        self, user: MongoDBUser, hosts: Set[str], standalone: bool = False
+        self, user: MongoDBUser, hosts: Set[str], standalone: bool = False, replset: str = None
     ) -> MongoDBConfiguration:
         external_ca, _ = self.tls.get_tls_files(internal=False)
         internal_ca, _ = self.tls.get_tls_files(internal=True)
 
         return MongoDBConfiguration(
-            replset=self.app.name,
+            replset=replset or self.app.name,
             database=user.get_database_name(),
             username=user.get_username(),
             password=self.get_secret(APP_SCOPE, user.get_password_key_name()),
