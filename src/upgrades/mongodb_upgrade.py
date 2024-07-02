@@ -263,14 +263,10 @@ class MongoDBUpgrade(Object):
 
         # Set/clear upgrade unit status if no other unit status - upgrade status for units should
         # have the lowest priority.
-        if (
-            isinstance(self.charm.unit.status, ActiveStatus)
-            or (self.charm.unit.status == Config.Status.CONFIG_SERVER_WAITING_FOR_REFRESH)
-            or (
-                isinstance(self.charm.unit.status, BlockedStatus)
-                and self.charm.unit.status.message.startswith(
-                    "Rollback with `juju refresh`. Pre-upgrade check failed:"
-                )
+        if isinstance(self.charm.unit.status, ActiveStatus) or (
+            isinstance(self.charm.unit.status, BlockedStatus)
+            and self.charm.unit.status.message.startswith(
+                "Rollback with `juju refresh`. Pre-upgrade check failed:"
             )
         ):
             self.charm.unit.status = self._upgrade.get_unit_juju_status() or ActiveStatus()
