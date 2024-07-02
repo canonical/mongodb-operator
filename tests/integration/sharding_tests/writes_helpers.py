@@ -6,11 +6,15 @@ import subprocess
 from pathlib import Path
 from typing import Dict, List
 
+import pytest
+import time
 import yaml
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 
 from ..helpers import get_password
+
+from .helpers import generate_mongodb_client
 
 # TODO move these to a separate file for constants \ config
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
@@ -20,6 +24,17 @@ APP_NAME = "config-server"
 APP_NAME_NEW = "config-server-new"
 
 logger = logging.getLogger(__name__)
+
+SHARD_ONE_APP_NAME = "shard-one"
+SHARD_TWO_APP_NAME = "shard-two"
+CONFIG_SERVER_APP_NAME = "config-server"
+
+DEFAULT_DB_NAME = "new-db"
+DEFAULT_COLL_NAME = "test_collection"
+SHARD_ONE_DB_NAME = f"{SHARD_ONE_APP_NAME}-{DEFAULT_DB_NAME}"
+SHARD_TWO_DB_NAME = f"{SHARD_TWO_APP_NAME}-{DEFAULT_DB_NAME}"
+SHARD_ONE_COLL_NAME = f"{SHARD_ONE_APP_NAME}-{DEFAULT_COLL_NAME}"
+SHARD_TWO_COLL_NAME = f"{SHARD_TWO_APP_NAME}-{DEFAULT_COLL_NAME}"
 
 
 class ProcessError(Exception):
@@ -61,8 +76,48 @@ async def remove_db_writes(
     client.close()
 
 
+@pytest.fixture()
+async def continuous_writes_to_shard_one(ops_test: OpsTest):
+    """Adds writes to a shard named shard-one before test starts and clears writes at the end."""
+    await start_continous_writes_on_shard(
+        ops_test, shard_name=SHARD_TWO_APP_NAME, db_name=SHARD_TWO_DB_NAME
+    )
+
+    yield
+    await stop_continous_writes(ops_test, config_server_name=CONFIG_SERVER_APP_NAME)
+    await remove_db_writes(ops_test, db_name=SHARD_ONE_DB_NAME, coll_name=SHARD_ONE_COLL_NAME)
+
+
+@pytest.fixture()
+async def continuous_writes_to_shard_two(ops_test: OpsTest):
+    """Adds writes to a shard named shard-one before test starts and clears writes at the end."""
+    await start_continous_writes_on_shard(
+        ops_test, shard_name=SHARD_TWO_APP_NAME, db_name=SHARD_TWO_DB_NAME
+    )
+
+    yield
+    await stop_continous_writes(ops_test, config_server_name=CONFIG_SERVER_APP_NAME)
+    await remove_db_writes(ops_test, db_name=SHARD_TWO_DB_NAME, coll_name=SHARD_TWO_COLL_NAME)
+
+
+async def start_continous_writes_on_shard(ops_test: OpsTest, shard_name: str, db_name: str):
+    await start_continous_writes(
+        ops_test, 1, config_server_name=CONFIG_SERVER_APP_NAME, db_name=db_name
+    )
+    # move continuous writes to shard-one
+    mongos_client = await generate_mongodb_client(
+        ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True
+    )
+
+    mongos_client.admin.command("movePrimary", db_name, to=shard_name)
+
+
 async def start_continous_writes(
-    ops_test: OpsTest, starting_number: int, config_server_name=APP_NAME
+    ops_test: OpsTest,
+    starting_number: int,
+    config_server_name=APP_NAME,
+    db_name=DEFAULT_DB_NAME,
+    coll_name=DEFAULT_COLL_NAME,
 ) -> None:
     """Starts continuous writes to MongoDB."""
     connection_string = await mongos_uri(ops_test, config_server_name)
@@ -74,14 +129,23 @@ async def start_continous_writes(
             "tests/integration/ha_tests/continuous_writes.py",
             connection_string,
             str(starting_number),
+            db_name,
+            coll_name,
         ]
     )
 
 
-async def stop_continous_writes(ops_test: OpsTest, config_server_name=APP_NAME) -> int:
+async def stop_continous_writes(
+    ops_test: OpsTest,
+    config_server_name=APP_NAME,
+    db_name=DEFAULT_DB_NAME,
+    collection_name=DEFAULT_COLL_NAME,
+) -> int:
     """Stops continuous writes to MongoDB and returns the last written value."""
     # stop the process
-    proc = subprocess.Popen(["pkill", "-9", "-f", "continuous_writes.py"])
+    proc = subprocess.Popen(
+        ["pkill", "-9", "-f", "continuous_writes.py"]
+    )  # TODO find a way to stop the correct one
 
     # wait for process to be killed
     proc.communicate()
@@ -89,9 +153,9 @@ async def stop_continous_writes(ops_test: OpsTest, config_server_name=APP_NAME) 
     connection_string = await mongos_uri(ops_test, config_server_name)
 
     client = MongoClient(connection_string)
-    db = client["new-db"]
-    test_collection = db["test_collection"]
-    client.admin.command("enableSharding", "new-db")
+    db = client[db_name]
+    test_collection = db[collection_name]
+    client.admin.command("enableSharding", db_name)
 
     # last written value should be the highest number in the database.
     last_written_value = test_collection.find_one(sort=[("number", -1)])

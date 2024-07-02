@@ -7,7 +7,12 @@ import pytest
 from pytest_operator.plugin import OpsTest
 from tenacity import Retrying, stop_after_attempt, wait_fixed
 
-from ..helpers import wait_for_mongodb_units_blocked
+from ..helpers import (
+    wait_for_mongodb_units_blocked,
+    deploy_cluster_components,
+    integrate_cluster,
+    destroy_cluster,
+)
 from ..tls_tests import helpers as tls_helpers
 
 MONGOD_SERVICE = "snap.charmed-mongodb.mongod.service"
@@ -214,44 +219,6 @@ async def check_cluster_tls_enabled(ops_test: OpsTest) -> None:
         ), f"Mongos TLS not enabled in unit {unit.name}"
 
 
-async def deploy_cluster_components(ops_test: OpsTest) -> None:
-    my_charm = await ops_test.build_charm(".")
-    await ops_test.model.deploy(
-        my_charm,
-        num_units=2,
-        config={"role": "config-server"},
-        application_name=CONFIG_SERVER_APP_NAME,
-    )
-    await ops_test.model.deploy(
-        my_charm, num_units=2, config={"role": "shard"}, application_name=SHARD_ONE_APP_NAME
-    )
-    await ops_test.model.deploy(
-        my_charm, num_units=1, config={"role": "shard"}, application_name=SHARD_TWO_APP_NAME
-    )
-
-    await ops_test.model.wait_for_idle(
-        apps=CLUSTER_COMPONENTS,
-        idle_period=20,
-        timeout=TIMEOUT,
-    )
-
-
-async def destroy_cluster(ops_test):
-    """Destroy cluster in a forceful way."""
-    for app in CLUSTER_COMPONENTS:
-        await ops_test.model.applications[app].destroy(force=True, no_wait=False)
-
-    # destroy does not wait for applications to be removed, perform this check manually
-    for attempt in Retrying(stop=stop_after_attempt(100), wait=wait_fixed(10), reraise=True):
-        with attempt:
-            # pytest_operator has a bug where the number of applications does not get correctly
-            # updated. Wrapping the call with `fast_forward` resolves this
-            async with ops_test.fast_forward():
-                assert (
-                    len(ops_test.model.applications) == 1
-                ), "old cluster not destroyed successfully."
-
-
 async def remove_tls_integrations(ops_test: OpsTest) -> None:
     """Removes the TLS integration from all cluster components."""
     for app in CLUSTER_COMPONENTS:
@@ -259,18 +226,6 @@ async def remove_tls_integrations(ops_test: OpsTest) -> None:
             f"{app}:{CERT_REL_NAME}",
             f"{CERTS_APP_NAME}:{CERT_REL_NAME}",
         )
-
-
-async def integrate_cluster(ops_test: OpsTest) -> None:
-    """Integrates the cluster components with each other."""
-    await ops_test.model.integrate(
-        f"{SHARD_ONE_APP_NAME}:{SHARD_REL_NAME}",
-        f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
-    )
-    await ops_test.model.integrate(
-        f"{SHARD_TWO_APP_NAME}:{SHARD_REL_NAME}",
-        f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
-    )
 
 
 async def integrate_with_tls(ops_test: OpsTest) -> None:
@@ -287,12 +242,12 @@ async def rotate_and_verify_certs(ops_test: OpsTest, app: str) -> None:
     original_tls_info = {}
     for unit in ops_test.model.applications[app].units:
         original_tls_info[unit.name] = {}
-        original_tls_info[unit.name]["external_cert_contents"] = (
-            await tls_helpers.get_file_content(ops_test, unit.name, tls_helpers.EXTERNAL_CERT_PATH)
-        )
-        original_tls_info[unit.name]["internal_cert_contents"] = (
-            await tls_helpers.get_file_content(ops_test, unit.name, tls_helpers.INTERNAL_CERT_PATH)
-        )
+        original_tls_info[unit.name][
+            "external_cert_contents"
+        ] = await tls_helpers.get_file_content(ops_test, unit.name, tls_helpers.EXTERNAL_CERT_PATH)
+        original_tls_info[unit.name][
+            "internal_cert_contents"
+        ] = await tls_helpers.get_file_content(ops_test, unit.name, tls_helpers.INTERNAL_CERT_PATH)
         original_tls_info[unit.name]["external_cert"] = await tls_helpers.time_file_created(
             ops_test, unit.name, tls_helpers.EXTERNAL_CERT_PATH
         )
@@ -303,9 +258,9 @@ async def rotate_and_verify_certs(ops_test: OpsTest, app: str) -> None:
             ops_test, unit.name, MONGOD_SERVICE
         )
         if app == CONFIG_SERVER_APP_NAME:
-            original_tls_info[unit.name]["mongos_service"] = (
-                await tls_helpers.time_process_started(ops_test, unit.name, MONGOD_SERVICE)
-            )
+            original_tls_info[unit.name][
+                "mongos_service"
+            ] = await tls_helpers.time_process_started(ops_test, unit.name, MONGOD_SERVICE)
         await tls_helpers.check_certs_correctly_distributed(ops_test, unit, app_name=app)
 
     # set external and internal key using auto-generated key for each unit
