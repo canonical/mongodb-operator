@@ -5,7 +5,7 @@
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Set, Tuple
+from typing import List, Optional, Set, Tuple
 from urllib.parse import quote_plus
 
 from charms.mongodb.v0.mongodb import NotReadyError
@@ -22,10 +22,12 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 4
+LIBPATCH = 5
 
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
+
+SHARD_AWARE_STATE = 1
 
 
 @dataclass
@@ -53,11 +55,14 @@ class MongosConfiguration:
     @property
     def uri(self):
         """Return URI concatenated from fields."""
+        self.complete_hosts = self.hosts
+
         # mongos using Unix Domain Socket to communicate do not use port
         if self.port:
-            self.hosts = [f"{host}:{self.port}" for host in self.hosts]
+            self.complete_hosts = [f"{host}:{self.port}" for host in self.hosts]
 
-        hosts = ",".join(self.hosts)
+        complete_hosts = ",".join(self.complete_hosts)
+
         # Auth DB should be specified while user connects to application DB.
         auth_source = ""
         if self.database != "admin":
@@ -65,7 +70,7 @@ class MongosConfiguration:
         return (
             f"mongodb://{quote_plus(self.username)}:"
             f"{quote_plus(self.password)}@"
-            f"{hosts}/{quote_plus(self.database)}?"
+            f"{complete_hosts}/{quote_plus(self.database)}?"
             f"{auth_source}"
         )
 
@@ -120,8 +125,6 @@ class MongosConnection:
             direct: force a direct connection to a specific host, avoiding
                     reading replica set configuration and reconnection.
         """
-        self.mongodb_config = config
-
         if uri is None:
             uri = config.uri
 
@@ -187,8 +190,7 @@ class MongosConnection:
 
         # It is necessary to call removeShard multiple times on a shard to guarantee removal.
         # Allow re-removal of shards that are currently draining.
-        sc_status = self.client.admin.command("listShards")
-        if self._is_any_draining(sc_status, ignore_shard=shard_name):
+        if self.is_any_draining(ignore_shard=shard_name):
             cannot_remove_shard = (
                 f"cannot remove shard {shard_name} from cluster, another shard is draining"
             )
@@ -294,8 +296,7 @@ class MongosConnection:
 
         return config_db["databases"]
 
-    @staticmethod
-    def _is_any_draining(sc_status: Dict, ignore_shard: str = "") -> bool:
+    def is_any_draining(self, ignore_shard: str = "") -> bool:
         """Returns true if any shard members is draining.
 
         Checks if any members in sharded cluster are draining data.
@@ -304,6 +305,7 @@ class MongosConnection:
             sc_status: current state of shard cluster status as reported by mongos.
             ignore_shard: shard to ignore
         """
+        sc_status = self.client.admin.command("listShards")
         return any(
             # check draining status of all shards except the one to be ignored.
             shard.get("draining", False) if shard["_id"] != ignore_shard else False
@@ -358,12 +360,21 @@ class MongosConnection:
 
         return True
 
+    def are_all_shards_aware(self) -> bool:
+        """Returns True if all shards are shard aware."""
+        sc_status = self.client.admin.command("listShards")
+        for shard in sc_status["shards"]:
+            if shard["state"] != SHARD_AWARE_STATE:
+                return False
+
+        return True
+
     def is_shard_aware(self, shard_name: str) -> bool:
         """Returns True if provided shard is shard aware."""
         sc_status = self.client.admin.command("listShards")
         for shard in sc_status["shards"]:
             if shard["_id"] == shard_name:
-                return shard["state"] == 1
+                return shard["state"] == SHARD_AWARE_STATE
 
         return False
 
