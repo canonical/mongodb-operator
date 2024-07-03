@@ -2,10 +2,11 @@
 """Code for handing statuses in the app and unit."""
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
+import json
 
 from ops.charm import CharmBase
 from ops.framework import Object
-from ops.model import StatusBase
+from ops.model import ActiveStatus, StatusBase, WaitingStatus
 
 from config import Config
 
@@ -58,13 +59,14 @@ class MongoDBStatusHandler(Object):
         goal_state = self.charm.model._backend._run(
             "goal-state", return_output=True, use_json=True
         )
+        is_different_revision = self.charm.get_cluster_mismatched_revision_status()
         for _, unit_state in goal_state["units"].items():
             if unit_state["status"] == "active":
                 continue
             if unit_state["status"] != "waiting":
                 return False
 
-            if not self.charm.get_cluster_mismatched_revision_status():
+            if not is_different_revision:
                 return False
 
         return True
@@ -79,20 +81,12 @@ class MongoDBStatusHandler(Object):
             return False
 
         for sharding_relation in self.charm.config_server.get_all_sharding_relations():
-            for _, unit_data in sharding_relation.data.items():
-                status_type = unit_data.get(Config.Status.STATUS_TYPE_KEY, None)
-                status_messge = unit_data.get(Config.Status.STATUS_MESSAGE_KEY, None)
-                if status_type is None:
-                    return False
-                if "ActiveStatus" in status_type:
-                    continue
-                if "WaitingStatus" not in status_type:
-                    return False
-
-                if (
-                    status_messge
-                    and status_messge != Config.Status.CONFIG_SERVER_WAITING_FOR_REFRESH.message
-                ):
+            for unit in sharding_relation.units:
+                unit_data = sharding_relation.data[unit]
+                status_ready_for_upgrade = json.loads(
+                    unit_data.get(Config.Status.STATUS_READY_FOR_UPGRADE, None)
+                )
+                if not status_ready_for_upgrade:
                     return False
 
         return True
@@ -105,12 +99,26 @@ class MongoDBStatusHandler(Object):
         if not (config_relation := self.charm.shard.get_config_server_relation()):
             return
 
-        config_relation.data[self.charm.unit][Config.Status.STATUS_TYPE_KEY] = str(
-            type(self.charm.unit.status)
+        config_relation.data[self.charm.unit][Config.Status.STATUS_READY_FOR_UPGRADE] = json.dumps(
+            self.is_unit_status_ready_for_upgrade()
         )
 
-        config_relation.data[self.charm.unit][Config.Status.STATUS_MESSAGE_KEY] = str(
-            self.charm.unit.status.message
-        )
+    def is_unit_status_ready_for_upgrade(self) -> bool:
+        """Returns True if the status of the current unit reflects that it is ready for upgrade."""
+        current_status = type(self.charm.unit.status)
+        status_message = self.charm.unit.status.message
+        if isinstance(current_status, ActiveStatus):
+            return True
+
+        if not isinstance(current_status, WaitingStatus):
+            return False
+
+        if (
+            status_message
+            and status_message != Config.Status.CONFIG_SERVER_WAITING_FOR_REFRESH.message
+        ):
+            return False
+
+        return True
 
     # END: Helpers

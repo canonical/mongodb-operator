@@ -26,9 +26,12 @@ class TestCharm(unittest.TestCase):
         """Verify that status handler returns the correct status."""
         # case 1: all juju units are ready for upgrade
         goal_state = {"units": {"unit_0": {"status": "active"}}}
+        get_mismatched_revsion = mock.Mock()
+        get_mismatched_revsion.return_value = None
         run_mock = mock.Mock()
         run_mock._run.return_value = goal_state
         self.harness.charm.model._backend = run_mock
+        self.harness.charm.get_cluster_mismatched_revision_status = get_mismatched_revsion
 
         assert self.harness.charm.status.are_all_units_ready_for_upgrade()
 

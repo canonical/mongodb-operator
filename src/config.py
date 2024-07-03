@@ -115,8 +115,7 @@ class Config:
         TODO: move all status messages here.
         """
 
-        STATUS_TYPE_KEY = "status-type"
-        STATUS_MESSAGE_KEY = "status-message"
+        STATUS_READY_FOR_UPGRADE = "status-shows-ready-for-upgrade"
         CONFIG_SERVER_WAITING_FOR_REFRESH = WaitingStatus("Waiting for refresh command.")
 
     class Upgrade:
