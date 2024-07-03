@@ -144,7 +144,7 @@ async def stop_continous_writes(
     """Stops continuous writes to MongoDB and returns the last written value."""
     # stop the process
     proc = subprocess.Popen(
-        ["pkill", "-9", "-f", "continuous_writes.py"]
+        ["pkill", "-9", "-f", f"continuous_writes.py {db_name}"]
     )  # TODO find a way to stop the correct one
 
     # wait for process to be killed
