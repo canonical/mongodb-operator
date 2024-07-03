@@ -127,7 +127,7 @@ async def deploy_cluster_components(ops_test: OpsTest) -> None:
         application_name=CONFIG_SERVER_APP_NAME,
     )
     await ops_test.model.deploy(
-        my_charm, num_units=2, config={"role": "shard"}, application_name=SHARD_ONE_APP_NAME
+        my_charm, num_units=3, config={"role": "shard"}, application_name=SHARD_ONE_APP_NAME
     )
     await ops_test.model.deploy(
         my_charm, num_units=1, config={"role": "shard"}, application_name=SHARD_TWO_APP_NAME

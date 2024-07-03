@@ -664,6 +664,7 @@ def restore_network_for_unit(machine_name: str) -> None:
     """
     # remove mask from eth0
     restore_network_command = f"lxc config device remove {machine_name} eth0"
+    print("\n\n\n", restore_network_command, "\n\n\n")
     subprocess.check_call(restore_network_command.split())
 
 
@@ -708,6 +709,8 @@ def wait_network_restore(model_name: str, hostname: str, old_ip: str) -> None:
         hostname: The name of the instance
         old_ip: old registered IP address
     """
+
+    print(model_name, hostname, old_ip)
     if instance_ip(model_name, hostname) == old_ip:
         raise Exception("Network not restored, IP address has not changed yet.")
 
