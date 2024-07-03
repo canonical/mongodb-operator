@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict
 from urllib.parse import quote_plus
 
 from pymongo import MongoClient
@@ -118,19 +118,34 @@ def count_users(mongos_client: MongoClient) -> int:
     return users_collection.count_documents({})
 
 
-async def deploy_cluster_components(ops_test: OpsTest) -> None:
+async def deploy_cluster_components(
+    ops_test: OpsTest, num_units_cluster_config: Dict = None
+) -> None:
+    if not num_units_cluster_config:
+        num_units_cluster_config = {
+            CONFIG_SERVER_APP_NAME: 2,
+            SHARD_ONE_APP_NAME: 3,
+            SHARD_TWO_APP_NAME: 1,
+        }
+
     my_charm = await ops_test.build_charm(".")
     await ops_test.model.deploy(
         my_charm,
-        num_units=2,
+        num_units=num_units_cluster_config[CONFIG_SERVER_APP_NAME],
         config={"role": "config-server"},
         application_name=CONFIG_SERVER_APP_NAME,
     )
     await ops_test.model.deploy(
-        my_charm, num_units=3, config={"role": "shard"}, application_name=SHARD_ONE_APP_NAME
+        my_charm,
+        num_units=num_units_cluster_config[SHARD_ONE_APP_NAME],
+        config={"role": "shard"},
+        application_name=SHARD_ONE_APP_NAME,
     )
     await ops_test.model.deploy(
-        my_charm, num_units=1, config={"role": "shard"}, application_name=SHARD_TWO_APP_NAME
+        my_charm,
+        num_units=num_units_cluster_config[SHARD_TWO_APP_NAME],
+        config={"role": "shard"},
+        application_name=SHARD_TWO_APP_NAME,
     )
 
     await ops_test.model.wait_for_idle(

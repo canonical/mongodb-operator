@@ -105,8 +105,8 @@ class MongoDBStatusHandler(Object):
 
     def is_unit_status_ready_for_upgrade(self) -> bool:
         """Returns True if the status of the current unit reflects that it is ready for upgrade."""
-        current_status = type(self.charm.unit.status)
-        status_message = self.charm.unit.status.message
+        current_status = self.charm.unit.status
+        status_message = current_status.message
         if isinstance(current_status, ActiveStatus):
             return True
 
