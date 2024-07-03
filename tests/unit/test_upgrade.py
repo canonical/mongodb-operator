@@ -44,33 +44,32 @@ class TestCharm(unittest.TestCase):
         blocked_status = mock.Mock()
         blocked_status.return_value = BlockedStatus()
 
-        self.harness.charm.status.are_all_units_ready_for_upgrade.return_value = True
-        # case 1: running on a shard
-        self.harness.charm.is_role = is_shard_mock_call
-        assert not self.harness.charm.upgrade.is_cluster_healthy()
+        mock_units_ready = mock.Mock()
+        mock_units_ready.return_value = True
+        self.harness.charm.status.are_all_units_ready_for_upgrade = mock_units_ready
 
-        # case 2: unit is not ready after restarting
+        # case 1: unit is not ready after restarting
         connection_ready.return_value.__enter__.return_value.is_ready = False
         assert not self.harness.charm.upgrade.is_cluster_healthy()
 
-        # case 3: cluster is still syncing
+        # case 2: cluster is still syncing
         connection_ready.return_value.__enter__.return_value.is_ready = True
         self.harness.charm.is_role = is_replication_mock_call
         self.harness.charm.process_statuses = active_status
         is_any_sync.return_value = True
         assert not self.harness.charm.upgrade.is_cluster_healthy()
 
-        # case 4: unit is not active
+        # case 3: unit is not active
         self.harness.charm.process_statuses = blocked_status
         is_any_sync.return_value = False
         assert not self.harness.charm.upgrade.is_cluster_healthy()
 
-        # case 5: cluster is helathy
+        # case 4: cluster is helathy
         self.harness.charm.process_statuses = active_status
         connection.return_value.__enter__.return_value.is_any_sync.return_value = False
         assert self.harness.charm.upgrade.is_cluster_healthy()
 
-        # case 6: not all units are active
+        # case 5: not all units are active
         self.harness.charm.status.are_all_units_ready_for_upgrade.return_value = False
         assert not self.harness.charm.upgrade.is_cluster_healthy()
 
