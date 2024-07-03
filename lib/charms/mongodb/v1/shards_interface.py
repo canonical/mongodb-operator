@@ -43,6 +43,7 @@ from ops.model import (
     ActiveStatus,
     BlockedStatus,
     MaintenanceStatus,
+    Relation,
     StatusBase,
     WaitingStatus,
 )
@@ -62,7 +63,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 14
+LIBPATCH = 15
 KEYFILE_KEY = "key-file"
 HOSTS_KEY = "host"
 OPERATOR_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username())
@@ -241,7 +242,9 @@ class ShardingProvider(Object):
             logger.error("Deferring _on_relation_event for shards interface since: error=%r", e)
             event.defer()
         except ShardAuthError as e:
-            self.charm.unit.status = WaitingStatus(f"Waiting for {e.shard} to sync credentials.")
+            self.charm.status.set_and_share_status(
+                WaitingStatus(f"Waiting for {e.shard} to sync credentials.")
+            )
             event.defer()
             return
         except (PyMongoError, NotReadyError, BalancerNotEnabledError) as e:
@@ -265,8 +268,8 @@ class ShardingProvider(Object):
                         logger.info("host info for shard %s not yet added, skipping", shard)
                         continue
 
-                    self.charm.unit.status = MaintenanceStatus(
-                        f"Adding shard {shard} to config-server"
+                    self.charm.status.set_and_share_status(
+                        MaintenanceStatus(f"Adding shard {shard} to config-server")
                     )
                     logger.info("Adding shard: %s ", shard)
                     mongo.add_shard(shard, shard_hosts)
@@ -277,7 +280,7 @@ class ShardingProvider(Object):
                     failed_to_add_shard = (e, shard)
 
         if not failed_to_add_shard:
-            self.charm.unit.status = ActiveStatus("")
+            self.charm.status.set_and_share_status(ActiveStatus(""))
             return
 
         (error, shard) = failed_to_add_shard
@@ -303,7 +306,9 @@ class ShardingProvider(Object):
 
             for shard in cluster_shards - relation_shards:
                 try:
-                    self.charm.unit.status = MaintenanceStatus(f"Draining shard {shard}")
+                    self.charm.status.set_and_share_status(
+                        MaintenanceStatus(f"Draining shard {shard}")
+                    )
                     logger.info("Attempting to removing shard: %s", shard)
                     mongo.remove_shard(shard)
                 except NotReadyError:
@@ -443,6 +448,10 @@ class ShardingProvider(Object):
     def get_related_shards(self) -> List[str]:
         """Returns a list of related shards."""
         return [rel.app.name for rel in self.charm.model.relations[self.relation_name]]
+
+    def get_all_sharding_relations(self) -> List[Relation]:
+        """Returns a list of relation data for related shards."""
+        return self.charm.model.relations[self.relation_name]
 
     def get_unreachable_shards(self) -> List[str]:
         """Returns a list of unreable shard hosts."""
@@ -638,7 +647,7 @@ class ConfigServerRequirer(Object):
             logger.info(
                 "Replica set has not elected a primary after restarting, cannot update passwords."
             )
-            self.charm.unit.status = WaitingStatus("Waiting for MongoDB to start")
+            self.charm.status.set_and_share_status(WaitingStatus("Waiting for MongoDB to start"))
             event.defer()
             return
 
@@ -651,9 +660,13 @@ class ConfigServerRequirer(Object):
             # RelationChangedEvents will only update passwords when the relation is first joined,
             # otherwise all other password changes result in a Secret Changed Event.
             if isinstance(event, RelationChangedEvent):
-                self.charm.unit.status = BlockedStatus("Shard not added to config-server")
+                self.charm.status.set_and_share_status(
+                    BlockedStatus("Shard not added to config-server")
+                )
             else:
-                self.charm.unit.status = BlockedStatus("Failed to rotate cluster secrets")
+                self.charm.status.set_and_share_status(
+                    BlockedStatus("Failed to rotate cluster secrets")
+                )
             logger.error(
                 "Failed to sync cluster passwords from config-server to shard. Deferring event and retrying."
             )
@@ -666,7 +679,7 @@ class ConfigServerRequirer(Object):
         """Sets status and flags in relation data relevant to sharding."""
         # if re-using an old shard, re-set flags.
         self.charm.unit_peer_data["drained"] = json.dumps(False)
-        self.charm.unit.status = MaintenanceStatus("Adding shard to config-server")
+        self.charm.status.set_and_share_status(MaintenanceStatus("Adding shard to config-server"))
 
     def _on_relation_changed(self, event):
         """Retrieves secrets from config-server and updates them within the shard."""
@@ -679,7 +692,9 @@ class ConfigServerRequirer(Object):
         if not key_file_enabled and not tls_enabled:
             logger.info("Waiting for secrets for config-server.")
             event.defer()
-            self.charm.unit.status = WaitingStatus("Waiting for secrets from config-server")
+            self.charm.status.set_and_share_status(
+                WaitingStatus("Waiting for secrets from config-server")
+            )
             return
 
         self.update_member_auth(event, (key_file_enabled, tls_enabled))
@@ -693,7 +708,9 @@ class ConfigServerRequirer(Object):
         with MongoDBConnection(self.charm.mongodb_config) as mongo:
             if not mongo.is_ready:
                 logger.info("shard has not started yet, deferfing")
-                self.charm.unit.status = WaitingStatus("Waiting for MongoDB to start")
+                self.charm.status.set_and_share_status(
+                    WaitingStatus("Waiting for MongoDB to start")
+                )
                 event.defer()
                 return
 
@@ -703,7 +720,9 @@ class ConfigServerRequirer(Object):
         (operator_password, backup_password) = self.get_cluster_passwords(event.relation.id)
         if not operator_password or not backup_password:
             event.defer()
-            self.charm.unit.status = WaitingStatus("Waiting for secrets from config-server")
+            self.charm.status.set_and_share_status(
+                WaitingStatus("Waiting for secrets from config-server")
+            )
             return
 
         self.sync_cluster_passwords(event, operator_password, backup_password)
@@ -804,10 +823,12 @@ class ConfigServerRequirer(Object):
             )
             return
 
-        self.charm.unit.status = MaintenanceStatus("Draining shard from cluster")
+        self.charm.status.set_and_share_status(MaintenanceStatus("Draining shard from cluster"))
         mongos_hosts = json.loads(self.charm.app_peer_data["mongos_hosts"])
         self.wait_for_draining(mongos_hosts)
-        self.charm.unit.status = ActiveStatus("Shard drained from cluster, ready for removal")
+        self.charm.status.set_and_share_status(
+            ActiveStatus("Shard drained from cluster, ready for removal")
+        )
 
     def wait_for_draining(self, mongos_hosts: List[str]):
         """Waits for shards to be drained from sharded cluster."""
@@ -818,20 +839,28 @@ class ConfigServerRequirer(Object):
                 # no need to continuously check and abuse resources while shard is draining
                 time.sleep(60)
                 drained = self.drained(mongos_hosts, self.charm.app.name)
-                self.charm.unit.status = MaintenanceStatus("Draining shard from cluster")
+                self.charm.status.set_and_share_status(
+                    MaintenanceStatus("Draining shard from cluster")
+                )
                 draining_status = (
                     "Shard is still draining" if not drained else "Shard is fully drained."
                 )
-                self.charm.unit.status = MaintenanceStatus("Draining shard from cluster")
+                self.charm.status.set_and_share_status(
+                    MaintenanceStatus("Draining shard from cluster")
+                )
                 logger.debug(draining_status)
             except PyMongoError as e:
                 logger.error("Error occurred while draining shard: %s", e)
-                self.charm.unit.status = BlockedStatus("Failed to drain shard from cluster")
+                self.charm.status.set_and_share_status(
+                    BlockedStatus("Failed to drain shard from cluster")
+                )
             except ShardNotPlannedForRemovalError:
                 logger.info(
                     "Shard %s has not been identifies for removal. Must wait for mongos cluster-admin to remove shard."
                 )
-                self.charm.unit.status = WaitingStatus("Waiting for config-server to remove shard")
+                self.charm.status.set_and_share_status(
+                    WaitingStatus("Waiting for config-server to remove shard")
+                )
             except ShardNotInClusterError:
                 logger.info(
                     "Shard to remove is not in sharded cluster. It has been successfully removed."
@@ -1113,12 +1142,20 @@ class ConfigServerRequirer(Object):
         return len(self.charm.model.relations[self.relation_name]) > 0
 
     def get_config_server_name(self) -> str:
-        """Returns the related config server."""
+        """Returns the related config server's name."""
         if not self.model.get_relation(self.relation_name):
             return None
 
         # metadata.yaml prevents having multiple config servers
         return self.charm.model.relations[self.relation_name][0].app.name
+
+    def get_config_server_relation(self) -> Relation:
+        """Returns the related config server relation data."""
+        if not self.model.get_relation(self.relation_name):
+            return None
+
+        # metadata.yaml prevents having multiple config servers
+        return self.charm.model.relations[self.relation_name][0]
 
     def get_mongos_hosts(self) -> List[str]:
         """Returns a list of IP addresses for the mongos hosts."""

@@ -3,8 +3,9 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-
 from typing import Literal, TypeAlias
+
+from ops.model import WaitingStatus
 
 Package: TypeAlias = tuple[str, str, str]
 
@@ -113,6 +114,9 @@ class Config:
 
         TODO: move all status messages here.
         """
+
+        STATUS_READY_FOR_UPGRADE = "status-shows-ready-for-upgrade"
+        CONFIG_SERVER_WAITING_FOR_REFRESH = WaitingStatus("Waiting for refresh command.")
 
     class Upgrade:
         """Upgrade related constants."""

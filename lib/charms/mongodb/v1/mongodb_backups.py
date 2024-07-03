@@ -41,7 +41,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 6
+LIBPATCH = 7
 
 logger = logging.getLogger(__name__)
 
@@ -136,8 +136,10 @@ class MongoDBBackups(Object):
             logger.debug(
                 "Shard does not support s3 relations, please relate s3-integrator to config-server only."
             )
-            self.charm.unit.status = BlockedStatus(
-                "Relation to s3-integrator is not supported, config role must be config-server"
+            self.charm.status.set_and_share_status(
+                BlockedStatus(
+                    "Relation to s3-integrator is not supported, config role must be config-server"
+                )
             )
 
     def _on_s3_credential_changed(self, event: CredentialsChangedEvent):
@@ -190,7 +192,7 @@ class MongoDBBackups(Object):
         # cannot create backup if pbm is not ready. This could be due to: resyncing, incompatible,
         # options, incorrect credentials, or already creating a backup
         pbm_status = self.get_pbm_status()
-        self.charm.unit.status = pbm_status
+        self.charm.status.set_and_share_status(pbm_status)
 
         if isinstance(pbm_status, MaintenanceStatus):
             self._fail_action_with_error_log(
@@ -214,8 +216,8 @@ class MongoDBBackups(Object):
 
         try:
             backup_id = self._try_to_backup()
-            self.charm.unit.status = MaintenanceStatus(
-                f"backup started/running, backup id:'{backup_id}'"
+            self.charm.status.set_and_share_status(
+                MaintenanceStatus(f"backup started/running, backup id:'{backup_id}'")
             )
             self._success_action_with_info_log(
                 event, action, {"backup-status": f"backup started. backup id: {backup_id}"}
@@ -232,7 +234,7 @@ class MongoDBBackups(Object):
         # cannot list backups if pbm is resyncing, or has incompatible options or incorrect
         # credentials
         pbm_status = self.get_pbm_status()
-        self.charm.unit.status = pbm_status
+        self.charm.status.set_and_share_status(pbm_status)
 
         if isinstance(pbm_status, WaitingStatus):
             self._fail_action_with_error_log(
@@ -270,8 +272,8 @@ class MongoDBBackups(Object):
         try:
             backup_id = event.params.get("backup-id")
             self._restore(backup_id, remapping_args=event.params.get("remap-pattern"))
-            self.charm.unit.status = MaintenanceStatus(
-                f"restore started/running, backup id:'{backup_id}'"
+            self.charm.status.set_and_share_status(
+                MaintenanceStatus(f"restore started/running, backup id:'{backup_id}'")
             )
             self._success_action_with_info_log(
                 event, action, {"restore-status": "restore started"}
@@ -301,7 +303,7 @@ class MongoDBBackups(Object):
         # cannot restore backup if pbm is not ready. This could be due to: resyncing, incompatible,
         # options, incorrect credentials, creating a backup, or already performing a restore.
         pbm_status = self.get_pbm_status()
-        self.charm.unit.status = pbm_status
+        self.charm.status.set_and_share_status(pbm_status)
         if isinstance(pbm_status, MaintenanceStatus):
             self._fail_action_with_error_log(
                 event, action, "Please wait for current backup/restore to finish."
@@ -372,20 +374,26 @@ class MongoDBBackups(Object):
             self._set_config_options()
             self._resync_config_options()
         except SetPBMConfigError:
-            self.charm.unit.status = BlockedStatus("couldn't configure s3 backup options.")
+            self.charm.status.set_and_share_status(
+                BlockedStatus("couldn't configure s3 backup options.")
+            )
             return
         except snap.SnapError as e:
             logger.error("An exception occurred when starting pbm agent, error: %s.", str(e))
-            self.charm.unit.status = BlockedStatus("couldn't start pbm")
+            self.charm.status.set_and_share_status(BlockedStatus("couldn't start pbm"))
             return
         except ResyncError:
-            self.charm.unit.status = WaitingStatus("waiting to sync s3 configurations.")
+            self.charm.status.set_and_share_status(
+                WaitingStatus("waiting to sync s3 configurations.")
+            )
             self._defer_event_with_info_log(
                 event, action, "Sync-ing configurations needs more time."
             )
             return
         except PBMBusyError:
-            self.charm.unit.status = WaitingStatus("waiting to sync s3 configurations.")
+            self.charm.status.set_and_share_status(
+                WaitingStatus("waiting to sync s3 configurations.")
+            )
             self._defer_event_with_info_log(
                 event,
                 action,
@@ -393,12 +401,12 @@ class MongoDBBackups(Object):
             ),
             return
         except ExecError as e:
-            self.charm.unit.status = BlockedStatus(self.process_pbm_error(e.stdout))
+            self.charm.status.set_and_share_status(BlockedStatus(self.process_pbm_error(e.stdout)))
             return
         except subprocess.CalledProcessError as e:
             logger.error("Syncing configurations failed: %s", str(e))
 
-        self.charm.unit.status = self.get_pbm_status()
+        self.charm.status.set_and_share_status(self.get_pbm_status())
 
     def _set_config_options(self):
         """Applying given configurations with pbm."""
@@ -490,12 +498,14 @@ class MongoDBBackups(Object):
                     if "Resync" in current_pbm_op(pbm_status):
                         # since this process takes several minutes we should let the user know
                         # immediately.
-                        self.charm.unit.status = WaitingStatus(
-                            "waiting to sync s3 configurations."
+                        self.charm.status.set_and_share_status(
+                            WaitingStatus("waiting to sync s3 configurations.")
                         )
                         raise ResyncError
                 except ExecError as e:
-                    self.charm.unit.status = BlockedStatus(self.process_pbm_error(e.stdout))
+                    self.charm.status.set_and_share_status(
+                        BlockedStatus(self.process_pbm_error(e.stdout))
+                    )
 
     def get_pbm_status(self) -> Optional[StatusBase]:
         """Retrieve pbm status."""
