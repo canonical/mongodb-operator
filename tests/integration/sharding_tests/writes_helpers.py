@@ -87,7 +87,7 @@ async def continuous_writes_to_shard_one(ops_test: OpsTest):
         config_server_name=CONFIG_SERVER_APP_NAME,
         db_name=SHARD_ONE_DB_NAME,
     )
-    await remove_db_writes(ops_test, db_name=SHARD_ONE_DB_NAME)
+    # await remove_db_writes(ops_test, db_name=SHARD_ONE_DB_NAME)
 
 
 @pytest.fixture()
@@ -105,7 +105,7 @@ async def continuous_writes_to_shard_two(ops_test: OpsTest):
         config_server_name=CONFIG_SERVER_APP_NAME,
         db_name=SHARD_TWO_DB_NAME,
     )
-    await remove_db_writes(ops_test, db_name=SHARD_TWO_DB_NAME)
+    # await remove_db_writes(ops_test, db_name=SHARD_TWO_DB_NAME)
 
 
 async def start_continous_writes_on_shard(ops_test: OpsTest, shard_name: str, db_name: str):
@@ -173,16 +173,13 @@ async def stop_continous_writes(
 
 
 async def count_shard_writes(
-    ops_test: OpsTest, shard_app_name=APP_NAME, db_name="new-db", collection_name=DEFAULT_COLL_NAME
+    ops_test: OpsTest,
+    config_server_name=CONFIG_SERVER_APP_NAME,
+    db_name="new-db",
+    collection_name=DEFAULT_COLL_NAME,
 ) -> int:
     """New versions of pymongo no longer support the count operation, instead find is used."""
-    password = await get_password(ops_test, app_name=shard_app_name)
-    hosts = [
-        f"{unit.public_address}:{MONGOD_PORT}"
-        for unit in ops_test.model.applications[shard_app_name].units
-    ]
-    hosts = ",".join(hosts)
-    connection_string = f"mongodb://operator:{password}@{hosts}/admin"
+    connection_string = await mongos_uri(ops_test, config_server_name)
 
     client = MongoClient(connection_string)
     db = client[db_name]
@@ -193,7 +190,10 @@ async def count_shard_writes(
 
 
 async def get_cluster_writes_count(
-    ops_test, shard_app_names: List[str], db_names: List[str]
+    ops_test,
+    shard_app_names: List[str],
+    db_names: List[str],
+    config_server_name: str = CONFIG_SERVER_APP_NAME,
 ) -> Dict:
     """Returns a dictionary of the writes for each cluster_component and the total writes."""
     cluster_write_count = {}
@@ -201,7 +201,7 @@ async def get_cluster_writes_count(
     for app_name in shard_app_names:
         cluster_write_count[app_name] = 0
         for db in db_names:
-            component_writes = await count_shard_writes(ops_test, app_name, db_name=db)
+            component_writes = await count_shard_writes(ops_test, config_server_name, db_name=db)
             cluster_write_count[app_name] += component_writes
             total_writes += component_writes
 

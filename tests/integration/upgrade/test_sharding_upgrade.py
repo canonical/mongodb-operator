@@ -15,7 +15,7 @@ from ..sharding_tests.writes_helpers import (
     SHARD_TWO_DB_NAME,
     continuous_writes_to_shard_one,
     continuous_writes_to_shard_two,
-    get_cluster_writes_count,
+    count_shard_writes,
     stop_continous_writes,
 )
 
@@ -56,7 +56,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     )
 
 
-# @pytest.mark.skip("re-enable these tests once upgrades are available on charmhub")
+@pytest.mark.skip("re-enable these tests once upgrades are available on charmhub")
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_upgrade(
@@ -86,15 +86,17 @@ async def test_upgrade(
         db_name=SHARD_TWO_DB_NAME,
     )
 
-    actual_shard_writes = await get_cluster_writes_count(
-        ops_test, shard_app_names=SHARD_COMPONENTS, db_names=[SHARD_ONE_DB_NAME, SHARD_TWO_DB_NAME]
+    shard_one_actual_writes = await count_shard_writes(
+        ops_test, CONFIG_SERVER_APP_NAME, SHARD_ONE_DB_NAME
     )
-
+    shard_two_actual_writes = await count_shard_writes(
+        ops_test, CONFIG_SERVER_APP_NAME, SHARD_TWO_DB_NAME
+    )
     assert (
-        actual_shard_writes[SHARD_ONE_APP_NAME] == shard_one_expected_writes["number"]
+        shard_one_actual_writes == shard_one_expected_writes["number"]
     ), "continuous writes to shard one failed during upgrade"
     assert (
-        actual_shard_writes[SHARD_TWO_APP_NAME] == shard_two_expected_writes["number"]
+        shard_two_actual_writes == shard_two_expected_writes["number"]
     ), "continuous writes to shard two failed during upgrade"
 
     # after all shards have upgraded, verify that the balancer has been turned back on
