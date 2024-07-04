@@ -327,7 +327,6 @@ def instance_ip(model: str, instance: str) -> str:
 
     for line in output.decode("utf8").splitlines():
         if instance in line:
-            print(line)
             return line.split()[2]
 
 

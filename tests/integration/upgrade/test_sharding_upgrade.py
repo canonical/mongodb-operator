@@ -3,22 +3,21 @@
 # See LICENSE file for licensing details.
 
 import time
+
 import pytest
 from pytest_operator.plugin import OpsTest
 
+from ..ha_tests import helpers as ha_helpers
+from ..helpers import find_unit, unit_hostname
+from ..sharding_tests.helpers import deploy_cluster_components, integrate_cluster
 from ..sharding_tests.writes_helpers import (
-    get_cluster_writes_count,
-    continuous_writes_to_shard_one,
-    continuous_writes_to_shard_two,
-    stop_continous_writes,
     SHARD_ONE_DB_NAME,
     SHARD_TWO_DB_NAME,
+    continuous_writes_to_shard_one,
+    continuous_writes_to_shard_two,
+    get_cluster_writes_count,
+    stop_continous_writes,
 )
-
-from ..sharding_tests.helpers import deploy_cluster_components, integrate_cluster
-
-from ..ha_tests import helpers as ha_helpers
-from ..helpers import unit_hostname, find_unit
 
 MONGOD_SERVICE = "snap.charmed-mongodb.mongod.service"
 MONGOS_SERVICE = "snap.charmed-mongodb.mongos.service"
@@ -106,7 +105,6 @@ async def test_upgrade(
 @pytest.mark.abort_on_fail
 async def test_pre_upgrade_check_failure(ops_test: OpsTest) -> None:
     """Verify that the pre-upgrade check fails if there is a problem with one of the shards."""
-
     # Disable network on a replicas prior to integration.
     # After disabling the network, it will be impossible to retrieve the hostname, and ip address,
     # so save them before disabling, so they can used to re-enable the network.
@@ -149,6 +147,6 @@ async def run_upgrade_sequence(ops_test: OpsTest, app_name: str, new_charm) -> N
 
     action = await leader_unit.run_action("resume-upgrade")
     await action.wait()
-    assert action.status == "success", "resume-upgrade failed, expected to succeed."
+    assert action.status == "completed", "resume-upgrade failed, expected to succeed."
 
     await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, idle_period=120)

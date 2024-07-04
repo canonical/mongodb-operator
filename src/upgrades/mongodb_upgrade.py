@@ -123,13 +123,6 @@ class MongoDBUpgrade(Object):
             if not self._upgrade.in_progress:
                 logger.info("Charm upgraded. MongoDB version unchanged")
 
-            if self.charm.is_role(Config.Role.CONFIG_SERVER):
-                # The actions performed as a pre-upgrade check negatively impact cluster
-                # performance i.e. disabling the balancer. Users should NOT run the
-                # pre-upgrade-check action and never run the juju refresh command. Once the users
-                # have ran the refresh we no longer have to worry about having to wait
-                del self.charm.app_peer_data[Config.Upgrade.WAITING_FOR_REFRESH_KEY]
-
             self._upgrade.upgrade_resumed = False
             # Only call `_reconcile_upgrade` on leader unit to avoid race conditions with
             # `upgrade_resumed`
@@ -263,14 +256,10 @@ class MongoDBUpgrade(Object):
 
         # Set/clear upgrade unit status if no other unit status - upgrade status for units should
         # have the lowest priority.
-        if (
-            isinstance(self.charm.unit.status, ActiveStatus)
-            or (self.charm.unit.status == Config.Status.CONFIG_SERVER_WAITING_FOR_REFRESH)
-            or (
-                isinstance(self.charm.unit.status, BlockedStatus)
-                and self.charm.unit.status.message.startswith(
-                    "Rollback with `juju refresh`. Pre-upgrade check failed:"
-                )
+        if isinstance(self.charm.unit.status, ActiveStatus) or (
+            isinstance(self.charm.unit.status, BlockedStatus)
+            and self.charm.unit.status.message.startswith(
+                "Rollback with `juju refresh`. Pre-upgrade check failed:"
             )
         ):
             self.charm.status.set_and_share_status(
@@ -629,13 +618,6 @@ class MongoDBUpgrade(Object):
             balancer_state = mongos.client.admin.command("balancerStatus")
             if balancer_state["mode"] != "off":
                 raise BalancerStillRunningError("balancer is still Running.")
-
-    def is_config_server_waiting_for_refresh(self) -> bool:
-        """Returns true if pre-upgrade check ran and config-server is waiting to be refreshed."""
-        if not self.charm.is_role(Config.Role.CONFIG_SERVER):
-            return False
-
-        return Config.Upgrade.WAITING_FOR_REFRESH_KEY in self.charm.app_peer_data
 
     # END: helpers
 

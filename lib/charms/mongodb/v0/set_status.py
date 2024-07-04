@@ -18,7 +18,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 2
 
 
 class MongoDBStatusHandler(Object):
@@ -113,12 +113,9 @@ class MongoDBStatusHandler(Object):
         if not isinstance(current_status, WaitingStatus):
             return False
 
-        if (
-            status_message
-            and status_message != Config.Status.CONFIG_SERVER_WAITING_FOR_REFRESH.message
-        ):
-            return False
+        if status_message and "is not up-to date with config-server" in status_message:
+            return True
 
-        return True
+        return False
 
     # END: Helpers
