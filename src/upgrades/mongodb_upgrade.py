@@ -9,7 +9,7 @@ import string
 from typing import List, Optional, Tuple
 
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
-from charms.mongodb.v1.mongos import MongosConfiguration, MongosConnection
+from charms.mongodb.v1.mongos import MongosConfiguration, MongosConnection, BalancerNotEnabledError
 from ops.charm import ActionEvent, CharmBase
 from ops.framework import EventBase, EventSource, Object
 from ops.model import ActiveStatus, BlockedStatus
@@ -54,7 +54,8 @@ class _PostUpgradeCheckMongoDB(EventBase):
 class MongoDBUpgrade(Object):
     """Handlers for upgrade events."""
 
-    post_upgrade_event = EventSource(_PostUpgradeCheckMongoDB)
+    post_app_upgrade_check = EventSource(_PostUpgradeCheckMongoDB)
+    post_cluster_upgrade_check = EventSource(_PostUpgradeCheckMongoDB)
 
     def __init__(self, charm: CharmBase):
         self.charm = charm
@@ -75,7 +76,8 @@ class MongoDBUpgrade(Object):
             charm.on[upgrade.RESUME_ACTION_NAME].action, self._on_resume_upgrade_action
         )
         self.framework.observe(charm.on["force-upgrade"].action, self._on_force_upgrade_action)
-        self.framework.observe(self.post_upgrade_event, self.post_upgrade_check)
+        self.framework.observe(self.post_app_upgrade_check, self.post_app_upgrade_check)
+        self.framework.observe(self.post_cluster_upgrade_check, self.post_cluster_upgrade_check)
 
     # BEGIN: Event handlers
     def _on_upgrade_peer_relation_created(self, _) -> None:
@@ -187,7 +189,7 @@ class MongoDBUpgrade(Object):
         event.set_results({"result": f"Forcefully upgraded {self.charm.unit.name}"})
         logger.debug("Forced upgrade")
 
-    def post_upgrade_check(self, event: EventBase):
+    def post_app_upgrade_check(self, event: EventBase):
         """Runs the post upgrade check to verify that the cluster is healthy.
 
         By deferring before setting unit state to HEALTHY, the user will either:
@@ -195,12 +197,49 @@ class MongoDBUpgrade(Object):
             2. have to run the force-upgrade action (to upgrade the next unit).
         """
         logger.debug("Running post upgrade checks to verify cluster is not broken after upgrade")
+        self.run_post_upgrade_checks(event, finished_whole_cluster=False)
 
+        if not self._upgrade.unit_state == upgrade.UnitState.HEALTHY:
+            return
+
+        if self.charm.unit.status == UNHEALTHY_UPGRADE:
+            self.charm.status.set_and_share_status(ActiveStatus())
+
+        logger.debug("Cluster is healthy after upgrading unit %s", self.charm.unit.name)
+
+        # Leader of config-server must wait for all shards to be upgraded before finialising the upgrade
+        if not self.charm.unit.is_leader() or not self.charm.is_role(Config.Role.CONFIG_SERVER):
+            return
+
+        post_cluster_upgrade_check
+
+    def post_cluster_upgrade_check(self, event: EventBase) -> None:
+        """Waits for entire cluster to be upgraded and enables the balancer."""
+        self.run_post_upgrade_checks(event, finished_whole_cluster=True)
+
+        try:
+            with MongosConnection(self.charm.mongos_config) as mongos:
+                mongos.start_and_wait_for_balancer()
+        except BalancerNotEnabledError:
+            logger.debug(
+                "Need more time to enable the balancer after finishing the upgrade. Deferring event."
+            )
+            event.defer()
+            return
+
+        self.set_mongos_feature_compatibilty_version(Config.Upgrade.FEATURE_VERSION_6)
+
+    # END: Event handlers
+
+    # BEGIN: Helpers
+    def run_post_upgrade_checks(self, event, finished_whole_cluster: bool) -> None:
+        """Runs post-upgrade checks for after a shard/config-server/replset/cluster upgrade."""
+        upgrade_type = "unit %s." if not finished_whole_cluster else "sharded cluster"
         try:
             self.wait_for_cluster_healthy()
         except RetryError:
             logger.error(
-                "Cluster is not healthy after upgrading unit %s. Will retry next juju event.",
+                f"Cluster is not healthy after upgrading {upgrade_type}. Will retry next juju event.",
                 self.charm.unit.name,
             )
             logger.info(ROLLBACK_INSTRUCTIONS)
@@ -210,7 +249,7 @@ class MongoDBUpgrade(Object):
 
         if not self.is_cluster_able_to_read_write():
             logger.error(
-                "Cluster is not healthy after upgrading unit %s, writes not propagated throughout cluster. Deferring post upgrade check.",
+                f"Cluster is not healthy after upgrading {upgrade_type}, writes not propagated throughout cluster. Deferring post upgrade check.",
                 self.charm.unit.name,
             )
             logger.info(ROLLBACK_INSTRUCTIONS)
@@ -218,15 +257,8 @@ class MongoDBUpgrade(Object):
             event.defer()
             return
 
-        if self.charm.unit.status == UNHEALTHY_UPGRADE:
-            self.charm.status.set_and_share_status(ActiveStatus())
-
         self._upgrade.unit_state = upgrade.UnitState.HEALTHY
-        logger.debug("Cluster is healthy after upgrading unit %s", self.charm.unit.name)
 
-    # END: Event handlers
-
-    # BEGIN: Helpers
     def move_primary_to_last_upgrade_unit(self) -> None:
         """Moves the primary to last unit that gets upgraded (the unit with the lowest id).
 
