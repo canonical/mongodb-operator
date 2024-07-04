@@ -41,7 +41,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     but 6/edge as soon as available)
     """
     num_units_cluster_config = {
-        CONFIG_SERVER_APP_NAME: 2,
+        CONFIG_SERVER_APP_NAME: 3,
         SHARD_ONE_APP_NAME: 3,
         SHARD_TWO_APP_NAME: 3,
     }
