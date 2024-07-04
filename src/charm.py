@@ -82,7 +82,7 @@ from pymongo.errors import OperationFailure, ServerSelectionTimeoutError
 from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
 from config import Config, Package
-from exceptions import AdminUserCreationError, ApplicationHostNotFoundError
+from exceptions import AdminUserCreationError, ApplicationHostNotFoundError, NotConfigServerError
 from machine_helpers import (
     MONGO_USER,
     ROOT_USER_GID,
@@ -1617,6 +1617,12 @@ class MongodbOperatorCharm(CharmBase):
     def is_sharding_component(self) -> bool:
         """Returns true if charm is running as a sharded component."""
         return self.is_role(Config.Role.SHARD) or self.is_role(Config.Role.CONFIG_SERVER)
+
+    def is_cluster_on_same_revision(self) -> bool:
+        if not self.is_role(Config.Role.CONFIG_SERVER):
+            raise NotConfigServerError("This check can only be ran by the config-server.")
+
+        return self.version_checker.are_related_apps_valid()
 
     def get_cluster_mismatched_revision_status(self) -> Optional[StatusBase]:
         """Returns a Status if the cluster has mismatched revisions."""

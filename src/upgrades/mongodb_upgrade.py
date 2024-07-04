@@ -224,6 +224,21 @@ class MongoDBUpgrade(Object):
         self._upgrade.unit_state = upgrade.UnitState.HEALTHY
         logger.debug("Cluster is healthy after upgrading unit %s", self.charm.unit.name)
 
+        # Config-server must wait for all shards to be upgraded before finialising the upgrade
+
+    def post_cluster_upgrade_check(self,event) -> None:
+        "re-enabling balancer and "
+        if not self.charm.unit.is_leader():
+            return
+
+        if not self.is_cluster_on_same_revision(event):
+            logger.debug("Waiting until entire cluster is on the same charm revision before run post cluster upgrade check.")
+            event.defer()
+            return
+        
+
+
+
     # END: Event handlers
 
     # BEGIN: Helpers

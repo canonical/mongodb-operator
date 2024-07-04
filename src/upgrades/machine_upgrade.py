@@ -169,7 +169,7 @@ class Upgrade(upgrade.Upgrade):
         # According to the MongoDB documentation, before upgrading the primary, we must ensure a
         # safe primary re-election.
         try:
-            if self._unit.name == charm.primary and len(self._sorted_units) > 1:
+            if self._unit.name == charm.primary:
                 logger.debug("Stepping down current primary, before upgrading service...")
                 charm.upgrade.step_down_primary_and_wait_reelection()
         except mongodb_upgrade.FailedToElectNewPrimaryError:
