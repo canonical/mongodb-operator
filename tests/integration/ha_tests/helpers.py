@@ -709,8 +709,6 @@ def wait_network_restore(model_name: str, hostname: str, old_ip: str) -> None:
         hostname: The name of the instance
         old_ip: old registered IP address
     """
-
-    print(model_name, hostname, old_ip)
     if instance_ip(model_name, hostname) == old_ip:
         raise Exception("Network not restored, IP address has not changed yet.")
 

@@ -1,19 +1,18 @@
 #!/usr/bin/env python3
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
-from typing import List, Optional, Tuple, Dict
+from typing import Dict, List, Optional, Tuple
 from urllib.parse import quote_plus
 
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
+from tenacity import Retrying, stop_after_attempt, wait_fixed
 
 from ..helpers import get_password
 from ..relation_tests.new_relations.helpers import (
     get_application_relation_data,
     get_secret_data,
 )
-from tenacity import Retrying, stop_after_attempt, wait_fixed
-
 
 TIMEOUT = 10 * 60
 MONGOS_PORT = 27018

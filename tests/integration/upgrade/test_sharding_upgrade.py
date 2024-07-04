@@ -5,30 +5,26 @@
 import time
 import pytest
 from pytest_operator.plugin import OpsTest
-from tenacity import Retrying, stop_after_attempt, wait_fixed
 
 from ..sharding_tests.writes_helpers import (
+    get_cluster_writes_count,
     continuous_writes_to_shard_one,
     continuous_writes_to_shard_two,
     stop_continous_writes,
     SHARD_ONE_DB_NAME,
     SHARD_TWO_DB_NAME,
-    SHARD_ONE_COLL_NAME,
-    SHARD_TWO_COLL_NAME,
 )
 
 from ..sharding_tests.helpers import deploy_cluster_components, integrate_cluster
 
 from ..ha_tests import helpers as ha_helpers
-from ..helpers import unit_hostname, find_unit, get_unit_ip
+from ..helpers import unit_hostname, find_unit
 
 MONGOD_SERVICE = "snap.charmed-mongodb.mongod.service"
 MONGOS_SERVICE = "snap.charmed-mongodb.mongos.service"
 SHARD_ONE_APP_NAME = "shard-one"
 SHARD_TWO_APP_NAME = "shard-two"
 CONFIG_SERVER_APP_NAME = "config-server"
-SHARD_DBS = [SHARD_ONE_DB_NAME, SHARD_TWO_DB_NAME]
-SHARD_COLLS = [SHARD_ONE_COLL_NAME, SHARD_TWO_COLL_NAME]
 SHARD_COMPONENTS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME]
 CLUSTER_COMPONENTS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME, CONFIG_SERVER_APP_NAME]
 SHARD_REL_NAME = "sharding"
@@ -71,30 +67,39 @@ async def test_upgrade(
     config_server_unit = await find_unit(ops_test, leader=True, app_name=CONFIG_SERVER_APP_NAME)
     action = await config_server_unit.run_action("pre-upgrade-check")
     await action.wait()
-    assert action.status == "completed", "pre-upgrade-check failed, expected to suceed."
+    assert action.status == "completed", "pre-upgrade-check failed, expected to succeed."
 
     new_charm = await ops_test.build_charm(".")
     await run_upgrade_sequence(ops_test, CONFIG_SERVER_APP_NAME, new_charm)
 
-    # TODO before upgrading shard, verify that the balancer hasn't been turned back on accidentally
-
     for shard_app_name in SHARD_COMPONENTS:
         await run_upgrade_sequence(ops_test, shard_app_name, new_charm)
 
-    # # verify no writes were skipped during upgrade process
-    # for (shard_db, shard_col) in zip(SHARD_DBS, SHARD_COLLS):
-    #     shard_one_expected_writes = await stop_continous_writes(
-    #         ops_test,
-    #         config_server_name=CONFIG_SERVER_APP_NAME,
-    #         db_name=shard_db,
-    #         collection_name=shard_col,
-    #     )
+    # verify no writes were skipped during upgrade process
+    shard_one_expected_writes = await stop_continous_writes(
+        ops_test,
+        config_server_name=CONFIG_SERVER_APP_NAME,
+        db_name=SHARD_ONE_DB_NAME,
+    )
+    shard_two_expected_writes = await stop_continous_writes(
+        ops_test,
+        config_server_name=CONFIG_SERVER_APP_NAME,
+        db_name=SHARD_TWO_DB_NAME,
+    )
 
-    #     actual_writes = await ha_helpers.count_writes(ops_test, app_name=CONFIG_SERVER_APP_NAME)
-    #     assert shard_one_expected_writes["number"] == actual_writes
+    actual_shard_writes = await get_cluster_writes_count(
+        ops_test, shard_app_names=SHARD_COMPONENTS, db_names=[SHARD_ONE_DB_NAME, SHARD_TWO_DB_NAME]
+    )
 
-    # # after all shards have upgraded, verify that the balancer has been turned back on
-    # # TODO implement this check once we have implemented the post-cluster-upgrade code DPE-4143
+    assert (
+        actual_shard_writes[SHARD_ONE_APP_NAME] == shard_one_expected_writes["number"]
+    ), "continuous writes to shard one failed during upgrade"
+    assert (
+        actual_shard_writes[SHARD_TWO_APP_NAME] == shard_two_expected_writes["number"]
+    ), "continuous writes to shard two failed during upgrade"
+
+    # after all shards have upgraded, verify that the balancer has been turned back on
+    # TODO implement this check once we have implemented the post-cluster-upgrade code DPE-4143
 
 
 @pytest.mark.group(1)
@@ -137,13 +142,13 @@ async def run_upgrade_sequence(ops_test: OpsTest, app_name: str, new_charm) -> N
     leader_unit = await find_unit(ops_test, leader=True, app_name=app_name)
     action = await leader_unit.run_action("pre-upgrade-check")
     await action.wait()
-    assert action.status == "completed", "pre-upgrade-check failed, expected to suceed."
+    assert action.status == "completed", "pre-upgrade-check failed, expected to succeed."
 
     await ops_test.model.applications[app_name].refresh(path=new_charm)
     await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, idle_period=120)
 
     action = await leader_unit.run_action("resume-upgrade")
     await action.wait()
-    assert action.status == "success", "resume-upgrade failed, expected to suceed."
+    assert action.status == "success", "resume-upgrade failed, expected to succeed."
 
     await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, idle_period=120)

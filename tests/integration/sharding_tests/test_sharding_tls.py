@@ -5,13 +5,12 @@
 
 import pytest
 from pytest_operator.plugin import OpsTest
-from tenacity import Retrying, stop_after_attempt, wait_fixed
 
 from ..helpers import (
-    wait_for_mongodb_units_blocked,
     deploy_cluster_components,
-    integrate_cluster,
     destroy_cluster,
+    integrate_cluster,
+    wait_for_mongodb_units_blocked,
 )
 from ..tls_tests import helpers as tls_helpers
 
@@ -242,12 +241,12 @@ async def rotate_and_verify_certs(ops_test: OpsTest, app: str) -> None:
     original_tls_info = {}
     for unit in ops_test.model.applications[app].units:
         original_tls_info[unit.name] = {}
-        original_tls_info[unit.name][
-            "external_cert_contents"
-        ] = await tls_helpers.get_file_content(ops_test, unit.name, tls_helpers.EXTERNAL_CERT_PATH)
-        original_tls_info[unit.name][
-            "internal_cert_contents"
-        ] = await tls_helpers.get_file_content(ops_test, unit.name, tls_helpers.INTERNAL_CERT_PATH)
+        original_tls_info[unit.name]["external_cert_contents"] = (
+            await tls_helpers.get_file_content(ops_test, unit.name, tls_helpers.EXTERNAL_CERT_PATH)
+        )
+        original_tls_info[unit.name]["internal_cert_contents"] = (
+            await tls_helpers.get_file_content(ops_test, unit.name, tls_helpers.INTERNAL_CERT_PATH)
+        )
         original_tls_info[unit.name]["external_cert"] = await tls_helpers.time_file_created(
             ops_test, unit.name, tls_helpers.EXTERNAL_CERT_PATH
         )
@@ -258,9 +257,9 @@ async def rotate_and_verify_certs(ops_test: OpsTest, app: str) -> None:
             ops_test, unit.name, MONGOD_SERVICE
         )
         if app == CONFIG_SERVER_APP_NAME:
-            original_tls_info[unit.name][
-                "mongos_service"
-            ] = await tls_helpers.time_process_started(ops_test, unit.name, MONGOD_SERVICE)
+            original_tls_info[unit.name]["mongos_service"] = (
+                await tls_helpers.time_process_started(ops_test, unit.name, MONGOD_SERVICE)
+            )
         await tls_helpers.check_certs_correctly_distributed(ops_test, unit, app_name=app)
 
     # set external and internal key using auto-generated key for each unit
