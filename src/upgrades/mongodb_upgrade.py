@@ -76,8 +76,10 @@ class MongoDBUpgrade(Object):
             charm.on[upgrade.RESUME_ACTION_NAME].action, self._on_resume_upgrade_action
         )
         self.framework.observe(charm.on["force-upgrade"].action, self._on_force_upgrade_action)
-        self.framework.observe(self.post_app_upgrade_check, self.post_app_upgrade_check)
-        self.framework.observe(self.post_cluster_upgrade_check, self.post_cluster_upgrade_check)
+        self.framework.observe(self.post_app_upgrade_check, self.run_post_app_upgrade_check)
+        self.framework.observe(
+            self.post_cluster_upgrade_check, self.run_post_cluster_upgrade_check
+        )
 
     # BEGIN: Event handlers
     def _on_upgrade_peer_relation_created(self, _) -> None:
@@ -189,7 +191,7 @@ class MongoDBUpgrade(Object):
         event.set_results({"result": f"Forcefully upgraded {self.charm.unit.name}"})
         logger.debug("Forced upgrade")
 
-    def post_app_upgrade_check(self, event: EventBase):
+    def run_post_app_upgrade_check(self, event: EventBase):
         """Runs the post upgrade check to verify that the cluster is healthy.
 
         By deferring before setting unit state to HEALTHY, the user will either:
@@ -211,9 +213,9 @@ class MongoDBUpgrade(Object):
         if not self.charm.unit.is_leader() or not self.charm.is_role(Config.Role.CONFIG_SERVER):
             return
 
-        self.charm.upgrade.post_app_upgrade_event.emit()
+        self.charm.upgrade.post_cluster_upgrade_check.emit()
 
-    def post_cluster_upgrade_check(self, event: EventBase) -> None:
+    def run_post_cluster_upgrade_check(self, event: EventBase) -> None:
         """Waits for entire cluster to be upgraded before enabling the balancer."""
         self.run_post_upgrade_checks(event, finished_whole_cluster=True)
 
