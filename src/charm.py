@@ -155,7 +155,7 @@ class MongodbOperatorCharm(CharmBase):
             self,
             # TODO future PR add ops model revision variable:
             # https://github.com/canonical/operator/issues/1255
-            version=get_charm_revision(self.unit),
+            version=get_charm_revision(self.unit, local_version=self.get_charm_interal_revision),
             relations_to_check=[
                 Config.Relations.SHARDING_RELATIONS_NAME,
                 Config.Relations.CONFIG_SERVER_RELATIONS_NAME,
@@ -362,6 +362,12 @@ class MongodbOperatorCharm(CharmBase):
         if not self.upgrade._upgrade:
             return False
         return self.upgrade._upgrade.in_progress
+
+    @property
+    def get_charm_interal_revision(self):
+        """Returns the contents of the get_charm_interal_revision file."""
+        with open(Config.CHARM_INTERNAL_REVISION_FILE, "r") as f:
+            return int(f.read())
 
     # END: properties
 
@@ -1636,7 +1642,9 @@ class MongodbOperatorCharm(CharmBase):
 
         # check for invalid versions in sharding integrations, i.e. a shard running on
         # revision  88 and a config-server running on revision 110
-        current_charms_version = get_charm_revision(self.unit)
+        current_charms_version = get_charm_revision(
+            self.unit, local_version=self.get_charm_interal_revision
+        )
         try:
             if self.version_checker.are_related_apps_valid():
                 return
