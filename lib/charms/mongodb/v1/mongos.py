@@ -22,7 +22,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 5
+LIBPATCH = 6
 
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
@@ -205,6 +205,16 @@ class MongosConnection:
 
         # starting the balancer doesn't guarantee that is is running, wait until it starts up.
         logger.info("Balancer process is not running, enabling it.")
+        self.start_and_wait_for_balancer()
+
+    def start_and_wait_for_balancer(self) -> None:
+        """Turns on the balancer and waits for it to be running.
+
+        Starting the balancer doesn't guarantee that is is running, wait until it starts up.
+
+        Raises:
+            BalancerNotEnabledError
+        """
         self.client.admin.command("balancerStart")
         for attempt in Retrying(stop=stop_after_delay(60), wait=wait_fixed(3), reraise=True):
             with attempt:

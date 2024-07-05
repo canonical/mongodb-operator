@@ -187,7 +187,7 @@ class Upgrade(upgrade.Upgrade):
 
         # post upgrade check should be retried in case of failure, for this it is necessary to
         # emit a separate event.
-        charm.upgrade.post_upgrade_event.emit()
+        charm.upgrade.post_app_upgrade_event.emit()
 
     def save_snap_revision_after_first_install(self):
         """Set snap revision on first install."""
