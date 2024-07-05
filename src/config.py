@@ -5,7 +5,6 @@
 
 from typing import Literal, TypeAlias
 
-
 Package: TypeAlias = tuple[str, str, str]
 
 

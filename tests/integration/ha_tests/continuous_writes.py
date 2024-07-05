@@ -5,7 +5,7 @@
 import sys
 
 from pymongo import MongoClient
-from pymongo.errors import AutoReconnect, NotPrimaryError, PyMongoError
+from pymongo.errors import PyMongoError
 from pymongo.write_concern import WriteConcern
 
 DEFAULT_DB_NAME = "new-db"
