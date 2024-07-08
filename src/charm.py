@@ -366,7 +366,7 @@ class MongodbOperatorCharm(CharmBase):
     @property
     def get_charm_interal_revision(self):
         """Returns the contents of the get_charm_interal_revision file."""
-        with open(Config.CHARM_INTERNAL_REVISION_FILE, "r") as f:
+        with open(Config.CHARM_INTERNAL_VERSION_FILE, "r") as f:
             return int(f.read())
 
     # END: properties
