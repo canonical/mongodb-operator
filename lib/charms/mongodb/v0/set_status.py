@@ -54,13 +54,33 @@ class MongoDBStatusHandler(Object):
     def set_app_status(self):
         """TODO Future Feature/Epic: parse statuses and set a status for the entire app."""
 
-    def are_all_units_ready_for_upgrade(self) -> bool:
+    def is_current_unit_ready(self, ignore_unhealthy_upgrade: bool = False) -> bool:
+        """Returns True if the current unit status shows that the unit is ready.
+
+        Note: we allow the use of ignore_unhealthy_upgrade, to avoid infinite loops of the check
+        failing and preventing the status from being reset/
+        """
+        if isinstance(self.charm.unit.status, ActiveStatus):
+            return True
+        if (
+            isinstance(self.charm.unit.status, WaitingStatus)
+            and self.charm.get_cluster_mismatched_revision_status()
+        ):
+            return True
+        if ignore_unhealthy_upgrade and self.charm.unit.status == Config.Status.UNHEALTHY_UPGRADE:
+            return True
+
+        return False
+
+    def are_all_units_ready_for_upgrade(self, unit_to_ignore: str = "") -> bool:
         """Returns True if all charm units status's show that they are ready for upgrade."""
         goal_state = self.charm.model._backend._run(
             "goal-state", return_output=True, use_json=True
         )
         is_different_revision = self.charm.get_cluster_mismatched_revision_status()
-        for _, unit_state in goal_state["units"].items():
+        for unit_name, unit_state in goal_state["units"].items():
+            if unit_name == unit_to_ignore:
+                continue
             if unit_state["status"] == "active":
                 continue
             if unit_state["status"] != "waiting":

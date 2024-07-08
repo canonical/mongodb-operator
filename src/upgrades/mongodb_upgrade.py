@@ -9,7 +9,11 @@ import string
 from typing import List, Optional, Tuple
 
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
-from charms.mongodb.v1.mongos import MongosConfiguration, MongosConnection, BalancerNotEnabledError
+from charms.mongodb.v1.mongos import (
+    BalancerNotEnabledError,
+    MongosConfiguration,
+    MongosConnection,
+)
 from ops.charm import ActionEvent, CharmBase
 from ops.framework import EventBase, EventSource, Object
 from ops.model import ActiveStatus, BlockedStatus
@@ -24,7 +28,6 @@ logger = logging.getLogger(__name__)
 
 WRITE_KEY = "write_value"
 ROLLBACK_INSTRUCTIONS = "To rollback, `juju refresh` to the previous revision"
-UNHEALTHY_UPGRADE = BlockedStatus("Unhealthy after upgrade.")
 SHARD_NAME_INDEX = "_id"
 
 
@@ -201,11 +204,8 @@ class MongoDBUpgrade(Object):
         logger.debug("Running post upgrade checks to verify cluster is not broken after upgrade")
         self.run_post_upgrade_checks(event, finished_whole_cluster=False)
 
-        if not self._upgrade.unit_state == upgrade.UnitState.HEALTHY:
+        if self._upgrade.unit_state != upgrade.UnitState.HEALTHY:
             return
-
-        if self.charm.unit.status == UNHEALTHY_UPGRADE:
-            self.charm.status.set_and_share_status(ActiveStatus())
 
         logger.debug("Cluster is healthy after upgrading unit %s", self.charm.unit.name)
 
@@ -217,6 +217,18 @@ class MongoDBUpgrade(Object):
 
     def run_post_cluster_upgrade_check(self, event: EventBase) -> None:
         """Waits for entire cluster to be upgraded before enabling the balancer."""
+        # Leader of config-server must wait for all shards to be upgraded before finialising the upgrade
+        if not self.charm.unit.is_leader() or not self.charm.is_role(Config.Role.CONFIG_SERVER):
+            return
+
+        if not self.charm.is_cluster_on_same_revision():
+            logger.debug("Waiting to finalise upgrade, one or more shards need upgrade.")
+            event.defer()
+            return
+
+        logger.debug(
+            "Entire cluster has been upgraded, checking health of the cluster and enabling balancer."
+        )
         self.run_post_upgrade_checks(event, finished_whole_cluster=True)
 
         try:
@@ -241,23 +253,26 @@ class MongoDBUpgrade(Object):
             self.wait_for_cluster_healthy()
         except RetryError:
             logger.error(
-                f"Cluster is not healthy after upgrading {upgrade_type}. Will retry next juju event.",
-                self.charm.unit.name,
+                "Cluster is not healthy after upgrading %s. Will retry next juju event.",
+                upgrade_type,
             )
             logger.info(ROLLBACK_INSTRUCTIONS)
-            self.charm.status.set_and_share_status(UNHEALTHY_UPGRADE)
+            self.charm.status.set_and_share_status(Config.Status.UNHEALTHY_UPGRADE)
             event.defer()
             return
 
         if not self.is_cluster_able_to_read_write():
             logger.error(
-                f"Cluster is not healthy after upgrading {upgrade_type}, writes not propagated throughout cluster. Deferring post upgrade check.",
-                self.charm.unit.name,
+                f"Cluster is not healthy after upgrading %s, writes not propagated throughout cluster. Deferring post upgrade check.",
+                upgrade_type,
             )
             logger.info(ROLLBACK_INSTRUCTIONS)
-            self.charm.status.set_and_share_status(UNHEALTHY_UPGRADE)
+            self.charm.status.set_and_share_status(Config.Status.UNHEALTHY_UPGRADE)
             event.defer()
             return
+
+        if self.charm.unit.status == Config.Status.UNHEALTHY_UPGRADE:
+            self.charm.status.set_and_share_status(ActiveStatus())
 
         self._upgrade.unit_state = upgrade.UnitState.HEALTHY
 
@@ -323,7 +338,11 @@ class MongoDBUpgrade(Object):
                 logger.error("Cannot proceed with upgrade. Service mongod is not running")
                 return False
 
-        if not self.charm.status.are_all_units_ready_for_upgrade():
+        if not self.charm.status.is_current_unit_ready(
+            ignore_unhealthy_upgrade=True
+        ) or not self.charm.status.are_all_units_ready_for_upgrade(
+            unit_to_ignore=self.charm.unit.name
+        ):
             logger.error(
                 "Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade."
             )

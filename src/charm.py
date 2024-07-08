@@ -82,7 +82,11 @@ from pymongo.errors import OperationFailure, ServerSelectionTimeoutError
 from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
 from config import Config, Package
-from exceptions import AdminUserCreationError, ApplicationHostNotFoundError, NotConfigServerError
+from exceptions import (
+    AdminUserCreationError,
+    ApplicationHostNotFoundError,
+    NotConfigServerError,
+)
 from machine_helpers import (
     MONGO_USER,
     ROOT_USER_GID,
@@ -95,12 +99,6 @@ AUTH_FAILED_CODE = 18
 UNAUTHORISED_CODE = 13
 TLS_CANNOT_FIND_PRIMARY = 133
 
-LOCALLY_BUIT_CHARM_WARNING = (
-    "WARNING: deploying a local charm, cannot check revision across components."
-)
-INTEGRATED_TO_LOCALLY_BUIT_CHARM_WARNING = (
-    "WARNING: integrated to a local charm, cannot check revision across components."
-)
 
 logger = logging.getLogger(__name__)
 
@@ -155,7 +153,7 @@ class MongodbOperatorCharm(CharmBase):
             self,
             # TODO future PR add ops model revision variable:
             # https://github.com/canonical/operator/issues/1255
-            version=get_charm_revision(self.unit, local_version=self.get_charm_interal_revision),
+            version=get_charm_revision(self.unit, local_version=self.get_charm_internal_revision),
             relations_to_check=[
                 Config.Relations.SHARDING_RELATIONS_NAME,
                 Config.Relations.CONFIG_SERVER_RELATIONS_NAME,
@@ -364,8 +362,8 @@ class MongodbOperatorCharm(CharmBase):
         return self.upgrade._upgrade.in_progress
 
     @property
-    def get_charm_interal_revision(self):
-        """Returns the contents of the get_charm_interal_revision file."""
+    def get_charm_internal_revision(self):
+        """Returns the contents of the get_charm_internal_revision file."""
         with open(Config.CHARM_INTERNAL_VERSION_FILE, "r") as f:
             return int(f.read())
 
@@ -1632,18 +1630,11 @@ class MongodbOperatorCharm(CharmBase):
 
     def get_cluster_mismatched_revision_status(self) -> Optional[StatusBase]:
         """Returns a Status if the cluster has mismatched revisions."""
-        if self.version_checker.is_local_charm(self.app.name):
-            logger.warning(LOCALLY_BUIT_CHARM_WARNING)
-            return
-
-        if self.version_checker.is_integrated_to_locally_built_charm():
-            logger.warning(INTEGRATED_TO_LOCALLY_BUIT_CHARM_WARNING)
-            return
 
         # check for invalid versions in sharding integrations, i.e. a shard running on
         # revision  88 and a config-server running on revision 110
         current_charms_version = get_charm_revision(
-            self.unit, local_version=self.get_charm_interal_revision
+            self.unit, local_version=self.get_charm_internal_revision
         )
         try:
             if self.version_checker.are_related_apps_valid():

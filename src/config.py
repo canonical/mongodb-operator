@@ -5,8 +5,8 @@
 
 from typing import Literal, TypeAlias
 
-
 Package: TypeAlias = tuple[str, str, str]
+from ops.model import BlockedStatus
 
 
 class Config:
@@ -116,6 +116,9 @@ class Config:
         """
 
         STATUS_READY_FOR_UPGRADE = "status-shows-ready-for-upgrade"
+
+        # TODO Future PR add more status messages here as constants
+        UNHEALTHY_UPGRADE = BlockedStatus("Unhealthy after upgrade.")
 
     class Upgrade:
         """Upgrade related constants."""

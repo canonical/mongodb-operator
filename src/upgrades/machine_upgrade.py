@@ -130,8 +130,8 @@ class Upgrade(upgrade.Upgrade):
         assert self._unit_workload_container_version != self._app_workload_container_version
         assert self.versions_set
         for index, unit in enumerate(self._sorted_units):
+            # Higher number units have already upgraded
             if unit.name == self._unit.name:
-                # Higher number units have already upgraded
                 if index == 0:
                     if (
                         json.loads(self._app_databag["versions"])["charm"]
@@ -184,6 +184,9 @@ class Upgrade(upgrade.Upgrade):
         self._unit_databag["snap_revision"] = _SNAP_REVISION
         self._unit_workload_version = self._current_versions["workload"]
         logger.debug(f"Saved {_SNAP_REVISION} in unit databag after upgrade")
+
+        if charm.unit == self._sorted_units[-1]:
+            charm.version_checker.set_version_across_all_relations()
 
         # post upgrade check should be retried in case of failure, for this it is necessary to
         # emit a separate event.
