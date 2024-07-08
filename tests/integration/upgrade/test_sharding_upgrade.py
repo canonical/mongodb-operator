@@ -9,7 +9,11 @@ from pytest_operator.plugin import OpsTest
 
 from ..ha_tests import helpers as ha_helpers
 from ..helpers import find_unit, unit_hostname
-from ..sharding_tests.helpers import deploy_cluster_components, integrate_cluster
+from ..sharding_tests.helpers import (
+    deploy_cluster_components,
+    integrate_cluster,
+    generate_mongodb_client,
+)
 from ..sharding_tests.writes_helpers import (
     SHARD_ONE_DB_NAME,
     SHARD_TWO_DB_NAME,
@@ -100,7 +104,11 @@ async def test_upgrade(
     ), "continuous writes to shard two failed during upgrade"
 
     # after all shards have upgraded, verify that the balancer has been turned back on
-    # TODO implement this check once we have implemented the post-cluster-upgrade code DPE-4143
+    mongos_client = await generate_mongodb_client(
+        ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True
+    )
+    balancer_state = mongos_client.admin.command("balancerStatus")
+    assert balancer_state["mode"] != "off", "balancer not turned back on from config server"
 
 
 @pytest.mark.group(1)

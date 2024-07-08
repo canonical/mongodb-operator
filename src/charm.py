@@ -1636,6 +1636,9 @@ class MongodbOperatorCharm(CharmBase):
         current_charms_version = get_charm_revision(
             self.unit, local_version=self.get_charm_internal_revision
         )
+        local_identifier = (
+            "-locally built" if self.version_checker.is_local_charm(self.app.name) else ""
+        )
         try:
             if self.version_checker.are_related_apps_valid():
                 return
@@ -1646,21 +1649,26 @@ class MongodbOperatorCharm(CharmBase):
             logger.debug(e)
             if self.is_role(Config.Role.SHARD):
                 return BlockedStatus(
-                    f"Charm revision ({current_charms_version}) is not up-to date with config-server."
+                    f"Charm revision ({current_charms_version}{local_identifier}) is not up-to date with config-server."
                 )
 
         if self.is_role(Config.Role.SHARD):
             config_server_revision = self.version_checker.get_version_of_related_app(
                 self.get_config_server_name()
             )
+            remote_local_identifier = (
+                "-locally built"
+                if self.version_checker.is_local_charm(self.get_config_server_name())
+                else ""
+            )
             return BlockedStatus(
-                f"Charm revision ({current_charms_version}) is not up-to date with config-server ({config_server_revision})."
+                f"Charm revision ({current_charms_version}{local_identifier}) is not up-to date with config-server ({config_server_revision}{remote_local_identifier})."
             )
 
         if self.is_role(Config.Role.CONFIG_SERVER):
             # TODO Future PR add handling for integrated mongos charms
             return WaitingStatus(
-                f"Waiting for shards to upgrade/downgrade to revision {current_charms_version}."
+                f"Waiting for shards to upgrade/downgrade to revision {current_charms_version}{local_identifier}."
             )
 
     def get_config_server_name(self) -> Optional[str]:

@@ -62,12 +62,28 @@ class MongoDBStatusHandler(Object):
         """
         if isinstance(self.charm.unit.status, ActiveStatus):
             return True
-        if (
-            isinstance(self.charm.unit.status, WaitingStatus)
-            and self.charm.get_cluster_mismatched_revision_status()
-        ):
-            return True
+
         if ignore_unhealthy_upgrade and self.charm.unit.status == Config.Status.UNHEALTHY_UPGRADE:
+            return True
+
+        return self.is_status_related_to_mismatched_revision(
+            str(type(self.charm.unit.status)).lower()
+        )
+
+    def is_status_related_to_mismatched_revision(self, status_type: str) -> bool:
+        """Returns True if the current status is related to a mimatch in revision.
+
+        Note: A few functions call this who recieve states differently. One recieves them by
+        "goal state" which processes data differently and the other via the `.status` property.
+        Hence we have to be flexible to handle each.
+        """
+        if not self.charm.get_cluster_mismatched_revision_status():
+            return False
+
+        if "waiting" in status_type and self.charm.is_role(Config.Role.CONFIG_SERVER):
+            return True
+
+        if "blocked" in status_type and self.charm.is_role(Config.Role.SHARD):
             return True
 
         return False
@@ -83,10 +99,7 @@ class MongoDBStatusHandler(Object):
                 continue
             if unit_state["status"] == "active":
                 continue
-            if unit_state["status"] != "waiting":
-                return False
-
-            if not is_different_revision:
+            if not self.is_status_related_to_mismatched_revision(unit_state["status"]):
                 return False
 
         return True
