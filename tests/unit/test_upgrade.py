@@ -23,12 +23,13 @@ class TestCharm(unittest.TestCase):
         self.peer_rel_id = self.harness.add_relation("upgrade-version-a", "upgrade-version-a")
 
     @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.get_charm_revision")
     @patch("charm.MongoDBStatusHandler.are_all_units_ready_for_upgrade")
     @patch("charms.mongodb.v1.helpers.MongoDBConnection")
     @patch("upgrades.mongodb_upgrade.MongoDBConnection")
     @patch("charms.mongodb.v0.mongodb.MongoDBConnection.is_any_sync")
     def test_is_cluster_healthy(
-        self, is_any_sync, connection, connection_ready, are_all_units_active
+        self, is_any_sync, connection, connection_ready, are_all_units_active, get_rev
     ):
         """Test is_cluster_healthy function."""
 

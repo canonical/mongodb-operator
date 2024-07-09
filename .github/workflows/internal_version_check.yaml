@@ -17,14 +17,14 @@ jobs:
     steps:
       - name: Compare with internal version on main branch
         run: |
-          NEW_VERSION="$(< charm_internal_version)"
+          NEW_VERSION=$(< charm_internal_version)
           mkdir repo; cd repo
           git clone https://github.com/canonical/mongodb-operator.git
           cd mongodb-operator
-          OLD_VERSION="$(< charm_internal_version)"
-          [$NEW_VERSION -eq $EXPECTED_NEW_VERSION]
+          OLD_VERSION=$(< charm_internal_version)
+          [ $NEW_VERSION -eq $EXPECTED_NEW_VERSION ]
 
-          if [ "$NEW_VERSION" -ne $((OLD_VERSION + 1)) ]; then
+          if [ $NEW_VERSION -ne $((OLD_VERSION + 1)) ]; then
             echo "Failure: must increment the internal version"
             # Sending failure signal (non-zero exit code)
             exit 1
