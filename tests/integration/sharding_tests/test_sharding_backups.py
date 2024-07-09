@@ -496,6 +496,7 @@ async def verify_writes_restored(
     ops_test, exppected_cluster_writes: Dict, new_names=False
 ) -> None:
     """Verify that writes were correctly restored."""
+    config_server_name = CONFIG_SERVER_APP_NAME if not new_names else CONFIG_SERVER_APP_NAME_NEW
     shard_one_name = SHARD_ONE_APP_NAME if not new_names else SHARD_ONE_APP_NAME_NEW
     shard_two_name = SHARD_TWO_APP_NAME if not new_names else SHARD_TWO_APP_NAME_NEW
     shard_apps = [shard_one_name, shard_two_name]
@@ -507,7 +508,7 @@ async def verify_writes_restored(
                 ops_test,
                 shard_app_names=shard_apps,
                 db_names=[SHARD_ONE_DB_NAME, SHARD_TWO_DB_NAME],
-                config_server_name=CONFIG_SERVER_APP_NAME,
+                config_server_name=config_server_name,
             )
             assert (
                 restored_total_writes["total_writes"] == exppected_cluster_writes["total_writes"]

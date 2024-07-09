@@ -6,7 +6,6 @@ import subprocess
 from pathlib import Path
 from typing import Dict, List
 
-import pytest
 import yaml
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
@@ -29,8 +28,8 @@ CONFIG_SERVER_APP_NAME = "config-server"
 
 DEFAULT_DB_NAME = "new-db"
 DEFAULT_COLL_NAME = "test_collection"
-SHARD_ONE_DB_NAME = f"{SHARD_ONE_APP_NAME}-{DEFAULT_DB_NAME}".replace("-", "_")
-SHARD_TWO_DB_NAME = f"{SHARD_TWO_APP_NAME}-{DEFAULT_DB_NAME}".replace("-", "_")
+SHARD_ONE_DB_NAME = f"{SHARD_ONE_APP_NAME}_{DEFAULT_DB_NAME}".replace("-", "_")
+SHARD_TWO_DB_NAME = f"{SHARD_TWO_APP_NAME}_{DEFAULT_DB_NAME}".replace("-", "_")
 
 
 class ProcessError(Exception):
@@ -70,42 +69,6 @@ async def remove_db_writes(
     test_collection.drop()
 
     client.close()
-
-
-@pytest.fixture()
-async def continuous_writes_to_shard_one(ops_test: OpsTest):
-    """Adds writes to a shard named shard-one before test starts and clears writes at the end."""
-    await start_continous_writes_on_shard(
-        ops_test,
-        shard_name=SHARD_ONE_APP_NAME,
-        db_name=SHARD_ONE_DB_NAME,
-    )
-
-    yield
-    await stop_continous_writes(
-        ops_test,
-        config_server_name=CONFIG_SERVER_APP_NAME,
-        db_name=SHARD_ONE_DB_NAME,
-    )
-    # await remove_db_writes(ops_test, db_name=SHARD_ONE_DB_NAME)
-
-
-@pytest.fixture()
-async def continuous_writes_to_shard_two(ops_test: OpsTest):
-    """Adds writes to a shard named shard-one before test starts and clears writes at the end."""
-    await start_continous_writes_on_shard(
-        ops_test,
-        shard_name=SHARD_TWO_APP_NAME,
-        db_name=SHARD_TWO_DB_NAME,
-    )
-
-    yield
-    await stop_continous_writes(
-        ops_test,
-        config_server_name=CONFIG_SERVER_APP_NAME,
-        db_name=SHARD_TWO_DB_NAME,
-    )
-    # await remove_db_writes(ops_test, db_name=SHARD_TWO_DB_NAME)
 
 
 async def start_continous_writes_on_shard(ops_test: OpsTest, shard_name: str, db_name: str):

@@ -6,13 +6,9 @@
 import pytest
 from pytest_operator.plugin import OpsTest
 
-from ..helpers import (
-    deploy_cluster_components,
-    destroy_cluster,
-    integrate_cluster,
-    wait_for_mongodb_units_blocked,
-)
+from ..helpers import wait_for_mongodb_units_blocked
 from ..tls_tests import helpers as tls_helpers
+from .helpers import deploy_cluster_components, destroy_cluster, integrate_cluster
 
 MONGOD_SERVICE = "snap.charmed-mongodb.mongod.service"
 MONGOS_SERVICE = "snap.charmed-mongodb.mongos.service"
