@@ -221,7 +221,10 @@ async def test_restore_backup(ops_test: OpsTest, add_writes_to_shards) -> None:
     """Tests that sharded Charmed MongoDB cluster supports restores."""
     # count total writes
     cluster_writes = await writes_helpers.get_cluster_writes_count(
-        ops_test, shard_app_names=SHARD_APPS, db_names=[SHARD_ONE_DB_NAME, SHARD_TWO_DB_NAME]
+        ops_test,
+        shard_app_names=SHARD_APPS,
+        db_names=[SHARD_ONE_DB_NAME, SHARD_TWO_DB_NAME],
+        config_server_name=CONFIG_SERVER_APP_NAME,
     )
 
     assert cluster_writes["total_writes"], "no writes to backup"
@@ -288,6 +291,7 @@ async def test_migrate_restore_backup(ops_test: OpsTest, add_writes_to_shards) -
         ops_test,
         shard_app_names=SHARD_APPS,
         db_names=[SHARD_ONE_DB_NAME, SHARD_TWO_DB_NAME],
+        config_server_name=CONFIG_SERVER_APP_NAME,
     )
     assert cluster_writes["total_writes"], "no writes to backup"
     assert cluster_writes[SHARD_ONE_APP_NAME], "no writes to backup for shard one"
@@ -471,7 +475,10 @@ async def add_and_verify_unwanted_writes(ops_test, old_cluster_writes: Dict) -> 
         content={"horse-breed": "pegasus", "real": True},
     )
     new_total_writes = await writes_helpers.get_cluster_writes_count(
-        ops_test, shard_app_names=SHARD_APPS, db_names=[SHARD_ONE_DB_NAME, SHARD_TWO_DB_NAME]
+        ops_test,
+        shard_app_names=SHARD_APPS,
+        db_names=[SHARD_ONE_DB_NAME, SHARD_TWO_DB_NAME],
+        config_server_name=CONFIG_SERVER_APP_NAME,
     )
 
     assert (
@@ -489,6 +496,7 @@ async def verify_writes_restored(
     ops_test, exppected_cluster_writes: Dict, new_names=False
 ) -> None:
     """Verify that writes were correctly restored."""
+    config_server_name = CONFIG_SERVER_APP_NAME if not new_names else CONFIG_SERVER_APP_NAME_NEW
     shard_one_name = SHARD_ONE_APP_NAME if not new_names else SHARD_ONE_APP_NAME_NEW
     shard_two_name = SHARD_TWO_APP_NAME if not new_names else SHARD_TWO_APP_NAME_NEW
     shard_apps = [shard_one_name, shard_two_name]
@@ -500,6 +508,7 @@ async def verify_writes_restored(
                 ops_test,
                 shard_app_names=shard_apps,
                 db_names=[SHARD_ONE_DB_NAME, SHARD_TWO_DB_NAME],
+                config_server_name=config_server_name,
             )
             assert (
                 restored_total_writes["total_writes"] == exppected_cluster_writes["total_writes"]

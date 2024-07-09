@@ -5,11 +5,19 @@
 import sys
 
 from pymongo import MongoClient
-from pymongo.errors import AutoReconnect, NotPrimaryError, PyMongoError
+from pymongo.errors import PyMongoError
 from pymongo.write_concern import WriteConcern
 
+DEFAULT_DB_NAME = "new-db"
+DEFAULT_COLL_NAME = "test_collection"
 
-def continous_writes(connection_string: str, starting_number: int):
+
+def continous_writes(
+    connection_string: str,
+    starting_number: int,
+    db_name: str,
+    coll_name: str,
+):
     write_value = starting_number
 
     while True:
@@ -17,8 +25,8 @@ def continous_writes(connection_string: str, starting_number: int):
             connection_string,
             socketTimeoutMS=5000,
         )
-        db = client["new-db"]
-        test_collection = db["test_collection"]
+        db = client[db_name]
+        test_collection = db[coll_name]
         try:
             # insert item into collection if it doesn't already exist
             test_collection.with_options(
@@ -30,15 +38,11 @@ def continous_writes(connection_string: str, starting_number: int):
             ).update_one({"number": write_value}, {"$set": {"number": write_value}}, upsert=True)
 
             # update_one
-        except (NotPrimaryError, AutoReconnect):
-            # this means that the primary was not able to be found. An application should try to
-            # reconnect and re-write the previous value. Hence, we `continue` here, without
+        except PyMongoError:
+            # PyMongoErors should result in an attempt to retry a write. An application should
+            # try to reconnect and re-write the previous value. Hence, we `continue` here, without
             # incrementing `write_value` as to try to insert this value again.
             continue
-        except PyMongoError:
-            # we should not raise this exception but instead increment the write value and move
-            # on, indicating that there was a failure writing to the database.
-            pass
         finally:
             client.close()
 
@@ -48,7 +52,9 @@ def continous_writes(connection_string: str, starting_number: int):
 def main():
     connection_string = sys.argv[1]
     starting_number = int(sys.argv[2])
-    continous_writes(connection_string, starting_number)
+    db_name = DEFAULT_DB_NAME if len(sys.argv) < 4 else sys.argv[3]
+    coll_name = DEFAULT_COLL_NAME if len(sys.argv) < 5 else sys.argv[4]
+    continous_writes(connection_string, starting_number, db_name, coll_name)
 
 
 if __name__ == "__main__":

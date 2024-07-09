@@ -18,7 +18,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 2
 
 
 class MongoDBStatusHandler(Object):
@@ -105,20 +105,17 @@ class MongoDBStatusHandler(Object):
 
     def is_unit_status_ready_for_upgrade(self) -> bool:
         """Returns True if the status of the current unit reflects that it is ready for upgrade."""
-        current_status = type(self.charm.unit.status)
-        status_message = self.charm.unit.status.message
+        current_status = self.charm.unit.status
+        status_message = current_status.message
         if isinstance(current_status, ActiveStatus):
             return True
 
         if not isinstance(current_status, WaitingStatus):
             return False
 
-        if (
-            status_message
-            and status_message != Config.Status.CONFIG_SERVER_WAITING_FOR_REFRESH.message
-        ):
-            return False
+        if status_message and "is not up-to date with config-server" in status_message:
+            return True
 
-        return True
+        return False
 
     # END: Helpers
