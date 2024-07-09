@@ -71,9 +71,9 @@ class MongoDBStatusHandler(Object):
         )
 
     def is_status_related_to_mismatched_revision(self, status_type: str) -> bool:
-        """Returns True if the current status is related to a mimatch in revision.
+        """Returns True if the current status is related to a mimsatch in revision.
 
-        Note: A few functions call this who recieve states differently. One recieves them by
+        Note: A few functions call this who receive states differently. One receives them by
         "goal state" which processes data differently and the other via the `.status` property.
         Hence we have to be flexible to handle each.
         """
@@ -93,7 +93,6 @@ class MongoDBStatusHandler(Object):
         goal_state = self.charm.model._backend._run(
             "goal-state", return_output=True, use_json=True
         )
-        is_different_revision = self.charm.get_cluster_mismatched_revision_status()
         for unit_name, unit_state in goal_state["units"].items():
             if unit_name == unit_to_ignore:
                 continue

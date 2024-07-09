@@ -209,7 +209,8 @@ class MongoDBUpgrade(Object):
 
         logger.debug("Cluster is healthy after upgrading unit %s", self.charm.unit.name)
 
-        # Leader of config-server must wait for all shards to be upgraded before finialising the upgrade
+        # Leader of config-server must wait for all shards to be upgraded before finialising the
+        # upgrade.
         if not self.charm.unit.is_leader() or not self.charm.is_role(Config.Role.CONFIG_SERVER):
             return
 
@@ -217,7 +218,8 @@ class MongoDBUpgrade(Object):
 
     def run_post_cluster_upgrade_check(self, event: EventBase) -> None:
         """Waits for entire cluster to be upgraded before enabling the balancer."""
-        # Leader of config-server must wait for all shards to be upgraded before finialising the upgrade
+        # Leader of config-server must wait for all shards to be upgraded before finialising the
+        # upgrade.
         if not self.charm.unit.is_leader() or not self.charm.is_role(Config.Role.CONFIG_SERVER):
             return
 
@@ -263,7 +265,7 @@ class MongoDBUpgrade(Object):
 
         if not self.is_cluster_able_to_read_write():
             logger.error(
-                f"Cluster is not healthy after upgrading %s, writes not propagated throughout cluster. Deferring post upgrade check.",
+                "Cluster is not healthy after upgrading %s, writes not propagated throughout cluster. Deferring post upgrade check.",
                 upgrade_type,
             )
             logger.info(ROLLBACK_INSTRUCTIONS)

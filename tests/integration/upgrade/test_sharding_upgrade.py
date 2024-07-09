@@ -11,8 +11,8 @@ from ..ha_tests import helpers as ha_helpers
 from ..helpers import find_unit, unit_hostname
 from ..sharding_tests.helpers import (
     deploy_cluster_components,
-    integrate_cluster,
     generate_mongodb_client,
+    integrate_cluster,
 )
 from ..sharding_tests.writes_helpers import (
     SHARD_ONE_DB_NAME,

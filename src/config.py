@@ -5,8 +5,9 @@
 
 from typing import Literal, TypeAlias
 
-Package: TypeAlias = tuple[str, str, str]
 from ops.model import BlockedStatus
+
+Package: TypeAlias = tuple[str, str, str]
 
 
 class Config:

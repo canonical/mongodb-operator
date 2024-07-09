@@ -1623,6 +1623,11 @@ class MongodbOperatorCharm(CharmBase):
         return self.is_role(Config.Role.SHARD) or self.is_role(Config.Role.CONFIG_SERVER)
 
     def is_cluster_on_same_revision(self) -> bool:
+        """Returns True if the cluster is using the same charm revision.
+
+        Note: This can only be determined by the config-server since shards are not integrated to
+        each other.
+        """
         if not self.is_role(Config.Role.CONFIG_SERVER):
             raise NotConfigServerError("This check can only be ran by the config-server.")
 
@@ -1630,7 +1635,6 @@ class MongodbOperatorCharm(CharmBase):
 
     def get_cluster_mismatched_revision_status(self) -> Optional[StatusBase]:
         """Returns a Status if the cluster has mismatched revisions."""
-
         # check for invalid versions in sharding integrations, i.e. a shard running on
         # revision  88 and a config-server running on revision 110
         current_charms_version = get_charm_revision(
