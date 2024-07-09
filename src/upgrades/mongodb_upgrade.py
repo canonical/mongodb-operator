@@ -58,7 +58,7 @@ class MongoDBUpgrade(Object):
     """Handlers for upgrade events."""
 
     post_app_upgrade_event = EventSource(_PostUpgradeCheckMongoDB)
-    post_cluster_upgrade_check = EventSource(_PostUpgradeCheckMongoDB)
+    post_cluster_upgrade_event = EventSource(_PostUpgradeCheckMongoDB)
 
     def __init__(self, charm: CharmBase):
         self.charm = charm
