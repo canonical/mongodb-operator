@@ -57,7 +57,7 @@ class _PostUpgradeCheckMongoDB(EventBase):
 class MongoDBUpgrade(Object):
     """Handlers for upgrade events."""
 
-    post_app_upgrade_check = EventSource(_PostUpgradeCheckMongoDB)
+    post_app_upgrade_event = EventSource(_PostUpgradeCheckMongoDB)
     post_cluster_upgrade_check = EventSource(_PostUpgradeCheckMongoDB)
 
     def __init__(self, charm: CharmBase):
@@ -79,9 +79,9 @@ class MongoDBUpgrade(Object):
             charm.on[upgrade.RESUME_ACTION_NAME].action, self._on_resume_upgrade_action
         )
         self.framework.observe(charm.on["force-upgrade"].action, self._on_force_upgrade_action)
-        self.framework.observe(self.post_app_upgrade_check, self.run_post_app_upgrade_check)
+        self.framework.observe(self.post_app_upgrade_event, self.run_post_app_upgrade_check)
         self.framework.observe(
-            self.post_cluster_upgrade_check, self.run_post_cluster_upgrade_check
+            self.post_cluster_upgrade_event, self.run_post_cluster_upgrade_check
         )
 
     # BEGIN: Event handlers
@@ -214,7 +214,7 @@ class MongoDBUpgrade(Object):
         if not self.charm.unit.is_leader() or not self.charm.is_role(Config.Role.CONFIG_SERVER):
             return
 
-        self.charm.upgrade.post_cluster_upgrade_check.emit()
+        self.charm.upgrade.post_cluster_upgrade_event.emit()
 
     def run_post_cluster_upgrade_check(self, event: EventBase) -> None:
         """Waits for entire cluster to be upgraded before enabling the balancer."""

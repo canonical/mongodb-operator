@@ -18,7 +18,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 2
+LIBPATCH = 3
 
 
 class MongoDBStatusHandler(Object):
@@ -57,8 +57,8 @@ class MongoDBStatusHandler(Object):
     def is_current_unit_ready(self, ignore_unhealthy_upgrade: bool = False) -> bool:
         """Returns True if the current unit status shows that the unit is ready.
 
-        Note: we allow the use of ignore_unhealthy_upgrade, to avoid infinite loops of the check
-        failing and preventing the status from being reset/
+        Note: we allow the use of ignore_unhealthy_upgrade, to avoid infinite loops due to this
+        function returning False g and preventing the status from being reset.
         """
         if isinstance(self.charm.unit.status, ActiveStatus):
             return True
@@ -74,7 +74,7 @@ class MongoDBStatusHandler(Object):
         """Returns True if the current status is related to a mimsatch in revision.
 
         Note: A few functions call this who receive states differently. One receives them by
-        "goal state" which processes data differently and the other via the `.status` property.
+        "goal state" which processes data differently and the other via the ".status" property.
         Hence we have to be flexible to handle each.
         """
         if not self.charm.get_cluster_mismatched_revision_status():
