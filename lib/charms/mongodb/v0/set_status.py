@@ -58,7 +58,7 @@ class MongoDBStatusHandler(Object):
         """Returns True if the current unit status shows that the unit is ready.
 
         Note: we allow the use of ignore_unhealthy_upgrade, to avoid infinite loops due to this
-        function returning False g and preventing the status from being reset.
+        function returning False and preventing the status from being reset.
         """
         if isinstance(self.charm.unit.status, ActiveStatus):
             return True
