@@ -67,13 +67,13 @@ class MongoDBStatusHandler(Object):
             return True
 
         return self.is_status_related_to_mismatched_revision(
-            str(type(self.charm.unit.status)).lower()
+            type(self.charm.unit.status).__name__.lower()
         )
 
     def is_status_related_to_mismatched_revision(self, status_type: str) -> bool:
         """Returns True if the current status is related to a mimsatch in revision.
 
-        Note: A few functions call this who receive states differently. One receives them by
+        Note: A few functions calling this method receive states differently. One receives them by
         "goal state" which processes data differently and the other via the ".status" property.
         Hence we have to be flexible to handle each.
         """
