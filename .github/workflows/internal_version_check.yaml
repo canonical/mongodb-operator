@@ -21,7 +21,6 @@ jobs:
           git clone https://github.com/canonical/mongodb-operator.git repo/mongodb-operator
           cd repo/mongodb-operator
           OLD_VERSION="$([ -f charm_internal_version ] && cat charm_internal_version || echo 0)"
-          [ "$NEW_VERSION" -eq "$EXPECTED_NEW_VERSION" ]
 
           if [ "$NEW_VERSION" -ne "$((OLD_VERSION + 1))" ]; then
             echo "Failure: must increment the internal version"

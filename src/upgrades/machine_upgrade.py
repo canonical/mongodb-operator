@@ -185,6 +185,8 @@ class Upgrade(upgrade.Upgrade):
         self._unit_workload_version = self._current_versions["workload"]
         logger.debug(f"Saved {_SNAP_REVISION} in unit databag after upgrade")
 
+        # once the last unit has upgrade, notify relevant integrated applications of the new
+        # version.
         if charm.unit == self._sorted_units[-1]:
             charm.version_checker.set_version_across_all_relations()
 

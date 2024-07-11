@@ -340,6 +340,10 @@ class MongoDBUpgrade(Object):
                 logger.error("Cannot proceed with upgrade. Service mongod is not running")
                 return False
 
+        # It is possible that in a previous run of post-upgrade-check, that the unit was set to
+        # unhealthy. In order to check if this unit has resolved its issue, we ignore the status
+        # that was set in a previous check of cluster health. Otherwise, we are stuck in an
+        # infinite check of cluster health due to never being able to reset an unhealthy status.
         if not self.charm.status.is_current_unit_ready(
             ignore_unhealthy_upgrade=True
         ) or not self.charm.status.are_all_units_ready_for_upgrade(
