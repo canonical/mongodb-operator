@@ -174,6 +174,7 @@ class Upgrade(abc.ABC):
             # User confirmation needed to resume upgrade (i.e. upgrade second unit)
             # Statuses over 120 characters are truncated in `juju status` as of juju 3.1.6 and
             # 2.9.45
+            resume_string = ""
             if len(self._sorted_units) > 1:
                 resume_string = (
                     "Verify highest unit is healthy & run `{RESUME_ACTION_NAME}` action. "
