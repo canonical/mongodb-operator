@@ -49,7 +49,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
             await ops_test.model.wait_for_idle(apps=[app_name], status="active")
 
     config = {"ca-common-name": "Test CA"}
-    await ops_test.model.deploy(TLS_CERTIFICATES_APP_NAME, channel="stable", config=config)
+    await ops_test.model.deploy(TLS_CERTIFICATES_APP_NAME, channel="edge", config=config)
     await ops_test.model.wait_for_idle(
         apps=[TLS_CERTIFICATES_APP_NAME], status="active", timeout=1000
     )

@@ -31,7 +31,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await deploy_cluster_components(ops_test)
 
     # deploy the s3 integrator charm
-    await ops_test.model.deploy(CERTS_APP_NAME, channel="stable")
+    await ops_test.model.deploy(CERTS_APP_NAME, channel="edge")
 
     await ops_test.model.wait_for_idle(
         apps=[CERTS_APP_NAME, CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
