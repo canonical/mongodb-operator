@@ -1,0 +1,33 @@
+# Copyright 2024 Canonical Ltd.
+# See LICENSE file for licensing details.
+name: Internal Version Check
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+on:
+  pull_request:
+
+jobs:
+  check-incremented-version:
+    name: Check Internal Version Incremented
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Compare with internal version on main branch
+        run: |
+          NEW_VERSION="$(< charm_internal_version)"
+          git clone https://github.com/canonical/mongodb-operator.git repo/mongodb-operator
+          cd repo/mongodb-operator
+          OLD_VERSION="$([ -f charm_internal_version ] && cat charm_internal_version || echo 0)"
+
+          if [ "$NEW_VERSION" -ne "$((OLD_VERSION + 1))" ]; then
+            echo "Failure: must increment the internal version"
+            # Sending failure signal (non-zero exit code)
+            exit 1
+          else
+            exit 0
+          fi

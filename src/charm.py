@@ -82,7 +82,11 @@ from pymongo.errors import OperationFailure, ServerSelectionTimeoutError
 from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
 from config import Config, Package
-from exceptions import AdminUserCreationError, ApplicationHostNotFoundError
+from exceptions import (
+    AdminUserCreationError,
+    ApplicationHostNotFoundError,
+    NotConfigServerError,
+)
 from machine_helpers import (
     MONGO_USER,
     ROOT_USER_GID,
@@ -95,12 +99,6 @@ AUTH_FAILED_CODE = 18
 UNAUTHORISED_CODE = 13
 TLS_CANNOT_FIND_PRIMARY = 133
 
-LOCALLY_BUIT_CHARM_WARNING = (
-    "WARNING: deploying a local charm, cannot check revision across components."
-)
-INTEGRATED_TO_LOCALLY_BUIT_CHARM_WARNING = (
-    "WARNING: integrated to a local charm, cannot check revision across components."
-)
 
 logger = logging.getLogger(__name__)
 
@@ -155,7 +153,7 @@ class MongodbOperatorCharm(CharmBase):
             self,
             # TODO future PR add ops model revision variable:
             # https://github.com/canonical/operator/issues/1255
-            version=get_charm_revision(self.unit),
+            version=get_charm_revision(self.unit, local_version=self.get_charm_internal_revision),
             relations_to_check=[
                 Config.Relations.SHARDING_RELATIONS_NAME,
                 Config.Relations.CONFIG_SERVER_RELATIONS_NAME,
@@ -362,6 +360,12 @@ class MongodbOperatorCharm(CharmBase):
         if not self.upgrade._upgrade:
             return False
         return self.upgrade._upgrade.in_progress
+
+    @property
+    def get_charm_internal_revision(self) -> int:
+        """Returns the contents of the get_charm_internal_revision file."""
+        with open(Config.CHARM_INTERNAL_VERSION_FILE, "r") as f:
+            return int(f.read())
 
     # END: properties
 
@@ -1618,19 +1622,27 @@ class MongodbOperatorCharm(CharmBase):
         """Returns true if charm is running as a sharded component."""
         return self.is_role(Config.Role.SHARD) or self.is_role(Config.Role.CONFIG_SERVER)
 
+    def is_cluster_on_same_revision(self) -> bool:
+        """Returns True if the cluster is using the same charm revision.
+
+        Note: This can only be determined by the config-server since shards are not integrated to
+        each other.
+        """
+        if not self.is_role(Config.Role.CONFIG_SERVER):
+            raise NotConfigServerError("This check can only be ran by the config-server.")
+
+        return self.version_checker.are_related_apps_valid()
+
     def get_cluster_mismatched_revision_status(self) -> Optional[StatusBase]:
         """Returns a Status if the cluster has mismatched revisions."""
-        if self.version_checker.is_local_charm(self.app.name):
-            logger.warning(LOCALLY_BUIT_CHARM_WARNING)
-            return
-
-        if self.version_checker.is_integrated_to_locally_built_charm():
-            logger.warning(INTEGRATED_TO_LOCALLY_BUIT_CHARM_WARNING)
-            return
-
         # check for invalid versions in sharding integrations, i.e. a shard running on
         # revision  88 and a config-server running on revision 110
-        current_charms_version = get_charm_revision(self.unit)
+        current_charms_version = get_charm_revision(
+            self.unit, local_version=self.get_charm_internal_revision
+        )
+        local_identifier = (
+            "-locally built" if self.version_checker.is_local_charm(self.app.name) else ""
+        )
         try:
             if self.version_checker.are_related_apps_valid():
                 return
@@ -1641,21 +1653,26 @@ class MongodbOperatorCharm(CharmBase):
             logger.debug(e)
             if self.is_role(Config.Role.SHARD):
                 return BlockedStatus(
-                    f"Charm revision ({current_charms_version}) is not up-to date with config-server."
+                    f"Charm revision ({current_charms_version}{local_identifier}) is not up-to date with config-server."
                 )
 
         if self.is_role(Config.Role.SHARD):
             config_server_revision = self.version_checker.get_version_of_related_app(
                 self.get_config_server_name()
             )
+            remote_local_identifier = (
+                "-locally built"
+                if self.version_checker.is_local_charm(self.get_config_server_name())
+                else ""
+            )
             return BlockedStatus(
-                f"Charm revision ({current_charms_version}) is not up-to date with config-server ({config_server_revision})."
+                f"Charm revision ({current_charms_version}{local_identifier}) is not up-to date with config-server ({config_server_revision}{remote_local_identifier})."
             )
 
         if self.is_role(Config.Role.CONFIG_SERVER):
             # TODO Future PR add handling for integrated mongos charms
             return WaitingStatus(
-                f"Waiting for shards to upgrade/downgrade to revision {current_charms_version}."
+                f"Waiting for shards to upgrade/downgrade to revision {current_charms_version}{local_identifier}."
             )
 
     def get_config_server_name(self) -> Optional[str]:
