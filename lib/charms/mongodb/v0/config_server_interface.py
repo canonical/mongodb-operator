@@ -42,7 +42,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 13
+LIBPATCH = 14
 
 
 class ClusterProvider(Object):
@@ -240,6 +240,13 @@ class ClusterRequirer(Object):
         )
 
     def _on_database_created(self, event) -> None:
+        if self.charm.upgrade_in_progress:
+            logger.warning(
+                "Processing client applications is not supported during an upgrade. The charm may be in a broken, unrecoverable state."
+            )
+            event.defer()
+            return
+
         if not self.charm.unit.is_leader():
             return
 
@@ -336,6 +343,13 @@ class ClusterRequirer(Object):
                 str(type(event)),
             )
 
+            event.defer()
+            return False
+
+        if self.charm.upgrade_in_progress:
+            logger.warning(
+                "Processing client applications is not supported during an upgrade. The charm may be in a broken, unrecoverable state."
+            )
             event.defer()
             return False
 
