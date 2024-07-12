@@ -5,6 +5,8 @@
 
 from typing import Literal, TypeAlias
 
+from ops.model import BlockedStatus
+
 Package: TypeAlias = tuple[str, str, str]
 
 
@@ -18,6 +20,7 @@ class Config:
     MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
     MONGOD_CONF_DIR = f"{MONGODB_SNAP_DATA_DIR}/etc/mongod"
     MONGOD_CONF_FILE_PATH = f"{MONGOD_CONF_DIR}/mongod.conf"
+    CHARM_INTERNAL_VERSION_FILE = "charm_internal_version"
     SNAP_PACKAGES = [("charmed-mongodb", "6/edge", 118)]
 
     # Keep these alphabetically sorted
@@ -114,6 +117,9 @@ class Config:
         """
 
         STATUS_READY_FOR_UPGRADE = "status-shows-ready-for-upgrade"
+
+        # TODO Future PR add more status messages here as constants
+        UNHEALTHY_UPGRADE = BlockedStatus("Unhealthy after upgrade.")
 
     class Upgrade:
         """Upgrade related constants."""

@@ -130,8 +130,8 @@ class Upgrade(upgrade.Upgrade):
         assert self._unit_workload_container_version != self._app_workload_container_version
         assert self.versions_set
         for index, unit in enumerate(self._sorted_units):
+            # Higher number units have already upgraded
             if unit.name == self._unit.name:
-                # Higher number units have already upgraded
                 if index == 0:
                     if (
                         json.loads(self._app_databag["versions"])["charm"]
@@ -169,7 +169,7 @@ class Upgrade(upgrade.Upgrade):
         # According to the MongoDB documentation, before upgrading the primary, we must ensure a
         # safe primary re-election.
         try:
-            if self._unit.name == charm.primary and len(self._sorted_units) > 1:
+            if self._unit.name == charm.primary:
                 logger.debug("Stepping down current primary, before upgrading service...")
                 charm.upgrade.step_down_primary_and_wait_reelection()
         except mongodb_upgrade.FailedToElectNewPrimaryError:
@@ -185,9 +185,14 @@ class Upgrade(upgrade.Upgrade):
         self._unit_workload_version = self._current_versions["workload"]
         logger.debug(f"Saved {_SNAP_REVISION} in unit databag after upgrade")
 
+        # once the last unit has upgrade, notify relevant integrated applications of the new
+        # version.
+        if charm.unit == self._sorted_units[-1]:
+            charm.version_checker.set_version_across_all_relations()
+
         # post upgrade check should be retried in case of failure, for this it is necessary to
         # emit a separate event.
-        charm.upgrade.post_upgrade_event.emit()
+        charm.upgrade.post_app_upgrade_event.emit()
 
     def save_snap_revision_after_first_install(self):
         """Set snap revision on first install."""
