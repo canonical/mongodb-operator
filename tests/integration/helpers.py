@@ -364,7 +364,9 @@ async def get_unit_hostname(ops_test: OpsTest, unit_id: int, app: str) -> str:
 
 async def get_raw_application(ops_test: OpsTest, app: str) -> Dict[str, Any]:
     """Get raw application details."""
-    ret_code, stdout, stderr = await ops_test.juju(*f"status --model {ops_test.model.info.name} {app} --format=json".split())
+    ret_code, stdout, stderr = await ops_test.juju(
+        *f"status --model {ops_test.model.info.name} {app} --format=json".split()
+    )
     if ret_code != 0:
         logger.error(f"Invalid return [{ret_code=}]: {stderr=}")
         raise Exception(f"[{ret_code=}] {stderr=}")
