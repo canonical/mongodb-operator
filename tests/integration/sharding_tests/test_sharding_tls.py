@@ -112,8 +112,8 @@ async def test_tls_inconsistent_rels(ops_test: OpsTest) -> None:
         CERTS_APP_NAME, application_name=DIFFERENT_CERTS_APP_NAME, channel="stable"
     )
 
-    MODEL_CONFIG = {"logging-config": "<root>=INFO;unit=DEBUG"}
-    await ops_test.model.set_config(MODEL_CONFIG)
+    model_config = {"logging-config": "<root>=INFO;unit=DEBUG"}
+    await ops_test.model.set_config(model_config)
 
     # CASE 1: Config-server has TLS enabled - but shard does not
     await ops_test.model.applications[SHARD_ONE_APP_NAME].remove_relation(
