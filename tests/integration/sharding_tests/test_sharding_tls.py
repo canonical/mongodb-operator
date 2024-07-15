@@ -120,7 +120,7 @@ async def test_tls_inconsistent_rels(ops_test: OpsTest) -> None:
 
     await ops_test.model.wait_for_idle(
         apps=CLUSTER_COMPONENTS,
-        idle_period=20,
+        idle_period=5,
         timeout=TIMEOUT,
         raise_on_blocked=False,
     )
