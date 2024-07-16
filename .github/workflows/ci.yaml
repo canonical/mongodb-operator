@@ -101,6 +101,8 @@ jobs:
       artifact-prefix: packed-charm-cache-true
       cloud: lxd
       juju-agent-version: 3.1.7
+      # TODO: remove when lxd bug is solved:
+      # https://github.com/canonical/lxd/issues/13774
       lxd-snap-channel: 5.21/stable
     permissions:
       contents: write # Needed for Allure Report beta
