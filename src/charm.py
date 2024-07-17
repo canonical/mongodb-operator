@@ -208,7 +208,7 @@ class MongodbOperatorCharm(CharmBase):
             return self.unit.name
 
         # check if peer unit matches primary ip
-        for unit in self.peers.units:
+        for unit in self.peers_units:
             if primary_ip == self.unit_ip(unit):
                 return unit.name
 
@@ -232,7 +232,7 @@ class MongodbOperatorCharm(CharmBase):
         """
         peer_addresses = []
         if self.peers:
-            peer_addresses = [self.unit_ip(unit) for unit in self.peers.units]
+            peer_addresses = [self.unit_ip(unit) for unit in self.peers_units]
 
         logger.debug("peer addresses: %s", peer_addresses)
         self_address = self.unit_ip(self.unit)
@@ -313,6 +313,14 @@ class MongodbOperatorCharm(CharmBase):
              An `ops.model.Relation` object representing the peer relation.
         """
         return self.model.get_relation(Config.Relations.PEERS)
+
+    @property
+    def peers_units(self) -> list[Unit]:
+        """Peers units in a safe way."""
+        if not self.peers:
+            return []
+        else:
+            return self.peers.units
 
     @property
     def db_initialised(self) -> bool:
@@ -1509,9 +1517,7 @@ class MongodbOperatorCharm(CharmBase):
     @property
     def _is_removing_last_replica(self) -> bool:
         """Returns True if the last replica (juju unit) is getting removed."""
-        return self.app.planned_units() == 0 and (
-            (self.peers is None) or len(self.peers.units) == 0
-        )
+        return self.app.planned_units() == 0 and len(self.peers_units) == 0
 
     def get_invalid_integration_status(self) -> Optional[StatusBase]:
         """Returns a status if an invalid integration is present."""
