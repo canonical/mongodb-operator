@@ -1509,7 +1509,9 @@ class MongodbOperatorCharm(CharmBase):
     @property
     def _is_removing_last_replica(self) -> bool:
         """Returns True if the last replica (juju unit) is getting removed."""
-        return self.app.planned_units() == 0 and len(self.peers.units) == 0
+        return self.app.planned_units() == 0 and (
+            (self.peers is None) or len(self.peers.units) == 0
+        )
 
     def get_invalid_integration_status(self) -> Optional[StatusBase]:
         """Returns a status if an invalid integration is present."""
