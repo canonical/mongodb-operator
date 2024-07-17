@@ -157,7 +157,9 @@ async def deploy_cluster_components(
 async def destroy_cluster(ops_test):
     """Destroy cluster in a forceful way."""
     for app in CLUSTER_COMPONENTS:
-        await ops_test.model.applications[app].destroy(force=True, no_wait=False)
+        await ops_test.model.applications[app].destroy(
+            destroy_storage=True, force=True, no_wait=False
+        )
 
     # destroy does not wait for applications to be removed, perform this check manually
     for attempt in Retrying(stop=stop_after_attempt(100), wait=wait_fixed(10), reraise=True):
