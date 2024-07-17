@@ -167,9 +167,10 @@ async def destroy_cluster(ops_test):
             # pytest_operator has a bug where the number of applications does not get correctly
             # updated. Wrapping the call with `fast_forward` resolves this
             async with ops_test.fast_forward():
-                assert (
-                    len(ops_test.model.applications) == 1
-                ), "old cluster not destroyed successfully."
+                n_applications = len(ops_test.model.applications)
+            # This case we don't raise an error in the context manager which
+            # fails to restore the `update-status-hook-interval` value to it's former state.
+            assert n_applications == 1, "old cluster not destroyed successfully."
 
 
 async def integrate_cluster(ops_test: OpsTest) -> None:
