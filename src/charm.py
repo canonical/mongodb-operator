@@ -230,9 +230,7 @@ class MongodbOperatorCharm(CharmBase):
         Returns:
             a list of IP address associated with MongoDB application.
         """
-        peer_addresses = []
-        if self.peers:
-            peer_addresses = [self.unit_ip(unit) for unit in self.peers_units]
+        peer_addresses = [self.unit_ip(unit) for unit in self.peers_units]
 
         logger.debug("peer addresses: %s", peer_addresses)
         self_address = self.unit_ip(self.unit)
