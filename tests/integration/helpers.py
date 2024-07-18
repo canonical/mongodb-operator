@@ -426,7 +426,7 @@ async def check_all_units_blocked_with_status(
         if status:
             assert (
                 unit.workload_status.message == status
-            ), f"unit {unit.name} not in blocked state, in {unit.workload_status} with message {unit.workload_status.message} and expected '{status}'"
+            ), f"unit {unit.name} not in blocked state, in {unit.workload_status}"
 
 
 async def wait_for_mongodb_units_blocked(

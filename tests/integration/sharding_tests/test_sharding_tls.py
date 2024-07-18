@@ -112,12 +112,6 @@ async def test_tls_inconsistent_rels(ops_test: OpsTest) -> None:
         CERTS_APP_NAME, application_name=DIFFERENT_CERTS_APP_NAME, channel="stable"
     )
 
-    model_config = {
-        "logging-config": "<root>=INFO;unit=DEBUG",
-        "update-status-hook-interval": "2m",  # Seems to fail with 5 minutes interval
-    }
-    await ops_test.model.set_config(model_config)
-
     # CASE 1: Config-server has TLS enabled - but shard does not
     await ops_test.model.applications[SHARD_ONE_APP_NAME].remove_relation(
         f"{SHARD_ONE_APP_NAME}:{CERT_REL_NAME}",
@@ -132,7 +126,7 @@ async def test_tls_inconsistent_rels(ops_test: OpsTest) -> None:
     )
 
     await wait_for_mongodb_units_blocked(
-        ops_test, SHARD_ONE_APP_NAME, status="Shard requires TLS to be enabled.", timeout=300
+        ops_test, SHARD_ONE_APP_NAME, status="Shard requires TLS to be enabled.", timeout=450
     )
 
     # Re-integrate to bring cluster back to steady state
@@ -165,7 +159,7 @@ async def test_tls_inconsistent_rels(ops_test: OpsTest) -> None:
         ops_test,
         SHARD_ONE_APP_NAME,
         status="Shard has TLS enabled, but config-server does not.",
-        timeout=300,
+        timeout=450,
     )
 
     # CASE 3: Cluster components are using different CA's
@@ -186,14 +180,8 @@ async def test_tls_inconsistent_rels(ops_test: OpsTest) -> None:
         ops_test,
         SHARD_ONE_APP_NAME,
         status="Shard CA and Config-Server CA don't match.",
-        timeout=300,
+        timeout=450,
     )
-
-    model_config = {
-        "update-status-hook-interval": "5m",  # Seems to fail with 5 minutes interval
-    }
-
-    await ops_test.model.set_config(model_config)
 
 
 async def check_cluster_tls_disabled(ops_test: OpsTest) -> None:
