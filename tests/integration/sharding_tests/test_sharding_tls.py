@@ -112,7 +112,10 @@ async def test_tls_inconsistent_rels(ops_test: OpsTest) -> None:
         CERTS_APP_NAME, application_name=DIFFERENT_CERTS_APP_NAME, channel="stable"
     )
 
-    model_config = {"logging-config": "<root>=INFO;unit=DEBUG"}
+    model_config = {
+        "logging-config": "<root>=INFO;unit=DEBUG",
+        "update-status-hook-interval": "2m",  # Seems to fail with 5 minutes interval
+    }
     await ops_test.model.set_config(model_config)
 
     # CASE 1: Config-server has TLS enabled - but shard does not
@@ -185,6 +188,12 @@ async def test_tls_inconsistent_rels(ops_test: OpsTest) -> None:
         status="Shard CA and Config-Server CA don't match.",
         timeout=300,
     )
+
+    model_config = {
+        "update-status-hook-interval": "5m",  # Seems to fail with 5 minutes interval
+    }
+
+    await ops_test.model.set_config(model_config)
 
 
 async def check_cluster_tls_disabled(ops_test: OpsTest) -> None:
