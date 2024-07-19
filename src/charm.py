@@ -314,7 +314,7 @@ class MongodbOperatorCharm(CharmBase):
 
     @property
     def peers_units(self) -> list[Unit]:
-        """Peers units in a safe way."""
+        """Get peers units in a safe way."""
         if not self.peers:
             return []
         else:
