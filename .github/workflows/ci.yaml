@@ -96,11 +96,12 @@ jobs:
       - lint
       - unit-test
       - build
-    uses: canonical/data-platform-workflows/.github/workflows/integration_test_charm.yaml@v13.1.1
+    uses: canonical/data-platform-workflows/.github/workflows/integration_test_charm.yaml@e89d93b3bb34a7c437566249bd4969d6728ca9dd
     with:
       artifact-prefix: packed-charm-cache-true
       cloud: lxd
       juju-agent-version: 3.1.7
+      _beta_upterm: true
     permissions:
       contents: write # Needed for Allure Report beta
     secrets:
