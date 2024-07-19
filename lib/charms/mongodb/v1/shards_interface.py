@@ -118,9 +118,12 @@ class ShardingProvider(Object):
     def _on_relation_joined(self, event):
         """Handles providing shards with secrets and adding shards to the config server."""
         if not self.pass_hook_checks(event):
-            logger.info("Skipping relation joined event: hook checks did not pass")
+            logger.info(
+                f"Skipping relation joined event with {event.application}: hook checks did not pass"
+            )
             return
 
+        logger.info("Writing secrets to databag")
         relation_data = {
             OPERATOR_PASSWORD_KEY: self.charm.get_secret(
                 Config.Relations.APP_SCOPE,
