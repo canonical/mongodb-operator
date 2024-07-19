@@ -123,7 +123,7 @@ class ShardingProvider(Object):
             )
             return
 
-        logger.info("Writing secrets to databag")
+        logger.info("Writing secrets to databag ({event.app=}/{event.unit=})")
         relation_data = {
             OPERATOR_PASSWORD_KEY: self.charm.get_secret(
                 Config.Relations.APP_SCOPE,
