@@ -119,7 +119,7 @@ class ShardingProvider(Object):
         """Handles providing shards with secrets and adding shards to the config server."""
         if not self.pass_hook_checks(event):
             logger.info(
-                f"Skipping relation joined event with {event.application}: hook checks did not pass"
+                f"Skipping relation joined event with {event.app=}/{event.unit=}: hook checks did not pass"
             )
             return
 
