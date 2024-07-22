@@ -183,7 +183,6 @@ class TestConfigServerInterface(unittest.TestCase):
         event.params = {}
         self.harness.charm.app_peer_data["db_initialised"] = "True"
 
-        self.harness.set_leader(False)
         self.harness.charm.config_server.pass_hook_checks(event)
         event.defer.assert_called()
 
@@ -219,7 +218,6 @@ class TestConfigServerInterface(unittest.TestCase):
         event.params = {}
         self.harness.charm.app_peer_data["db_initialised"] = "True"
 
-        self.harness.set_leader(False)
         self.harness.charm.shard.pass_hook_checks(event)
         event.defer.assert_called()
 
