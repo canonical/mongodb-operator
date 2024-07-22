@@ -63,7 +63,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 15
+LIBPATCH = 16
 KEYFILE_KEY = "key-file"
 HOSTS_KEY = "host"
 OPERATOR_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username())
@@ -156,7 +156,11 @@ class ShardingProvider(Object):
             return False
 
         if not self.charm.is_relation_feasible(self.relation_name):
-            logger.info("Skipping event %s , relation not feasible.", str(type(event)))
+            if self.charm.status.is_status_related_to_mismatched_revision(self.charm.unit.status):
+                logger.info("Deferring %s. Mismatched versions in the cluster.", str(type(event)))
+                event.defer()
+            else:
+                logger.info("Skipping event %s , relation not feasible.", str(type(event)))
             return False
 
         if not self.charm.is_role(Config.Role.CONFIG_SERVER):
@@ -767,7 +771,11 @@ class ConfigServerRequirer(Object):
             return False
 
         if not self.charm.is_relation_feasible(self.relation_name):
-            logger.info("Skipping event %s , relation not feasible.", str(type(event)))
+            if self.charm.status.is_status_related_to_mismatched_revision(self.charm.unit.status):
+                logger.info("Deferring %s. Mismatched versions in the cluster.", str(type(event)))
+                event.defer()
+            else:
+                logger.info("Skipping event %s , relation not feasible.", str(type(event)))
             return False
 
         if not self.charm.is_role(Config.Role.SHARD):

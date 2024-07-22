@@ -125,7 +125,14 @@ class TestConfigServerInterface(unittest.TestCase):
         self.harness.charm.config_server.pass_hook_checks(event)
         event.defer.assert_not_called()
 
-    def test_pass_hooks_check_waits_for_start_shard(self):
+    @mock.patch("data_platform_helpers.version_check.CrossAppVersionChecker.is_local_charm")
+    @mock.patch(
+        "data_platform_helpers.version_check.CrossAppVersionChecker.is_integrated_to_locally_built_charm"
+    )
+    @mock.patch("charm.get_charm_revision")
+    def test_pass_hooks_check_waits_for_start_shard(
+        self, get_rev, is_local, is_integrated_to_local
+    ):
         """Ensure that pass_hooks defers until the database is initialized.
 
         Note: in some cases sharding related hooks execute before config and leader elected hooks,
