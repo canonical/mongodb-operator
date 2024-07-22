@@ -24,7 +24,6 @@ TIMEOUT = 60 * 30
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy a sharded cluster."""
     my_charm = await ops_test.build_charm(".")
-    print(my_charm)
     await ops_test.model.deploy(
         my_charm,
         num_units=2,
