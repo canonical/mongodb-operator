@@ -161,7 +161,7 @@ class TestConfigServerInterface(unittest.TestCase):
         self.harness.charm.shard.pass_hook_checks(event)
         event.defer.assert_not_called()
 
-    def test_defer_if_no_version(self):
+    def test_defer_if_no_version_config_server(self):
         """Ensure that pass_hooks defers until we have matching versions."""
 
         def is_config_mock_call(*args):
@@ -193,5 +193,5 @@ class TestConfigServerInterface(unittest.TestCase):
         )
         event = mock.Mock()
         event.params = {}
-        self.harness.charm.shard.pass_hook_checks(event)
+        self.harness.charm.config_server.pass_hook_checks(event)
         event.defer.assert_not_called()
