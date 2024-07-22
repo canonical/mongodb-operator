@@ -362,13 +362,15 @@ async def get_unit_hostname(ops_test: OpsTest, unit_id: int, app: str) -> str:
     return hostname.strip()
 
 
-def get_raw_application(ops_test: OpsTest, app: str) -> Dict[str, Any]:
+async def get_raw_application(ops_test: OpsTest, app: str) -> Dict[str, Any]:
     """Get raw application details."""
-    return json.loads(
-        subprocess.check_output(
-            f"juju status --model {ops_test.model.info.name} {app} --format=json".split()
-        )
-    )["applications"][app]
+    ret_code, stdout, stderr = await ops_test.juju(
+        *f"status --model {ops_test.model.info.name} {app} --format=json".split()
+    )
+    if ret_code != 0:
+        logger.error(f"Invalid return [{ret_code=}]: {stderr=}")
+        raise Exception(f"[{ret_code=}] {stderr=}")
+    return json.loads(stdout)["applications"][app]
 
 
 async def get_application_units(ops_test: OpsTest, app: str) -> List[Unit]:
@@ -376,7 +378,7 @@ async def get_application_units(ops_test: OpsTest, app: str) -> List[Unit]:
     # Juju incorrectly reports the IP addresses after the network is restored this is reported as a
     # bug here: https://github.com/juju/python-libjuju/issues/738. Once this bug is resolved use of
     # `get_unit_ip` should be replaced with `.public_address`
-    raw_app = get_raw_application(ops_test, app)
+    raw_app = await get_raw_application(ops_test, app)
     units = []
     for u_name, unit in raw_app["units"].items():
         unit_id = int(u_name.split("/")[-1])
