@@ -773,7 +773,9 @@ class ConfigServerRequirer(Object):
             return False
 
         if not self.charm.is_relation_feasible(self.relation_name):
-            if self.charm.status.is_status_related_to_mismatched_revision(self.charm.unit.status):
+            if self.charm.status.is_status_related_to_mismatched_revision(
+                self.charm.unit.status.name
+            ):
                 logger.info("Deferring %s. Mismatched versions in the cluster.", str(type(event)))
                 event.defer()
             else:
