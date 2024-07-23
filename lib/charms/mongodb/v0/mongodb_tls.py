@@ -333,13 +333,6 @@ class MongoDBTLS(Object):
 
         return ca_file, pem_file
 
-    def get_host(self, unit: Unit):
-        """Retrieves the hostname of the unit based on the substrate."""
-        if self.substrate == "vm":
-            return self.charm.unit_ip(unit)
-        else:
-            return self.charm.get_hostname_for_unit(unit)
-
     def set_tls_secret(self, internal: bool, label_name: str, contents: str) -> None:
         """Sets TLS secret, based on whether or not it is related to internal connections."""
         scope = "int" if internal else "ext"
