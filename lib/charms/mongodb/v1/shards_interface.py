@@ -159,15 +159,15 @@ class ShardingProvider(Object):
             event.defer()
             return False
 
-        if not self.charm.is_relation_feasible(self.relation_name):
-            self.__handle_relation_not_feasible(event)
-            return False
-
         if not self.charm.is_role(Config.Role.CONFIG_SERVER):
             logger.info(
                 "Skipping %s. ShardingProvider is only be executed by config-server",
                 str(type(event)),
             )
+            return False
+
+        if not self.charm.is_relation_feasible(self.relation_name):
+            self.__handle_relation_not_feasible(event)
             return False
 
         if not self.charm.unit.is_leader():
@@ -777,12 +777,12 @@ class ConfigServerRequirer(Object):
             event.defer()
             return False
 
-        if not self.charm.is_relation_feasible(self.relation_name):
-            self.__handle_relation_not_feasible(event)
-            return False
-
         if not self.charm.is_role(Config.Role.SHARD):
             logger.info("skipping %s is only be executed by shards", str(type(event)))
+            return False
+
+        if not self.charm.is_relation_feasible(self.relation_name):
+            self.__handle_relation_not_feasible(event)
             return False
 
         return True
