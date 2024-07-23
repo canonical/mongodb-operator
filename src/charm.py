@@ -28,7 +28,6 @@ from charms.mongodb.v1.helpers import (
     TLS_EXT_PEM_FILE,
     TLS_INT_CA_FILE,
     TLS_INT_PEM_FILE,
-    build_unit_status,
     copy_licenses_to_unit,
     generate_keyfile,
     generate_password,
@@ -78,7 +77,7 @@ from ops.model import (
     Unit,
     WaitingStatus,
 )
-from pymongo.errors import OperationFailure, ServerSelectionTimeoutError
+from pymongo.errors import ServerSelectionTimeoutError
 from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
 from config import Config, Package
@@ -94,10 +93,6 @@ from machine_helpers import (
     update_mongod_service,
 )
 from upgrades.mongodb_upgrade import MongoDBUpgrade
-
-AUTH_FAILED_CODE = 18
-UNAUTHORISED_CODE = 13
-TLS_CANNOT_FIND_PRIMARY = 133
 
 
 logger = logging.getLogger(__name__)
@@ -686,7 +681,7 @@ class MongodbOperatorCharm(CharmBase):
             deployment_mode = "replica set" if self.is_role(Config.Role.REPLICATION) else "cluster"
             WaitingStatus(f"Waiting to sync internal membership across the {deployment_mode}")
 
-        self.status.set_and_share_status(self.process_statuses())
+        self.status.set_and_share_status(self.status.process_statuses())
 
     def _on_get_primary_action(self, event: ActionEvent):
         event.set_results({"replica-set-primary": self.primary})
@@ -1535,61 +1530,6 @@ class MongodbOperatorCharm(CharmBase):
             )
 
         return self.get_cluster_mismatched_revision_status()
-
-    def get_statuses(self) -> Tuple:
-        """Retrieves statuses for the different processes running inside the unit."""
-        mongodb_status = build_unit_status(self.mongodb_config, self.unit_host(self.unit))
-        shard_status = self.shard.get_shard_status()
-        config_server_status = self.config_server.get_config_server_status()
-        pbm_status = self.backups.get_pbm_status()
-        return (mongodb_status, shard_status, config_server_status, pbm_status)
-
-    def prioritize_statuses(self, statuses: Tuple) -> StatusBase:
-        """Returns the status with the highest priority from backups, sharding, and mongod."""
-        mongodb_status, shard_status, config_server_status, pbm_status = statuses
-        # failure in mongodb takes precedence over sharding and config server
-        if not isinstance(mongodb_status, ActiveStatus):
-            return mongodb_status
-
-        if shard_status and not isinstance(shard_status, ActiveStatus):
-            return shard_status
-
-        if config_server_status and not isinstance(config_server_status, ActiveStatus):
-            return config_server_status
-
-        if pbm_status and not isinstance(pbm_status, ActiveStatus):
-            return pbm_status
-
-        # if all statuses are active report mongodb status over sharding status
-        return mongodb_status
-
-    def process_statuses(self) -> StatusBase:
-        """Retrieves statuses from processes inside charm and returns the highest priority status.
-
-        When a non-fatal error occurs while processing statuses, the error is processed and
-        returned as a statuses.
-        """
-        # retrieve statuses of different services running on Charmed MongoDB
-        deployment_mode = "replica set" if self.is_role(Config.Role.REPLICATION) else "cluster"
-        waiting_status = None
-        try:
-            statuses = self.get_statuses()
-        except OperationFailure as e:
-            if e.code in [UNAUTHORISED_CODE, AUTH_FAILED_CODE]:
-                waiting_status = f"Waiting to sync passwords across the {deployment_mode}"
-            elif e.code == TLS_CANNOT_FIND_PRIMARY:
-                waiting_status = (
-                    f"Waiting to sync internal membership across the {deployment_mode}"
-                )
-            else:
-                raise
-        except ServerSelectionTimeoutError:
-            waiting_status = f"Waiting to sync internal membership across the {deployment_mode}"
-
-        if waiting_status:
-            return WaitingStatus(waiting_status)
-
-        return self.prioritize_statuses(statuses)
 
     def is_relation_feasible(self, rel_interface) -> bool:
         """Returns true if the proposed relation is feasible."""
