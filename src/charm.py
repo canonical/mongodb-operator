@@ -1662,8 +1662,6 @@ class MongodbOperatorCharm(CharmBase):
                 return BlockedStatus(
                     f"Charm revision ({current_charms_version}{local_identifier}) is not up-to date with config-server."
                 )
-            if self.is_role(Config.Role.CONFIG_SERVER):
-                return WaitingStatus("No information received yet from at least one shard.")
 
         if self.is_role(Config.Role.SHARD):
             config_server_revision = self.version_checker.get_version_of_related_app(

@@ -145,6 +145,13 @@ class ShardingProvider(Object):
 
         self.database_provides.update_relation_data(event.relation.id, relation_data)
 
+    def __handle_relation_not_feasible(self, event: EventBase):
+        if self.charm.status.is_status_related_to_mismatched_revision(self.charm.unit.status.name):
+            logger.info("Deferring %s. Mismatched versions in the cluster.", str(type(event)))
+            event.defer()
+        else:
+            logger.info("Skipping event %s , relation not feasible.", str(type(event)))
+
     def pass_sanity_hook_checks(self, event: EventBase) -> bool:
         """Returns True if all the sanity hook checks for sharding pass."""
         if not self.charm.db_initialised:
@@ -153,13 +160,7 @@ class ShardingProvider(Object):
             return False
 
         if not self.charm.is_relation_feasible(self.relation_name):
-            if self.charm.status.is_status_related_to_mismatched_revision(
-                self.charm.unit.status.name
-            ):
-                logger.info("Deferring %s. Mismatched versions in the cluster.", str(type(event)))
-                event.defer()
-            else:
-                logger.info("Skipping event %s , relation not feasible.", str(type(event)))
+            self.__handle_relation_not_feasible(event)
             return False
 
         if not self.charm.is_role(Config.Role.CONFIG_SERVER):
@@ -762,6 +763,13 @@ class ConfigServerRequirer(Object):
 
         return self.pass_tls_hook_checks(event)
 
+    def __handle_relation_not_feasible(self, event: EventBase):
+        if self.charm.status.is_status_related_to_mismatched_revision(self.charm.unit.status.name):
+            logger.info("Deferring %s. Mismatched versions in the cluster.", str(type(event)))
+            event.defer()
+        else:
+            logger.info("Skipping event %s , relation not feasible.", str(type(event)))
+
     def pass_sanity_hook_checks(self, event: EventBase) -> bool:
         """Returns True if all the sanity hook checks for sharding pass."""
         if not self.charm.db_initialised:
@@ -770,13 +778,7 @@ class ConfigServerRequirer(Object):
             return False
 
         if not self.charm.is_relation_feasible(self.relation_name):
-            if self.charm.status.is_status_related_to_mismatched_revision(
-                self.charm.unit.status.name
-            ):
-                logger.info("Deferring %s. Mismatched versions in the cluster.", str(type(event)))
-                event.defer()
-            else:
-                logger.info("Skipping event %s , relation not feasible.", str(type(event)))
+            self.__handle_relation_not_feasible(event)
             return False
 
         if not self.charm.is_role(Config.Role.SHARD):
