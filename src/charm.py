@@ -20,7 +20,6 @@ from charms.mongodb.v0.mongodb import (
     PyMongoError,
 )
 from charms.mongodb.v0.mongodb_secrets import SecretCache, generate_secret_label
-from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.set_status import MongoDBStatusHandler
 from charms.mongodb.v1.helpers import (
     KEY_FILE,
@@ -35,6 +34,7 @@ from charms.mongodb.v1.helpers import (
 )
 from charms.mongodb.v1.mongodb_backups import MongoDBBackups
 from charms.mongodb.v1.mongodb_provider import MongoDBProvider
+from charms.mongodb.v1.mongodb_tls import MongoDBTLS
 from charms.mongodb.v1.mongodb_vm_legacy_provider import MongoDBLegacyProvider
 from charms.mongodb.v1.mongos import MongosConfiguration
 from charms.mongodb.v1.shards_interface import ConfigServerRequirer, ShardingProvider
