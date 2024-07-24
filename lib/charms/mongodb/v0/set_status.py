@@ -240,7 +240,7 @@ def build_unit_status(mongodb_config: MongoDBConfiguration, unit_host: str) -> S
                     return ActiveStatus("Primary")
                 case "SECONDARY":
                     return ActiveStatus("")
-                case  "STARTUP" | "STARTUP2" | "ROLLBACK" | "RECOVERING":
+                case "STARTUP" | "STARTUP2" | "ROLLBACK" | "RECOVERING":
                     return WaitingStatus("Member is syncing...")
                 case "REMOVED":
                     return WaitingStatus("Member is removing...")
