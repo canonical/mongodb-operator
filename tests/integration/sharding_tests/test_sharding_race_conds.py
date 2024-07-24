@@ -58,18 +58,22 @@ async def test_immediate_relate(ops_test: OpsTest) -> None:
         f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
     )
 
-    await ops_test.model.wait_for_idle(
-        apps=[
-            CONFIG_SERVER_APP_NAME,
-            SHARD_ONE_APP_NAME,
-            SHARD_TWO_APP_NAME,
-            SHARD_THREE_APP_NAME,
-        ],
-        idle_period=20,
-        status="active",
-        timeout=TIMEOUT,
-        raise_on_error=False,
-    )
+    # This test mainly fails on GH runners due to to low timeout (still 30 mins) +
+    # update-status-hook-interval to be too high.
+    # Safe to use here because `wait_for_idle` cannot raise an error.
+    async with ops_test.fast_forward("3m"):
+        await ops_test.model.wait_for_idle(
+            apps=[
+                CONFIG_SERVER_APP_NAME,
+                SHARD_ONE_APP_NAME,
+                SHARD_TWO_APP_NAME,
+                SHARD_THREE_APP_NAME,
+            ],
+            idle_period=20,
+            status="active",
+            timeout=TIMEOUT,
+            raise_on_error=False,
+        )
 
     mongos_client = await generate_mongodb_client(
         ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True

@@ -71,6 +71,7 @@ from ops.charm import (
 from ops.main import main
 from ops.model import (
     ActiveStatus,
+    Application,
     BlockedStatus,
     MaintenanceStatus,
     Relation,
@@ -1075,7 +1076,7 @@ class MongodbOperatorCharm(CharmBase):
 
     def _instatiate_keyfile(self, event: StartEvent) -> None:
         # wait for keyFile to be created by leader unit
-        if not self.get_secret(APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME):
+        if not (keyfile := self.get_secret(APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME)):
             logger.debug("waiting for leader unit to generate keyfile contents")
             event.defer()
             return
@@ -1084,7 +1085,7 @@ class MongodbOperatorCharm(CharmBase):
         self.push_file_to_unit(
             parent_dir=Config.MONGOD_CONF_DIR,
             file_name=KEY_FILE,
-            file_contents=self.get_secret(APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME),
+            file_contents=keyfile,
         )
 
     def get_keyfile_contents(self) -> str:
@@ -1443,7 +1444,7 @@ class MongodbOperatorCharm(CharmBase):
         charmed_mongodb_snap = snap_cache["charmed-mongodb"]
         charmed_mongodb_snap.restart(services=["pbm-agent"])
 
-    def _scope_obj(self, scope: Scopes):
+    def _scope_obj(self, scope: Scopes) -> Application | Unit:
         if scope == APP_SCOPE:
             return self.app
         if scope == UNIT_SCOPE:
