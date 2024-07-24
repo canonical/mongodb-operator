@@ -9,7 +9,7 @@ import pwd
 import subprocess
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set
 
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from charms.mongodb.v0.config_server_interface import ClusterProvider
@@ -93,7 +93,6 @@ from machine_helpers import (
     update_mongod_service,
 )
 from upgrades.mongodb_upgrade import MongoDBUpgrade
-
 
 logger = logging.getLogger(__name__)
 

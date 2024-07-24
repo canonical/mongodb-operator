@@ -22,7 +22,7 @@ from charms.tls_certificates_interface.v3.tls_certificates import (
 )
 from ops.charm import ActionEvent, RelationBrokenEvent, RelationJoinedEvent
 from ops.framework import Object
-from ops.model import ActiveStatus, MaintenanceStatus, Unit, WaitingStatus
+from ops.model import ActiveStatus, MaintenanceStatus, WaitingStatus
 
 from config import Config
 

@@ -11,12 +11,7 @@ import subprocess
 from typing import List
 
 from charms.mongodb.v0.mongodb import MongoDBConfiguration
-from ops.model import (
-    ActiveStatus,
-    MaintenanceStatus,
-    StatusBase,
-    WaitingStatus,
-)
+from ops.model import ActiveStatus, MaintenanceStatus, StatusBase, WaitingStatus
 
 from config import Config
 

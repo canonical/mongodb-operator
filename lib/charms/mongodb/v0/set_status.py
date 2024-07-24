@@ -4,25 +4,15 @@
 # See LICENSE file for licensing details.
 import json
 import logging
-
 from typing import Tuple
 
+from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 from ops.charm import CharmBase
 from ops.framework import Object
-from ops.model import ActiveStatus, StatusBase, WaitingStatus
+from ops.model import ActiveStatus, BlockedStatus, StatusBase, WaitingStatus
+from pymongo.errors import AutoReconnect, OperationFailure, ServerSelectionTimeoutError
 
 from config import Config
-from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
-from pymongo.errors import AutoReconnect, ServerSelectionTimeoutError, OperationFailure
-
-
-from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
-from ops.model import (
-    ActiveStatus,
-    BlockedStatus,
-    StatusBase,
-    WaitingStatus,
-)
 
 # The unique Charmhub library identifier, never change it
 LIBID = "9b0b9fac53244229aed5ffc5e62141eb"
@@ -207,7 +197,7 @@ class MongoDBStatusHandler(Object):
     def get_statuses(self) -> Tuple:
         """Retrieves statuses for the different processes running inside the unit."""
         mongodb_status = build_unit_status(
-            self.charm.mongodb_config, self.charm.unit_ip(self.charm.unit)
+            self.charm.mongodb_config, self.charm.unit_host(self.charm.unit)
         )
         shard_status = self.charm.shard.get_shard_status()
         config_server_status = self.charm.config_server.get_config_server_status()
@@ -234,16 +224,16 @@ class MongoDBStatusHandler(Object):
         return mongodb_status
 
 
-def build_unit_status(mongodb_config: MongoDBConfiguration, unit_ip: str) -> StatusBase:
+def build_unit_status(mongodb_config: MongoDBConfiguration, unit_host: str) -> StatusBase:
     """Generates the status of a unit based on its status reported by mongod."""
     try:
         with MongoDBConnection(mongodb_config) as mongo:
             replset_status = mongo.get_replset_status()
 
-            if unit_ip not in replset_status:
+            if unit_host not in replset_status:
                 return WaitingStatus("Member being added..")
 
-            replica_status = replset_status[unit_ip]
+            replica_status = replset_status[unit_host]
 
             if replica_status == "PRIMARY":
                 return ActiveStatus("Primary")
