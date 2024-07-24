@@ -1099,3 +1099,8 @@ class TestCharm(unittest.TestCase):
 
         self.harness.charm._connect_mongodb_exporter()
         mock_mongodb_snap.restart.assert_not_called()
+
+    @patch_network_get(private_address="1.1.1.1")
+    def test_unit_host(self):
+        """Tests that get hosts returns the current unit hosts."""
+        assert self.harness.charm.unit_host(self.harness.charm.unit) == "1.1.1.1"
