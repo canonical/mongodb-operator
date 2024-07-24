@@ -14,8 +14,8 @@ from collections import namedtuple
 from typing import List, Optional, Set
 
 from charms.data_platform_libs.v0.data_interfaces import DatabaseProvides
-from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 from charms.mongodb.v1.helpers import generate_password
+from charms.mongodb.v1.mongodb import MongoDBConfiguration, MongoDBConnection
 from ops.charm import CharmBase, EventBase, RelationBrokenEvent, RelationChangedEvent
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, Relation

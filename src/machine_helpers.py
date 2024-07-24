@@ -5,7 +5,6 @@
 import logging
 
 import jinja2
-from charms.mongodb.v0.mongodb import MongoDBConfiguration
 from charms.mongodb.v1.helpers import (
     LOG_DIR,
     MONGODB_COMMON_DIR,
@@ -13,6 +12,7 @@ from charms.mongodb.v1.helpers import (
     get_mongod_args,
     get_mongos_args,
 )
+from charms.mongodb.v1.mongodb import MongoDBConfiguration
 
 from config import Config
 
