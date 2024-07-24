@@ -178,15 +178,14 @@ class MongoDBStatusHandler(Object):
         try:
             statuses = self.get_statuses()
         except OperationFailure as e:
-            match e.code:
-                case UNAUTHORISED_CODE | AUTH_FAILED_CODE:
-                    waiting_status = f"Waiting to sync passwords across the {deployment_mode}"
-                case TLS_CANNOT_FIND_PRIMARY:
-                    waiting_status = (
-                        f"Waiting to sync internal membership across the {deployment_mode}"
-                    )
-                case _:
-                    raise
+            if e.code in [UNAUTHORISED_CODE, AUTH_FAILED_CODE]:
+                waiting_status = f"Waiting to sync passwords across the {deployment_mode}"
+            elif e.code == TLS_CANNOT_FIND_PRIMARY:
+                waiting_status = (
+                    f"Waiting to sync internal membership across the {deployment_mode}"
+                )
+            else:
+                raise
         except ServerSelectionTimeoutError:
             waiting_status = f"Waiting to sync internal membership across the {deployment_mode}"
 
