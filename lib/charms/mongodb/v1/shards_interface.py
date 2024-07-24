@@ -145,7 +145,7 @@ class ShardingProvider(Object):
 
         self.database_provides.update_relation_data(event.relation.id, relation_data)
 
-    def __handle_relation_not_feasible(self, event: EventBase):
+    def _handle_relation_not_feasible(self, event: EventBase):
         if self.charm.status.is_status_related_to_mismatched_revision(self.charm.unit.status.name):
             logger.info("Deferring %s. Mismatched versions in the cluster.", str(type(event)))
             event.defer()
@@ -160,7 +160,7 @@ class ShardingProvider(Object):
             return False
 
         if not self.charm.is_relation_feasible(self.relation_name):
-            self.__handle_relation_not_feasible(event)
+            self._handle_relation_not_feasible(event)
             return False
 
         if not self.charm.is_role(Config.Role.CONFIG_SERVER):
@@ -763,7 +763,7 @@ class ConfigServerRequirer(Object):
 
         return self.pass_tls_hook_checks(event)
 
-    def __handle_relation_not_feasible(self, event: EventBase):
+    def _handle_relation_not_feasible(self, event: EventBase):
         if self.charm.status.is_status_related_to_mismatched_revision(self.charm.unit.status.name):
             logger.info("Deferring %s. Mismatched versions in the cluster.", str(type(event)))
             event.defer()
@@ -778,7 +778,7 @@ class ConfigServerRequirer(Object):
             return False
 
         if not self.charm.is_relation_feasible(self.relation_name):
-            self.__handle_relation_not_feasible(event)
+            self._handle_relation_not_feasible(event)
             return False
 
         if not self.charm.is_role(Config.Role.SHARD):
