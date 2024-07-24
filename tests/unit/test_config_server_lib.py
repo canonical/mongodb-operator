@@ -3,6 +3,7 @@
 import unittest
 from unittest import mock
 
+from ops import BlockedStatus, WaitingStatus
 from ops.testing import Harness
 
 from charm import MongodbOperatorCharm
@@ -106,7 +107,7 @@ class TestConfigServerInterface(unittest.TestCase):
         """
 
         def is_shard_mock_call(*args):
-            return args == ("shard")
+            return args == ("shard",)
 
         self.harness.charm.is_role = is_shard_mock_call
 
@@ -125,7 +126,14 @@ class TestConfigServerInterface(unittest.TestCase):
         self.harness.charm.config_server.pass_hook_checks(event)
         event.defer.assert_not_called()
 
-    def test_pass_hooks_check_waits_for_start_shard(self):
+    @mock.patch("data_platform_helpers.version_check.CrossAppVersionChecker.is_local_charm")
+    @mock.patch(
+        "data_platform_helpers.version_check.CrossAppVersionChecker.is_integrated_to_locally_built_charm"
+    )
+    @mock.patch("charm.get_charm_revision")
+    def test_pass_hooks_check_waits_for_start_shard(
+        self, get_rev, is_local, is_integrated_to_local
+    ):
         """Ensure that pass_hooks defers until the database is initialized.
 
         Note: in some cases sharding related hooks execute before config and leader elected hooks,
@@ -134,7 +142,7 @@ class TestConfigServerInterface(unittest.TestCase):
         """
 
         def is_config_mock_call(*args):
-            return args == ("config-server")
+            return args == ("config-server",)
 
         self.harness.charm.is_role = is_config_mock_call
 
@@ -150,5 +158,74 @@ class TestConfigServerInterface(unittest.TestCase):
         event = mock.Mock()
         event.params = {}
         self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.shard.pass_hook_checks(event)
+        event.defer.assert_not_called()
+
+    def test_defer_if_no_version_config_server(self):
+        """Ensure that pass_hooks defers until we have matching versions."""
+
+        def is_config_mock_call(*args):
+            return args == ("config-server",)
+
+        def get_cluster_mismatched_revision_status_mock_fail(*unused):
+            return WaitingStatus("No info")
+
+        def get_cluster_mismatched_revision_status_mock_success(*unused):
+            return None
+
+        self.harness.charm.is_role = is_config_mock_call
+
+        self.harness.charm.get_cluster_mismatched_revision_status = (
+            get_cluster_mismatched_revision_status_mock_fail
+        )
+
+        event = mock.Mock()
+        event.params = {}
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
+
+        self.harness.charm.config_server.pass_hook_checks(event)
+        event.defer.assert_called()
+
+        # If we return a matching revision status, then we won't defer anymore.
+        self.harness.charm.get_cluster_mismatched_revision_status = (
+            get_cluster_mismatched_revision_status_mock_success
+        )
+        event = mock.Mock()
+        event.params = {}
+        self.harness.charm.config_server.pass_hook_checks(event)
+        event.defer.assert_not_called()
+
+    def test_defer_if_no_version_shard(self):
+        """Ensure that pass_hooks defers until we have matching versions."""
+
+        def is_config_mock_call(*args):
+            return args == ("shard",)
+
+        def get_cluster_mismatched_revision_status_mock_fail(*unused):
+            return BlockedStatus("No info")
+
+        def get_cluster_mismatched_revision_status_mock_success(*unused):
+            return None
+
+        self.harness.charm.is_role = is_config_mock_call
+
+        # First, we'll return a blocked status because it should defer.
+        self.harness.charm.get_cluster_mismatched_revision_status = (
+            get_cluster_mismatched_revision_status_mock_fail
+        )
+
+        event = mock.Mock()
+        event.params = {}
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
+
+        self.harness.charm.shard.pass_hook_checks(event)
+        event.defer.assert_called()
+
+        # Then, if we return a matching revision status, then we won't defer anymore.
+        self.harness.charm.get_cluster_mismatched_revision_status = (
+            get_cluster_mismatched_revision_status_mock_success
+        )
+        event = mock.MagicMock()
+        event.params = {}
         self.harness.charm.shard.pass_hook_checks(event)
         event.defer.assert_not_called()
