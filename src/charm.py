@@ -155,7 +155,7 @@ class MongodbOperatorCharm(CharmBase):
             ],
         )
         self.upgrade = MongoDBUpgrade(self)
-        self.config_server = ShardingProvider(self)
+        self.config_server = ShardingProvider(self, substrate="vm")
         self.cluster = ClusterProvider(self)
         self.shard = ConfigServerRequirer(self)
         self.status = MongoDBStatusHandler(self)
