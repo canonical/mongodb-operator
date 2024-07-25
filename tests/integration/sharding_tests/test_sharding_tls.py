@@ -126,7 +126,7 @@ async def test_tls_inconsistent_rels(ops_test: OpsTest) -> None:
     )
 
     await wait_for_mongodb_units_blocked(
-        ops_test, SHARD_ONE_APP_NAME, message="Shard requires TLS to be enabled.", timeout=450
+        ops_test, SHARD_ONE_APP_NAME, status="Shard requires TLS to be enabled.", timeout=450
     )
 
     # Re-integrate to bring cluster back to steady state
@@ -158,7 +158,7 @@ async def test_tls_inconsistent_rels(ops_test: OpsTest) -> None:
     await wait_for_mongodb_units_blocked(
         ops_test,
         SHARD_ONE_APP_NAME,
-        message="Shard has TLS enabled, but config-server does not.",
+        status="Shard has TLS enabled, but config-server does not.",
         timeout=450,
     )
 
@@ -179,7 +179,7 @@ async def test_tls_inconsistent_rels(ops_test: OpsTest) -> None:
     await wait_for_mongodb_units_blocked(
         ops_test,
         SHARD_ONE_APP_NAME,
-        message="Shard CA and Config-Server CA don't match.",
+        status="Shard CA and Config-Server CA don't match.",
         timeout=450,
     )
 
