@@ -282,7 +282,9 @@ async def start_continous_writes(ops_test: OpsTest, starting_number: int) -> Non
     )
 
 
-async def stop_continous_writes(ops_test: OpsTest, down_unit=None, app_name=None) -> int:
+async def stop_continous_writes(
+    ops_test: OpsTest, down_unit=None, app_name=None
+) -> dict[str, any]:
     """Stops continuous writes to MongoDB and returns the last written value.
 
     In the future this should be put in a dummy charm.

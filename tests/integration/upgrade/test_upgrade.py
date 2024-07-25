@@ -24,6 +24,7 @@ async def continuous_writes(ops_test: OpsTest):
     await ha_helpers.clear_db_writes(ops_test)
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy one unit of MongoDB."""
@@ -44,7 +45,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     )
 
 
-@pytest.mark.skip("re-enable these tests once upgrades are functioning")
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_upgrade(ops_test: OpsTest, continuous_writes) -> None:
     """Verifies that the upgrade can run successfully."""
@@ -72,6 +73,7 @@ async def test_upgrade(ops_test: OpsTest, continuous_writes) -> None:
     assert total_expected_writes["number"] == actual_writes
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_preflight_check(ops_test: OpsTest) -> None:
     """Verifies that the preflight check can run successfully."""
@@ -87,6 +89,7 @@ async def test_preflight_check(ops_test: OpsTest) -> None:
     )
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_preflight_check_failure(ops_test: OpsTest) -> None:
     """Verifies that the preflight check can run successfully."""

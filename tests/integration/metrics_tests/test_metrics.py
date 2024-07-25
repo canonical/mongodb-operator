@@ -23,6 +23,7 @@ MONGODB_EXPORTER_PORT = 9216
 MEDIAN_REELECTION_TIME = 12
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.skipif(
     os.environ.get("PYTEST_SKIP_DEPLOY", False),
@@ -42,6 +43,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await ops_test.model.wait_for_idle()
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_endpoints(ops_test: OpsTest):
     """Sanity check that endpoints are running."""
@@ -52,6 +54,7 @@ async def test_endpoints(ops_test: OpsTest):
         await verify_endpoints(ops_test, unit)
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_endpoints_new_password(ops_test: OpsTest):
     """Verify that endpoints still function correctly after the monitor user password changes."""
@@ -67,6 +70,7 @@ async def test_endpoints_new_password(ops_test: OpsTest):
         await verify_endpoints(ops_test, unit)
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_endpoints_network_cut(ops_test: OpsTest):
     """Verify that endpoint still function correctly after a network cut."""
