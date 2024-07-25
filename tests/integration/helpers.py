@@ -415,22 +415,22 @@ async def get_application_units(ops_test: OpsTest, app: str) -> List[Unit]:
     return units
 
 
-async def check_all_units_blocked_with_status(
-    ops_test: OpsTest, db_app_name: str, status: Optional[str]
+async def check_all_units_with_status_and_message(
+    ops_test: OpsTest, app_name: str, status: str, message: Optional[str]
 ) -> None:
     # this is necessary because ops_model.units does not update the unit statuses
-    for unit in await get_application_units(ops_test, db_app_name):
+    for unit in await get_application_units(ops_test, app_name):
         assert (
-            unit.workload_status.value == "blocked"
-        ), f"unit {unit.name} not in blocked state, in {unit.workload_status}"
-        if status:
+            unit.workload_status.value == status
+        ), f"unit {unit.name} not in {status} state, in {unit.workload_status}"
+        if message:
             assert (
-                unit.workload_status.message == status
-            ), f"unit {unit.name} not in blocked state, in {unit.workload_status}"
+                unit.workload_status.message == message
+            ), f"unit {unit.name} not in {status} state, in {unit.workload_status}"
 
 
 async def wait_for_mongodb_units_blocked(
-    ops_test: OpsTest, db_app_name: str, status: Optional[str] = None, timeout=20
+    ops_test: OpsTest, db_app_name: str, message: Optional[str] = None, timeout=20
 ) -> None:
     """Waits for units of MongoDB to be in the blocked state.
 
@@ -438,4 +438,15 @@ async def wait_for_mongodb_units_blocked(
     """
     for attempt in Retrying(stop=stop_after_delay(timeout), wait=wait_fixed(1), reraise=True):
         with attempt:
-            await check_all_units_blocked_with_status(ops_test, db_app_name, status)
+            await check_all_units_with_status_and_message(
+                ops_test, db_app_name, "blocked", message
+            )
+
+
+async def wait_for_application_units_active_with_message(
+    ops_test: OpsTest, app_name: str, message: str, timeout=20
+):
+    """Waits for units of the application to be in active state with the specified message."""
+    for attempt in Retrying(stop=stop_after_delay(timeout), wait=wait_fixed(1), reraise=True):
+        with attempt:
+            await check_all_units_with_status_and_message(ops_test, app_name, "active", message)

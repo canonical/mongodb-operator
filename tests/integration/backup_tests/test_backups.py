@@ -82,7 +82,7 @@ async def test_blocked_incorrect_creds(ops_test: OpsTest) -> None:
     await ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active")
 
     await wait_for_mongodb_units_blocked(
-        ops_test, db_app_name, status="s3 credentials are incorrect.", timeout=300
+        ops_test, db_app_name, message="s3 credentials are incorrect.", timeout=300
     )
 
 
@@ -98,7 +98,7 @@ async def test_blocked_incorrect_conf(ops_test: OpsTest, github_secrets) -> None
     # wait for both applications to be idle with the correct statuses
     ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active")
     await wait_for_mongodb_units_blocked(
-        ops_test, db_app_name, status="s3 configurations are incompatible.", timeout=300
+        ops_test, db_app_name, message="s3 configurations are incompatible.", timeout=300
     )
 
 

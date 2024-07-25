@@ -13,7 +13,11 @@ from pytest_operator.plugin import OpsTest
 from tenacity import RetryError
 
 from ...ha_tests.helpers import replica_set_primary
-from ...helpers import check_or_scale_app, get_app_name
+from ...helpers import (
+    check_or_scale_app,
+    get_app_name,
+    wait_for_application_units_active_with_message,
+)
 from .helpers import (
     get_application_relation_data,
     get_connection_string,
@@ -98,6 +102,10 @@ async def test_database_relation_with_charm_libraries(ops_test: OpsTest):
         f"{APPLICATION_APP_NAME}:{FIRST_DATABASE_RELATION_NAME}", db_app_name
     )
     await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active")
+
+    await wait_for_application_units_active_with_message(
+        ops_test, APPLICATION_APP_NAME, "received database credentials of the first database"
+    )
 
     connection_string = await get_connection_string(
         ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME
