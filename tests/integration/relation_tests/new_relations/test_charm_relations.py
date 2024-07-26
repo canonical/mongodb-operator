@@ -25,6 +25,7 @@ APPLICATION_APP_NAME = "application"
 DATABASE_METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 PORT = 27017
 DATABASE_APP_NAME = DATABASE_METADATA["name"]
+DATABASE_RELATION_NAME = "database"
 FIRST_DATABASE_RELATION_NAME = "first-database"
 SECOND_DATABASE_RELATION_NAME = "second-database"
 MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME = "multiple-database-clusters"
@@ -103,7 +104,7 @@ async def test_database_relation_with_charm_libraries(ops_test: OpsTest):
         lambda: is_relation_joined(
             ops_test,
             FIRST_DATABASE_RELATION_NAME,
-            "database",
+            DATABASE_RELATION_NAME,
         )
         is True,
         timeout=600,
