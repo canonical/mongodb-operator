@@ -36,6 +36,19 @@ lxc network set lxdbr0 ipv6.address none
 # bootstrap controller to lxd
 juju clouds
 juju bootstrap localhost overlord
+
+# Install environment dependencies
+sudo apt-get install python3-pip python3-venv -y --no-install-recommends
+python3 -m pip install pipx
+python3 -m pipx ensurepath
+          
+pipx install tox
+pipx install poetry
+pipx inject poetry poetry-plugin-export
+# TODO: Remove after https://github.com/python-poetry/poetry/pull/5980 is closed
+poetry config warnings.export false
+
+pipx install charmcraftcache
 ```
 
 Clone this repository:
@@ -48,7 +61,6 @@ Create and activate a virtualenv, and install the development requirements:
 ```shell
 virtualenv -p python3 venv
 source venv/bin/activate
-pip install -r requirements.txt
 ```
 
 
@@ -58,23 +70,26 @@ pip install -r requirements.txt
 tox run -e format                   # update your code according to linting rules
 tox run -e lint                     # code style
 tox run -e unit                     # unit tests
-tox run -e integration              # run all integration tests
-tox run -e charm-integration        # charm integration tests
-tox run -e ha-integration           # high-availability replication integration tests
-tox run -e relation-integration     # relation integration tests (legacy and new relations)
-tox                                 # runs 'lint' and 'unit' environments
+
+tox run -e integration --group='1' -m 'not unstable'                      # run all integration tests
+tox run -e integration -- 'tests/integration/test_charm.py' --group='1'   # charm integration tests
+...
+
+# In general, to run any integration test:
+tox run -e integration -- 'tests/integration/<path_to_test_module>.py' --group='1' # runs <test_module> tests
 ```
 
 Testing high availability on a production cluster can be done with:
 ```shell
-tox run -e ha-integration -- --model=<model_name>
+tox run -e integration -- 'tests/integration/ha_tests/test_ha.py' --group='1' --model=<model_name>
 ```
 
 Note if you'd like to test storage reuse in ha-testing, your storage must not be of the type `rootfs`. `rootfs` storage is tied to the machine lifecycle and does not stick around after unit removal. `rootfs` storage is used by default with `tox run -e ha-integration`. To test ha-testing for storage reuse: 
 ```shell
+juju add-model test
 juju create-storage-pool mongodb-ebs ebs volume-type=standard # create a storage pool
 juju deploy ./*charm --storage mongodb=mongodb-ebs,7G,1 # deploy 1 or more units of application with said storage pool
-tox run -e ha-integration -- --model=default # run tests in the model where you deployed the app 
+tox run -e integration -- 'tests/integration/ha_tests/test_ha.py' --group='1' --model=test # run tests in the model where you deployed the app 
 ```
 
 ## Build Charm
@@ -82,7 +97,7 @@ tox run -e ha-integration -- --model=default # run tests in the model where you 
 Build the charm in this git repository using:
 
 ```shell
-charmcraft pack
+tox run -e build-dev -- -v --bases-index='0'
 ```
 
 ## Deploy Charm
