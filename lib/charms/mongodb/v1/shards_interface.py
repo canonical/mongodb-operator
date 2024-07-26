@@ -90,11 +90,15 @@ class ShardingProvider(Object):
     """Manage relations between the config server and the shard, on the config-server's side."""
 
     def __init__(
-        self, charm: CharmBase, relation_name: str = Config.Relations.CONFIG_SERVER_RELATIONS_NAME
+        self,
+        charm: CharmBase,
+        relation_name: str = Config.Relations.CONFIG_SERVER_RELATIONS_NAME,
+        substrate="k8s",
     ) -> None:
         """Constructor for ShardingProvider object."""
         self.relation_name = relation_name
         self.charm = charm
+        self.substrate = substrate
         self.database_provides = DatabaseProvides(self.charm, relation_name=self.relation_name)
 
         super().__init__(charm, self.relation_name)
@@ -133,7 +137,7 @@ class ShardingProvider(Object):
             KEYFILE_KEY: self.charm.get_secret(
                 Config.Relations.APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME
             ),
-            HOSTS_KEY: json.dumps(self.charm.unit_ips),
+            HOSTS_KEY: json.dumps(self.charm.app_hosts),
         }
 
         # if tls enabled
@@ -343,7 +347,7 @@ class ShardingProvider(Object):
             return
 
         for relation in self.charm.model.relations[self.relation_name]:
-            self._update_relation_data(relation.id, {HOSTS_KEY: json.dumps(self.charm.unit_ips)})
+            self._update_relation_data(relation.id, {HOSTS_KEY: json.dumps(self.charm.app_hosts)})
 
     def update_ca_secret(self, new_ca: str) -> None:
         """Updates the new CA for all related shards."""
@@ -437,12 +441,20 @@ class ShardingProvider(Object):
         """Retrieves the hosts for a specified shard."""
         relations = self.model.relations[self.relation_name]
         for relation in relations:
-            if self._get_shard_name_from_relation(relation) == shard_name:
-                hosts = []
-                for unit in relation.units:
+            if self._get_shard_name_from_relation(relation) != shard_name:
+                continue
+
+            hosts = []
+            for unit in relation.units:
+                if self.substrate == "k8s":
+                    unit_name = unit.name.split("/")[0]
+                    unit_id = unit.name.split("/")[1]
+                    host_name = f"{unit_name}-{unit_id}.{unit_name}-endpoints"
+                    hosts.append(host_name)
+                else:
                     hosts.append(relation.data[unit].get("private-address"))
 
-                return hosts
+            return hosts
 
     def _get_shard_name_from_relation(self, relation):
         """Returns the name of a shard for a specified relation."""
@@ -483,7 +495,7 @@ class ShardingProvider(Object):
 
     def is_mongos_running(self) -> bool:
         """Returns true if mongos service is running."""
-        mongos_hosts = ",".join(self.charm.unit_ips)
+        mongos_hosts = ",".join(self.charm.app_hosts)
         uri = f"mongodb://{mongos_hosts}"
         with MongosConnection(None, uri) as mongo:
             return mongo.is_ready
@@ -1088,6 +1100,10 @@ class ConfigServerRequirer(Object):
     def _is_added_to_cluster(self) -> bool:
         """Returns True if the shard has been added to the cluster."""
         try:
+            # edge cases: not integrated to config-server or not yet received enough information
+            # to be added
+            if not self.get_config_server_name() or not self.get_mongos_hosts():
+                return False
             cluster_shards = self.get_shard_members()
             return self.charm.app.name in cluster_shards
         except OperationFailure as e:
