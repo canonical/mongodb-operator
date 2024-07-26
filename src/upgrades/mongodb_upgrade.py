@@ -287,14 +287,14 @@ class MongoDBUpgrade(Object):
 
         with MongoDBConnection(self.charm.mongodb_config) as mongod:
             unit_with_lowest_id = self._upgrade._sorted_units[-1]
-            if mongod.primary() == self.charm.unit_ip(unit_with_lowest_id):
+            if mongod.primary() == self.charm.unit_host(unit_with_lowest_id):
                 logger.debug(
                     "Not moving Primary before upgrade, primary is already on the last unit to upgrade."
                 )
                 return
 
             logger.debug("Moving primary to unit: %s", unit_with_lowest_id)
-            mongod.move_primary(new_primary_ip=self.charm.unit_ip(unit_with_lowest_id))
+            mongod.move_primary(new_primary_ip=self.charm.unit_host(unit_with_lowest_id))
 
     def _set_upgrade_status(self):
         # In the future if we decide to support app statuses, we will need to handle this
