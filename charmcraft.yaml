@@ -15,9 +15,10 @@ parts:
       - setuptools
       - cryptography
     build-packages:
-      - git
+      - build-essential
       - libffi-dev
       - libssl-dev
+      - pkg-config
       - rustc
       - cargo
     prime:
