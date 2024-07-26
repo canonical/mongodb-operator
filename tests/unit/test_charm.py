@@ -182,7 +182,7 @@ class TestCharm(unittest.TestCase):
         with self.assertRaises(subprocess.CalledProcessError):
             with self.assertLogs("charm", "ERROR") as logs:
                 self.harness.charm._open_ports_tcp([27017])
-                self.assertIn("failed opening port 27017", "".join(logs.output))
+                self.assertTrue("failed opening port 27017" in "".join(logs.output))
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.update_mongod_service")
