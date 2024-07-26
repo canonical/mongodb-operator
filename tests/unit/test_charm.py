@@ -9,13 +9,7 @@ from unittest.mock import MagicMock, call, patch
 
 import pytest
 from charms.operator_libs_linux.v2 import snap
-from ops.model import (
-    ActiveStatus,
-    BlockedStatus,
-    MaintenanceStatus,
-    ModelError,
-    WaitingStatus,
-)
+from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from ops.testing import Harness
 from parameterized import parameterized
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
@@ -828,7 +822,7 @@ class TestCharm(unittest.TestCase):
         self.harness.set_leader(False)
 
         # Getting current password
-        with self.assertRaises(ModelError):
+        with self.assertRaises(RuntimeError):
             self.harness.charm.set_secret("app", "monitor-password", "bla")
 
     @parameterized.expand([("app"), ("unit")])
@@ -862,11 +856,11 @@ class TestCharm(unittest.TestCase):
 
         # Reset new secret
         self.harness.set_leader(False)
-        with self.assertRaises(ModelError):
+        with self.assertRaises(RuntimeError):
             self.harness.charm.set_secret("app", "new-secret", "blablabla")
 
         # Set another new secret
-        with self.assertRaises(ModelError):
+        with self.assertRaises(RuntimeError):
             self.harness.charm.set_secret("app", "new-secret2", "blablabla")
 
     @parameterized.expand([("app"), ("unit")])
@@ -919,7 +913,7 @@ class TestCharm(unittest.TestCase):
         self._setup_secrets()
         self.harness.set_leader(False)
         assert self.harness.charm.get_secret("app", "monitor-password")
-        with self.assertRaises(ModelError):
+        with self.assertRaises(RuntimeError):
             self.harness.charm.remove_secret("app", "monitor-password")
 
     @parameterized.expand([("app"), ("unit")])
