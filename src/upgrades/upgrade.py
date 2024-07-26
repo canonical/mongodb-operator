@@ -17,7 +17,7 @@ import typing
 
 import ops
 import poetry.core.constraints.version as poetry_version
-from charms.mongodb.v0.mongodb import FailedToMovePrimaryError
+from charms.mongodb.v1.mongodb import FailedToMovePrimaryError
 from tenacity import RetryError
 
 import status_exception
