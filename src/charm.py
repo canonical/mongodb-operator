@@ -13,14 +13,7 @@ from typing import Dict, List, Optional, Set
 
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from charms.mongodb.v0.config_server_interface import ClusterProvider
-from charms.mongodb.v0.mongodb import (
-    MongoDBConfiguration,
-    MongoDBConnection,
-    NotReadyError,
-    PyMongoError,
-)
 from charms.mongodb.v0.mongodb_secrets import SecretCache, generate_secret_label
-from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.set_status import MongoDBStatusHandler
 from charms.mongodb.v1.helpers import (
     KEY_FILE,
@@ -33,8 +26,15 @@ from charms.mongodb.v1.helpers import (
     generate_password,
     get_create_user_cmd,
 )
+from charms.mongodb.v1.mongodb import (
+    MongoDBConfiguration,
+    MongoDBConnection,
+    NotReadyError,
+    PyMongoError,
+)
 from charms.mongodb.v1.mongodb_backups import MongoDBBackups
 from charms.mongodb.v1.mongodb_provider import MongoDBProvider
+from charms.mongodb.v1.mongodb_tls import MongoDBTLS
 from charms.mongodb.v1.mongodb_vm_legacy_provider import MongoDBLegacyProvider
 from charms.mongodb.v1.mongos import MongosConfiguration
 from charms.mongodb.v1.shards_interface import ConfigServerRequirer, ShardingProvider

@@ -8,7 +8,7 @@ import secrets
 import string
 from typing import List, Optional, Tuple
 
-from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
+from charms.mongodb.v1.mongodb import MongoDBConfiguration, MongoDBConnection
 from charms.mongodb.v1.mongos import (
     BalancerNotEnabledError,
     MongosConfiguration,
