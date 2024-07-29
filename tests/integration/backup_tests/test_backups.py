@@ -12,7 +12,7 @@ from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from ..ha_tests import helpers as ha_helpers
-from ..helpers import get_app_name, wait_for_mongodb_units_blocked
+from ..helpers import get_app_name, is_relation_joined, wait_for_mongodb_units_blocked
 from . import helpers
 
 S3_APP_NAME = "s3-integrator"
@@ -76,7 +76,7 @@ async def test_blocked_incorrect_creds(ops_test: OpsTest) -> None:
     await ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active")
     await ops_test.model.add_relation(S3_APP_NAME, db_app_name)
     await ops_test.model.block_until(
-        lambda: helpers.is_relation_joined(ops_test, ENDPOINT, ENDPOINT) is True,
+        lambda: is_relation_joined(ops_test, ENDPOINT, ENDPOINT) is True,
         timeout=TIMEOUT,
     )
 
@@ -352,7 +352,7 @@ async def test_restore_new_cluster(
     # relate to s3 - s3 has the necessary configurations
     await ops_test.model.add_relation(S3_APP_NAME, NEW_CLUSTER)
     await ops_test.model.block_until(
-        lambda: helpers.is_relation_joined(ops_test, ENDPOINT, ENDPOINT) is True,
+        lambda: is_relation_joined(ops_test, ENDPOINT, ENDPOINT) is True,
         timeout=TIMEOUT,
     )
 

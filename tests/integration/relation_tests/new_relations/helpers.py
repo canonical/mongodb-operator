@@ -57,6 +57,7 @@ async def get_connection_string(
     secret_uri = await get_application_relation_data(
         ops_test, app_name, relation_name, "secret-user", relation_id, relation_alias
     )
+    assert secret_uri, "No secret URI found"
 
     first_relation_user_data = await get_secret_data(ops_test, secret_uri)
     return first_relation_user_data.get("uris")
