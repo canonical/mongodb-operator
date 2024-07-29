@@ -18,7 +18,7 @@ from charms.mongodb.v1.helpers import generate_password
 from charms.mongodb.v1.mongodb import MongoDBConfiguration, MongoDBConnection
 from ops.charm import CharmBase, EventBase, RelationBrokenEvent, RelationChangedEvent
 from ops.framework import Object
-from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, Relation
+from ops.model import ActiveStatus, MaintenanceStatus, Relation
 from pymongo.errors import PyMongoError
 
 from config import Config
@@ -31,12 +31,11 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 7
+LIBPATCH = 8
 
 logger = logging.getLogger(__name__)
 REL_NAME = "database"
 
-LEGACY_REL_NAME = "obsolete"
 MONGOS_RELATIONS = "cluster"
 
 # We expect the MongoDB container to use the default ports
@@ -94,14 +93,6 @@ class MongoDBProvider(Object):
 
         if not self.charm.is_relation_feasible(self.relation_name):
             logger.info("Skipping code for relations.")
-            return False
-
-        # legacy relations have auth disabled, which new relations require
-        if self.model.get_relation(LEGACY_REL_NAME):
-            self.charm.status.set_and_share_status(
-                BlockedStatus("cannot have both legacy and new relations")
-            )
-            logger.error("Auth disabled due to existing connections to legacy relations")
             return False
 
         if not self.charm.unit.is_leader():
@@ -181,15 +172,6 @@ class MongoDBProvider(Object):
         relation is still on the list of all relations. Therefore, for proper
         work of the function, we need to exclude departed relation from the list.
         """
-        # This hook gets called from other contexts within the charm so it is necessary to check
-        # for legacy relations which have auth disabled, which new relations require
-        if self.model.get_relation(LEGACY_REL_NAME):
-            self.charm.status.set_and_share_status(
-                BlockedStatus("cannot have both legacy and new relations")
-            )
-            logger.error("Auth disabled due to existing connections to legacy relations")
-            return
-
         with MongoDBConnection(self.charm.mongodb_config) as mongo:
             database_users = mongo.get_users()
             relation_users = self._get_users_from_relations(departed_relation_id)
@@ -409,7 +391,7 @@ class MongoDBProvider(Object):
         """
         return (
             self.model.relations[MONGOS_RELATIONS]
-            if self.charm.is_role(Config.Role.CONFIG_SERVER) and rel != LEGACY_REL_NAME
+            if self.charm.is_role(Config.Role.CONFIG_SERVER)
             else self.model.relations[rel]
         )
 

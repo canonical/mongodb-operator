@@ -35,7 +35,6 @@ from charms.mongodb.v1.mongodb import (
 from charms.mongodb.v1.mongodb_backups import MongoDBBackups
 from charms.mongodb.v1.mongodb_provider import MongoDBProvider
 from charms.mongodb.v1.mongodb_tls import MongoDBTLS
-from charms.mongodb.v1.mongodb_vm_legacy_provider import MongoDBLegacyProvider
 from charms.mongodb.v1.mongos import MongosConfiguration
 from charms.mongodb.v1.shards_interface import ConfigServerRequirer, ShardingProvider
 from charms.mongodb.v1.users import (
@@ -139,7 +138,6 @@ class MongodbOperatorCharm(CharmBase):
 
         # handle provider side of relations
         self.client_relations = MongoDBProvider(self, substrate=Config.SUBSTRATE)
-        self.legacy_client_relations = MongoDBLegacyProvider(self)
         self.tls = MongoDBTLS(self, Config.Relations.PEERS, substrate=Config.SUBSTRATE)
         self.backups = MongoDBBackups(self)
 
@@ -382,11 +380,6 @@ class MongodbOperatorCharm(CharmBase):
             self.status.set_and_share_status(BlockedStatus("couldn't install MongoDB"))
             return
 
-        # if a new unit is joining a cluster with a legacy relation it should start without auth
-        auth = not self.client_relations._get_users_from_relations(
-            None, rel=Config.Relations.OBSOLETE_RELATIONS_NAME
-        )
-
         # clear the default config file - user provided config files will be added in the config
         # changed hook
         try:
@@ -398,7 +391,7 @@ class MongodbOperatorCharm(CharmBase):
 
         # Construct the mongod startup commandline args for systemd and reload the daemon.
         update_mongod_service(
-            auth=auth,
+            auth=True,
             machine_ip=self.unit_host(self.unit),
             config=self.mongodb_config,
             role=self.role,
@@ -1514,11 +1507,6 @@ class MongodbOperatorCharm(CharmBase):
 
     def get_invalid_integration_status(self) -> Optional[StatusBase]:
         """Returns a status if an invalid integration is present."""
-        if self.client_relations._get_users_from_relations(
-            None, rel="obsolete"
-        ) and self.client_relations._get_users_from_relations(None):
-            return BlockedStatus("cannot have both legacy and new relations")
-
         if not self.cluster.is_valid_mongos_integration():
             return BlockedStatus(
                 "Relation to mongos not supported, config role must be config-server"
