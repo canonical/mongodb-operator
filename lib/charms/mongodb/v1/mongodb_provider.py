@@ -18,7 +18,7 @@ from charms.mongodb.v1.helpers import generate_password
 from charms.mongodb.v1.mongodb import MongoDBConfiguration, MongoDBConnection
 from ops.charm import CharmBase, EventBase, RelationBrokenEvent, RelationChangedEvent
 from ops.framework import Object
-from ops.model import ActiveStatus, MaintenanceStatus, Relation
+from ops.model import Relation
 from pymongo.errors import PyMongoError
 
 from config import Config
@@ -118,14 +118,6 @@ class MongoDBProvider(Object):
         if not self.pass_hook_checks(event):
             logger.info("Skipping %s: hook checks did not pass", type(event))
             return
-
-        # If auth is disabled but there are no legacy relation users, this means that legacy
-        # users have left and auth can be re-enabled.
-        if self.substrate == "vm" and not self.charm.auth_enabled():
-            logger.debug("Enabling authentication.")
-            self.charm.status.set_and_share_status(MaintenanceStatus("re-enabling authentication"))
-            self.charm.restart_charm_services(auth=True)
-            self.charm.status.set_and_share_status(ActiveStatus())
 
         departed_relation_id = None
         if type(event) is RelationBrokenEvent:

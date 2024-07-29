@@ -391,7 +391,6 @@ class MongodbOperatorCharm(CharmBase):
 
         # Construct the mongod startup commandline args for systemd and reload the daemon.
         update_mongod_service(
-            auth=True,
             machine_ip=self.unit_host(self.unit),
             config=self.mongodb_config,
             role=self.role,
@@ -1360,15 +1359,11 @@ class MongodbOperatorCharm(CharmBase):
         if self.is_role(Config.Role.CONFIG_SERVER):
             mongodb_snap.stop(services=["mongos"])
 
-    def restart_charm_services(self, auth=None):
+    def restart_charm_services(self):
         """Restarts the mongod service with its associated configuration."""
-        if auth is None:
-            auth = self.auth_enabled()
-
         try:
             self.stop_charm_services()
             update_mongod_service(
-                auth,
                 self.unit_host(self.unit),
                 config=self.mongodb_config,
                 role=self.role,
