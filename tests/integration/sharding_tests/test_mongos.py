@@ -20,6 +20,7 @@ MONGODB_KEYFILE_PATH = "/var/snap/charmed-mongodb/current/etc/mongod/keyFile"
 TIMEOUT = 10 * 60
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest, mongos_host_application_charm) -> None:
@@ -56,6 +57,7 @@ async def test_build_and_deploy(ops_test: OpsTest, mongos_host_application_charm
     )
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_connect_to_cluster_creates_user(ops_test: OpsTest) -> None:
@@ -115,6 +117,7 @@ async def test_connect_to_cluster_creates_user(ops_test: OpsTest) -> None:
     mongos_user_client.admin.command("dbStats")
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_disconnect_from_cluster_removes_user(ops_test: OpsTest) -> None:
@@ -155,4 +158,4 @@ async def test_disconnect_from_cluster_removes_user(ops_test: OpsTest) -> None:
     with pytest.raises(OperationFailure) as pymongo_error:
         mongos_user_client.admin.command("dbStats")
 
-    pymongo_error.value.code == 18, "User still exists after relation was removed."
+    assert pymongo_error.value.code == 18, "User still exists after relation was removed."

@@ -40,6 +40,7 @@ MONGODB_KEYFILE_PATH = "/var/snap/charmed-mongodb/current/etc/mongod/keyFile"
 TIMEOUT = 30 * 60
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
@@ -81,6 +82,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await wait_for_mongodb_units_blocked(ops_test, SHARD_THREE_APP_NAME, timeout=300)
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_cluster_active(ops_test: OpsTest) -> None:
@@ -122,6 +124,7 @@ async def test_cluster_active(ops_test: OpsTest) -> None:
     ), "Config server did not process config properly"
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_set_operator_password(ops_test: OpsTest):
     """Tests that the cluster can safely set the operator password."""
@@ -153,6 +156,7 @@ async def test_set_operator_password(ops_test: OpsTest):
         ), f"{cluster_app_name} did not rotate to new password."
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_sharding(ops_test: OpsTest) -> None:
@@ -207,6 +211,7 @@ async def test_sharding(ops_test: OpsTest) -> None:
     assert has_correct_data, "data not written to shard-three"
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_shard_removal(ops_test: OpsTest) -> None:
     """Test shard removal.
@@ -266,6 +271,7 @@ async def test_shard_removal(ops_test: OpsTest) -> None:
     ), "Not all databases on final shard"
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_removal_of_non_primary_shard(ops_test: OpsTest):
     """Tests safe removal of a shard that is not primary."""
@@ -318,6 +324,7 @@ async def test_removal_of_non_primary_shard(ops_test: OpsTest):
     ), "Not all databases on final shard"
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_unconventual_shard_removal(ops_test: OpsTest):
     """Tests that removing a shard application safely drains data.

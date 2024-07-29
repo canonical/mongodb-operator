@@ -28,6 +28,7 @@ TLS_TEST_DATA = "tests/integration/tls_tests/data"
 DB_SERVICE = "snap.charmed-mongodb.mongod.service"
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.skipif(
     os.environ.get("PYTEST_SKIP_DEPLOY", False),
@@ -55,6 +56,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     )
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_enable_tls(ops_test: OpsTest) -> None:
     """Verify each unit has TLS enabled after relating to the TLS application."""
@@ -71,6 +73,7 @@ async def test_enable_tls(ops_test: OpsTest) -> None:
         ), f"TLS not enabled for unit {unit.name}."
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_rotate_tls_key(ops_test: OpsTest) -> None:
     """Verify rotating tls private keys restarts mongod with new certificates.
@@ -138,6 +141,7 @@ async def test_rotate_tls_key(ops_test: OpsTest) -> None:
         ), f"tls is not enabled for {unit.name}."
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_set_tls_key(ops_test: OpsTest) -> None:
     """Verify rotating tls private keys restarts mongod with new certificates.
@@ -220,6 +224,7 @@ async def test_set_tls_key(ops_test: OpsTest) -> None:
         ), f"tls is not enabled for {unit.name}."
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_disable_tls(ops_test: OpsTest) -> None:
     """Verify each unit has TLS disabled after removing relation to the TLS application."""

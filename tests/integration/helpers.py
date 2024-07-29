@@ -160,7 +160,7 @@ async def get_leader_id(ops_test: OpsTest, app_name=None) -> int:
 
 async def set_password(
     ops_test: OpsTest, unit_id: int, username: str = "operator", password: str = "secret"
-) -> str:
+) -> dict[str, any]:
     """Use the charm action to retrieve the password from provided unit.
 
     Returns:

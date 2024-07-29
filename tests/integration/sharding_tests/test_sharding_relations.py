@@ -31,6 +31,7 @@ RELATION_LIMIT_MESSAGE = 'cannot add relation "shard:sharding config-server-two:
 TIMEOUT = 30 * 60
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(
@@ -96,6 +97,7 @@ async def test_build_and_deploy(
     )
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_only_one_config_server_relation(ops_test: OpsTest) -> None:
@@ -129,6 +131,7 @@ async def test_only_one_config_server_relation(ops_test: OpsTest) -> None:
     )
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_cannot_use_db_relation(ops_test: OpsTest) -> None:
@@ -159,6 +162,7 @@ async def test_cannot_use_db_relation(ops_test: OpsTest) -> None:
     )
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_cannot_use_legacy_db_relation(ops_test: OpsTest) -> None:
@@ -189,6 +193,7 @@ async def test_cannot_use_legacy_db_relation(ops_test: OpsTest) -> None:
     )
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_replication_config_server_relation(ops_test: OpsTest):
@@ -213,6 +218,7 @@ async def test_replication_config_server_relation(ops_test: OpsTest):
     )
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_replication_shard_relation(ops_test: OpsTest):
@@ -244,6 +250,7 @@ async def test_replication_shard_relation(ops_test: OpsTest):
     )
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_replication_mongos_relation(ops_test: OpsTest) -> None:
@@ -275,6 +282,7 @@ async def test_replication_mongos_relation(ops_test: OpsTest) -> None:
     )
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_shard_mongos_relation(ops_test: OpsTest) -> None:
@@ -299,6 +307,7 @@ async def test_shard_mongos_relation(ops_test: OpsTest) -> None:
     )
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_shard_s3_relation(ops_test: OpsTest) -> None:
