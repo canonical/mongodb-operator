@@ -83,13 +83,12 @@ class Config:
 
         NAME = "database"
         PEERS = "database-peers"
-        OBSOLETE_RELATIONS_NAME = "obsolete"
         SHARDING_RELATIONS_NAME = "sharding"
         CONFIG_SERVER_RELATIONS_NAME = "config-server"
         CLUSTER_RELATIONS_NAME = "cluster"
         APP_SCOPE = "app"
         UNIT_SCOPE = "unit"
-        DB_RELATIONS = [OBSOLETE_RELATIONS_NAME, NAME]
+        DB_RELATIONS = [NAME]
         Scopes = Literal[APP_SCOPE, UNIT_SCOPE]
 
     class Role:

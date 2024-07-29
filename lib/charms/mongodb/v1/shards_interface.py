@@ -22,7 +22,7 @@ from charms.mongodb.v1.mongodb import (
     OperationFailure,
     PyMongoError,
 )
-from charms.mongodb.v1.mongodb_provider import LEGACY_REL_NAME, REL_NAME
+from charms.mongodb.v1.mongodb_provider import REL_NAME
 from charms.mongodb.v1.mongos import (
     BalancerNotEnabledError,
     MongosConnection,
@@ -63,7 +63,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 7
+LIBPATCH = 8
 
 KEYFILE_KEY = "key-file"
 HOSTS_KEY = "host"
@@ -368,9 +368,6 @@ class ShardingProvider(Object):
             and self.model.relations[Config.Relations.CONFIG_SERVER_RELATIONS_NAME]
         ):
             return BlockedStatus("sharding interface cannot be used by replicas")
-
-        if self.model.relations[LEGACY_REL_NAME]:
-            return BlockedStatus(f"Sharding roles do not support {LEGACY_REL_NAME} interface.")
 
         if self.model.relations[REL_NAME]:
             return BlockedStatus(f"Sharding roles do not support {REL_NAME} interface.")
@@ -903,9 +900,6 @@ class ConfigServerRequirer(Object):
             and self.model.relations[Config.Relations.CONFIG_SERVER_RELATIONS_NAME]
         ):
             return BlockedStatus("sharding interface cannot be used by replicas")
-
-        if self.model.get_relation(LEGACY_REL_NAME):
-            return BlockedStatus(f"Sharding roles do not support {LEGACY_REL_NAME} interface.")
 
         if self.model.get_relation(REL_NAME):
             return BlockedStatus(f"Sharding roles do not support {REL_NAME} interface.")

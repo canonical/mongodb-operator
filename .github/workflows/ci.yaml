@@ -90,7 +90,6 @@ jobs:
           - .
           - tests/integration/sharding_tests/application
           - tests/integration/relation_tests/new_relations/application-charm
-          - tests/integration/dummy_legacy_app
     name: Build charm
     uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v16.7.0
     with:
