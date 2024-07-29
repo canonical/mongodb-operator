@@ -13,7 +13,7 @@ from pytest_operator.plugin import OpsTest
 from tenacity import RetryError
 
 from ...ha_tests.helpers import replica_set_primary
-from ...helpers import check_or_scale_app, get_app_name
+from ...helpers import check_or_scale_app, get_app_name, is_relation_joined
 from .helpers import (
     get_application_relation_data,
     get_connection_string,
@@ -25,6 +25,7 @@ APPLICATION_APP_NAME = "application"
 DATABASE_METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 PORT = 27017
 DATABASE_APP_NAME = DATABASE_METADATA["name"]
+DATABASE_RELATION_NAME = "database"
 FIRST_DATABASE_RELATION_NAME = "first-database"
 SECOND_DATABASE_RELATION_NAME = "second-database"
 MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME = "multiple-database-clusters"
@@ -98,6 +99,16 @@ async def test_database_relation_with_charm_libraries(ops_test: OpsTest):
         f"{APPLICATION_APP_NAME}:{FIRST_DATABASE_RELATION_NAME}", db_app_name
     )
     await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active")
+
+    await ops_test.model.block_until(
+        lambda: is_relation_joined(
+            ops_test,
+            FIRST_DATABASE_RELATION_NAME,
+            DATABASE_RELATION_NAME,
+        )
+        is True,
+        timeout=600,
+    )
 
     connection_string = await get_connection_string(
         ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME
