@@ -1,0 +1,218 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:834 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.4.4    unsupported  02:24:06Z
+
+App                Version  Status   Scale  Charm          Channel      Rev  Exposed  Message
+application                 active       1  application                   0  no       
+application-host            active       1  application                   0  no       
+config-server-one           active       1  mongodb                       0  no       
+config-server-two           active       1  mongodb                       1  no       
+mongos                      waiting      1  mongos         6/edge         3  no       Waiting for secrets from config-server
+replication                 active       1  mongodb                       3  no       
+s3-integrator               blocked      1  s3-integrator  latest/edge   29  no       Missing parameters: ['access-key', 'secret-key']
+shard                       active       1  mongodb                       2  no       
+
+Unit                  Workload  Agent  Machine  Public address  Ports            Message
+application-host/0*   active    idle   4        10.109.147.65                    
+  mongos/0*           waiting   idle            10.109.147.65                    Waiting for secrets from config-server
+application/0*        active    idle   6        10.109.147.170                   
+config-server-one/0*  blocked   idle   0        10.109.147.186  27017-27018/tcp  missing relation to shard(s)
+config-server-two/0*  blocked   idle   1        10.109.147.25   27017-27018/tcp  missing relation to shard(s)
+replication/0*        active    idle   5        10.109.147.31   27017/tcp        Primary
+s3-integrator/0*      blocked   idle   3        10.109.147.182                   Missing parameters: ['access-key', 'secret-key']
+shard/0*              error     idle   2        10.109.147.212  27017/tcp        hook failed: "cluster-relation-created"
+
+Machine  State    Address         Inst id        Base          AZ  Message
+0        started  10.109.147.186  juju-b53c4f-0  ubuntu@22.04      Running
+1        started  10.109.147.25   juju-b53c4f-1  ubuntu@22.04      Running
+2        started  10.109.147.212  juju-b53c4f-2  ubuntu@22.04      Running
+3        started  10.109.147.182  juju-b53c4f-3  ubuntu@22.04      Running
+4        started  10.109.147.65   juju-b53c4f-4  ubuntu@22.04      Running
+5        started  10.109.147.31   juju-b53c4f-5  ubuntu@22.04      Running
+6        started  10.109.147.170  juju-b53c4f-6  ubuntu@20.04      Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:840 Juju error logs:
+
+machine-0: 02:14:05 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 02:14:05 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-one-0: 02:14:05 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-1: 02:14:07 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 02:14:07 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-two-0: 02:14:07 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-3: 02:14:22 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 02:14:22 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 02:14:22 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 02:14:22 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-s3-integrator-0: 02:14:23 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-shard-0: 02:14:23 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-4: 02:14:42 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-4: 02:14:42 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-application-host-0: 02:14:42 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-6: 02:14:58 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-6: 02:14:58 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-application-0: 02:14:58 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-5: 02:15:23 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-5: 02:15:23 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-replication-0: 02:15:23 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-config-server-one-0: 02:16:00 ERROR unit.config-server-one/0.juju-log _on_secret_remove: Secret secret:cqk4pctm7623sha0ef1g seems to have no observers, could be removed
+unit-config-server-two-0: 02:16:00 ERROR unit.config-server-two/0.juju-log _on_secret_remove: Secret secret:cqk4pdlm7623sha0ef20 seems to have no observers, could be removed
+unit-shard-0: 02:16:06 ERROR unit.shard/0.juju-log _on_secret_remove: Secret secret:cqk4pflm7623sha0ef2g seems to have no observers, could be removed
+unit-replication-0: 02:16:27 ERROR unit.replication/0.juju-log _on_secret_remove: Secret secret:cqk4potm7623sha0ef30 seems to have no observers, could be removed
+unit-mongos-0: 02:16:32 ERROR juju.worker.meterstatus error running "meter-status-changed": exit status 127
+unit-shard-0: 02:17:24 ERROR juju.worker.uniter resolver loop error: permission denied
+unit-config-server-one-0: 02:17:24 ERROR juju.worker.uniter resolver loop error: permission denied
+unit-shard-0: 02:17:24 ERROR juju.worker.dependency "uniter" manifold worker returned unexpected error: permission denied
+unit-config-server-one-0: 02:17:24 ERROR juju.worker.dependency "uniter" manifold worker returned unexpected error: permission denied
+unit-shard-0: 02:17:46 ERROR unit.shard/0.juju-log database:12: Charm is in sharding role: database. Does not support shard interface.
+unit-shard-0: 02:17:46 ERROR unit.shard/0.juju-log database:12: Charm is in sharding role: database. Does not support shard interface.
+unit-config-server-one-0: 02:17:47 ERROR unit.config-server-one/0.juju-log database:13: Charm is in sharding role: database. Does not support config-server interface.
+unit-config-server-one-0: 02:17:47 ERROR unit.config-server-one/0.juju-log database:13: Charm is in sharding role: database. Does not support config-server interface.
+unit-config-server-one-0: 02:17:48 ERROR unit.config-server-one/0.juju-log database:13: Charm is in sharding role: database. Does not support config-server interface.
+unit-shard-0: 02:17:48 ERROR unit.shard/0.juju-log database:12: Charm is in sharding role: database. Does not support shard interface.
+unit-config-server-one-0: 02:17:49 ERROR unit.config-server-one/0.juju-log database:13: Charm is in sharding role: database. Does not support config-server interface.
+unit-shard-0: 02:17:51 ERROR unit.shard/0.juju-log database:12: Charm is in sharding role: database. Does not support shard interface.
+unit-config-server-one-0: 02:17:51 ERROR unit.config-server-one/0.juju-log database:13: Charm is in sharding role: database. Does not support config-server interface.
+unit-config-server-one-0: 02:17:52 ERROR juju.worker.dependency "uniter" manifold worker returned unexpected error: relation scope id "414b7900-cb99-4b5b-842c-cab2e7b53c4f:r#13#application": settings 414b7900-cb99-4b5b-842c-cab2e7b53c4f:r#13#application not found (not found)
+unit-replication-0: 02:18:14 ERROR unit.replication/0.juju-log sharding:14: Charm is in sharding role: replication. Does not support sharding interface.
+unit-config-server-one-0: 02:18:16 ERROR unit.config-server-one/0.juju-log config-server:14: Failed to add shard replication to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1722305895, 2), 'signature': {'hash': b']\\xf9\\tDC\\x8dk_A\\x01\\x1e\\x847Gvp\\xb8?+\\x03', 'keyId': 7397246788358373401}}, 'operationTime': Timestamp(1722305895, 2)}")
+unit-config-server-one-0: 02:18:16 ERROR unit.config-server-one/0.juju-log config-server:14: replication shard does not have the same auth as the config server.
+unit-replication-0: 02:18:16 ERROR unit.replication/0.juju-log sharding:14: Charm is in sharding role: replication. Does not support sharding interface.
+unit-replication-0: 02:18:19 ERROR unit.replication/0.juju-log sharding:14: Charm is in sharding role: replication. Does not support sharding interface.
+unit-replication-0: 02:18:21 ERROR juju.worker.dependency "uniter" manifold worker returned unexpected error: relation scope id "414b7900-cb99-4b5b-842c-cab2e7b53c4f:r#14#config-server-one": settings 414b7900-cb99-4b5b-842c-cab2e7b53c4f:r#14#config-server-one not found (not found)
+unit-shard-0: 02:18:22 ERROR juju.worker.dependency "uniter" manifold worker returned unexpected error: relation scope id "414b7900-cb99-4b5b-842c-cab2e7b53c4f:r#15#replication": settings 414b7900-cb99-4b5b-842c-cab2e7b53c4f:r#15#replication not found (not found)
+unit-mongos-0: 02:18:47 ERROR unit.mongos/0.juju-log cluster:16: Can't delete secret for relation 10
+unit-shard-0: 02:19:05 ERROR unit.shard/0.juju-log cluster:17: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-0/charm/./src/charm.py", line 1644, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/main.py", line 516, in _emit
+    self.framework.reemit()
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/framework.py", line 870, in reemit
+    self._reemit()
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 703, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 759, in pass_hook_checks
+    mongos_hosts = event.relation.data[event.relation.app].get(HOSTS_KEY)
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/model.py", line 1671, in __getitem__
+    return self._data[key]
+KeyError: None
+unit-shard-0: 02:19:05 ERROR juju.worker.uniter.operation hook "cluster-relation-created" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-0: 02:19:11 ERROR unit.shard/0.juju-log cluster:17: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-0/charm/./src/charm.py", line 1644, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/main.py", line 516, in _emit
+    self.framework.reemit()
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/framework.py", line 870, in reemit
+    self._reemit()
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 703, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 759, in pass_hook_checks
+    mongos_hosts = event.relation.data[event.relation.app].get(HOSTS_KEY)
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/model.py", line 1671, in __getitem__
+    return self._data[key]
+KeyError: None
+unit-shard-0: 02:19:11 ERROR juju.worker.uniter.operation hook "cluster-relation-created" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-0: 02:19:22 ERROR unit.shard/0.juju-log cluster:17: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-0/charm/./src/charm.py", line 1644, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/main.py", line 516, in _emit
+    self.framework.reemit()
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/framework.py", line 870, in reemit
+    self._reemit()
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 703, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 759, in pass_hook_checks
+    mongos_hosts = event.relation.data[event.relation.app].get(HOSTS_KEY)
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/model.py", line 1671, in __getitem__
+    return self._data[key]
+KeyError: None
+unit-shard-0: 02:19:23 ERROR juju.worker.uniter.operation hook "cluster-relation-created" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-0: 02:19:43 ERROR unit.shard/0.juju-log cluster:17: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-0/charm/./src/charm.py", line 1644, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/main.py", line 516, in _emit
+    self.framework.reemit()
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/framework.py", line 870, in reemit
+    self._reemit()
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 703, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 759, in pass_hook_checks
+    mongos_hosts = event.relation.data[event.relation.app].get(HOSTS_KEY)
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/model.py", line 1671, in __getitem__
+    return self._data[key]
+KeyError: None
+unit-shard-0: 02:19:44 ERROR juju.worker.uniter.operation hook "cluster-relation-created" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-0: 02:20:26 ERROR unit.shard/0.juju-log cluster:17: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-0/charm/./src/charm.py", line 1644, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/main.py", line 516, in _emit
+    self.framework.reemit()
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/framework.py", line 870, in reemit
+    self._reemit()
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 703, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 759, in pass_hook_checks
+    mongos_hosts = event.relation.data[event.relation.app].get(HOSTS_KEY)
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/model.py", line 1671, in __getitem__
+    return self._data[key]
+KeyError: None
+unit-shard-0: 02:20:26 ERROR juju.worker.uniter.operation hook "cluster-relation-created" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-0: 02:21:48 ERROR unit.shard/0.juju-log cluster:17: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-0/charm/./src/charm.py", line 1644, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/main.py", line 516, in _emit
+    self.framework.reemit()
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/framework.py", line 870, in reemit
+    self._reemit()
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 703, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 759, in pass_hook_checks
+    mongos_hosts = event.relation.data[event.relation.app].get(HOSTS_KEY)
+  File "/var/lib/juju/agents/unit-shard-0/charm/venv/ops/model.py", line 1671, in __getitem__
+    return self._data[key]
+KeyError: None
+unit-shard-0: 02:21:48 ERROR juju.worker.uniter.operation hook "cluster-relation-created" (via hook dispatching script: dispatch) failed: exit status 1
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:904 Forgetting main...
