@@ -6,9 +6,9 @@
 import pytest
 from pytest_operator.plugin import OpsTest
 
-from ..helpers import wait_for_mongodb_units_blocked
+from ..helpers import destroy_cluster, wait_for_mongodb_units_blocked
 from ..tls_tests import helpers as tls_helpers
-from .helpers import deploy_cluster_components, destroy_cluster, integrate_cluster
+from .helpers import deploy_cluster_components, integrate_cluster
 
 MONGOD_SERVICE = "snap.charmed-mongodb.mongod.service"
 MONGOS_SERVICE = "snap.charmed-mongodb.mongos.service"
@@ -89,7 +89,7 @@ async def test_disable_cluster_with_tls(ops_test: OpsTest) -> None:
 @pytest.mark.abort_on_fail
 async def test_tls_then_build_cluster(ops_test: OpsTest) -> None:
     """Tests that the cluster can be integrated with TLS."""
-    await destroy_cluster(ops_test)
+    await destroy_cluster(ops_test, applications=CLUSTER_COMPONENTS)
     await deploy_cluster_components(ops_test)
 
     await integrate_with_tls(ops_test)

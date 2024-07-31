@@ -75,6 +75,25 @@ class Unit:
         return result
 
 
+async def destroy_cluster(ops_test: OpsTest, applications: list[str]) -> None:
+    """Destroy cluster in a forceful way."""
+    for app in applications:
+        await ops_test.model.applications[app].destroy(
+            destroy_storage=True, force=True, no_wait=False
+        )
+
+    # destroy does not wait for applications to be removed, perform this check manually
+    for attempt in Retrying(stop=stop_after_attempt(100), wait=wait_fixed(10), reraise=True):
+        with attempt:
+            # pytest_operator has a bug where the number of applications does not get correctly
+            # updated. Wrapping the call with `fast_forward` resolves this
+            async with ops_test.fast_forward():
+                n_applications = len(ops_test.model.applications)
+            # This case we don't raise an error in the context manager which
+            # fails to restore the `update-status-hook-interval` value to it's former state.
+            assert n_applications == 1, "old cluster not destroyed successfully."
+
+
 def unit_uri(ip_address: str, password, app=APP_NAME) -> str:
     """Generates URI that is used by MongoDB to connect to a single replica.
 
@@ -422,11 +441,11 @@ async def check_all_units_blocked_with_status(
     for unit in await get_application_units(ops_test, db_app_name):
         assert (
             unit.workload_status.value == "blocked"
-        ), f"unit {unit.name} not in blocked state, in {unit.workload_status}"
+        ), f"unit {unit.name} not in blocked state, in {unit.workload_status.value}"
         if status:
             assert (
                 unit.workload_status.message == status
-            ), f"unit {unit.name} not in blocked state, in {unit.workload_status}"
+            ), f"unit {unit.name} not in blocked state, in {unit.workload_status.value}"
 
 
 async def wait_for_mongodb_units_blocked(

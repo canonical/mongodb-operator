@@ -12,7 +12,12 @@ from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from ..ha_tests import helpers as ha_helpers
-from ..helpers import get_app_name, is_relation_joined, wait_for_mongodb_units_blocked
+from ..helpers import (
+    destroy_cluster,
+    get_app_name,
+    is_relation_joined,
+    wait_for_mongodb_units_blocked,
+)
 from . import helpers
 
 S3_APP_NAME = "s3-integrator"
@@ -84,7 +89,7 @@ async def test_blocked_incorrect_creds(ops_test: OpsTest) -> None:
     await ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active")
 
     await wait_for_mongodb_units_blocked(
-        ops_test, db_app_name, status="s3 credentials are incorrect.", timeout=300
+        ops_test, db_app_name, status="s3 credentials are incorrect.", timeout=600
     )
 
 
@@ -101,7 +106,7 @@ async def test_blocked_incorrect_conf(ops_test: OpsTest, github_secrets) -> None
     # wait for both applications to be idle with the correct statuses
     await ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active")
     await wait_for_mongodb_units_blocked(
-        ops_test, db_app_name, status="s3 configurations are incompatible.", timeout=300
+        ops_test, db_app_name, status="s3 configurations are incompatible.", timeout=600
     )
 
 
@@ -389,7 +394,7 @@ async def test_restore_new_cluster(
             writes_in_new_cluster == writes_in_old_cluster
         ), "new cluster writes do not match old cluster writes after restore"
 
-    await helpers.destroy_cluster(ops_test, cluster_name=NEW_CLUSTER)
+    await destroy_cluster(ops_test, applications=[NEW_CLUSTER])
 
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])

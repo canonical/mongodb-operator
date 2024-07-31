@@ -1,6 +1,5 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
-import subprocess
 
 import ops
 from pymongo import MongoClient
@@ -12,34 +11,6 @@ from ..helpers import get_app_name
 
 S3_APP_NAME = "s3-integrator"
 TIMEOUT = 10 * 60
-
-
-async def destroy_cluster(ops_test: OpsTest, cluster_name: str) -> None:
-    """Destroy the cluster and wait for its removal."""
-    units = ops_test.model.applications[cluster_name].units
-    # best practice to scale down before removing the entire cluster. Wait for cluster to settle
-    # removing the next
-    for i in range(0, len(units[:-1])):
-        unit_name = units[i].name
-        await ops_test.model.applications[cluster_name].destroy_unit(unit_name)
-        await ops_test.model.block_until(
-            lambda: len(ops_test.model.applications[cluster_name].units) == len(units) - i - 1,
-            timeout=TIMEOUT,
-        )
-        await ops_test.model.wait_for_idle(apps=[cluster_name], status="active")
-
-    # now that the cluster only has one unit left we can remove the application from Juju, send
-    # force for a quicker removal of the cluster.
-    model_name = ops_test.model.info.name
-    subprocess.check_output(
-        f"juju remove-application --model={model_name} --force --no-prompt new-mongodb".split()
-    )
-
-    # verify there are no more units.
-    await ops_test.model.block_until(
-        lambda: cluster_name not in ops_test.model.applications,
-        timeout=TIMEOUT,
-    )
 
 
 async def create_and_verify_backup(ops_test: OpsTest) -> None:
