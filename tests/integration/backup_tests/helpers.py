@@ -32,7 +32,7 @@ async def destroy_cluster(ops_test: OpsTest, cluster_name: str) -> None:
     # force for a quicker removal of the cluster.
     model_name = ops_test.model.info.name
     subprocess.check_output(
-        f"juju remove-application --model={model_name} --force new-mongodb".split()
+        f"juju remove-application --model={model_name} --force --no-prompt new-mongodb".split()
     )
 
     # verify there are no more units.
