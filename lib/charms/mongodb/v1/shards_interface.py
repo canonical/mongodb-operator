@@ -756,6 +756,11 @@ class ConfigServerRequirer(Object):
         if not event.relation.app and isinstance(event, RelationBrokenEvent):
             return False
 
+        # Edge case for DPE-4998
+        # TODO: Remove this when https://github.com/canonical/operator/issues/1306 is fixed.
+        if not event.relation.app:
+            return False
+
         mongos_hosts = event.relation.data[event.relation.app].get(HOSTS_KEY)
 
         if isinstance(event, RelationBrokenEvent) and not mongos_hosts:
