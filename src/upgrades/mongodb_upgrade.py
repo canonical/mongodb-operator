@@ -8,7 +8,7 @@ import secrets
 import string
 from typing import List, Optional, Tuple
 
-from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
+from charms.mongodb.v1.mongodb import MongoDBConfiguration, MongoDBConnection
 from charms.mongodb.v1.mongos import (
     BalancerNotEnabledError,
     MongosConfiguration,
@@ -207,7 +207,7 @@ class MongoDBUpgrade(Object):
 
         logger.debug("Cluster is healthy after upgrading unit %s", self.charm.unit.name)
 
-        # Leader of config-server must wait for all shards to be upgraded before finialising the
+        # Leader of config-server must wait for all shards to be upgraded before finalising the
         # upgrade.
         if not self.charm.unit.is_leader() or not self.charm.is_role(Config.Role.CONFIG_SERVER):
             return
@@ -216,7 +216,7 @@ class MongoDBUpgrade(Object):
 
     def run_post_cluster_upgrade_task(self, event: EventBase) -> None:
         """Waits for entire cluster to be upgraded before enabling the balancer."""
-        # Leader of config-server must wait for all shards to be upgraded before finialising the
+        # Leader of config-server must wait for all shards to be upgraded before finalising the
         # upgrade.
         if not self.charm.unit.is_leader() or not self.charm.is_role(Config.Role.CONFIG_SERVER):
             return
@@ -287,14 +287,14 @@ class MongoDBUpgrade(Object):
 
         with MongoDBConnection(self.charm.mongodb_config) as mongod:
             unit_with_lowest_id = self._upgrade._sorted_units[-1]
-            if mongod.primary() == self.charm.unit_ip(unit_with_lowest_id):
+            if mongod.primary() == self.charm.unit_host(unit_with_lowest_id):
                 logger.debug(
                     "Not moving Primary before upgrade, primary is already on the last unit to upgrade."
                 )
                 return
 
             logger.debug("Moving primary to unit: %s", unit_with_lowest_id)
-            mongod.move_primary(new_primary_ip=self.charm.unit_ip(unit_with_lowest_id))
+            mongod.move_primary(new_primary_ip=self.charm.unit_host(unit_with_lowest_id))
 
     def _set_upgrade_status(self):
         # In the future if we decide to support app statuses, we will need to handle this

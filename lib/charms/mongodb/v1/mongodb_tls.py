@@ -22,7 +22,7 @@ from charms.tls_certificates_interface.v3.tls_certificates import (
 )
 from ops.charm import ActionEvent, RelationBrokenEvent, RelationJoinedEvent
 from ops.framework import Object
-from ops.model import ActiveStatus, MaintenanceStatus, Unit, WaitingStatus
+from ops.model import ActiveStatus, MaintenanceStatus, WaitingStatus
 
 from config import Config
 
@@ -34,11 +34,11 @@ Scopes = Config.Relations.Scopes
 LIBID = "e02a50f0795e4dd292f58e93b4f493dd"
 
 # Increment this major API version when introducing breaking changes
-LIBAPI = 0
+LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 15
+LIBPATCH = 1
 
 logger = logging.getLogger(__name__)
 
@@ -332,13 +332,6 @@ class MongoDBTLS(Object):
             pem_file = key + "\n" + cert if key else cert
 
         return ca_file, pem_file
-
-    def get_host(self, unit: Unit):
-        """Retrieves the hostname of the unit based on the substrate."""
-        if self.substrate == "vm":
-            return self.charm.unit_ip(unit)
-        else:
-            return self.charm.get_hostname_for_unit(unit)
 
     def set_tls_secret(self, internal: bool, label_name: str, contents: str) -> None:
         """Sets TLS secret, based on whether or not it is related to internal connections."""

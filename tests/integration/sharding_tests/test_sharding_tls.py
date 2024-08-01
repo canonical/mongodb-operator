@@ -24,6 +24,7 @@ CERT_REL_NAME = "certificates"
 TIMEOUT = 15 * 60
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
@@ -42,6 +43,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     )
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_built_cluster_with_tls(ops_test: OpsTest) -> None:
@@ -64,6 +66,7 @@ async def test_built_cluster_with_tls(ops_test: OpsTest) -> None:
     await check_cluster_tls_enabled(ops_test)
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_rotate_tls(ops_test: OpsTest) -> None:
@@ -72,6 +75,7 @@ async def test_rotate_tls(ops_test: OpsTest) -> None:
         await rotate_and_verify_certs(ops_test, cluster_app)
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_disable_cluster_with_tls(ops_test: OpsTest) -> None:
@@ -80,6 +84,7 @@ async def test_disable_cluster_with_tls(ops_test: OpsTest) -> None:
     await check_cluster_tls_disabled(ops_test)
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_tls_then_build_cluster(ops_test: OpsTest) -> None:
@@ -105,6 +110,7 @@ async def test_tls_then_build_cluster(ops_test: OpsTest) -> None:
     await check_cluster_tls_enabled(ops_test)
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_tls_inconsistent_rels(ops_test: OpsTest) -> None:
@@ -126,7 +132,7 @@ async def test_tls_inconsistent_rels(ops_test: OpsTest) -> None:
     )
 
     await wait_for_mongodb_units_blocked(
-        ops_test, SHARD_ONE_APP_NAME, status="Shard requires TLS to be enabled.", timeout=300
+        ops_test, SHARD_ONE_APP_NAME, status="Shard requires TLS to be enabled.", timeout=450
     )
 
     # Re-integrate to bring cluster back to steady state
@@ -159,7 +165,7 @@ async def test_tls_inconsistent_rels(ops_test: OpsTest) -> None:
         ops_test,
         SHARD_ONE_APP_NAME,
         status="Shard has TLS enabled, but config-server does not.",
-        timeout=300,
+        timeout=450,
     )
 
     # CASE 3: Cluster components are using different CA's
@@ -180,7 +186,7 @@ async def test_tls_inconsistent_rels(ops_test: OpsTest) -> None:
         ops_test,
         SHARD_ONE_APP_NAME,
         status="Shard CA and Config-Server CA don't match.",
-        timeout=300,
+        timeout=450,
     )
 
 

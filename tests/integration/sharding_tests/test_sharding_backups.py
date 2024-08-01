@@ -71,6 +71,7 @@ async def add_writes_to_shards(ops_test: OpsTest):
     )
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
@@ -78,6 +79,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await deploy_cluster_backup_test(ops_test)
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_set_credentials_in_cluster(ops_test: OpsTest, github_secrets) -> None:
@@ -98,6 +100,7 @@ async def test_set_credentials_in_cluster(ops_test: OpsTest, github_secrets) -> 
     await setup_cluster_and_s3(ops_test)
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_create_and_list_backups_in_cluster(ops_test: OpsTest) -> None:
@@ -124,6 +127,7 @@ async def test_create_and_list_backups_in_cluster(ops_test: OpsTest) -> None:
             assert backups == 1
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_shards_cannot_run_backup_actions(ops_test: OpsTest) -> None:
@@ -141,6 +145,7 @@ async def test_shards_cannot_run_backup_actions(ops_test: OpsTest) -> None:
     assert attempted_backup.status == "failed", "shard ran list-backup command."
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_rotate_backup_password(ops_test: OpsTest) -> None:
@@ -215,6 +220,7 @@ async def test_rotate_backup_password(ops_test: OpsTest) -> None:
             assert backups == 2, "Backup not created after password rotation."
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_restore_backup(ops_test: OpsTest, add_writes_to_shards) -> None:
@@ -276,6 +282,7 @@ async def test_restore_backup(ops_test: OpsTest, add_writes_to_shards) -> None:
     await verify_writes_restored(ops_test, cluster_writes)
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_migrate_restore_backup(ops_test: OpsTest, add_writes_to_shards) -> None:

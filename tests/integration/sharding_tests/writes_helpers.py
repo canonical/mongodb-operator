@@ -115,7 +115,7 @@ async def stop_continous_writes(
     config_server_name=APP_NAME,
     db_name=DEFAULT_DB_NAME,
     collection_name=DEFAULT_COLL_NAME,
-) -> int:
+) -> dict[str, any]:
     """Stops continuous writes to MongoDB and returns the last written value."""
     # stop the process
     proc = subprocess.Popen(["pkill", "-9", "-f", db_name])

@@ -16,18 +16,19 @@ on:
 jobs:
   lint:
     name: Lint
-    uses: canonical/data-platform-workflows/.github/workflows/lint.yaml@v13.1.1
+    uses: canonical/data-platform-workflows/.github/workflows/lint.yaml@v16.7.0
 
   unit-test:
-    name: Unit tests
+    name: Unit test charm
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Install tox
-        # TODO: Consider replacing with custom image on self-hosted runner OR pinning version
-        run: python3 -m pip install --upgrade pip; python3 -m pip install tox
+      - name: Install tox & poetry
+        run: |
+          pipx install tox
+          pipx install poetry
       - name: Run tests
         run: tox run -e unit
 
@@ -40,11 +41,16 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      - run: |
+          # Workaround for https://github.com/canonical/charmcraft/issues/1389#issuecomment-1880921728
+          touch requirements.txt
       - name: Check libs
         uses: canonical/charming-actions/check-libraries@2.4.0
         with:
-          credentials: "${{ secrets.CHARMHUB_TOKEN }}" # FIXME: current token will expire in 2023-07-04
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          credentials: ${{ secrets.CHARMHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          use-labels: false
+          fail-build: ${{ github.event_name == 'pull_request' }}
 
   check-terraform:
     name: Check Terraform
@@ -78,29 +84,30 @@ jobs:
 
   build:
     strategy:
+      fail-fast: false
       matrix:
         path:
           - .
           - tests/integration/sharding_tests/application
           - tests/integration/relation_tests/new_relations/application-charm
-          - tests/integration/dummy_legacy_app
     name: Build charm
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v13.1.1
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v16.7.0
     with:
       path-to-charm-directory: ${{ matrix.path }}
       cache: true
 
   integration-test:
-    name: Integration test charm
+    name: Integration test charm | 3.4.4
     needs:
       - lint
       - unit-test
       - build
-    uses: canonical/data-platform-workflows/.github/workflows/integration_test_charm.yaml@v13.1.1
+    uses: canonical/data-platform-workflows/.github/workflows/integration_test_charm.yaml@v16.7.0
     with:
       artifact-prefix: packed-charm-cache-true
       cloud: lxd
-      juju-agent-version: 3.1.7
+      juju-agent-version: 3.4.4
+      _beta_allure_report: true
     permissions:
       contents: write # Needed for Allure Report beta
     secrets:

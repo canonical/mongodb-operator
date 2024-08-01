@@ -9,13 +9,7 @@ from unittest.mock import MagicMock, call, patch
 
 import pytest
 from charms.operator_libs_linux.v2 import snap
-from ops.model import (
-    ActiveStatus,
-    BlockedStatus,
-    MaintenanceStatus,
-    ModelError,
-    WaitingStatus,
-)
+from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from ops.testing import Harness
 from parameterized import parameterized
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
@@ -182,7 +176,7 @@ class TestCharm(unittest.TestCase):
         with self.assertRaises(subprocess.CalledProcessError):
             with self.assertLogs("charm", "ERROR") as logs:
                 self.harness.charm._open_ports_tcp([27017])
-                self.assertIn("failed opening port 27017", "".join(logs.output))
+                self.assertTrue("failed opening port 27017" in "".join(logs.output))
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.update_mongod_service")
@@ -195,12 +189,12 @@ class TestCharm(unittest.TestCase):
         self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
 
     @patch_network_get(private_address="1.1.1.1")
-    def test_unit_ips(self):
+    def test_app_hosts(self):
         rel_id = self.harness.charm.model.get_relation("database-peers").id
         self.harness.add_relation_unit(rel_id, "mongodb/1")
         self.harness.update_relation_data(rel_id, "mongodb/1", PEER_ADDR)
 
-        resulting_ips = self.harness.charm.unit_ips
+        resulting_ips = self.harness.charm.app_hosts
         expected_ips = ["127.4.5.6", "1.1.1.1"]
         self.assertEqual(resulting_ips, expected_ips)
 
@@ -241,7 +235,7 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBConnection")
-    @patch("charms.mongodb.v0.mongodb.MongoClient")
+    @patch("charms.mongodb.v1.mongodb.MongoClient")
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
     def test_relation_joined_get_members_failure(self, _, client, connection, defer):
         """Tests reconfigure does not execute when unable to get the replica set members.
@@ -344,10 +338,10 @@ class TestCharm(unittest.TestCase):
     @patch("charm.CrossAppVersionChecker.is_local_charm")
     @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
     @patch("charm.get_charm_revision")
-    @patch("charms.mongodb.v1.helpers.MongoDBConnection")
+    @patch("charms.mongodb.v0.set_status.MongoDBConnection")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBBackups.get_pbm_status")
-    @patch("charm.build_unit_status")
+    @patch("charms.mongodb.v0.set_status.build_unit_status")
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
     def test_update_status_mongodb_error(
         self,
@@ -390,10 +384,10 @@ class TestCharm(unittest.TestCase):
     @patch("charm.CrossAppVersionChecker.is_local_charm")
     @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
     @patch("charm.get_charm_revision")
-    @patch("charms.mongodb.v1.helpers.MongoDBConnection")
+    @patch("charms.mongodb.v0.set_status.MongoDBConnection")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBBackups.get_pbm_status")
-    @patch("charm.build_unit_status")
+    @patch("charms.mongodb.v0.set_status.build_unit_status")
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
     def test_update_status_pbm_error(
         self,
@@ -431,10 +425,10 @@ class TestCharm(unittest.TestCase):
     @patch("charm.CrossAppVersionChecker.is_local_charm")
     @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
     @patch("charm.get_charm_revision")
-    @patch("charms.mongodb.v1.helpers.MongoDBConnection")
+    @patch("charms.mongodb.v0.set_status.MongoDBConnection")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBBackups.get_pbm_status")
-    @patch("charm.build_unit_status")
+    @patch("charms.mongodb.v0.set_status.build_unit_status")
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
     def test_update_status_pbm_and_mongodb_ready(
         self,
@@ -464,9 +458,9 @@ class TestCharm(unittest.TestCase):
     @patch("charm.CrossAppVersionChecker.is_local_charm")
     @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
     @patch("charm.get_charm_revision")
-    @patch("charms.mongodb.v1.helpers.MongoDBConnection")
+    @patch("charms.mongodb.v0.set_status.MongoDBConnection")
     @patch("charm.MongoDBConnection")
-    @patch("charm.build_unit_status")
+    @patch("charms.mongodb.v0.set_status.build_unit_status")
     @patch("charm.MongodbOperatorCharm.has_backup_service")
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
     def test_update_status_no_s3(
@@ -495,7 +489,7 @@ class TestCharm(unittest.TestCase):
     @patch("charm.CrossAppVersionChecker.is_local_charm")
     @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
     @patch("charm.get_charm_revision")
-    @patch("charms.mongodb.v1.helpers.MongoDBConnection")
+    @patch("charms.mongodb.v0.set_status.MongoDBConnection")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBBackups.get_pbm_status")
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
@@ -527,7 +521,7 @@ class TestCharm(unittest.TestCase):
     @patch("charm.CrossAppVersionChecker.is_local_charm")
     @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
     @patch("charm.get_charm_revision")
-    @patch("charms.mongodb.v1.helpers.MongoDBConnection")
+    @patch("charms.mongodb.v0.set_status.MongoDBConnection")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBBackups.get_pbm_status")
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
@@ -559,7 +553,7 @@ class TestCharm(unittest.TestCase):
     @patch("charm.CrossAppVersionChecker.is_local_charm")
     @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
     @patch("charm.get_charm_revision")
-    @patch("charms.mongodb.v1.helpers.MongoDBConnection")
+    @patch("charms.mongodb.v0.set_status.MongoDBConnection")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBBackups.get_pbm_status")
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
@@ -712,16 +706,16 @@ class TestCharm(unittest.TestCase):
 
     @patch("charm.MongodbOperatorCharm.get_secret")
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongodbOperatorCharm.unit_ips")
+    @patch("charm.MongodbOperatorCharm.app_hosts")
     @patch("charm.MongoDBConnection")
-    def test_process_unremoved_units_handles_errors(self, connection, unit_ips, get_secret):
+    def test_process_unremoved_units_handles_errors(self, connection, app_hosts, get_secret):
         """Test failures in process_unremoved_units are handled and not raised."""
         get_secret.return_value = "pass123"
         connection.return_value.__enter__.return_value.get_replset_members.return_value = {
             "1.1.1.1",
             "2.2.2.2",
         }
-        self.harness.charm.unit_ips = ["2.2.2.2"]
+        self.harness.charm.app_hosts = ["2.2.2.2"]
 
         for exception in [PYMONGO_EXCEPTIONS, NotReadyError]:
             connection.return_value.__enter__.return_value.remove_replset_member.side_effect = (
@@ -828,7 +822,7 @@ class TestCharm(unittest.TestCase):
         self.harness.set_leader(False)
 
         # Getting current password
-        with self.assertRaises(ModelError):
+        with self.assertRaises(RuntimeError):
             self.harness.charm.set_secret("app", "monitor-password", "bla")
 
     @parameterized.expand([("app"), ("unit")])
@@ -862,11 +856,11 @@ class TestCharm(unittest.TestCase):
 
         # Reset new secret
         self.harness.set_leader(False)
-        with self.assertRaises(ModelError):
+        with self.assertRaises(RuntimeError):
             self.harness.charm.set_secret("app", "new-secret", "blablabla")
 
         # Set another new secret
-        with self.assertRaises(ModelError):
+        with self.assertRaises(RuntimeError):
             self.harness.charm.set_secret("app", "new-secret2", "blablabla")
 
     @parameterized.expand([("app"), ("unit")])
@@ -919,7 +913,7 @@ class TestCharm(unittest.TestCase):
         self._setup_secrets()
         self.harness.set_leader(False)
         assert self.harness.charm.get_secret("app", "monitor-password")
-        with self.assertRaises(ModelError):
+        with self.assertRaises(RuntimeError):
             self.harness.charm.remove_secret("app", "monitor-password")
 
     @parameterized.expand([("app"), ("unit")])
@@ -1099,3 +1093,8 @@ class TestCharm(unittest.TestCase):
 
         self.harness.charm._connect_mongodb_exporter()
         mock_mongodb_snap.restart.assert_not_called()
+
+    @patch_network_get(private_address="1.1.1.1")
+    def test_unit_host(self):
+        """Tests that get hosts returns the current unit hosts."""
+        assert self.harness.charm.unit_host(self.harness.charm.unit) == "1.1.1.1"

@@ -42,7 +42,8 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 14
+
+LIBPATCH = 7
 
 
 class ClusterProvider(Object):
@@ -186,7 +187,7 @@ class ClusterProvider(Object):
         """Generates the config server database for mongos to connect to."""
         replica_set_name = self.charm.app.name
         hosts = []
-        for host in self.charm.unit_ips:
+        for host in self.charm.app_hosts:
             hosts.append(f"{host}:{Config.MONGODB_PORT}")
 
         hosts = ",".join(hosts)

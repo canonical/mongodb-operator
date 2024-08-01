@@ -41,7 +41,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 7
+LIBPATCH = 3
 
 logger = logging.getLogger(__name__)
 
@@ -753,7 +753,7 @@ class MongoDBBackups(Object):
 
             for host_info in cluster["nodes"]:
                 replica_info = (
-                    f"mongodb/{self.charm.unit_ip(self.charm.unit)}:{Config.MONGOS_PORT}"
+                    f"mongodb/{self.charm.unit_host(self.charm.unit)}:{Config.MONGOS_PORT}"
                 )
                 if host_info["host"] == replica_info:
                     break

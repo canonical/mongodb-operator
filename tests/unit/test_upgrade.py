@@ -26,9 +26,9 @@ class TestCharm(unittest.TestCase):
     @patch("charm.get_charm_revision")
     @patch("charm.MongoDBStatusHandler.is_status_related_to_mismatched_revision")
     @patch("charm.MongoDBStatusHandler.are_all_units_ready_for_upgrade")
-    @patch("charms.mongodb.v1.helpers.MongoDBConnection")
+    @patch("charms.mongodb.v0.set_status.MongoDBConnection")
     @patch("upgrades.mongodb_upgrade.MongoDBConnection")
-    @patch("charms.mongodb.v0.mongodb.MongoDBConnection.is_any_sync")
+    @patch("charms.mongodb.v1.mongodb.MongoDBConnection.is_any_sync")
     def test_is_cluster_healthy(
         self,
         is_any_sync,
