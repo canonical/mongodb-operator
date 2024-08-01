@@ -59,7 +59,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         await ops_test.model.deploy(db_charm, num_units=3)
 
     # deploy the s3 integrator charm
-    await ops_test.model.deploy(S3_APP_NAME, channel="edge", revision=24)
+    await ops_test.model.deploy(S3_APP_NAME, channel="edge")
 
     await ops_test.model.wait_for_idle()
 
@@ -89,7 +89,7 @@ async def test_blocked_incorrect_creds(ops_test: OpsTest) -> None:
     await ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active")
 
     await wait_for_mongodb_units_blocked(
-        ops_test, db_app_name, status="s3 credentials are incorrect.", timeout=600
+        ops_test, db_app_name, status="s3 credentials are incorrect.", timeout=300
     )
 
 
@@ -106,7 +106,7 @@ async def test_blocked_incorrect_conf(ops_test: OpsTest, github_secrets) -> None
     # wait for both applications to be idle with the correct statuses
     await ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active")
     await wait_for_mongodb_units_blocked(
-        ops_test, db_app_name, status="s3 configurations are incompatible.", timeout=600
+        ops_test, db_app_name, status="s3 configurations are incompatible.", timeout=300
     )
 
 

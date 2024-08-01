@@ -79,7 +79,7 @@ async def destroy_cluster(ops_test: OpsTest, applications: list[str]) -> None:
     """Destroy cluster in a forceful way."""
     for app in applications:
         await ops_test.model.applications[app].destroy(
-            destroy_storage=True, force=True, no_wait=False
+            destroy_storage=True, force=True, no_wait=True
         )
 
     # destroy does not wait for applications to be removed, perform this check manually
@@ -89,8 +89,8 @@ async def destroy_cluster(ops_test: OpsTest, applications: list[str]) -> None:
             # updated. Wrapping the call with `fast_forward` resolves this
             async with ops_test.fast_forward():
                 finished = all((item not in ops_test.model.applications for item in applications))
-            # This case we don't raise an error in the context manager which
-            # fails to restore the `update-status-hook-interval` value to it's former state.
+            # This case we don't raise an error in the context manager which fails to restore the
+            # `update-status-hook-interval` value to it's former state.
             assert finished, "old cluster not destroyed successfully"
 
 
@@ -455,9 +455,15 @@ async def wait_for_mongodb_units_blocked(
 
     This is necessary because the MongoDB app can report a different status than the units.
     """
-    for attempt in Retrying(stop=stop_after_delay(timeout), wait=wait_fixed(1), reraise=True):
-        with attempt:
-            await check_all_units_blocked_with_status(ops_test, db_app_name, status)
+    hook_interval_key = "update-status-hook-interval"
+    try:
+        old_interval = (await ops_test.model.get_config())[hook_interval_key]
+        await ops_test.model.set_config({hook_interval_key: "15s"})
+        for attempt in Retrying(stop=stop_after_delay(timeout), wait=wait_fixed(1), reraise=True):
+            with attempt:
+                await check_all_units_blocked_with_status(ops_test, db_app_name, status)
+    finally:
+        await ops_test.model.set_config({hook_interval_key: old_interval})
 
 
 def is_relation_joined(ops_test: OpsTest, endpoint_one: str, endpoint_two: str) -> bool:
