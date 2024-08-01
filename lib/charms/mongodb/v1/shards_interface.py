@@ -63,7 +63,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 8
+LIBPATCH = 9
 
 KEYFILE_KEY = "key-file"
 HOSTS_KEY = "host"
@@ -758,7 +758,7 @@ class ConfigServerRequirer(Object):
 
         # Edge case for DPE-4998
         # TODO: Remove this when https://github.com/canonical/operator/issues/1306 is fixed.
-        if not event.relation.app:
+        if event.relation.app is None:
             return False
 
         mongos_hosts = event.relation.data[event.relation.app].get(HOSTS_KEY)
