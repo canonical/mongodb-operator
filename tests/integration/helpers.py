@@ -79,7 +79,7 @@ async def destroy_cluster(ops_test: OpsTest, applications: list[str]) -> None:
     """Destroy cluster in a forceful way."""
     for app in applications:
         await ops_test.model.applications[app].destroy(
-            destroy_storage=True, force=True, no_wait=True
+            destroy_storage=True, force=True, no_wait=False
         )
 
     # destroy does not wait for applications to be removed, perform this check manually
