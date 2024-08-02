@@ -458,7 +458,7 @@ async def wait_for_mongodb_units_blocked(
     hook_interval_key = "update-status-hook-interval"
     try:
         old_interval = (await ops_test.model.get_config())[hook_interval_key]
-        await ops_test.model.set_config({hook_interval_key: "15s"})
+        await ops_test.model.set_config({hook_interval_key: "1m"})
         for attempt in Retrying(stop=stop_after_delay(timeout), wait=wait_fixed(1), reraise=True):
             with attempt:
                 await check_all_units_blocked_with_status(ops_test, db_app_name, status)
