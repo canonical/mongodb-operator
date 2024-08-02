@@ -1,0 +1,34 @@
+[33mWARNING [0m urllib3.connectionpool:connectionpool.py:870 Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7dd129c948e0>: Failed to establish a new connection: [Errno 111] Connection refused')': /metrics
+[33mWARNING [0m urllib3.connectionpool:connectionpool.py:870 Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7dd129272380>: Failed to establish a new connection: [Errno 111] Connection refused')': /metrics
+[33mWARNING [0m urllib3.connectionpool:connectionpool.py:870 Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7dd129273bb0>: Failed to establish a new connection: [Errno 111] Connection refused')': /metrics
+[32mINFO    [0m pytest_operator.plugin:plugin.py:834 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.4.4    unsupported  02:06:50Z
+
+App      Version  Status   Scale  Charm    Channel  Rev  Exposed  Message
+mongodb           unknown      3  mongodb             0  no       
+
+Unit        Workload  Agent  Machine  Public address  Ports  Message
+mongodb/0   unknown   idle   0        10.126.187.33          
+mongodb/1*  unknown   idle   1        10.126.187.162         
+mongodb/2   unknown   idle   2        10.126.187.160         
+
+Machine  State    Address         Inst id        Base          AZ  Message
+0        started  10.126.187.33   juju-b87718-0  ubuntu@22.04      Running
+1        started  10.126.187.162  juju-b87718-1  ubuntu@22.04      Running
+2        started  10.126.187.160  juju-b87718-2  ubuntu@22.04      Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:840 Juju error logs:
+
+machine-1: 01:41:16 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 01:41:16 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-1: 01:41:20 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-0: 01:41:20 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 01:41:20 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 01:41:21 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 01:41:21 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-2: 01:41:21 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-0: 01:41:21 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:904 Forgetting main...

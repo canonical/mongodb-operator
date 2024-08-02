@@ -1,0 +1,37 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:834 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.4.4    unsupported  01:44:28Z
+
+App            Version  Status   Scale  Charm          Channel      Rev  Exposed  Message
+mongodb                 unknown      3  mongodb                       0  no       
+s3-integrator           active       1  s3-integrator  latest/edge   17  no       
+
+Unit              Workload  Agent  Machine  Public address  Ports  Message
+mongodb/0         unknown   idle   0        10.10.121.18           
+mongodb/1         unknown   idle   1        10.10.121.59           
+mongodb/2*        unknown   idle   2        10.10.121.220          
+s3-integrator/0*  active    idle   3        10.10.121.149          
+
+Machine  State    Address        Inst id        Base          AZ  Message
+0        started  10.10.121.18   juju-321e2f-0  ubuntu@22.04      Running
+1        started  10.10.121.59   juju-321e2f-1  ubuntu@22.04      Running
+2        started  10.10.121.220  juju-321e2f-2  ubuntu@22.04      Running
+3        started  10.10.121.149  juju-321e2f-3  ubuntu@22.04      Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:840 Juju error logs:
+
+machine-2: 01:38:27 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 01:38:27 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 01:38:28 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 01:38:28 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 01:38:28 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 01:38:28 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 01:38:28 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 01:38:28 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-1: 01:38:29 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-0: 01:38:29 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-2: 01:38:29 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-s3-integrator-0: 01:38:29 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:904 Forgetting main...
