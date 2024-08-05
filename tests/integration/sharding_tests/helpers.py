@@ -16,6 +16,7 @@ from ..relation_tests.new_relations.helpers import (
 TIMEOUT = 10 * 60
 MONGOS_PORT = 27018
 MONGOD_PORT = 27017
+MONGODB_CHARM_NAME = "mongodb"
 SHARD_ONE_APP_NAME = "shard-one"
 SHARD_TWO_APP_NAME = "shard-two"
 CONFIG_SERVER_APP_NAME = "config-server"
@@ -129,7 +130,7 @@ async def deploy_cluster_components(
     if channel is not None:
         my_charm = await ops_test.build_charm(".")
     else:
-        my_charm = "mongodb"
+        my_charm = MONGODB_CHARM_NAME
     await ops_test.model.deploy(
         my_charm,
         num_units=num_units_cluster_config[CONFIG_SERVER_APP_NAME],
