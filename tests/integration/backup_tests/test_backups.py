@@ -12,7 +12,12 @@ from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from ..ha_tests import helpers as ha_helpers
-from ..helpers import get_app_name, is_relation_joined, wait_for_mongodb_units_blocked
+from ..helpers import (
+    destroy_cluster,
+    get_app_name,
+    is_relation_joined,
+    wait_for_mongodb_units_blocked,
+)
 from . import helpers
 
 S3_APP_NAME = "s3-integrator"
@@ -54,7 +59,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         await ops_test.model.deploy(db_charm, num_units=3)
 
     # deploy the s3 integrator charm
-    await ops_test.model.deploy(S3_APP_NAME, channel="edge", revision=17)
+    await ops_test.model.deploy(S3_APP_NAME, channel="edge")
 
     await ops_test.model.wait_for_idle()
 
@@ -74,7 +79,7 @@ async def test_blocked_incorrect_creds(ops_test: OpsTest) -> None:
 
     # relate after s3 becomes active add and wait for relation
     await ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active")
-    await ops_test.model.add_relation(S3_APP_NAME, db_app_name)
+    await ops_test.model.integrate(S3_APP_NAME, db_app_name)
     await ops_test.model.block_until(
         lambda: is_relation_joined(ops_test, ENDPOINT, ENDPOINT) is True,
         timeout=TIMEOUT,
@@ -350,7 +355,7 @@ async def test_restore_new_cluster(
     assert action.status == "completed"
 
     # relate to s3 - s3 has the necessary configurations
-    await ops_test.model.add_relation(S3_APP_NAME, NEW_CLUSTER)
+    await ops_test.model.integrate(S3_APP_NAME, NEW_CLUSTER)
     await ops_test.model.block_until(
         lambda: is_relation_joined(ops_test, ENDPOINT, ENDPOINT) is True,
         timeout=TIMEOUT,
@@ -389,7 +394,7 @@ async def test_restore_new_cluster(
             writes_in_new_cluster == writes_in_old_cluster
         ), "new cluster writes do not match old cluster writes after restore"
 
-    await helpers.destroy_cluster(ops_test, cluster_name=NEW_CLUSTER)
+    await destroy_cluster(ops_test, applications=[NEW_CLUSTER])
 
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])

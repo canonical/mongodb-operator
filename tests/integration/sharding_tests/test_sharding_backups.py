@@ -9,10 +9,10 @@ from typing import Dict
 
 import pytest
 from pytest_operator.plugin import OpsTest
-from tenacity import Retrying, stop_after_attempt, stop_after_delay, wait_fixed
+from tenacity import Retrying, stop_after_delay, wait_fixed
 
 from ..backup_tests import helpers as backup_helpers
-from ..helpers import get_leader_id, get_password, set_password
+from ..helpers import destroy_cluster, get_leader_id, get_password, set_password
 from . import writes_helpers
 from .helpers import generate_mongodb_client, write_data_to_mongodb
 
@@ -333,7 +333,9 @@ async def test_migrate_restore_backup(ops_test: OpsTest, add_writes_to_shards) -
     await add_and_verify_unwanted_writes(ops_test, cluster_writes)
 
     # Destroy the old cluster and create a new cluster with the same exact topology and password
-    await destroy_cluster_backup_test(ops_test)
+    await destroy_cluster(
+        ops_test, applications=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME]
+    )
     await deploy_cluster_backup_test(ops_test, deploy_s3_integrator=False, new_names=True)
     await setup_cluster_and_s3(ops_test, new_names=True)
     config_leader_id = await get_leader_id(ops_test, app_name=CONFIG_SERVER_APP_NAME_NEW)
@@ -440,27 +442,6 @@ async def setup_cluster_and_s3(ops_test: OpsTest, new_names=False) -> None:
         status="active",
         timeout=TIMEOUT,
     )
-
-
-async def destroy_cluster_backup_test(ops_test) -> None:
-    """Destroy cluster in a forceful way."""
-    for app in [
-        CONFIG_SERVER_APP_NAME,
-        SHARD_ONE_APP_NAME,
-        SHARD_TWO_APP_NAME,
-    ]:
-        await ops_test.model.applications[app].destroy(force=True, no_wait=False)
-
-    # destroy does not wait for applications to be removed, perform this check manually
-    for attempt in Retrying(stop=stop_after_attempt(100), wait=wait_fixed(10), reraise=True):
-        with attempt:
-            # pytest_operator has a bug where the number of applications does not get correctly
-            # updated. Wrapping the call with `fast_forward` resolves this
-            async with ops_test.fast_forward():
-                print(ops_test.model.applications)
-                assert (
-                    len(ops_test.model.applications) == 1
-                ), "old cluster not destroyed successfully."
 
 
 async def add_and_verify_unwanted_writes(ops_test, old_cluster_writes: Dict) -> None:
