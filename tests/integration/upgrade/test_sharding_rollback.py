@@ -24,6 +24,7 @@ CLUSTER_COMPONENTS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME, CONFIG_SERVER_APP_
 SHARD_REL_NAME = "sharding"
 CONFIG_SERVER_REL_NAME = "config-server"
 TIMEOUT = 15 * 60
+LONG_TIMEOUT = 20 * 60
 MEDIAN_REELECTION_TIME = 12
 
 
@@ -31,20 +32,16 @@ MEDIAN_REELECTION_TIME = 12
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
-    """Build deploy, and integrate, a sharded cluster.
-
-    TODO: When upgrades are supported, deploy with most recent revision (6/stable when possible,
-    but 6/edge as soon as available)
-    """
+    """Build deploy, and integrate, a sharded cluster."""
     num_units_cluster_config = {
         CONFIG_SERVER_APP_NAME: 3,
         SHARD_ONE_APP_NAME: 3,
         SHARD_TWO_APP_NAME: 1,
     }
-    await deploy_cluster_components(ops_test, num_units_cluster_config)
+    await deploy_cluster_components(ops_test, num_units_cluster_config, channel="6/edge")
 
     await ops_test.model.wait_for_idle(
-        apps=CLUSTER_COMPONENTS, idle_period=20, timeout=TIMEOUT, raise_on_blocked=False
+        apps=CLUSTER_COMPONENTS, idle_period=20, timeout=LONG_TIMEOUT, raise_on_blocked=False
     )
     await integrate_cluster(ops_test)
     await ops_test.model.wait_for_idle(
@@ -59,21 +56,18 @@ async def test_rollback_on_config_server(
     ops_test: OpsTest, continuous_writes_to_shard_one, continuous_writes_to_shard_two
 ) -> None:
     """Verify that the config-server can safely rollback without losing writes."""
+    new_charm = await ops_test.build_charm(".")
     config_server_unit = await find_unit(ops_test, leader=True, app_name=CONFIG_SERVER_APP_NAME)
     action = await config_server_unit.run_action("pre-upgrade-check")
     await action.wait()
     assert action.status == "completed", "pre-upgrade-check failed, expected to succeed."
 
-    await ops_test.model.applications[CONFIG_SERVER_APP_NAME].refresh(
-        channel="6/edge", switch="ch:mongodb"
-    )
+    await ops_test.model.applications[CONFIG_SERVER_APP_NAME].refresh(path=new_charm)
     await ops_test.model.wait_for_idle(
         apps=[CONFIG_SERVER_APP_NAME], timeout=1000, idle_period=120
     )
 
     # instead of resuming upgrade refresh with the old version
-    # TODO: instead of using new_charm - use the one deployed on charmhub - cannot do this until
-    # the newest revision is published
     await ops_test.model.applications[CONFIG_SERVER_APP_NAME].refresh(
         channel="6/edge", switch="ch:mongodb"
     )
@@ -123,9 +117,9 @@ async def test_rollback_on_shard_and_config_server(
     assert action.status == "completed", "pre-upgrade-check failed, expected to succeed."
 
     # instead of resuming upgrade refresh with the old version
-    # TODO: instead of using new_charm - use the one deployed on charmhub - cannot do this until
-    # the newest revision is published
-    await ops_test.model.applications[SHARD_ONE_APP_NAME].refresh(path=new_charm)
+    await ops_test.model.applications[SHARD_ONE_APP_NAME].refresh(
+        channel="6/edge", switch="ch:mongodb"
+    )
     await ops_test.model.wait_for_idle(
         apps=[CONFIG_SERVER_APP_NAME], timeout=1000, idle_period=120
     )
