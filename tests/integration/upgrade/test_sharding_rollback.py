@@ -27,7 +27,6 @@ TIMEOUT = 15 * 60
 MEDIAN_REELECTION_TIME = 12
 
 
-@pytest.mark.skip("re-enable these tests once upgrades are available on charmhub")
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
@@ -53,7 +52,6 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     )
 
 
-@pytest.mark.skip("re-enable these tests once upgrades are available on charmhub")
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
@@ -106,7 +104,6 @@ async def test_rollback_on_config_server(
     # TODO implement this check once we have implemented the post-cluster-upgrade code DPE-4143
 
 
-@pytest.mark.skip("re-enable these tests once upgrades are available on charmhub")
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail

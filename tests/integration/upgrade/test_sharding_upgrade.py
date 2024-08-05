@@ -38,11 +38,7 @@ MEDIAN_REELECTION_TIME = 12
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
-    """Build deploy, and integrate, a sharded cluster.
-
-    TODO: When upgrades are supported, deploy with most recent revision (6/stable when possible,
-    but 6/edge as soon as available)
-    """
+    """Build deploy, and integrate, a sharded cluster."""
     num_units_cluster_config = {
         CONFIG_SERVER_APP_NAME: 3,
         SHARD_ONE_APP_NAME: 3,
