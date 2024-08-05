@@ -126,7 +126,10 @@ async def deploy_cluster_components(
             SHARD_TWO_APP_NAME: 1,
         }
 
-    my_charm = await ops_test.build_charm(".")
+    if channel is not None:
+        my_charm = await ops_test.build_charm(".")
+    else:
+        my_charm = "mongodb"
     await ops_test.model.deploy(
         my_charm,
         num_units=num_units_cluster_config[CONFIG_SERVER_APP_NAME],
