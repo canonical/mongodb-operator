@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 from urllib.parse import quote_plus
 
 from pymongo import MongoClient
@@ -117,7 +117,7 @@ def count_users(mongos_client: MongoClient) -> int:
 
 
 async def deploy_cluster_components(
-    ops_test: OpsTest, num_units_cluster_config: Dict = None
+    ops_test: OpsTest, num_units_cluster_config: dict | None = None, channel: str | None = None
 ) -> None:
     if not num_units_cluster_config:
         num_units_cluster_config = {
@@ -132,18 +132,21 @@ async def deploy_cluster_components(
         num_units=num_units_cluster_config[CONFIG_SERVER_APP_NAME],
         config={"role": "config-server"},
         application_name=CONFIG_SERVER_APP_NAME,
+        channel=channel,
     )
     await ops_test.model.deploy(
         my_charm,
         num_units=num_units_cluster_config[SHARD_ONE_APP_NAME],
         config={"role": "shard"},
         application_name=SHARD_ONE_APP_NAME,
+        channel=channel,
     )
     await ops_test.model.deploy(
         my_charm,
         num_units=num_units_cluster_config[SHARD_TWO_APP_NAME],
         config={"role": "shard"},
         application_name=SHARD_TWO_APP_NAME,
+        channel=channel,
     )
 
     await ops_test.model.wait_for_idle(

@@ -42,7 +42,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         SHARD_ONE_APP_NAME: 3,
         SHARD_TWO_APP_NAME: 1,
     }
-    await deploy_cluster_components(ops_test, num_units_cluster_config)
+    await deploy_cluster_components(ops_test, num_units_cluster_config, channel="6/edge")
 
     await ops_test.model.wait_for_idle(
         apps=CLUSTER_COMPONENTS, idle_period=20, timeout=TIMEOUT, raise_on_blocked=False
@@ -172,6 +172,15 @@ async def run_upgrade_sequence(ops_test: OpsTest, app_name: str, new_charm) -> N
 
     await ops_test.model.applications[app_name].refresh(path=new_charm)
     await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, idle_period=120)
+
+    # resume upgrade only needs to be ran when:
+    # 1. there are more than one units in the application
+    # 2. AND the underlying workload was updated
+    if not len(ops_test.model.applications[app_name].units) > 1:
+        return
+
+    if "resume-upgrade" not in ops_test.model.applications[app_name].status_message:
+        return
 
     action = await leader_unit.run_action("resume-upgrade")
     await action.wait()

@@ -48,7 +48,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         SHARD_ONE_APP_NAME: 3,
         SHARD_TWO_APP_NAME: 3,
     }
-    await deploy_cluster_components(ops_test, num_units_cluster_config)
+    await deploy_cluster_components(ops_test, num_units_cluster_config, channel="6/edge")
 
     await ops_test.model.wait_for_idle(
         apps=CLUSTER_COMPONENTS, idle_period=20, timeout=TIMEOUT, raise_on_blocked=False
