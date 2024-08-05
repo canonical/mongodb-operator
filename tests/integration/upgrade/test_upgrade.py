@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 MEDIAN_REELECTION_TIME = 12
-MONGODB_CHARM_NAME = "mongodb-operator"
+MONGODB_CHARM_NAME = "mongodb"
 
 
 @pytest.fixture()
