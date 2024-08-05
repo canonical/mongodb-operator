@@ -127,7 +127,7 @@ async def deploy_cluster_components(
             SHARD_TWO_APP_NAME: 1,
         }
 
-    if channel is not None:
+    if channel is None:
         my_charm = await ops_test.build_charm(".")
     else:
         my_charm = MONGODB_CHARM_NAME
