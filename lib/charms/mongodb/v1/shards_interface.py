@@ -751,11 +751,6 @@ class ConfigServerRequirer(Object):
         if not self.pass_sanity_hook_checks(event):
             return False
 
-        # occasionally, broken events have no application, in these scenarios nothing should be
-        # processed.
-        if not event.relation.app and isinstance(event, RelationBrokenEvent):
-            return False
-
         # Edge case for DPE-4998
         # TODO: Remove this when https://github.com/canonical/operator/issues/1306 is fixed.
         if event.relation.app is None:
