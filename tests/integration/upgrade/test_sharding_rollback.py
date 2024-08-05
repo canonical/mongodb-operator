@@ -41,7 +41,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         SHARD_ONE_APP_NAME: 3,
         SHARD_TWO_APP_NAME: 1,
     }
-    await deploy_cluster_components(ops_test, num_units_cluster_config, channel="6/edge")
+    await deploy_cluster_components(ops_test, num_units_cluster_config)
 
     await ops_test.model.wait_for_idle(
         apps=CLUSTER_COMPONENTS, idle_period=20, timeout=TIMEOUT, raise_on_blocked=False
@@ -59,13 +59,12 @@ async def test_rollback_on_config_server(
     ops_test: OpsTest, continuous_writes_to_shard_one, continuous_writes_to_shard_two
 ) -> None:
     """Verify that the config-server can safely rollback without losing writes."""
-    new_charm = await ops_test.build_charm(".")
     config_server_unit = await find_unit(ops_test, leader=True, app_name=CONFIG_SERVER_APP_NAME)
     action = await config_server_unit.run_action("pre-upgrade-check")
     await action.wait()
     assert action.status == "completed", "pre-upgrade-check failed, expected to succeed."
 
-    await ops_test.model.applications[CONFIG_SERVER_APP_NAME].refresh(path=new_charm)
+    await ops_test.model.applications[CONFIG_SERVER_APP_NAME].refresh(channel="6/edge")
     await ops_test.model.wait_for_idle(
         apps=[CONFIG_SERVER_APP_NAME], timeout=1000, idle_period=120
     )
@@ -73,7 +72,7 @@ async def test_rollback_on_config_server(
     # instead of resuming upgrade refresh with the old version
     # TODO: instead of using new_charm - use the one deployed on charmhub - cannot do this until
     # the newest revision is published
-    await ops_test.model.applications[CONFIG_SERVER_APP_NAME].refresh(path=new_charm)
+    await ops_test.model.applications[CONFIG_SERVER_APP_NAME].refresh(channel="6/edge")
 
     # verify no writes were skipped during upgrade/rollback process
     shard_one_expected_writes = await stop_continous_writes(
