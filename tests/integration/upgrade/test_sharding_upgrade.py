@@ -68,10 +68,10 @@ async def test_upgrade(
     assert action.status == "completed", "pre-upgrade-check failed, expected to succeed."
 
     new_charm = await ops_test.build_charm(".")
-    await run_upgrade_sequence(ops_test, CONFIG_SERVER_APP_NAME, new_charm)
+    await run_upgrade_sequence(ops_test, CONFIG_SERVER_APP_NAME, new_charm=new_charm)
 
     for shard_app_name in SHARD_COMPONENTS:
-        await run_upgrade_sequence(ops_test, shard_app_name, new_charm)
+        await run_upgrade_sequence(ops_test, shard_app_name, new_charm=new_charm)
 
     # verify no writes were skipped during upgrade process
     shard_one_expected_writes = await stop_continous_writes(

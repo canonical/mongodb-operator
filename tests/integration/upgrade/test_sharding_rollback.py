@@ -73,9 +73,8 @@ async def test_rollback_on_config_server(
     # await ops_test.model.applications[CONFIG_SERVER_APP_NAME].refresh(
     #     channel="6/edge", switch="ch:mongodb"
     # )
-    await ops_test.juju(
-        f"refresh {CONFIG_SERVER_APP_NAME} --channel 6/stable --switch ch:mongodb".split()
-    )
+    refresh_cmd = f"refresh {CONFIG_SERVER_APP_NAME} --channel 6/stable --switch ch:mongodb"
+    await ops_test.juju(*refresh_cmd.split())
 
     # verify no writes were skipped during upgrade/rollback process
     shard_one_expected_writes = await stop_continous_writes(
@@ -114,7 +113,7 @@ async def test_rollback_on_shard_and_config_server(
 ) -> None:
     """Verify that a config-server and shard can safely rollback without losing writes."""
     new_charm = await ops_test.build_charm(".")
-    await run_upgrade_sequence(ops_test, CONFIG_SERVER_APP_NAME, new_charm)
+    await run_upgrade_sequence(ops_test, CONFIG_SERVER_APP_NAME, new_charm=new_charm)
 
     shard_unit = await find_unit(ops_test, leader=True, app_name=SHARD_ONE_APP_NAME)
     action = await shard_unit.run_action("pre-upgrade-check")
@@ -125,9 +124,8 @@ async def test_rollback_on_shard_and_config_server(
     # await ops_test.model.applications[SHARD_ONE_APP_NAME].refresh(
     #     channel="6/edge", switch="ch:mongodb"
     # )
-    await ops_test.juju(
-        f"refresh {SHARD_ONE_APP_NAME} --channel 6/stable --switch ch:mongodb".split()
-    )
+    refresh_cmd = f"refresh {SHARD_ONE_APP_NAME} --channel 6/stable --switch ch:mongodb"
+    await ops_test.juju(*refresh_cmd.split())
     await ops_test.model.wait_for_idle(
         apps=[CONFIG_SERVER_APP_NAME], timeout=1000, idle_period=120
     )
@@ -179,7 +177,8 @@ async def run_upgrade_sequence(
         # await ops_test.model.applications[app_name].refresh(
         #     channel=channel, switch="ch:mongodb"
         # )
-        await ops_test.juju(f"refresh {app_name} --channel {channel} --switch ch:mongodb".split())
+        refresh_cmd = f"refresh {app_name} --channel {channel} --switch ch:mongodb"
+        await ops_test.juju(*refresh_cmd.split())
     else:
         raise ValueError("Either new_charm or channel must be provided.")
 
