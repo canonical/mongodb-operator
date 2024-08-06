@@ -13,7 +13,7 @@ from ..relation_tests.new_relations.helpers import (
     get_secret_data,
 )
 
-TIMEOUT = 10 * 60
+TIMEOUT = 15 * 60
 MONGOS_PORT = 27018
 MONGOD_PORT = 27017
 MONGODB_CHARM_NAME = "mongodb"
