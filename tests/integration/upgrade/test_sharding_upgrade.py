@@ -74,7 +74,7 @@ async def test_upgrade(
         await run_upgrade_sequence(ops_test, shard_app_name, new_charm=new_charm)
 
     # We want to be sure that everything is settled down
-    await ops_test.wait_for_idle(
+    await ops_test.model.wait_for_idle(
         CLUSTER_COMPONENTS, status="active", idle_period=20, timeout=TIMEOUT
     )
     # verify no writes were skipped during upgrade process
@@ -153,7 +153,7 @@ async def run_upgrade_sequence(ops_test: OpsTest, app_name: str, new_charm) -> N
     assert action.status == "completed", "pre-upgrade-check failed, expected to succeed."
 
     await ops_test.model.applications[app_name].refresh(path=new_charm)
-    await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, idle_period=120)
+    await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, idle_period=30)
 
     # resume upgrade only needs to be ran when:
     # 1. there are more than one units in the application
@@ -168,4 +168,4 @@ async def run_upgrade_sequence(ops_test: OpsTest, app_name: str, new_charm) -> N
     await action.wait()
     assert action.status == "completed", "resume-upgrade failed, expected to succeed."
 
-    await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, idle_period=120)
+    await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, idle_period=30)
