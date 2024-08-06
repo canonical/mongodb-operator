@@ -712,7 +712,7 @@ class MongodbOperatorCharm(CharmBase):
         try:
             secret_id = self.set_password(username, new_password)
         except SetPasswordError as e:
-            event.fail(e)
+            event.fail(str(e))
             return
 
         if username == BackupUser.get_username():
