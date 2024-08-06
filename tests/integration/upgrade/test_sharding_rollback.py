@@ -75,8 +75,7 @@ async def test_rollback_on_config_server(
     # await ops_test.model.applications[CONFIG_SERVER_APP_NAME].refresh(
     #     channel="6/edge", switch="ch:mongodb"
     # )
-    refresh_cmd = f"refresh {CONFIG_SERVER_APP_NAME} --channel 6/stable --switch ch:mongodb"
-    await ops_test.juju(*refresh_cmd.split())
+    await refresh_with_juju(ops_test, CONFIG_SERVER_APP_NAME, "6/stable")
 
     # verify no writes were skipped during upgrade/rollback process
     shard_one_expected_writes = await stop_continous_writes(
@@ -127,8 +126,7 @@ async def test_rollback_on_shard_and_config_server(
     # await ops_test.model.applications[SHARD_ONE_APP_NAME].refresh(
     #     channel="6/edge", switch="ch:mongodb"
     # )
-    refresh_cmd = f"refresh {SHARD_ONE_APP_NAME} --channel 6/stable --switch ch:mongodb"
-    await ops_test.juju(*refresh_cmd.split())
+    await refresh_with_juju(ops_test, SHARD_ONE_APP_NAME, "6/stable")
     await ops_test.model.wait_for_idle(
         apps=[CONFIG_SERVER_APP_NAME], timeout=1000, idle_period=120
     )
@@ -164,6 +162,11 @@ async def test_rollback_on_shard_and_config_server(
     # TODO implement this check once we have implemented the post-cluster-upgrade code DPE-4143
 
 
+async def refresh_with_juju(ops_test: OpsTest, app_name: str, channel: str) -> None:
+    refresh_cmd = f"refresh {app_name} --channel {channel} --switch ch:mongodb"
+    await ops_test.juju(*refresh_cmd.split())
+
+
 async def run_upgrade_sequence(
     ops_test: OpsTest, app_name: str, new_charm: Path | None = None, channel: str | None = None
 ) -> None:
@@ -180,8 +183,7 @@ async def run_upgrade_sequence(
         # await ops_test.model.applications[app_name].refresh(
         #     channel=channel, switch="ch:mongodb"
         # )
-        refresh_cmd = f"refresh {app_name} --channel {channel} --switch ch:mongodb"
-        await ops_test.juju(*refresh_cmd.split())
+        await refresh_with_juju(ops_test, app_name, channel)
     else:
         raise ValueError("Either new_charm or channel must be provided.")
 
