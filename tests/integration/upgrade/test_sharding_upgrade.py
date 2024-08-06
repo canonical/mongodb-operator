@@ -73,6 +73,10 @@ async def test_upgrade(
     for shard_app_name in SHARD_COMPONENTS:
         await run_upgrade_sequence(ops_test, shard_app_name, new_charm=new_charm)
 
+    # We want to be sure that everything is settled down
+    await ops_test.wait_for_idle(
+        CLUSTER_COMPONENTS, status="active", idle_period=20, timeout=TIMEOUT
+    )
     # verify no writes were skipped during upgrade process
     shard_one_expected_writes = await stop_continous_writes(
         ops_test,
