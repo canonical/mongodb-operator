@@ -2,6 +2,8 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+from pathlib import Path
+
 import pytest
 from pytest_operator.plugin import OpsTest
 
@@ -24,7 +26,6 @@ CLUSTER_COMPONENTS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME, CONFIG_SERVER_APP_
 SHARD_REL_NAME = "sharding"
 CONFIG_SERVER_REL_NAME = "config-server"
 TIMEOUT = 15 * 60
-LONG_TIMEOUT = 20 * 60
 MEDIAN_REELECTION_TIME = 12
 
 
@@ -41,7 +42,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await deploy_cluster_components(ops_test, num_units_cluster_config, channel="6/edge")
 
     await ops_test.model.wait_for_idle(
-        apps=CLUSTER_COMPONENTS, idle_period=20, timeout=LONG_TIMEOUT, raise_on_blocked=False
+        apps=CLUSTER_COMPONENTS, idle_period=20, timeout=TIMEOUT, raise_on_blocked=False
     )
     await integrate_cluster(ops_test)
     await ops_test.model.wait_for_idle(
@@ -68,8 +69,12 @@ async def test_rollback_on_config_server(
     )
 
     # instead of resuming upgrade refresh with the old version
-    await ops_test.model.applications[CONFIG_SERVER_APP_NAME].refresh(
-        channel="6/edge", switch="ch:mongodb"
+    # TODO: Use this when https://github.com/juju/python-libjuju/issues/1086 is fixed
+    # await ops_test.model.applications[CONFIG_SERVER_APP_NAME].refresh(
+    #     channel="6/edge", switch="ch:mongodb"
+    # )
+    await ops_test.juju(
+        f"refresh {CONFIG_SERVER_APP_NAME} --channel 6/stable --switch ch:mongodb".split()
     )
 
     # verify no writes were skipped during upgrade/rollback process
@@ -116,17 +121,18 @@ async def test_rollback_on_shard_and_config_server(
     await action.wait()
     assert action.status == "completed", "pre-upgrade-check failed, expected to succeed."
 
-    # instead of resuming upgrade refresh with the old version
-    await ops_test.model.applications[SHARD_ONE_APP_NAME].refresh(
-        channel="6/edge", switch="ch:mongodb"
+    # TODO: Use this when https://github.com/juju/python-libjuju/issues/1086 is fixed
+    # await ops_test.model.applications[SHARD_ONE_APP_NAME].refresh(
+    #     channel="6/edge", switch="ch:mongodb"
+    # )
+    await ops_test.juju(
+        f"refresh {SHARD_ONE_APP_NAME} --channel 6/stable --switch ch:mongodb".split()
     )
     await ops_test.model.wait_for_idle(
         apps=[CONFIG_SERVER_APP_NAME], timeout=1000, idle_period=120
     )
 
-    # TODO: instead of using new_charm - use the one deployed on charmhub - cannot do this until
-    # the newest revision is published
-    await run_upgrade_sequence(ops_test, CONFIG_SERVER_APP_NAME, new_charm)
+    await run_upgrade_sequence(ops_test, CONFIG_SERVER_APP_NAME, channel="6/edge")
 
     # verify no writes were skipped during upgrade process
     shard_one_expected_writes = await stop_continous_writes(
@@ -157,14 +163,26 @@ async def test_rollback_on_shard_and_config_server(
     # TODO implement this check once we have implemented the post-cluster-upgrade code DPE-4143
 
 
-async def run_upgrade_sequence(ops_test: OpsTest, app_name: str, new_charm) -> None:
+async def run_upgrade_sequence(
+    ops_test: OpsTest, app_name: str, new_charm: Path | None = None, channel: str | None = None
+) -> None:
     """Runs the upgrade sequence on a given app."""
     leader_unit = await find_unit(ops_test, leader=True, app_name=app_name)
     action = await leader_unit.run_action("pre-upgrade-check")
     await action.wait()
     assert action.status == "completed", "pre-upgrade-check failed, expected to succeed."
 
-    await ops_test.model.applications[app_name].refresh(path=new_charm)
+    if new_charm is not None:
+        await ops_test.model.applications[app_name].refresh(path=new_charm)
+    elif channel is not None:
+        # TODO: Use this when https://github.com/juju/python-libjuju/issues/1086 is fixed
+        # await ops_test.model.applications[app_name].refresh(
+        #     channel=channel, switch="ch:mongodb"
+        # )
+        await ops_test.juju(f"refresh {app_name} --channel {channel} --switch ch:mongodb".split())
+    else:
+        raise ValueError("Either new_charm or channel must be provided.")
+
     await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, idle_period=120)
 
     # resume upgrade only needs to be ran when:
