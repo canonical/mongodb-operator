@@ -129,10 +129,10 @@ class MongoDBUpgrade(Object):
                 logger.info("Charm upgraded. MongoDB version unchanged")
 
             self._upgrade.upgrade_resumed = False
+            self.charm.version_checker.set_version_across_all_relations()
             # Only call `_reconcile_upgrade` on leader unit to avoid race conditions with
             # `upgrade_resumed`
             self._reconcile_upgrade()
-            self.charm.version_checker.set_version_across_all_relations()
 
     def _on_pre_upgrade_check_action(self, event: ActionEvent) -> None:
         if not self.charm.unit.is_leader():
@@ -190,7 +190,6 @@ class MongoDBUpgrade(Object):
         logger.debug("Forcing upgrade")
         event.log(f"Forcefully upgrading {self.charm.unit.name}")
         self._upgrade.upgrade_unit(charm=self.charm)
-        self.charm.version_checker.set_version_across_all_relations()
         event.set_results({"result": f"Forcefully upgraded {self.charm.unit.name}"})
         logger.debug("Forced upgrade")
 
