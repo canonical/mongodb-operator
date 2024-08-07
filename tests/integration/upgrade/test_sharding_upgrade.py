@@ -130,7 +130,7 @@ async def test_pre_upgrade_check_failure(ops_test: OpsTest) -> None:
     # re-enable network on sharded cluster and wait for idle active
     ha_helpers.restore_network_for_unit(shard_one_host_name)
 
-    async with ops_test.fast_forward():
+    async with ops_test.fast_forward(fast_interval="1m"):
         # sleep for twice the median election time
         time.sleep(MEDIAN_REELECTION_TIME * 2)
 
