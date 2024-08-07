@@ -102,7 +102,7 @@ jobs:
       - lint
       - unit-test
       - build
-    uses: canonical/data-platform-workflows/.github/workflows/integration_test_charm.yaml@v18.0.0
+    uses: canonical/data-platform-workflows/.github/workflows/integration_test_charm.yaml@jhack-fix
     with:
       artifact-prefix: packed-charm-cache-true
       cloud: lxd
