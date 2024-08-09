@@ -129,6 +129,7 @@ class MongoDBUpgrade(Object):
                 logger.info("Charm upgraded. MongoDB version unchanged")
 
             self._upgrade.upgrade_resumed = False
+            self.charm.version_checker.set_version_across_all_relations()
             # Only call `_reconcile_upgrade` on leader unit to avoid race conditions with
             # `upgrade_resumed`
             self._reconcile_upgrade()

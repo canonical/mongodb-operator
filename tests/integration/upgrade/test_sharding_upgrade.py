@@ -38,17 +38,13 @@ MEDIAN_REELECTION_TIME = 12
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
-    """Build deploy, and integrate, a sharded cluster.
-
-    TODO: When upgrades are supported, deploy with most recent revision (6/stable when possible,
-    but 6/edge as soon as available)
-    """
+    """Build deploy, and integrate, a sharded cluster."""
     num_units_cluster_config = {
         CONFIG_SERVER_APP_NAME: 3,
         SHARD_ONE_APP_NAME: 3,
         SHARD_TWO_APP_NAME: 3,
     }
-    await deploy_cluster_components(ops_test, num_units_cluster_config)
+    await deploy_cluster_components(ops_test, num_units_cluster_config, channel="6/edge")
 
     await ops_test.model.wait_for_idle(
         apps=CLUSTER_COMPONENTS, idle_period=20, timeout=TIMEOUT, raise_on_blocked=False
@@ -72,11 +68,15 @@ async def test_upgrade(
     assert action.status == "completed", "pre-upgrade-check failed, expected to succeed."
 
     new_charm = await ops_test.build_charm(".")
-    await run_upgrade_sequence(ops_test, CONFIG_SERVER_APP_NAME, new_charm)
+    await run_upgrade_sequence(ops_test, CONFIG_SERVER_APP_NAME, new_charm=new_charm)
 
     for shard_app_name in SHARD_COMPONENTS:
-        await run_upgrade_sequence(ops_test, shard_app_name, new_charm)
+        await run_upgrade_sequence(ops_test, shard_app_name, new_charm=new_charm)
 
+    # We want to be sure that everything is settled down
+    await ops_test.model.wait_for_idle(
+        CLUSTER_COMPONENTS, status="active", idle_period=20, timeout=TIMEOUT
+    )
     # verify no writes were skipped during upgrade process
     shard_one_expected_writes = await stop_continous_writes(
         ops_test,
@@ -130,7 +130,7 @@ async def test_pre_upgrade_check_failure(ops_test: OpsTest) -> None:
     # re-enable network on sharded cluster and wait for idle active
     ha_helpers.restore_network_for_unit(shard_one_host_name)
 
-    async with ops_test.fast_forward():
+    async with ops_test.fast_forward(fast_interval="1m"):
         # sleep for twice the median election time
         time.sleep(MEDIAN_REELECTION_TIME * 2)
 
@@ -153,7 +153,7 @@ async def run_upgrade_sequence(ops_test: OpsTest, app_name: str, new_charm) -> N
     assert action.status == "completed", "pre-upgrade-check failed, expected to succeed."
 
     await ops_test.model.applications[app_name].refresh(path=new_charm)
-    await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, idle_period=120)
+    await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, idle_period=30)
 
     # resume upgrade only needs to be ran when:
     # 1. there are more than one units in the application
@@ -168,4 +168,4 @@ async def run_upgrade_sequence(ops_test: OpsTest, app_name: str, new_charm) -> N
     await action.wait()
     assert action.status == "completed", "resume-upgrade failed, expected to succeed."
 
-    await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, idle_period=120)
+    await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, idle_period=30)
