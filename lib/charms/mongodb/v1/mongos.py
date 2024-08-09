@@ -1,4 +1,4 @@
-"""Code for interactions with MongoDB."""
+"""Code for interactions with MongoS."""
 
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
