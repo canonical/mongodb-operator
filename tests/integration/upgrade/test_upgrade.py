@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 MEDIAN_REELECTION_TIME = 12
+MONGODB_CHARM_NAME = "mongodb"
 
 
 @pytest.fixture()
@@ -35,10 +36,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         await check_or_scale_app(ops_test, app_name, required_units=3)
         return
 
-    # TODO: When upgrades are supported, deploy with most recent revision (6/stable when possible,
-    # but 6/edge as soon as available)
-    charm = await ops_test.build_charm(".")
-    await ops_test.model.deploy(charm, channel="edge", num_units=3)
+    await ops_test.model.deploy(MONGODB_CHARM_NAME, channel="6/edge", num_units=3)
 
     await ops_test.model.wait_for_idle(
         apps=["mongodb"], status="active", timeout=1000, idle_period=120
@@ -55,6 +53,8 @@ async def test_upgrade(ops_test: OpsTest, continuous_writes) -> None:
     action = await leader_unit.run_action("pre-upgrade-check")
     await action.wait()
 
+    assert action.status == "completed", "pre-upgrade-check-failed, expected to succeed"
+
     await ops_test.model.wait_for_idle(
         apps=[app_name], status="active", timeout=1000, idle_period=120
     )
@@ -65,7 +65,13 @@ async def test_upgrade(ops_test: OpsTest, continuous_writes) -> None:
     await ops_test.model.wait_for_idle(
         apps=[app_name], status="active", timeout=1000, idle_period=120
     )
-    # verify that the cluster is actually correctly configured after upgrade
+
+    if "resume-upgrade" in ops_test.model.applications[app_name].status_message:
+        action = await leader_unit.run_action("resume-upgrade")
+        await action.wait()
+        assert action.status == "completed", "resume-upgrade failed, expected to succeed"
+
+        await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, idle_period=120)
 
     # verify that the no writes were skipped
     total_expected_writes = await ha_helpers.stop_continous_writes(ops_test, app_name=app_name)

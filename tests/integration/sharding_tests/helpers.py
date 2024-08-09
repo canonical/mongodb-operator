@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-# Copyright 2023 Canonical Ltd.
+# Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 from urllib.parse import quote_plus
 
 from pymongo import MongoClient
@@ -13,9 +13,10 @@ from ..relation_tests.new_relations.helpers import (
     get_secret_data,
 )
 
-TIMEOUT = 10 * 60
+TIMEOUT = 15 * 60
 MONGOS_PORT = 27018
 MONGOD_PORT = 27017
+MONGODB_CHARM_NAME = "mongodb"
 SHARD_ONE_APP_NAME = "shard-one"
 SHARD_TWO_APP_NAME = "shard-two"
 CONFIG_SERVER_APP_NAME = "config-server"
@@ -117,7 +118,7 @@ def count_users(mongos_client: MongoClient) -> int:
 
 
 async def deploy_cluster_components(
-    ops_test: OpsTest, num_units_cluster_config: Dict = None
+    ops_test: OpsTest, num_units_cluster_config: dict | None = None, channel: str | None = None
 ) -> None:
     if not num_units_cluster_config:
         num_units_cluster_config = {
@@ -126,24 +127,30 @@ async def deploy_cluster_components(
             SHARD_TWO_APP_NAME: 1,
         }
 
-    my_charm = await ops_test.build_charm(".")
+    if channel is None:
+        my_charm = await ops_test.build_charm(".")
+    else:
+        my_charm = MONGODB_CHARM_NAME
     await ops_test.model.deploy(
         my_charm,
         num_units=num_units_cluster_config[CONFIG_SERVER_APP_NAME],
         config={"role": "config-server"},
         application_name=CONFIG_SERVER_APP_NAME,
+        channel=channel,
     )
     await ops_test.model.deploy(
         my_charm,
         num_units=num_units_cluster_config[SHARD_ONE_APP_NAME],
         config={"role": "shard"},
         application_name=SHARD_ONE_APP_NAME,
+        channel=channel,
     )
     await ops_test.model.deploy(
         my_charm,
         num_units=num_units_cluster_config[SHARD_TWO_APP_NAME],
         config={"role": "shard"},
         application_name=SHARD_TWO_APP_NAME,
+        channel=channel,
     )
 
     await ops_test.model.wait_for_idle(

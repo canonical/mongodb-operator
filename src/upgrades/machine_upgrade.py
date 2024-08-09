@@ -1,4 +1,4 @@
-# Copyright 2023 Canonical Ltd.
+# Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 """In-place upgrades on machines.
@@ -184,11 +184,6 @@ class Upgrade(upgrade.Upgrade):
         self._unit_databag["snap_revision"] = _SNAP_REVISION
         self._unit_workload_version = self._current_versions["workload"]
         logger.debug(f"Saved {_SNAP_REVISION} in unit databag after upgrade")
-
-        # once the last unit has upgrade, notify relevant integrated applications of the new
-        # version.
-        if charm.unit == self._sorted_units[-1]:
-            charm.version_checker.set_version_across_all_relations()
 
         # post upgrade check should be retried in case of failure, for this it is necessary to
         # emit a separate event.
