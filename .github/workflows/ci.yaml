@@ -16,7 +16,7 @@ on:
 jobs:
   lint:
     name: Lint
-    uses: canonical/data-platform-workflows/.github/workflows/lint.yaml@v18.0.0
+    uses: canonical/data-platform-workflows/.github/workflows/lint.yaml@v19.0.0
 
   unit-test:
     name: Unit test charm
@@ -24,7 +24,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Install tox & poetry
         run: |
           pipx install tox
@@ -38,7 +38,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - run: |
@@ -91,7 +91,7 @@ jobs:
           - tests/integration/sharding_tests/application
           - tests/integration/relation_tests/new_relations/application-charm
     name: Build charm
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v18.0.0
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v19.0.0
     with:
       path-to-charm-directory: ${{ matrix.path }}
       cache: true
@@ -102,7 +102,7 @@ jobs:
       - lint
       - unit-test
       - build
-    uses: canonical/data-platform-workflows/.github/workflows/integration_test_charm.yaml@v18.0.0
+    uses: canonical/data-platform-workflows/.github/workflows/integration_test_charm.yaml@v19.0.0
     with:
       artifact-prefix: packed-charm-cache-true
       cloud: lxd
