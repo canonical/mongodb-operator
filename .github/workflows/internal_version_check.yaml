@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Compare with internal version on main branch
         run: |
           NEW_VERSION="$(< charm_internal_version)"
