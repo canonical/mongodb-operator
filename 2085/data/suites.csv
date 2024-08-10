@@ -1,0 +1,150 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"","13385","test_create_and_list_backups","tests.integration.backup_tests","Sat Aug 10 01:46:55 UTC 2024","passed","Sat Aug 10 01:47:09 UTC 2024","","test_backups","",""
+"Verifies that the dependencies in the charm version are accurate.","2287","test_consistency_between_workload_and_metadata","tests.integration","Sat Aug 10 01:43:57 UTC 2024","passed","Sat Aug 10 01:44:00 UTC 2024","","test_charm","",""
+"Verify that endpoint still function correctly after a network cut.","513858","test_endpoints_network_cut","tests.integration.metrics_tests","Sat Aug 10 01:43:22 UTC 2024","passed","Sat Aug 10 01:51:56 UTC 2024","","test_metrics","",""
+"Verify that sharding components cannot use the DB relation.","32116","test_cannot_use_db_relation","tests.integration.sharding_tests","Sat Aug 10 01:45:16 UTC 2024","passed","Sat Aug 10 01:45:48 UTC 2024","","test_sharding_relations","",""
+"","82171","test_restart_db_process","tests.integration.ha_tests","Sat Aug 10 01:54:50 UTC 2024","passed","Sat Aug 10 01:56:12 UTC 2024","","test_ha","",""
+"Verify that the config-server can safely rollback without losing writes.","0","test_rollback_on_config_server","tests.integration.upgrade","Sat Aug 10 01:38:34 UTC 2024","skipped","Sat Aug 10 01:38:34 UTC 2024","","test_sharding_rollback","",""
+"Tests that sharded Charmed MongoDB cluster supports restores.","1674820","test_migrate_restore_backup","tests.integration.sharding_tests","Sat Aug 10 02:08:30 UTC 2024","passed","Sat Aug 10 02:36:25 UTC 2024","","test_sharding_backups","",""
+"Verify that a config-server and shard can safely rollback without losing writes.","0","test_rollback_on_shard_and_config_server","tests.integration.upgrade","Sat Aug 10 01:38:34 UTC 2024","skipped","Sat Aug 10 01:38:34 UTC 2024","","test_sharding_rollback","",""
+"Verifies that the charm goes into blocked status when s3 config options are incorrect.","22014","test_blocked_incorrect_conf","tests.integration.backup_tests","Sat Aug 10 01:45:16 UTC 2024","passed","Sat Aug 10 01:45:38 UTC 2024","","test_backups","",""
+"Verifies that the upgrade can run successfully.","330788","test_upgrade","tests.integration.upgrade","Sat Aug 10 01:50:50 UTC 2024","passed","Sat Aug 10 01:56:21 UTC 2024","","test_upgrade","",""
+"Verifies that the application and unit are active.","15187","test_status","tests.integration","Sat Aug 10 01:44:00 UTC 2024","passed","Sat Aug 10 01:44:15 UTC 2024","","test_charm","",""
+"Build and deploy a sharded cluster.","287166","test_build_and_deploy","tests.integration.sharding_tests","Sat Aug 10 01:45:08 UTC 2024","passed","Sat Aug 10 01:49:55 UTC 2024","","test_sharding_race_conds","",""
+"Tests that sharded Charmed MongoDB cluster supports restores.","559982","test_restore_backup","tests.integration.sharding_tests","Sat Aug 10 01:58:41 UTC 2024","passed","Sat Aug 10 02:08:01 UTC 2024","","test_sharding_backups","",""
+"Build and deploy a sharded cluster.","481766","test_build_and_deploy","tests.integration.sharding_tests","Sat Aug 10 01:36:54 UTC 2024","passed","Sat Aug 10 01:44:56 UTC 2024","","test_sharding_relations","",""
+"Build deploy, and integrate, a sharded cluster.","1238606","test_build_and_deploy","tests.integration.upgrade","Sat Aug 10 01:37:40 UTC 2024","passed","Sat Aug 10 01:58:18 UTC 2024","","test_sharding_upgrade","",""
+"Build and deploy a sharded cluster.","639266","test_build_and_deploy","tests.integration.sharding_tests","Sat Aug 10 01:44:29 UTC 2024","passed","Sat Aug 10 01:55:08 UTC 2024","","test_sharding_tls","",""
+"Verifies that the preflight check can run successfully.","124624","test_preflight_check","tests.integration.upgrade","Sat Aug 10 01:56:23 UTC 2024","passed","Sat Aug 10 01:58:28 UTC 2024","","test_upgrade","",""
+"Tests that mongodb is running as a replica set for the application unit.","50","test_unit_is_running_as_replica_set[2]","tests.integration","Sat Aug 10 01:44:15 UTC 2024","passed","Sat Aug 10 01:44:15 UTC 2024","","test_charm","",""
+"Tests that the cluster can disable TLS.","85017","test_disable_cluster_with_tls","tests.integration.sharding_tests","Sat Aug 10 02:15:46 UTC 2024","passed","Sat Aug 10 02:17:11 UTC 2024","","test_sharding_tls","",""
+"Verifies that the charm goes into blocked status when s3 creds are incorrect.","44932","test_blocked_incorrect_creds","tests.integration.backup_tests","Sat Aug 10 01:44:31 UTC 2024","passed","Sat Aug 10 01:45:15 UTC 2024","","test_backups","",""
+"Tests that the cluster can safely set the operator password.","34442","test_set_operator_password","tests.integration.sharding_tests","Sat Aug 10 01:58:03 UTC 2024","passed","Sat Aug 10 01:58:38 UTC 2024","","test_sharding","",""
+"","1035154","test_tls_inconsistent_rels","tests.integration.sharding_tests","Sat Aug 10 02:32:06 UTC 2024","passed","Sat Aug 10 02:49:21 UTC 2024","","test_sharding_tls","",""
+"Build and deploy one unit of MongoDB.","304093","test_build_and_deploy","tests.integration.ha_tests","Sat Aug 10 01:38:06 UTC 2024","passed","Sat Aug 10 01:43:11 UTC 2024","","test_ha","",""
+"Tests clusters behavior when scaling down a minority and removing a primary replica.
+
+    - NOTE: on a provided cluster this calculates the largest set of minority members and removes
+    them, the primary is guaranteed to be one of those minority members.
+
+    This test verifies that the behavior of:
+    1.  when a leader is deleted that the new leader, on calling leader_elected will reconfigure
+    the replicaset.
+    2. primary stepping down leads to a replica set with a new primary.
+    3. removing a minority of units (2 out of 5) is feasiable.
+    4. race conditions due to removing multiple units is handled.
+    5. deleting a non-leader unit is properly handled.
+    ","40868","test_scale_down_capablities","tests.integration.ha_tests","Sat Aug 10 01:47:11 UTC 2024","passed","Sat Aug 10 01:47:52 UTC 2024","","test_ha","",""
+"Deploy both charms (application and database) to use in the tests.","355977","test_deploy_charms","tests.integration.relation_tests.new_relations","Sat Aug 10 01:39:04 UTC 2024","passed","Sat Aug 10 01:45:00 UTC 2024","","test_charm_relations","",""
+"Verifies that after changing the backup password the pbm tool is updated and functional.","45852","test_update_backup_password","tests.integration.backup_tests","Sat Aug 10 02:35:52 UTC 2024","passed","Sat Aug 10 02:36:38 UTC 2024","","test_backups","",""
+"Test that log are being rotated.","670445","test_log_rotate","tests.integration","Sat Aug 10 01:45:30 UTC 2024","passed","Sat Aug 10 01:56:41 UTC 2024","","test_charm","",""
+"Test that audit log was created and contains actual audit data.","1463","test_audit_log","tests.integration","Sat Aug 10 01:45:29 UTC 2024","passed","Sat Aug 10 01:45:30 UTC 2024","","test_charm","",""
+"Tests writing data to mongos gets propagated to shards.","3715","test_sharding","tests.integration.sharding_tests","Sat Aug 10 01:58:38 UTC 2024","passed","Sat Aug 10 01:58:42 UTC 2024","","test_sharding","",""
+"","758134","test_restore_new_cluster[AWS]","tests.integration.backup_tests","Sat Aug 10 02:05:44 UTC 2024","passed","Sat Aug 10 02:18:22 UTC 2024","","test_backups","",""
+"Verify each unit has TLS enabled after relating to the TLS application.","174895","test_enable_tls","tests.integration.tls_tests","Sat Aug 10 01:52:16 UTC 2024","passed","Sat Aug 10 01:55:11 UTC 2024","","test_tls","",""
+"Verifies that when the cluster is formed a the user is removed.","43851","test_disconnect_from_cluster_removes_user","tests.integration.sharding_tests","Sat Aug 10 01:49:44 UTC 2024","passed","Sat Aug 10 01:50:27 UTC 2024","","test_mongos","",""
+"Test that two different application connect to the database with different credentials.","112579","test_two_applications_doesnt_share_the_same_relation_data","tests.integration.relation_tests.new_relations","Sat Aug 10 01:55:41 UTC 2024","passed","Sat Aug 10 01:57:33 UTC 2024","","test_charm_relations","",""
+"Test shard removal.
+
+    This test also verifies that:
+    - Databases that are using this shard as a primary are moved.
+    - The balancer is turned back on if turned off.
+    - Config server supp    orts removing multiple shards.
+    ","205819","test_shard_removal","tests.integration.sharding_tests","Sat Aug 10 01:58:42 UTC 2024","passed","Sat Aug 10 02:02:07 UTC 2024","","test_sharding","",""
+"Verifies charm goes into active status when s3 config and creds options are correct.","77674","test_ready_correct_conf","tests.integration.backup_tests","Sat Aug 10 01:45:38 UTC 2024","passed","Sat Aug 10 01:46:55 UTC 2024","","test_backups","",""
+"Verify newly added and newly removed members properly replica data.
+
+    Verify newly members have replicated data and newly removed members are gone without data.
+    ","145220","test_replication_member_scaling","tests.integration.ha_tests","Sat Aug 10 01:50:42 UTC 2024","passed","Sat Aug 10 01:53:08 UTC 2024","","test_ha","",""
+"Tests the immediate integration of cluster components works without error.","896106","test_immediate_relate","tests.integration.sharding_tests","Sat Aug 10 01:49:55 UTC 2024","passed","Sat Aug 10 02:04:51 UTC 2024","","test_sharding_race_conds","",""
+"","1016099","test_restore_new_cluster[GCP]","tests.integration.backup_tests","Sat Aug 10 02:18:51 UTC 2024","passed","Sat Aug 10 02:35:47 UTC 2024","","test_backups","",""
+"Test that an application can request additional databases using the same interface.","26186","test_an_application_can_request_multiple_databases","tests.integration.relation_tests.new_relations","Sat Aug 10 01:58:28 UTC 2024","passed","Sat Aug 10 01:58:54 UTC 2024","","test_charm_relations","",""
+"","140137","test_network_cut","tests.integration.ha_tests","Sat Aug 10 02:05:28 UTC 2024","passed","Sat Aug 10 02:07:48 UTC 2024","","test_ha","",""
+"Verifies connecting a replica to a mongos router fails.","24575","test_replication_mongos_relation","tests.integration.sharding_tests","Sat Aug 10 01:46:19 UTC 2024","passed","Sat Aug 10 01:46:44 UTC 2024","","test_sharding_relations","",""
+"Verify removed applications no longer have access to the database.","22436","test_removed_relation_no_longer_has_access","tests.integration.relation_tests.new_relations","Sat Aug 10 01:58:54 UTC 2024","passed","Sat Aug 10 01:59:17 UTC 2024","","test_charm_relations","",""
+"Verify rotating tls private keys restarts mongod with new certificates.
+
+    This test rotates tls private keys to user specified keys.
+    ","289558","test_set_tls_key","tests.integration.tls_tests","Sat Aug 10 02:00:03 UTC 2024","passed","Sat Aug 10 02:04:53 UTC 2024","","test_tls","",""
+"Tests juju add-unit functionality.
+
+    Verifies that when a new unit is added to the MongoDB application that it is added to the
+    MongoDB replica set configuration.
+    ","232349","test_add_units","tests.integration.ha_tests","Sat Aug 10 01:43:15 UTC 2024","passed","Sat Aug 10 01:47:08 UTC 2024","","test_ha","",""
+"Build and deploy one unit of MongoDB.","420902","test_build_and_deploy","tests.integration.upgrade","Sat Aug 10 01:43:48 UTC 2024","passed","Sat Aug 10 01:50:49 UTC 2024","","test_upgrade","",""
+"Verify that the sharded cluster can be safely upgraded without losing writes.","583413","test_upgrade","tests.integration.upgrade","Sat Aug 10 01:58:23 UTC 2024","passed","Sat Aug 10 02:08:06 UTC 2024","","test_sharding_upgrade","",""
+"Verifies that using a replica as a shard fails.","4537","test_replication_config_server_relation","tests.integration.sharding_tests","Sat Aug 10 01:45:48 UTC 2024","passed","Sat Aug 10 01:45:53 UTC 2024","","test_sharding_relations","",""
+"Tests the integration of cluster components works without error.","360773","test_cluster_active","tests.integration.sharding_tests","Sat Aug 10 01:52:03 UTC 2024","passed","Sat Aug 10 01:58:03 UTC 2024","","test_sharding","",""
+"Tests that action get-primary outputs the correct unit with the primary replica.","12464","test_get_primary_action","tests.integration","Sat Aug 10 01:44:19 UTC 2024","passed","Sat Aug 10 01:44:32 UTC 2024","","test_charm","",""
+"Verify that the pre-upgrade check fails if there is a problem with one of the shards.","80650","test_pre_upgrade_check_failure","tests.integration.upgrade","Sat Aug 10 02:08:11 UTC 2024","passed","Sat Aug 10 02:09:32 UTC 2024","","test_sharding_upgrade","",""
+"Tests that sharded cluster can successfully create and list backups.","200648","test_rotate_backup_password","tests.integration.sharding_tests","Sat Aug 10 01:54:48 UTC 2024","passed","Sat Aug 10 01:58:09 UTC 2024","","test_sharding_backups","",""
+"Tests that mongodb is running as a replica set for the application unit.","50","test_unit_is_running_as_replica_set[0]","tests.integration","Sat Aug 10 01:44:15 UTC 2024","passed","Sat Aug 10 01:44:15 UTC 2024","","test_charm","",""
+"Build and deploy a sharded cluster.","805920","test_build_and_deploy","tests.integration.sharding_tests","Sat Aug 10 01:38:37 UTC 2024","passed","Sat Aug 10 01:52:03 UTC 2024","","test_sharding","",""
+"","45164","test_freeze_db_process","tests.integration.ha_tests","Sat Aug 10 01:54:01 UTC 2024","passed","Sat Aug 10 01:54:46 UTC 2024","","test_ha","",""
+"Tests that the cluster can be integrated with TLS.","894546","test_tls_then_build_cluster","tests.integration.sharding_tests","Sat Aug 10 02:17:11 UTC 2024","passed","Sat Aug 10 02:32:06 UTC 2024","","test_sharding_tls","",""
+"Build and deploy a sharded cluster.","292102","test_build_and_deploy","tests.integration.sharding_tests","Sat Aug 10 01:43:21 UTC 2024","passed","Sat Aug 10 01:48:13 UTC 2024","","test_mongos","",""
+"Verifies integrating a shard to s3-integrator fails.","10921","test_shard_s3_relation","tests.integration.sharding_tests","Sat Aug 10 01:46:48 UTC 2024","passed","Sat Aug 10 01:46:59 UTC 2024","","test_sharding_relations","",""
+"Test that in general, there is no change when password validation fails.","6306","test_no_password_change_on_invalid_password","tests.integration","Sat Aug 10 01:45:22 UTC 2024","passed","Sat Aug 10 01:45:29 UTC 2024","","test_charm","",""
+"Verify that a shard can only be related to one config server.","20282","test_only_one_config_server_relation","tests.integration.sharding_tests","Sat Aug 10 01:44:56 UTC 2024","passed","Sat Aug 10 01:45:16 UTC 2024","","test_sharding_relations","",""
+"Verifies that the preflight check can run successfully.","158513","test_preflight_check_failure","tests.integration.upgrade","Sat Aug 10 01:58:28 UTC 2024","passed","Sat Aug 10 02:01:06 UTC 2024","","test_upgrade","",""
+"Test that an application can connect to different clusters of the same database.","26493","test_an_application_can_connect_to_multiple_database_clusters","tests.integration.relation_tests.new_relations","Sat Aug 10 01:57:33 UTC 2024","passed","Sat Aug 10 01:58:00 UTC 2024","","test_charm_relations","",""
+"Scale up and down the application and verify the replica set is healthy.","1573262","test_scale_up_down_removing_leader","tests.integration.ha_tests","Sat Aug 10 02:37:16 UTC 2024","passed","Sat Aug 10 03:03:29 UTC 2024","","test_ha","",""
+"Test superuser actions (ie creating a new user and creating a new database).","647","test_user_with_extra_roles","tests.integration.relation_tests.new_relations","Sat Aug 10 01:55:40 UTC 2024","passed","Sat Aug 10 01:55:41 UTC 2024","","test_charm_relations","",""
+"Tests that there is exactly one primary in the deployed units.","2108","test_exactly_one_primary","tests.integration","Sat Aug 10 01:44:17 UTC 2024","passed","Sat Aug 10 01:44:19 UTC 2024","","test_charm","",""
+"Tests that removing a shard application safely drains data.
+
+    It is preferred that users remove-relations instead of removing shard applications. But we do
+    support removing shard applications in a safe way.
+    ","564783","test_unconventual_shard_removal","tests.integration.sharding_tests","Sat Aug 10 02:07:52 UTC 2024","passed","Sat Aug 10 02:17:17 UTC 2024","","test_sharding","",""
+"Tests that sharded cluster can successfully create and list backups.","14422","test_create_and_list_backups_in_cluster","tests.integration.sharding_tests","Sat Aug 10 01:54:25 UTC 2024","passed","Sat Aug 10 01:54:40 UTC 2024","","test_sharding_backups","",""
+"Verify rotating tls private keys restarts mongod with new certificates.
+
+    This test rotates tls private keys to randomly generated keys.
+    ","292154","test_rotate_tls_key","tests.integration.tls_tests","Sat Aug 10 01:55:11 UTC 2024","passed","Sat Aug 10 02:00:03 UTC 2024","","test_tls","",""
+"","8270","test_shards_cannot_run_backup_actions","tests.integration.sharding_tests","Sat Aug 10 01:54:40 UTC 2024","passed","Sat Aug 10 01:54:48 UTC 2024","","test_sharding_backups","",""
+"Check consistency, ie write to primary, read data from secondaries.","6461","test_replication_across_members","tests.integration.ha_tests","Sat Aug 10 01:47:55 UTC 2024","passed","Sat Aug 10 01:48:02 UTC 2024","","test_ha","",""
+"Build and deploy one unit of MongoDB.","388324","test_build_and_deploy","tests.integration.backup_tests","Sat Aug 10 01:38:02 UTC 2024","passed","Sat Aug 10 01:44:31 UTC 2024","","test_backups","",""
+"Tests that action set-password outputs resets the password on app data and mongod.","16764","test_set_password_action","tests.integration","Sat Aug 10 01:44:32 UTC 2024","passed","Sat Aug 10 01:44:49 UTC 2024","","test_charm","",""
+"Simple backup tests that verifies that writes are correctly restored.","210650","test_restore","tests.integration.backup_tests","Sat Aug 10 02:01:47 UTC 2024","passed","Sat Aug 10 02:05:17 UTC 2024","","test_backups","",""
+"Test verifies that only the leader can set a password, while all units can read it.","13686","test_only_leader_can_set_while_all_can_read_password_secret","tests.integration","Sat Aug 10 01:44:55 UTC 2024","passed","Sat Aug 10 01:45:09 UTC 2024","","test_charm","",""
+"Verifies that the app metadata changes with db relation joined and departed events.","383569","test_app_relation_metadata_change","tests.integration.relation_tests.new_relations","Sat Aug 10 01:49:17 UTC 2024","passed","Sat Aug 10 01:55:40 UTC 2024","","test_charm_relations","",""
+"Test that the password can't be set to an empty string.","6377","test_empty_password","tests.integration","Sat Aug 10 01:45:16 UTC 2024","passed","Sat Aug 10 01:45:22 UTC 2024","","test_charm","",""
+"","252069","test_full_cluster_restart","tests.integration.ha_tests","Sat Aug 10 02:00:52 UTC 2024","passed","Sat Aug 10 02:05:04 UTC 2024","","test_ha","",""
+"Tests that right after deployment that the primary unit is the leader.","2172","test_leader_is_primary_on_deployment","tests.integration","Sat Aug 10 01:44:15 UTC 2024","passed","Sat Aug 10 01:44:17 UTC 2024","","test_charm","",""
+"Verify that endpoints still function correctly after the monitor user password changes.","23549","test_endpoints_new_password","tests.integration.metrics_tests","Sat Aug 10 01:42:58 UTC 2024","passed","Sat Aug 10 01:43:22 UTC 2024","","test_metrics","",""
+"","47133","test_kill_db_process","tests.integration.ha_tests","Sat Aug 10 01:53:11 UTC 2024","passed","Sat Aug 10 01:53:58 UTC 2024","","test_ha","",""
+"Scale up and down the application and verify the replica set is healthy.","1761348","test_scale_up_down","tests.integration.ha_tests","Sat Aug 10 02:07:51 UTC 2024","passed","Sat Aug 10 02:37:13 UTC 2024","","test_ha","",""
+"Sanity check that endpoints are running.","3842","test_endpoints","tests.integration.metrics_tests","Sat Aug 10 01:42:54 UTC 2024","passed","Sat Aug 10 01:42:58 UTC 2024","","test_metrics","",""
+"Test verifies that the monitor user can perform operations such as 'rs.conf()'.","6744","test_monitor_user","tests.integration","Sat Aug 10 01:44:49 UTC 2024","passed","Sat Aug 10 01:44:55 UTC 2024","","test_charm","",""
+"Verifies that using a replica as a config-server fails.","26493","test_replication_shard_relation","tests.integration.sharding_tests","Sat Aug 10 01:45:53 UTC 2024","passed","Sat Aug 10 01:46:19 UTC 2024","","test_sharding_relations","",""
+"Build and deploy one unit of MongoDB.","293960","test_build_and_deploy","tests.integration.metrics_tests","Sat Aug 10 01:38:01 UTC 2024","passed","Sat Aug 10 01:42:54 UTC 2024","","test_metrics","",""
+"Tests that mongodb is running as a replica set for the application unit.","45","test_unit_is_running_as_replica_set[1]","tests.integration","Sat Aug 10 01:44:15 UTC 2024","passed","Sat Aug 10 01:44:15 UTC 2024","","test_charm","",""
+"Tests that there is exactly one replica set primary unit reported by juju.","68755","test_exactly_one_primary_reported_by_juju","tests.integration","Sat Aug 10 01:56:41 UTC 2024","passed","Sat Aug 10 01:57:49 UTC 2024","","test_charm","",""
+"Verify unique clusters do not share DBs.","154264","test_unique_cluster_dbs","tests.integration.ha_tests","Sat Aug 10 01:48:05 UTC 2024","passed","Sat Aug 10 01:50:39 UTC 2024","","test_ha","",""
+"Verifies connecting a shard to a mongos router fails.","4514","test_shard_mongos_relation","tests.integration.sharding_tests","Sat Aug 10 01:46:44 UTC 2024","passed","Sat Aug 10 01:46:48 UTC 2024","","test_sharding_relations","",""
+"Tests that sharded cluster can be configured for s3 configurations.","228767","test_set_credentials_in_cluster","tests.integration.sharding_tests","Sat Aug 10 01:50:36 UTC 2024","passed","Sat Aug 10 01:54:25 UTC 2024","","test_sharding_backups","",""
+"Verifies that when the cluster is formed a new user is created.","90844","test_connect_to_cluster_creates_user","tests.integration.sharding_tests","Sat Aug 10 01:48:13 UTC 2024","passed","Sat Aug 10 01:49:44 UTC 2024","","test_mongos","",""
+"","252766","test_full_cluster_crash","tests.integration.ha_tests","Sat Aug 10 01:56:15 UTC 2024","passed","Sat Aug 10 02:00:28 UTC 2024","","test_ha","",""
+"Test verifies that we can set and retrieve the correct password using Juju 3.x secrets.","7003","test_reset_and_get_password_secret_same_as_cli","tests.integration","Sat Aug 10 01:45:09 UTC 2024","passed","Sat Aug 10 01:45:16 UTC 2024","","test_charm","",""
+"","28072","test_an_application_can_connect_to_multiple_aliased_database_clusters","tests.integration.relation_tests.new_relations","Sat Aug 10 01:58:00 UTC 2024","passed","Sat Aug 10 01:58:28 UTC 2024","","test_charm_relations","",""
+"Tests that the cluster can be integrated with TLS.","402429","test_built_cluster_with_tls","tests.integration.sharding_tests","Sat Aug 10 01:55:08 UTC 2024","passed","Sat Aug 10 02:01:50 UTC 2024","","test_sharding_tls","",""
+"Tests that each cluster component can rotate TLS certs.","835774","test_rotate_tls","tests.integration.sharding_tests","Sat Aug 10 02:01:50 UTC 2024","passed","Sat Aug 10 02:15:46 UTC 2024","","test_sharding_tls","",""
+"Test basic functionality of database relation interface.","257062","test_database_relation_with_charm_libraries","tests.integration.relation_tests.new_relations","Sat Aug 10 01:45:00 UTC 2024","passed","Sat Aug 10 01:49:17 UTC 2024","","test_charm_relations","",""
+"Tests safe removal of a shard that is not primary.","344570","test_removal_of_non_primary_shard","tests.integration.sharding_tests","Sat Aug 10 02:02:07 UTC 2024","passed","Sat Aug 10 02:07:52 UTC 2024","","test_sharding","",""
+"Build and deploy one unit of MongoDB.","350629","test_build_and_deploy","tests.integration","Sat Aug 10 01:38:07 UTC 2024","passed","Sat Aug 10 01:43:57 UTC 2024","","test_charm","",""
+"With writes in the DB test creating a backup while another one is running.
+
+    Note that before creating the second backup we change the bucket and change the s3 storage
+    from AWS to GCP. This test verifies that the first backup in AWS is made, the second backup
+    in GCP is made, and that before the second backup is made that pbm correctly resyncs.
+    ","845094","test_multi_backup","tests.integration.backup_tests","Sat Aug 10 01:47:11 UTC 2024","passed","Sat Aug 10 02:01:16 UTC 2024","","test_backups","",""
+"Verifies that database units with attached storage correctly repurpose storage.
+
+    It is not enough to verify that Juju attaches the storage. Hence test checks that the mongod
+    properly uses the storage that was provided. (ie. doesn't just re-sync everything from
+    primary, but instead computes a diff between current storage and primary storage.)
+    ","457","test_storage_re_use","tests.integration.ha_tests","Sat Aug 10 01:43:12 UTC 2024","skipped","Sat Aug 10 01:43:12 UTC 2024","","test_ha","",""
+"Build deploy, and integrate, a sharded cluster.","0","test_build_and_deploy","tests.integration.upgrade","Sat Aug 10 01:38:34 UTC 2024","skipped","Sat Aug 10 01:38:34 UTC 2024","","test_sharding_rollback","",""
+"Build and deploy one unit of MongoDB and one unit of TLS.","468443","test_build_and_deploy","tests.integration.tls_tests","Sat Aug 10 01:44:28 UTC 2024","passed","Sat Aug 10 01:52:16 UTC 2024","","test_tls","",""
+"Verify each unit has TLS disabled after removing relation to the TLS application.","94395","test_disable_tls","tests.integration.tls_tests","Sat Aug 10 02:04:53 UTC 2024","passed","Sat Aug 10 02:06:27 UTC 2024","","test_tls","",""
+"Build and deploy a sharded cluster.","732110","test_build_and_deploy","tests.integration.sharding_tests","Sat Aug 10 01:38:24 UTC 2024","passed","Sat Aug 10 01:50:36 UTC 2024","","test_sharding_backups","",""
