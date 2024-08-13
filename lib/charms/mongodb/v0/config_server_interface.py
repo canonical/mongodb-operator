@@ -208,7 +208,7 @@ class ClusterRequirer(Object):
         self,
         charm: CharmBase,
         relation_name: str = Config.Relations.CLUSTER_RELATIONS_NAME,
-        substrate: str = Config.VM_SUBSTRATE,
+        substrate: str = Config.Substrate.VM,
     ) -> None:
         """Constructor for ShardingProvider object."""
         self.substrate = substrate
@@ -259,7 +259,7 @@ class ClusterRequirer(Object):
         self.charm.set_secret(Config.Relations.APP_SCOPE, Config.Secrets.PASSWORD, event.password)
 
         # K8s charm have a 1:Many client scheme and share connection info in a different manner.
-        if self.substrate == Config.VM_SUBSTRATE:
+        if self.substrate == Config.Substrate.VM:
             self.charm.share_connection_info()
 
     def _on_relation_changed(self, event) -> None:
@@ -326,7 +326,7 @@ class ClusterRequirer(Object):
         self.charm.remove_secret(Config.Relations.APP_SCOPE, Config.Secrets.PASSWORD)
 
         # K8s charm have a 1:Many client scheme and share connection info in a different manner.
-        if self.substrate == Config.VM_SUBSTRATE:
+        if self.substrate == Config.Substrate.VM:
             self.charm.remove_connection_info()
 
     # BEGIN: helper functions
@@ -382,7 +382,7 @@ class ClusterRequirer(Object):
         if self.charm.config_server_db == config_server_db:
             return False
 
-        if self.substrate == Config.VM_SUBSTRATE:
+        if self.substrate == Config.Substrate.VM:
             self.charm.update_mongos_args(config_server_db)
 
         return True

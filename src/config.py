@@ -15,8 +15,7 @@ class Config:
 
     MONGOS_PORT = 27018
     MONGODB_PORT = 27017
-    VM_SUBSTRATE = "vm"
-    K8S_SUBSTRATE = "k8s"
+    SUBSTRATE = "vm"
     ENV_VAR_PATH = "/etc/environment"
     MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
     MONGOD_CONF_DIR = f"{MONGODB_SNAP_DATA_DIR}/etc/mongod"
@@ -120,6 +119,12 @@ class Config:
 
         # TODO Future PR add more status messages here as constants
         UNHEALTHY_UPGRADE = BlockedStatus("Unhealthy after upgrade.")
+
+    class Substrate:
+        """Substrate related constants."""
+
+        VM = "vm"
+        K8S = "k8s"
 
     class Upgrade:
         """Upgrade related constants."""
