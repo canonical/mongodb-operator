@@ -137,8 +137,8 @@ class MongodbOperatorCharm(CharmBase):
         self.framework.observe(self.on.secret_changed, self._on_secret_changed)
 
         # handle provider side of relations
-        self.client_relations = MongoDBProvider(self, substrate=Config.SUBSTRATE)
-        self.tls = MongoDBTLS(self, Config.Relations.PEERS, substrate=Config.SUBSTRATE)
+        self.client_relations = MongoDBProvider(self, substrate=Config.VM_SUBSTRATE)
+        self.tls = MongoDBTLS(self, Config.Relations.PEERS, substrate=Config.VM_SUBSTRATE)
         self.backups = MongoDBBackups(self)
 
         # TODO future PR - support pinning mongos version

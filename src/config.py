@@ -15,7 +15,8 @@ class Config:
 
     MONGOS_PORT = 27018
     MONGODB_PORT = 27017
-    SUBSTRATE = "vm"
+    VM_SUBSTRATE = "vm"
+    K8S_SUBSTRATE = "k8s"
     ENV_VAR_PATH = "/etc/environment"
     MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
     MONGOD_CONF_DIR = f"{MONGODB_SNAP_DATA_DIR}/etc/mongod"
