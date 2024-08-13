@@ -1,0 +1,762 @@
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:725 Scaling up by 3 units
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:740 Waiting for idle
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/2 [idle] active: 
+  mongodb/28 [idle] active: 
+  mongodb/29 [idle] active: 
+  mongodb/30 [idle] active: 
+  mongodb/31 [allocating] waiting: waiting for machine
+  mongodb/32 [allocating] waiting: waiting for machine
+  mongodb/33 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/31 [allocating] waiting: waiting for machine
+  mongodb/32 [allocating] waiting: waiting for machine
+  mongodb/33 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/31 [allocating] waiting: waiting for machine
+  mongodb/32 [allocating] waiting: waiting for machine
+  mongodb/33 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/31 [allocating] waiting: waiting for machine
+  mongodb/32 [allocating] waiting: waiting for machine
+  mongodb/33 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/31 [executing] waiting: agent initialising
+  mongodb/32 [executing] maintenance: installing MongoDB
+  mongodb/33 [executing] waiting: agent initialising
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/2 [executing] active: Primary
+  mongodb/28 [executing] active: 
+  mongodb/29 [executing] active: 
+  mongodb/30 [executing] active: 
+  mongodb/31 [executing] maintenance: installing MongoDB
+  mongodb/32 [executing] maintenance: installing MongoDB
+  mongodb/33 [executing] maintenance: installing MongoDB
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/2 [executing] active: 
+  mongodb/31 [executing] active: 
+  mongodb/32 [executing] active: 
+  mongodb/33 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/31 [idle] active: 
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:746 Validating replica set has primary
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:728 Scaling down by 3 units
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:738 Units to remove ['mongodb/2', 'mongodb/28', 'mongodb/29']
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:740 Waiting for idle
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/2 [executing] active: 
+  mongodb/28 [executing] active: 
+  mongodb/29 [executing] active: 
+  mongodb/30 [executing] active: 
+  mongodb/31 [executing] active: 
+  mongodb/32 [executing] active: 
+  mongodb/33 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/2 [executing] active: 
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:746 Validating replica set has primary
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:725 Scaling up by 4 units
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:740 Waiting for idle
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/30 [idle] active: 
+  mongodb/31 [idle] active: 
+  mongodb/32 [idle] active: 
+  mongodb/33 [idle] active: 
+  mongodb/34 [allocating] waiting: waiting for machine
+  mongodb/35 [allocating] waiting: waiting for machine
+  mongodb/36 [allocating] waiting: waiting for machine
+  mongodb/37 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/34 [allocating] waiting: waiting for machine
+  mongodb/35 [allocating] waiting: waiting for machine
+  mongodb/36 [allocating] waiting: waiting for machine
+  mongodb/37 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/34 [allocating] waiting: waiting for machine
+  mongodb/35 [allocating] waiting: waiting for machine
+  mongodb/36 [allocating] waiting: waiting for machine
+  mongodb/37 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/34 [allocating] waiting: waiting for machine
+  mongodb/35 [allocating] waiting: waiting for machine
+  mongodb/36 [allocating] waiting: waiting for machine
+  mongodb/37 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/34 [allocating] waiting: waiting for machine
+  mongodb/35 [allocating] waiting: waiting for machine
+  mongodb/36 [allocating] waiting: waiting for machine
+  mongodb/37 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/34 [allocating] waiting: agent initialising
+  mongodb/35 [allocating] waiting: agent initialising
+  mongodb/36 [allocating] waiting: agent initialising
+  mongodb/37 [allocating] waiting: agent initialising
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/30 [idle] active: Primary
+  mongodb/31 [idle] active: 
+  mongodb/32 [idle] active: 
+  mongodb/33 [idle] active: 
+  mongodb/34 [executing] maintenance: installing MongoDB
+  mongodb/35 [executing] maintenance: installing MongoDB
+  mongodb/36 [executing] maintenance: installing MongoDB
+  mongodb/37 [executing] maintenance: installing MongoDB
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/30 [idle] active: 
+  mongodb/31 [executing] active: 
+  mongodb/32 [idle] active: 
+  mongodb/33 [idle] active: 
+  mongodb/34 [executing] active: 
+  mongodb/35 [executing] active: 
+  mongodb/36 [executing] active: 
+  mongodb/37 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/31 [executing] active: 
+  mongodb/34 [executing] active: 
+  mongodb/35 [idle] active: 
+  mongodb/36 [executing] active: 
+  mongodb/37 [idle] active: 
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:746 Validating replica set has primary
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:728 Scaling down by 4 units
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:738 Units to remove ['mongodb/30', 'mongodb/31', 'mongodb/32', 'mongodb/33']
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:740 Waiting for idle
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/30 [executing] active: 
+  mongodb/31 [executing] active: 
+  mongodb/32 [executing] active: 
+  mongodb/33 [executing] active: 
+  mongodb/34 [executing] active: 
+  mongodb/35 [executing] active: 
+  mongodb/36 [executing] active: 
+  mongodb/37 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/31 [executing] active: 
+  mongodb/34 [idle] active: 
+  mongodb/35 [idle] active: 
+  mongodb/36 [idle] active: 
+  mongodb/37 [idle] active: 
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:746 Validating replica set has primary
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:725 Scaling up by 5 units
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:740 Waiting for idle
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/34 [idle] active: 
+  mongodb/35 [idle] active: 
+  mongodb/36 [idle] active: 
+  mongodb/37 [idle] active: 
+  mongodb/38 [allocating] waiting: waiting for machine
+  mongodb/39 [allocating] waiting: waiting for machine
+  mongodb/40 [allocating] waiting: waiting for machine
+  mongodb/41 [allocating] waiting: waiting for machine
+  mongodb/42 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/38 [allocating] waiting: waiting for machine
+  mongodb/39 [allocating] waiting: waiting for machine
+  mongodb/40 [allocating] waiting: waiting for machine
+  mongodb/41 [allocating] waiting: waiting for machine
+  mongodb/42 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/38 [allocating] waiting: waiting for machine
+  mongodb/39 [allocating] waiting: waiting for machine
+  mongodb/40 [allocating] waiting: waiting for machine
+  mongodb/41 [allocating] waiting: waiting for machine
+  mongodb/42 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/38 [allocating] waiting: waiting for machine
+  mongodb/39 [allocating] waiting: waiting for machine
+  mongodb/40 [allocating] waiting: waiting for machine
+  mongodb/41 [allocating] waiting: waiting for machine
+  mongodb/42 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/34 [idle] active: 
+  mongodb/35 [idle] active: 
+  mongodb/36 [idle] active: 
+  mongodb/37 [idle] active: 
+  mongodb/38 [allocating] waiting: waiting for machine
+  mongodb/39 [allocating] waiting: waiting for machine
+  mongodb/40 [allocating] waiting: waiting for machine
+  mongodb/41 [allocating] waiting: waiting for machine
+  mongodb/42 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/38 [executing] waiting: agent initialising
+  mongodb/39 [allocating] waiting: agent initialising
+  mongodb/40 [allocating] waiting: agent initialising
+  mongodb/41 [allocating] waiting: agent initialising
+  mongodb/42 [allocating] waiting: agent initialising
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/38 [executing] maintenance: installing MongoDB
+  mongodb/39 [executing] maintenance: installing MongoDB
+  mongodb/40 [executing] maintenance: installing MongoDB
+  mongodb/41 [executing] maintenance: installing MongoDB
+  mongodb/42 [executing] maintenance: installing MongoDB
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/34 [executing] active: 
+  mongodb/35 [executing] active: 
+  mongodb/36 [executing] active: 
+  mongodb/37 [executing] active: 
+  mongodb/38 [executing] active: 
+  mongodb/39 [executing] active: 
+  mongodb/40 [executing] active: 
+  mongodb/41 [executing] maintenance: installing MongoDB
+  mongodb/42 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/36 [executing] active: 
+  mongodb/38 [executing] active: 
+  mongodb/39 [executing] active: 
+  mongodb/40 [executing] active: 
+  mongodb/41 [executing] active: 
+  mongodb/42 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/36 [idle] active: 
+  mongodb/38 [idle] active: 
+  mongodb/40 [idle] active: 
+  mongodb/41 [idle] active: 
+  mongodb/42 [idle] active: 
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:746 Validating replica set has primary
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:728 Scaling down by 5 units
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:738 Units to remove ['mongodb/34', 'mongodb/35', 'mongodb/36', 'mongodb/37', 'mongodb/38']
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:740 Waiting for idle
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/34 [executing] active: 
+  mongodb/35 [executing] active: 
+  mongodb/36 [executing] active: 
+  mongodb/37 [executing] active: 
+  mongodb/38 [executing] active: 
+  mongodb/39 [executing] active: 
+  mongodb/40 [executing] active: 
+  mongodb/41 [executing] active: 
+  mongodb/42 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/34 [executing] active: 
+  mongodb/36 [executing] active: 
+  mongodb/37 [executing] maintenance: stopping charm software
+  mongodb/38 [executing] maintenance: stopping charm software
+  mongodb/39 [idle] active: 
+  mongodb/40 [idle] active: 
+  mongodb/41 [idle] active: 
+  mongodb/42 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/39 [idle] active: 
+  mongodb/40 [idle] active: 
+  mongodb/41 [idle] active: 
+  mongodb/42 [idle] active: 
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:746 Validating replica set has primary
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:725 Scaling up by 6 units
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:740 Waiting for idle
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/39 [idle] active: 
+  mongodb/40 [idle] active: 
+  mongodb/41 [idle] active: 
+  mongodb/42 [idle] active: 
+  mongodb/43 [allocating] waiting: waiting for machine
+  mongodb/44 [allocating] waiting: waiting for machine
+  mongodb/45 [allocating] waiting: waiting for machine
+  mongodb/46 [allocating] waiting: waiting for machine
+  mongodb/47 [allocating] waiting: waiting for machine
+  mongodb/48 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/43 [allocating] waiting: waiting for machine
+  mongodb/44 [allocating] waiting: waiting for machine
+  mongodb/45 [allocating] waiting: waiting for machine
+  mongodb/46 [allocating] waiting: waiting for machine
+  mongodb/47 [allocating] waiting: waiting for machine
+  mongodb/48 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/43 [allocating] waiting: waiting for machine
+  mongodb/44 [allocating] waiting: waiting for machine
+  mongodb/45 [allocating] waiting: waiting for machine
+  mongodb/46 [allocating] waiting: waiting for machine
+  mongodb/47 [allocating] waiting: waiting for machine
+  mongodb/48 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/43 [allocating] waiting: waiting for machine
+  mongodb/44 [allocating] waiting: waiting for machine
+  mongodb/45 [allocating] waiting: waiting for machine
+  mongodb/46 [allocating] waiting: waiting for machine
+  mongodb/47 [allocating] waiting: waiting for machine
+  mongodb/48 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/43 [allocating] waiting: waiting for machine
+  mongodb/44 [allocating] waiting: waiting for machine
+  mongodb/45 [allocating] waiting: waiting for machine
+  mongodb/46 [allocating] waiting: waiting for machine
+  mongodb/47 [allocating] waiting: waiting for machine
+  mongodb/48 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/43 [executing] waiting: agent initialising
+  mongodb/44 [allocating] waiting: waiting for machine
+  mongodb/45 [allocating] waiting: waiting for machine
+  mongodb/46 [allocating] waiting: waiting for machine
+  mongodb/47 [allocating] waiting: waiting for machine
+  mongodb/48 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/39 [executing] active: Primary
+  mongodb/40 [executing] active: 
+  mongodb/41 [executing] active: 
+  mongodb/42 [executing] active: 
+  mongodb/43 [executing] maintenance: installing MongoDB
+  mongodb/44 [allocating] waiting: agent initialising
+  mongodb/45 [executing] waiting: agent initialising
+  mongodb/46 [allocating] waiting: agent initialising
+  mongodb/47 [allocating] waiting: agent initialising
+  mongodb/48 [allocating] waiting: agent initialising
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/39 [executing] active: 
+  mongodb/40 [executing] active: 
+  mongodb/41 [executing] active: 
+  mongodb/42 [executing] active: 
+  mongodb/43 [executing] active: 
+  mongodb/44 [executing] maintenance: installing MongoDB
+  mongodb/45 [executing] maintenance: installing MongoDB
+  mongodb/46 [executing] maintenance: installing MongoDB
+  mongodb/47 [executing] maintenance: installing MongoDB
+  mongodb/48 [executing] maintenance: installing MongoDB
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/39 [executing] active: 
+  mongodb/40 [idle] active: 
+  mongodb/41 [idle] active: 
+  mongodb/42 [idle] active: 
+  mongodb/43 [executing] active: 
+  mongodb/44 [executing] maintenance: installing MongoDB
+  mongodb/45 [executing] active: 
+  mongodb/46 [executing] active: 
+  mongodb/47 [executing] active: 
+  mongodb/48 [executing] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:834 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.4.4    unsupported  03:19:17Z
+
+App                 Version  Status  Scale  Charm    Channel  Rev  Exposed  Message
+another-database-a           active      1  mongodb             1  no       
+mongodb                      active     10  mongodb             0  no       
+
+Unit                   Workload  Agent      Machine  Public address  Ports      Message
+another-database-a/0*  active    idle       5        10.39.189.50    27017/tcp  Primary
+mongodb/39*            waiting   executing  40       10.39.189.22    27017/tcp  waiting to reconfigure replica set
+mongodb/40             active    idle       41       10.39.189.107   27017/tcp  
+mongodb/41             active    idle       42       10.39.189.204   27017/tcp  
+mongodb/42             active    idle       43       10.39.189.29    27017/tcp  
+mongodb/43             active    idle       44       10.39.189.159   27017/tcp  
+mongodb/44             error     idle       45       10.39.189.73               hook failed: "secret-changed"
+mongodb/45             active    idle       46       10.39.189.109   27017/tcp  
+mongodb/46             active    idle       47       10.39.189.246   27017/tcp  
+mongodb/47             waiting   idle       48       10.39.189.186   27017/tcp  Member being added..
+mongodb/48             waiting   idle       49       10.39.189.166   27017/tcp  Member being added..
+
+Machine  State    Address        Inst id         Base          AZ  Message
+5        started  10.39.189.50   juju-31b084-5   ubuntu@22.04      Running
+40       started  10.39.189.22   juju-31b084-40  ubuntu@22.04      Running
+41       started  10.39.189.107  juju-31b084-41  ubuntu@22.04      Running
+42       started  10.39.189.204  juju-31b084-42  ubuntu@22.04      Running
+43       started  10.39.189.29   juju-31b084-43  ubuntu@22.04      Running
+44       started  10.39.189.159  juju-31b084-44  ubuntu@22.04      Running
+45       started  10.39.189.73   juju-31b084-45  ubuntu@22.04      Running
+46       started  10.39.189.109  juju-31b084-46  ubuntu@22.04      Running
+47       started  10.39.189.246  juju-31b084-47  ubuntu@22.04      Running
+48       started  10.39.189.186  juju-31b084-48  ubuntu@22.04      Running
+49       started  10.39.189.166  juju-31b084-49  ubuntu@22.04      Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:840 Juju error logs:
+
+machine-1: 01:51:22 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 01:51:22 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 01:51:22 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 01:51:22 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 01:51:22 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 01:51:22 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-2: 01:51:22 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-0: 01:51:22 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-1: 01:51:22 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-1: 01:52:42 ERROR unit.mongodb/1.juju-log _on_secret_remove: Secret secret:cqtboifjcbq3k9akmfdg seems to have no observers, could be removed
+machine-3: 01:56:05 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 01:56:05 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-3: 01:56:05 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-4: 01:56:05 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-4: 01:56:05 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-4: 01:56:05 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-5: 02:00:23 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-5: 02:00:23 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-another-database-a-0: 02:00:23 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-another-database-a-0: 02:01:24 ERROR unit.another-database-a/0.juju-log _on_secret_remove: Secret secret:cqtbsnnjcbq3k9akmfe0 seems to have no observers, could be removed
+machine-6: 02:03:12 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-6: 02:03:12 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-5: 02:03:12 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-8: 02:22:46 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-8: 02:22:46 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-7: 02:22:46 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-7: 02:22:46 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-7: 02:22:47 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-6: 02:22:47 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-9: 02:22:48 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-9: 02:22:48 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-8: 02:22:48 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-2: 02:25:48 ERROR juju.worker.dependency "storage-provisioner" manifold worker returned unexpected error: getting life of filesystem 12/12: permission denied
+machine-13: 02:27:38 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-13: 02:27:38 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-12: 02:27:38 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-12: 02:27:39 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-12: 02:27:39 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-11: 02:27:40 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-2: 02:27:42 ERROR juju.worker.dependency "storage-provisioner" manifold worker returned unexpected error: getting life of filesystem 12/12: permission denied
+machine-11: 02:27:42 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-11: 02:27:42 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-10: 02:27:42 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-10: 02:27:49 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-10: 02:27:49 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-9: 02:27:49 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-5: 02:31:28 ERROR juju.worker.dependency "storage-provisioner" manifold worker returned unexpected error: getting life of filesystem 15/15: permission denied
+machine-14: 02:33:51 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-14: 02:33:51 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-13: 02:33:51 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-18: 02:33:51 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-18: 02:33:51 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-17: 02:33:52 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-17: 02:33:53 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-17: 02:33:53 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-15: 02:33:53 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-15: 02:33:53 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-16: 02:33:53 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-16: 02:33:53 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-16: 02:33:53 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-14: 02:33:53 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-15: 02:33:54 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-5: 02:33:55 ERROR juju.worker.dependency "storage-provisioner" manifold worker returned unexpected error: getting life of filesystem 15/15: permission denied
+machine-2: 02:37:58 ERROR juju.worker.dependency "storage-provisioner" manifold worker returned unexpected error: getting life of filesystem 22/22: permission denied
+machine-22: 02:41:40 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-22: 02:41:40 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-21: 02:41:41 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-19: 02:41:42 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-19: 02:41:42 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-18: 02:41:42 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-23: 02:41:43 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-23: 02:41:43 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 02:41:43 ERROR juju.worker.dependency "storage-provisioner" manifold worker returned unexpected error: getting life of filesystem 22/22: permission denied
+unit-mongodb-22: 02:41:43 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-20: 02:41:44 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-20: 02:41:44 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-19: 02:41:45 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-24: 02:41:47 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-24: 02:41:47 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-23: 02:41:47 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-21: 02:41:58 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-21: 02:41:58 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-20: 02:41:58 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-5: 02:46:20 ERROR juju.worker.dependency "storage-provisioner" manifold worker returned unexpected error: getting life of filesystem 25/25: permission denied
+machine-25: 02:49:36 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-25: 02:49:36 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-24: 02:49:37 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-5: 02:49:38 ERROR juju.worker.dependency "storage-provisioner" manifold worker returned unexpected error: getting life of filesystem 25/25: permission denied
+machine-26: 02:49:48 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-26: 02:49:48 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-27: 02:49:48 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-27: 02:49:48 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-25: 02:49:48 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-26: 02:49:49 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-28: 02:49:51 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-28: 02:49:51 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-27: 02:49:51 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-29: 02:49:57 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-29: 02:49:57 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-28: 02:49:57 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-30: 02:49:57 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-31: 02:49:58 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-31: 02:49:58 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-29: 02:49:58 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-30: 02:49:59 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-2: 02:54:52 ERROR juju.worker.dependency "storage-provisioner" manifold worker returned unexpected error: getting life of filesystem 32/32: permission denied
+machine-33: 02:56:39 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-33: 02:56:39 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-32: 02:56:39 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-34: 02:56:42 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-34: 02:56:42 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-33: 02:56:42 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-32: 02:56:42 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-32: 02:56:42 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-31: 02:56:42 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-2: 02:56:44 ERROR juju.worker.dependency "storage-provisioner" manifold worker returned unexpected error: getting life of filesystem 32/32: permission denied
+machine-5: 02:59:31 ERROR juju.worker.dependency "storage-provisioner" manifold worker returned unexpected error: getting life of filesystem 35/35: permission denied
+machine-38: 03:01:51 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-38: 03:01:51 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-37: 03:01:51 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-36: 03:01:55 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-36: 03:01:55 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-35: 03:01:55 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-35: 03:01:56 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-35: 03:01:56 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-34: 03:01:56 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-37: 03:01:58 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-37: 03:01:58 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-36: 03:01:58 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-5: 03:01:58 ERROR juju.worker.dependency "storage-provisioner" manifold worker returned unexpected error: getting life of filesystem 35/35: permission denied
+machine-39: 03:07:18 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-39: 03:07:18 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-38: 03:07:18 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-41: 03:07:19 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-41: 03:07:19 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-40: 03:07:19 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-40: 03:07:19 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-40: 03:07:19 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-39: 03:07:20 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-43: 03:07:27 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-43: 03:07:27 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-42: 03:07:27 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-42: 03:07:28 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-42: 03:07:28 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-41: 03:07:28 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-5: 03:10:51 ERROR juju.worker.dependency "storage-provisioner" manifold worker returned unexpected error: getting life of filesystem 45/45: permission denied
+machine-44: 03:13:07 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-44: 03:13:07 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-43: 03:13:07 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-46: 03:13:32 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-46: 03:13:32 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-45: 03:13:32 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-47: 03:13:33 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-47: 03:13:33 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-46: 03:13:33 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-49: 03:13:33 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-49: 03:13:33 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-48: 03:13:34 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-48: 03:13:35 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-48: 03:13:35 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-47: 03:13:36 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-45: 03:13:36 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-45: 03:13:36 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-44: 03:13:37 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-5: 03:13:40 ERROR juju.worker.dependency "storage-provisioner" manifold worker returned unexpected error: getting life of filesystem 45/45: permission denied
+unit-mongodb-44: 03:14:54 ERROR unit.mongodb/44.juju-log An exception occurred when installing charmed-mongodb. Reason: Snap: 'charmed-mongodb'; command ['snap', 'install', 'charmed-mongodb', '--channel="6/edge"', '--revision="118"'] failed with output = ''
+unit-mongodb-44: 03:15:09 ERROR unit.mongodb/44.juju-log An exception occurred when starting mongod agent, error: Could not ['snap', 'start', '--enable', 'charmed-mongodb.mongod'] for snap [charmed-mongodb]: error: snap "charmed-mongodb" has no service "mongod"
+.
+unit-mongodb-44: 03:15:14 ERROR unit.mongodb/44.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/lib/charms/operator_libs_linux/v2/snap.py", line 278, in _snap
+    return subprocess.check_output(args, universal_newlines=True)
+  File "/usr/lib/python3.10/subprocess.py", line 421, in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+  File "/usr/lib/python3.10/subprocess.py", line 526, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['snap', 'set', 'charmed-mongodb', 'monitor-uri=mongodb://monitor:wQWGRPE3z9AgiqEBYftDDUf0RXhuQZ2F@127.0.0.1/admin?replicaSet=mongodb']' returned non-zero exit status 1.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/./src/charm.py", line 1644, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/./src/charm.py", line 787, in _on_secret_changed
+    self._connect_mongodb_exporter()
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/./src/charm.py", line 1171, in _connect_mongodb_exporter
+    mongodb_snap.set({Config.Monitoring.URI_PARAM_NAME: self.monitor_config.uri})
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/lib/charms/operator_libs_linux/v2/snap.py", line 347, in set
+    return self._snap("set", [f"{key}={val}" for key, val in config.items()])
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/lib/charms/operator_libs_linux/v2/snap.py", line 280, in _snap
+    raise SnapError(
+charms.operator_libs_linux.v2.snap.SnapError: Snap: 'charmed-mongodb'; command ['snap', 'set', 'charmed-mongodb', 'monitor-uri=mongodb://monitor:wQWGRPE3z9AgiqEBYftDDUf0RXhuQZ2F@127.0.0.1/admin?replicaSet=mongodb'] failed with output = ''
+unit-mongodb-44: 03:15:15 ERROR juju.worker.uniter.operation hook "secret-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-mongodb-44: 03:15:31 ERROR unit.mongodb/44.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/lib/charms/operator_libs_linux/v2/snap.py", line 278, in _snap
+    return subprocess.check_output(args, universal_newlines=True)
+  File "/usr/lib/python3.10/subprocess.py", line 421, in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+  File "/usr/lib/python3.10/subprocess.py", line 526, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['snap', 'set', 'charmed-mongodb', 'monitor-uri=mongodb://monitor:wQWGRPE3z9AgiqEBYftDDUf0RXhuQZ2F@127.0.0.1/admin?replicaSet=mongodb']' returned non-zero exit status 1.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/./src/charm.py", line 1644, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/./src/charm.py", line 787, in _on_secret_changed
+    self._connect_mongodb_exporter()
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/./src/charm.py", line 1171, in _connect_mongodb_exporter
+    mongodb_snap.set({Config.Monitoring.URI_PARAM_NAME: self.monitor_config.uri})
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/lib/charms/operator_libs_linux/v2/snap.py", line 347, in set
+    return self._snap("set", [f"{key}={val}" for key, val in config.items()])
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/lib/charms/operator_libs_linux/v2/snap.py", line 280, in _snap
+    raise SnapError(
+charms.operator_libs_linux.v2.snap.SnapError: Snap: 'charmed-mongodb'; command ['snap', 'set', 'charmed-mongodb', 'monitor-uri=mongodb://monitor:wQWGRPE3z9AgiqEBYftDDUf0RXhuQZ2F@127.0.0.1/admin?replicaSet=mongodb'] failed with output = ''
+unit-mongodb-44: 03:15:31 ERROR juju.worker.uniter.operation hook "secret-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-mongodb-44: 03:15:42 ERROR unit.mongodb/44.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/lib/charms/operator_libs_linux/v2/snap.py", line 278, in _snap
+    return subprocess.check_output(args, universal_newlines=True)
+  File "/usr/lib/python3.10/subprocess.py", line 421, in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+  File "/usr/lib/python3.10/subprocess.py", line 526, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['snap', 'set', 'charmed-mongodb', 'monitor-uri=mongodb://monitor:wQWGRPE3z9AgiqEBYftDDUf0RXhuQZ2F@127.0.0.1/admin?replicaSet=mongodb']' returned non-zero exit status 1.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/./src/charm.py", line 1644, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/./src/charm.py", line 787, in _on_secret_changed
+    self._connect_mongodb_exporter()
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/./src/charm.py", line 1171, in _connect_mongodb_exporter
+    mongodb_snap.set({Config.Monitoring.URI_PARAM_NAME: self.monitor_config.uri})
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/lib/charms/operator_libs_linux/v2/snap.py", line 347, in set
+    return self._snap("set", [f"{key}={val}" for key, val in config.items()])
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/lib/charms/operator_libs_linux/v2/snap.py", line 280, in _snap
+    raise SnapError(
+charms.operator_libs_linux.v2.snap.SnapError: Snap: 'charmed-mongodb'; command ['snap', 'set', 'charmed-mongodb', 'monitor-uri=mongodb://monitor:wQWGRPE3z9AgiqEBYftDDUf0RXhuQZ2F@127.0.0.1/admin?replicaSet=mongodb'] failed with output = ''
+unit-mongodb-44: 03:15:43 ERROR juju.worker.uniter.operation hook "secret-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-mongodb-44: 03:16:04 ERROR unit.mongodb/44.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/lib/charms/operator_libs_linux/v2/snap.py", line 278, in _snap
+    return subprocess.check_output(args, universal_newlines=True)
+  File "/usr/lib/python3.10/subprocess.py", line 421, in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+  File "/usr/lib/python3.10/subprocess.py", line 526, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['snap', 'set', 'charmed-mongodb', 'monitor-uri=mongodb://monitor:wQWGRPE3z9AgiqEBYftDDUf0RXhuQZ2F@127.0.0.1/admin?replicaSet=mongodb']' returned non-zero exit status 1.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/./src/charm.py", line 1644, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/./src/charm.py", line 787, in _on_secret_changed
+    self._connect_mongodb_exporter()
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/./src/charm.py", line 1171, in _connect_mongodb_exporter
+    mongodb_snap.set({Config.Monitoring.URI_PARAM_NAME: self.monitor_config.uri})
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/lib/charms/operator_libs_linux/v2/snap.py", line 347, in set
+    return self._snap("set", [f"{key}={val}" for key, val in config.items()])
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/lib/charms/operator_libs_linux/v2/snap.py", line 280, in _snap
+    raise SnapError(
+charms.operator_libs_linux.v2.snap.SnapError: Snap: 'charmed-mongodb'; command ['snap', 'set', 'charmed-mongodb', 'monitor-uri=mongodb://monitor:wQWGRPE3z9AgiqEBYftDDUf0RXhuQZ2F@127.0.0.1/admin?replicaSet=mongodb'] failed with output = ''
+unit-mongodb-44: 03:16:05 ERROR juju.worker.uniter.operation hook "secret-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-mongodb-44: 03:16:47 ERROR unit.mongodb/44.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/lib/charms/operator_libs_linux/v2/snap.py", line 278, in _snap
+    return subprocess.check_output(args, universal_newlines=True)
+  File "/usr/lib/python3.10/subprocess.py", line 421, in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+  File "/usr/lib/python3.10/subprocess.py", line 526, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['snap', 'set', 'charmed-mongodb', 'monitor-uri=mongodb://monitor:wQWGRPE3z9AgiqEBYftDDUf0RXhuQZ2F@127.0.0.1/admin?replicaSet=mongodb']' returned non-zero exit status 1.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/./src/charm.py", line 1644, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/./src/charm.py", line 787, in _on_secret_changed
+    self._connect_mongodb_exporter()
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/./src/charm.py", line 1171, in _connect_mongodb_exporter
+    mongodb_snap.set({Config.Monitoring.URI_PARAM_NAME: self.monitor_config.uri})
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/lib/charms/operator_libs_linux/v2/snap.py", line 347, in set
+    return self._snap("set", [f"{key}={val}" for key, val in config.items()])
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/lib/charms/operator_libs_linux/v2/snap.py", line 280, in _snap
+    raise SnapError(
+charms.operator_libs_linux.v2.snap.SnapError: Snap: 'charmed-mongodb'; command ['snap', 'set', 'charmed-mongodb', 'monitor-uri=mongodb://monitor:wQWGRPE3z9AgiqEBYftDDUf0RXhuQZ2F@127.0.0.1/admin?replicaSet=mongodb'] failed with output = ''
+unit-mongodb-44: 03:16:48 ERROR juju.worker.uniter.operation hook "secret-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-mongodb-44: 03:18:12 ERROR unit.mongodb/44.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/lib/charms/operator_libs_linux/v2/snap.py", line 278, in _snap
+    return subprocess.check_output(args, universal_newlines=True)
+  File "/usr/lib/python3.10/subprocess.py", line 421, in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+  File "/usr/lib/python3.10/subprocess.py", line 526, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['snap', 'set', 'charmed-mongodb', 'monitor-uri=mongodb://monitor:wQWGRPE3z9AgiqEBYftDDUf0RXhuQZ2F@127.0.0.1/admin?replicaSet=mongodb']' returned non-zero exit status 1.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/./src/charm.py", line 1644, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/./src/charm.py", line 787, in _on_secret_changed
+    self._connect_mongodb_exporter()
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/./src/charm.py", line 1171, in _connect_mongodb_exporter
+    mongodb_snap.set({Config.Monitoring.URI_PARAM_NAME: self.monitor_config.uri})
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/lib/charms/operator_libs_linux/v2/snap.py", line 347, in set
+    return self._snap("set", [f"{key}={val}" for key, val in config.items()])
+  File "/var/lib/juju/agents/unit-mongodb-44/charm/lib/charms/operator_libs_linux/v2/snap.py", line 280, in _snap
+    raise SnapError(
+charms.operator_libs_linux.v2.snap.SnapError: Snap: 'charmed-mongodb'; command ['snap', 'set', 'charmed-mongodb', 'monitor-uri=mongodb://monitor:wQWGRPE3z9AgiqEBYftDDUf0RXhuQZ2F@127.0.0.1/admin?replicaSet=mongodb'] failed with output = ''
+unit-mongodb-44: 03:18:12 ERROR juju.worker.uniter.operation hook "secret-changed" (via hook dispatching script: dispatch) failed: exit status 1
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:904 Forgetting main...
