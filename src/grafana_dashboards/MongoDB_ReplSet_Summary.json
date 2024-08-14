@@ -122,7 +122,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "mongodb_mongod_replset_number_of_members{juju_application=~\"$juju_application\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"} ",
+                    "expr": "avg by(juju_application) (mongodb_mongod_replset_number_of_members{juju_application=~\"$juju_application\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"})",
                     "interval": "5m",
                     "intervalFactor": 1,
                     "legendFormat": "",
@@ -199,7 +199,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "time() - max(mongodb_mongod_replset_member_election_date{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"})",
+                    "expr": "time() - max(mongodb_mongod_replset_member_election_date{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"})",
                     "interval": "5m",
                     "intervalFactor": 1,
                     "legendFormat": "",
@@ -352,7 +352,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "avg by(service_name, engine) (mongodb_mongod_storage_engine{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"})",
+                    "expr": "avg by(service_name, engine) (mongodb_mongod_storage_engine{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",cluster=~\"$cluster\"})",
                     "format": "table",
                     "interval": "$interval",
                     "intervalFactor": 1,
@@ -365,7 +365,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "avg by(service_name, mongodb) (mongodb_version_info{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"})",
+                    "expr": "avg by(service_name, mongodb) (mongodb_version_info{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",cluster=~\"$cluster\"})",
                     "format": "table",
                     "hide": false,
                     "interval": "$interval",
@@ -452,8 +452,8 @@
                     "links": [
                         {
                             "targetBlank": true,
-                            "title": "MongoDB Instance Summary - ${__field.labels.service_name}",
-                            "url": "/graph/d/mongodb-instance-summary/mongodb-instance-summary?var-service_name=${__field.labels.service_name}&$__url_time_range"
+                            "title": "MongoDB Instance Summary - ${__field.labels.juju_application}",
+                            "url": "/graph/d/mongodb-instance-summary/mongodb-instance-summary?var-juju_application=${__field.labels.juju_application}&$__url_time_range"
                         }
                     ]
                 },
@@ -491,8 +491,8 @@
             "links": [
                 {
                     "targetBlank": true,
-                    "title": "MongoDB Instance Summary - $service_name",
-                    "url": "/graph/d/mongodb-instance-summary/mongodb-instance-summary?var-service_name=$service_name$__url_time_range"
+                    "title": "MongoDB Instance Summary - $juju_application",
+                    "url": "/graph/d/mongodb-instance-summary/mongodb-instance-summary?var-juju_application=$juju_application$__url_time_range"
                 }
             ],
             "nullPointMode": "null",
@@ -505,7 +505,7 @@
             "pointradius": 5,
             "points": false,
             "renderer": "flot",
-            "repeat": "service_name",
+            "repeat": "juju_application",
             "repeatDirection": "h",
             "seriesOverrides": [],
             "spaceLength": 10,
@@ -517,7 +517,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "avg by(service_name, type) (rate(mongodb_op_counters_repl_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[$interval]) or irate(mongodb_op_counters_repl_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[5m]))",
+                    "expr": "avg by(juju_application, type) (rate(mongodb_op_counters_repl_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"}[$interval]) or irate(mongodb_op_counters_repl_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"}[5m]))",
                     "interval": "$interval",
                     "intervalFactor": 1,
                     "legendFormat": "repl - ",
@@ -529,7 +529,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "avg by(service_name, type) (rate(mongodb_mongod_op_counters_repl_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[$interval]) or irate(mongodb_mongod_op_counters_repl_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[5m]))",
+                    "expr": "avg by(juju_application, type) (rate(mongodb_mongod_op_counters_repl_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"}[$interval]) or irate(mongodb_mongod_op_counters_repl_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"}[5m]))",
                     "interval": "$interval",
                     "legendFormat": "repl - ",
                     "refId": "B"
@@ -539,7 +539,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "avg by(service_name, type) (rate(mongodb_op_counters_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[$interval]) or irate(mongodb_op_counters_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[5m]))",
+                    "expr": "avg by(juju_application, type) (rate(mongodb_op_counters_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"}[$interval]) or irate(mongodb_op_counters_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"}[5m]))",
                     "interval": "$interval",
                     "legendFormat": "",
                     "refId": "C"
@@ -547,7 +547,7 @@
             ],
             "thresholds": [],
             "timeRegions": [],
-            "title": "Operations - $service_name",
+            "title": "Operations - $juju_application",
             "tooltip": {
                 "msResolution": false,
                 "shared": true,
@@ -630,7 +630,7 @@
                         {
                             "targetBlank": true,
                             "title": "MongoDB Instance Summary - ${__series.name}",
-                            "url": "/graph/d/mongodb-instance-summary/mongodb-instance-summary?var-service_name=${__series.name}$&$__url_time_range"
+                            "url": "/graph/d/mongodb-instance-summary/mongodb-instance-summary?var-juju_application=${__series.name}$&$__url_time_range"
                         }
                     ]
                 },
@@ -687,7 +687,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "time() - avg by(service_name) (max by(name) (mongodb_mongod_replset_member_last_heartbeat{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"})) * on(name) group_right() avg by(service_name) (mongodb_mongod_replset_my_name{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"})",
+                    "expr": "time() - avg by(juju_application) (max by(name) (mongodb_mongod_replset_member_last_heartbeat{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"})) * on(name) group_right() avg by(juju_application) (mongodb_mongod_replset_my_name{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"})",
                     "hide": false,
                     "interval": "$interval",
                     "intervalFactor": 1,
@@ -701,10 +701,10 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "avg by(service_name) (max by(name) (mongodb_rs_heartbeatIntervalMillis{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}) / 1000) * on(name) group_right() avg by(service_name) (mongodb_mongod_replset_my_name{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"})",
+                    "expr": "avg by(juju_application) (max by(name) (mongodb_rs_heartbeatIntervalMillis{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"}) / 1000) * on(name) group_right() avg by(juju_application) (mongodb_mongod_replset_my_name{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"})",
                     "hide": true,
                     "interval": "$interval",
-                    "legendFormat": "Interval - {service_name}}",
+                    "legendFormat": "Interval - {juju_application}}",
                     "refId": "B"
                 }
             ],
@@ -767,7 +767,7 @@
                         {
                             "targetBlank": true,
                             "title": "MongoDB Instance Summary - ${__series.name}",
-                            "url": "/graph/d/mongodb-instance-summary/mongodb-instance-summary?var-service_name=${__series.name}$&$__url_time_range"
+                            "url": "/graph/d/mongodb-instance-summary/mongodb-instance-summary?var-juju_application=${__series.name}$&$__url_time_range"
                         }
                     ]
                 },
@@ -823,7 +823,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "max by(service_name) (changes(mongodb_mongod_replset_member_election_date{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[$interval]))",
+                    "expr": "max by(juju_application) (changes(mongodb_mongod_replset_member_election_date{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"}[$interval]))",
                     "interval": "$interval",
                     "intervalFactor": 1,
                     "legendFormat": "",
@@ -915,8 +915,8 @@
                     "links": [
                         {
                             "targetBlank": true,
-                            "title": "MongoDB Instance Summary - ${__field.labels.service_name}",
-                            "url": "/graph/d/mongodb-instance-summary/mongodb-instance-summary?var-service_name=${__field.labels.service_name}&$__url_time_range"
+                            "title": "MongoDB Instance Summary - ${__field.labels.juju_application}",
+                            "url": "/graph/d/mongodb-instance-summary/mongodb-instance-summary?var-juju_application=${__field.labels.juju_application}&$__url_time_range"
                         }
                     ]
                 },
@@ -962,7 +962,7 @@
             "pointradius": 5,
             "points": false,
             "renderer": "flot",
-            "repeat": "service_name",
+            "repeat": "juju_application",
             "repeatDirection": "h",
             "seriesOverrides": [
                 {
@@ -979,7 +979,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "time() - avg by(service_name) (mongodb_mongod_replset_oplog_tail_timestamp{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"})",
+                    "expr": "time() - avg by(juju_application) (mongodb_mongod_replset_oplog_tail_timestamp{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"})",
                     "hide": false,
                     "interval": "$interval",
                     "intervalFactor": 1,
@@ -993,7 +993,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "avg by(service_name) (mongodb_mongod_replset_oplog_head_timestamp{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"} - mongodb_mongod_replset_oplog_tail_timestamp{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"})",
+                    "expr": "avg by(juju_application) (mongodb_mongod_replset_oplog_head_timestamp{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"} - mongodb_mongod_replset_oplog_tail_timestamp{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"})",
                     "hide": false,
                     "interval": "$interval",
                     "intervalFactor": 1,
@@ -1005,7 +1005,7 @@
             ],
             "thresholds": [],
             "timeRegions": [],
-            "title": "Oplog Recovery Window - $service_name",
+            "title": "Oplog Recovery Window - $juju_application",
             "tooltip": {
                 "msResolution": false,
                 "shared": true,
@@ -1088,7 +1088,7 @@
                         {
                             "targetBlank": true,
                             "title": "MongoDB Instance Summary - ${__series.name}",
-                            "url": "/graph/d/mongodb-instance-summary/mongodb-instance-summary?var-service_name=${__series.name}$&$__url_time_range"
+                            "url": "/graph/d/mongodb-instance-summary/mongodb-instance-summary?var-juju_application=${__series.name}$&$__url_time_range"
                         }
                     ]
                 },
@@ -1135,6 +1135,8 @@
             "pointradius": 5,
             "points": false,
             "renderer": "flot",
+            "repeat": "juju_application",
+            "repeatDirection": "h",
             "seriesOverrides": [],
             "spaceLength": 10,
             "stack": false,
@@ -1145,7 +1147,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "avg by(service_name) (mongodb_mongod_metrics_repl_buffer_count{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"})",
+                    "expr": "avg by(juju_application) (mongodb_mongod_metrics_repl_buffer_count{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"})",
                     "interval": "$interval",
                     "intervalFactor": 1,
                     "legendFormat": "",
@@ -1155,7 +1157,7 @@
             ],
             "thresholds": [],
             "timeRegions": [],
-            "title": "Oplog Buffered Operations",
+            "title": "Oplog Buffered Operations - $juju_application",
             "tooltip": {
                 "msResolution": false,
                 "shared": true,
@@ -1212,7 +1214,7 @@
                         {
                             "targetBlank": true,
                             "title": "MongoDB Instance Summary - ${__series.name}",
-                            "url": "/graph/d/mongodb-instance-summary/mongodb-instance-summary?var-service_name=${__series.name}$&$__url_time_range"
+                            "url": "/graph/d/mongodb-instance-summary/mongodb-instance-summary?var-juju_application=${__series.name}$&$__url_time_range"
                         }
                     ]
                 },
@@ -1259,6 +1261,8 @@
             "pointradius": 5,
             "points": false,
             "renderer": "flot",
+            "repeat": "juju_application",
+            "repeatDirection": "h",
             "seriesOverrides": [],
             "spaceLength": 10,
             "stack": false,
@@ -1269,7 +1273,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "avg by(service_name) (rate(mongodb_mongod_metrics_repl_network_getmores_total_milliseconds{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[$interval]) or irate(mongodb_mongod_metrics_repl_network_getmores_total_milliseconds{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[5m]))",
+                    "expr": "avg by(juju_application) (rate(mongodb_mongod_metrics_repl_network_getmores_total_milliseconds{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"}[$interval]) or irate(mongodb_mongod_metrics_repl_network_getmores_total_milliseconds{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"}[5m]))",
                     "interval": "$interval",
                     "intervalFactor": 1,
                     "legendFormat": "",
@@ -1279,7 +1283,7 @@
             ],
             "thresholds": [],
             "timeRegions": [],
-            "title": "Oplog Getmore Time",
+            "title": "Oplog Getmore Time - $juju_application",
             "tooltip": {
                 "msResolution": false,
                 "shared": true,
@@ -1335,8 +1339,8 @@
                     "links": [
                         {
                             "targetBlank": true,
-                            "title": "MongoDB Instance Summary - ${__field.labels.service_name}",
-                            "url": "/graph/d/mongodb-instance-summary/mongodb-instance-summary?var-service_name=${__field.labels.service_name}&$__url_time_range"
+                            "title": "MongoDB Instance Summary - ${__field.labels.juju_application}",
+                            "url": "/graph/d/mongodb-instance-summary/mongodb-instance-summary?var-juju_application=${__field.labels.juju_application}&$__url_time_range"
                         }
                     ]
                 },
@@ -1382,7 +1386,7 @@
             "pointradius": 5,
             "points": false,
             "renderer": "flot",
-            "repeat": "service_name",
+            "repeat": "juju_application",
             "repeatDirection": "h",
             "seriesOverrides": [],
             "spaceLength": 10,
@@ -1394,7 +1398,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "avg by(service_name) (rate(mongodb_mongod_metrics_repl_preload_docs_total_milliseconds{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[$interval]) or irate(mongodb_mongod_metrics_repl_preload_docs_total_milliseconds{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[5m]))",
+                    "expr": "avg by(juju_application) (rate(mongodb_mongod_metrics_repl_preload_docs_total_milliseconds{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"}[$interval]) or irate(mongodb_mongod_metrics_repl_preload_docs_total_milliseconds{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"}[5m]))",
                     "interval": "$interval",
                     "intervalFactor": 1,
                     "legendFormat": "Document Preload",
@@ -1406,7 +1410,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "avg by(service_name) (rate(mongodb_mongod_metrics_repl_preload_indexes_total_milliseconds{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[$interval]) or irate(mongodb_mongod_metrics_repl_preload_indexes_total_milliseconds{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[5m]))",
+                    "expr": "avg by(juju_application) (rate(mongodb_mongod_metrics_repl_preload_indexes_total_milliseconds{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"}[$interval]) or irate(mongodb_mongod_metrics_repl_preload_indexes_total_milliseconds{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"}[5m]))",
                     "interval": "$interval",
                     "intervalFactor": 1,
                     "legendFormat": "Index Preload",
@@ -1419,7 +1423,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "avg by(service_name) (rate(mongodb_mongod_metrics_repl_apply_batches_total_milliseconds{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[$interval]) or irate(mongodb_mongod_metrics_repl_apply_batches_total_milliseconds{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[5m]))",
+                    "expr": "avg by(juju_application) (rate(mongodb_mongod_metrics_repl_apply_batches_total_milliseconds{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"}[$interval]) or irate(mongodb_mongod_metrics_repl_apply_batches_total_milliseconds{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"}[5m]))",
                     "interval": "$interval",
                     "intervalFactor": 1,
                     "legendFormat": "Batch Apply",
@@ -1430,7 +1434,7 @@
             ],
             "thresholds": [],
             "timeRegions": [],
-            "title": "Oplog Processing Time - $service_name",
+            "title": "Oplog Processing Time - $juju_application",
             "tooltip": {
                 "msResolution": false,
                 "shared": true,
@@ -1486,8 +1490,8 @@
                     "links": [
                         {
                             "targetBlank": true,
-                            "title": "MongoDB Instance Summary - ${__field.labels.service_name}",
-                            "url": "/graph/d/mongodb-instance-summary/mongodb-instance-summary?var-service_name=${__field.labels.service_name}&$__url_time_range"
+                            "title": "MongoDB Instance Summary - ${__field.labels.juju_application}",
+                            "url": "/graph/d/mongodb-instance-summary/mongodb-instance-summary?var-juju_application=${__field.labels.juju_application}&$__url_time_range"
                         }
                     ]
                 },
@@ -1533,7 +1537,7 @@
             "pointradius": 5,
             "points": false,
             "renderer": "flot",
-            "repeat": "service_name",
+            "repeat": "juju_application",
             "repeatDirection": "h",
             "seriesOverrides": [
                 {
@@ -1551,7 +1555,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "avg by(service_name) (mongodb_mongod_metrics_repl_buffer_size_bytes{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"})",
+                    "expr": "avg by(juju_application) (mongodb_mongod_metrics_repl_buffer_size_bytes{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"})",
                     "interval": "$interval",
                     "intervalFactor": 1,
                     "legendFormat": "Used",
@@ -1563,7 +1567,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "avg by(service_name) (mongodb_mongod_metrics_repl_buffer_max_size_bytes{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"})",
+                    "expr": "avg by(juju_application) (mongodb_mongod_metrics_repl_buffer_max_size_bytes{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"})",
                     "interval": "$interval",
                     "intervalFactor": 1,
                     "legendFormat": "Max",
@@ -1573,7 +1577,7 @@
             ],
             "thresholds": [],
             "timeRegions": [],
-            "title": "Oplog Buffer Capacity - $service_name",
+            "title": "Oplog Buffer Capacity - $juju_application",
             "tooltip": {
                 "msResolution": false,
                 "shared": true,
@@ -1629,8 +1633,8 @@
                     "links": [
                         {
                             "targetBlank": true,
-                            "title": "MongoDB Instance Summary - ${__field.labels.service_name}",
-                            "url": "/graph/d/mongodb-instance-summary/mongodb-instance-summary?var-service_name=${__field.labels.service_name}&$__url_time_range"
+                            "title": "MongoDB Instance Summary - ${__field.labels.juju_application}",
+                            "url": "/graph/d/mongodb-instance-summary/mongodb-instance-summary?var-juju_application=${__field.labels.juju_application}&$__url_time_range"
                         }
                     ]
                 },
@@ -1676,7 +1680,7 @@
             "pointradius": 5,
             "points": false,
             "renderer": "flot",
-            "repeat": "service_name",
+            "repeat": "juju_application",
             "repeatDirection": "h",
             "seriesOverrides": [],
             "spaceLength": 10,
@@ -1688,7 +1692,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "avg by(service_name) (rate(mongodb_mongod_metrics_repl_preload_docs_num_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[$interval]) or irate(mongodb_mongod_metrics_repl_preload_docs_num_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[5m]))",
+                    "expr": "avg by(juju_application) (rate(mongodb_mongod_metrics_repl_preload_docs_num_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"}[$interval]) or irate(mongodb_mongod_metrics_repl_preload_docs_num_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"}[5m]))",
                     "interval": "$interval",
                     "intervalFactor": 1,
                     "legendFormat": "Document Preload",
@@ -1701,7 +1705,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "avg by(service_name) (rate(mongodb_mongod_metrics_repl_preload_indexes_num_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[$interval]) or irate(mongodb_mongod_metrics_repl_preload_indexes_num_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[5m]))",
+                    "expr": "avg by(juju_application) (rate(mongodb_mongod_metrics_repl_preload_indexes_num_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"}[$interval]) or irate(mongodb_mongod_metrics_repl_preload_indexes_num_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"}[5m]))",
                     "interval": "$interval",
                     "intervalFactor": 1,
                     "legendFormat": "Index Preload",
@@ -1714,7 +1718,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "avg by(service_name) (rate(mongodb_mongod_metrics_repl_apply_ops_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[$interval]) or irate(mongodb_mongod_metrics_repl_apply_ops_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[5m]))",
+                    "expr": "avg by(juju_application) (rate(mongodb_mongod_metrics_repl_apply_ops_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"}[$interval]) or irate(mongodb_mongod_metrics_repl_apply_ops_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"}[5m]))",
                     "interval": "$interval",
                     "intervalFactor": 2,
                     "legendFormat": "Batch Apply",
@@ -1724,7 +1728,7 @@
             ],
             "thresholds": [],
             "timeRegions": [],
-            "title": "Oplog Operations - $service_name",
+            "title": "Oplog Operations - $juju_application",
             "tooltip": {
                 "msResolution": false,
                 "shared": true,
@@ -1849,7 +1853,7 @@
             "pointradius": 5,
             "points": false,
             "renderer": "flot",
-            "repeat": "service_name",
+            "repeat": "juju_application",
             "repeatDirection": "h",
             "seriesOverrides": [],
             "spaceLength": 10,
@@ -1861,7 +1865,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "avg by(service_name, type) (rate(mongodb_mongod_op_latencies_latency_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[$interval]) / (rate(mongodb_mongod_op_latencies_ops_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[$interval]) > 0) or irate(mongodb_mongod_op_latencies_latency_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[5m]) / (irate(mongodb_mongod_op_latencies_ops_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[5m]) > 0))",
+                    "expr": "avg by(juju_application, type) (rate(mongodb_mongod_op_latencies_latency_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"}[$interval]) / (rate(mongodb_mongod_op_latencies_ops_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"}[$interval]) > 0) or irate(mongodb_mongod_op_latencies_latency_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"}[5m]) / (irate(mongodb_mongod_op_latencies_ops_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"}[5m]) > 0))",
                     "format": "time_series",
                     "hide": false,
                     "interval": "$interval",
@@ -1873,7 +1877,7 @@
             ],
             "thresholds": [],
             "timeRegions": [],
-            "title": "Latency Detail - $service_name",
+            "title": "Latency Detail - $juju_application",
             "tooltip": {
                 "msResolution": false,
                 "shared": true,
@@ -1972,7 +1976,7 @@
             "pointradius": 5,
             "points": false,
             "renderer": "flot",
-            "repeat": "service_name",
+            "repeat": "juju_application",
             "repeatDirection": "h",
             "seriesOverrides": [],
             "spaceLength": 10,
@@ -1984,7 +1988,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "avg by(service_name, state) (rate(mongodb_mongod_metrics_document_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[$interval]) or irate(mongodb_mongod_metrics_document_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[5m]))",
+                    "expr": "avg by(juju_application, state) (rate(mongodb_mongod_metrics_document_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"}[$interval]) or irate(mongodb_mongod_metrics_document_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"}[5m]))",
                     "format": "time_series",
                     "hide": false,
                     "interval": "$interval",
@@ -1996,7 +2000,7 @@
             ],
             "thresholds": [],
             "timeRegions": [],
-            "title": "Document Operations - $service_name",
+            "title": "Document Operations - $juju_application",
             "tooltip": {
                 "msResolution": false,
                 "shared": true,
@@ -2095,7 +2099,7 @@
             "pointradius": 5,
             "points": false,
             "renderer": "flot",
-            "repeat": "service_name",
+            "repeat": "juju_application",
             "repeatDirection": "h",
             "seriesOverrides": [],
             "spaceLength": 10,
@@ -2107,7 +2111,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "rate(mongodb_tcmalloc_cache_bytes{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[$interval]) or irate(mongodb_tcmalloc_cache_bytes{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[5m])",
+                    "expr": "rate(mongodb_tcmalloc_cache_bytes{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"}[$interval]) or irate(mongodb_tcmalloc_cache_bytes{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"}[5m])",
                     "format": "time_series",
                     "hide": false,
                     "interval": "$interval",
@@ -2121,7 +2125,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "avg by(service_name) (mongodb_ss_tcmalloc_tcmalloc_thread_cache_free_bytes{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"})",
+                    "expr": "avg by(juju_application) (mongodb_ss_tcmalloc_tcmalloc_thread_cache_free_bytes{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"})",
                     "interval": "$interval",
                     "legendFormat": "Free Thread Cache",
                     "refId": "A"
@@ -2131,7 +2135,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "avg by(service_name) (mongodb_ss_tcmalloc_tcmalloc_central_cache_free_bytes{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"})",
+                    "expr": "avg by(juju_application) (mongodb_ss_tcmalloc_tcmalloc_central_cache_free_bytes{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"})",
                     "interval": "$interval",
                     "legendFormat": "Free Central Cache",
                     "refId": "B"
@@ -2141,7 +2145,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "avg by(service_name) (mongodb_ss_tcmalloc_tcmalloc_transfer_cache_free_bytes{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"})",
+                    "expr": "avg by(juju_application) (mongodb_ss_tcmalloc_tcmalloc_transfer_cache_free_bytes{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",cluster=~\"$cluster\"})",
                     "interval": "$interval",
                     "legendFormat": "Free Transfer Cache",
                     "refId": "C"
@@ -2149,7 +2153,7 @@
             ],
             "thresholds": [],
             "timeRegions": [],
-            "title": "Cache - $service_name",
+            "title": "Cache - $juju_application",
             "tooltip": {
                 "msResolution": false,
                 "shared": true,
@@ -2581,126 +2585,6 @@
                 "type": "datasource"
             },
             {
-                "current": {
-                    "selected": false,
-                    "text": "mongodb/0",
-                    "value": "mongodb/0"
-                },
-                "datasource": {
-                    "uid": "${prometheusds}"
-                },
-                "definition": "label_values(up{juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_application=\"$juju_application\"},juju_unit)",
-                "hide": 0,
-                "includeAll": false,
-                "label": "Juju unit",
-                "multi": false,
-                "name": "juju_unit",
-                "options": [],
-                "query": {
-                    "query": "label_values(up{juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_application=\"$juju_application\"},juju_unit)",
-                    "refId": "StandardVariableQuery"
-                },
-                "refresh": 1,
-                "regex": "",
-                "skipUrlSync": false,
-                "sort": 0,
-                "tagValuesQuery": "",
-                "tags": [],
-                "tagsQuery": "",
-                "type": "query",
-                "useTags": false
-            },
-            {
-                "current": {
-                    "selected": false,
-                    "text": "mongodb",
-                    "value": "mongodb"
-                },
-                "datasource": {
-                    "uid": "${prometheusds}"
-                },
-                "definition": "label_values(up{juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\"},juju_application)",
-                "hide": 0,
-                "includeAll": false,
-                "label": "Juju application",
-                "multi": false,
-                "name": "juju_application",
-                "options": [],
-                "query": {
-                    "query": "label_values(up{juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\"},juju_application)",
-                    "refId": "StandardVariableQuery"
-                },
-                "refresh": 1,
-                "regex": "",
-                "skipUrlSync": false,
-                "sort": 0,
-                "tagValuesQuery": "",
-                "tags": [],
-                "tagsQuery": "",
-                "type": "query",
-                "useTags": false
-            },
-            {
-                "current": {
-                    "selected": false,
-                    "text": "dfa571f5-bce4-4d91-8b8a-9c595fc435ae",
-                    "value": "dfa571f5-bce4-4d91-8b8a-9c595fc435ae"
-                },
-                "datasource": {
-                    "uid": "${prometheusds}"
-                },
-                "definition": "label_values(up{juju_model=\"$juju_model\"},juju_model_uuid)",
-                "hide": 0,
-                "includeAll": false,
-                "label": "Juju model uuid",
-                "multi": false,
-                "name": "juju_model_uuid",
-                "options": [],
-                "query": {
-                    "query": "label_values(up{juju_model=\"$juju_model\"},juju_model_uuid)",
-                    "refId": "StandardVariableQuery"
-                },
-                "refresh": 1,
-                "regex": "",
-                "skipUrlSync": false,
-                "sort": 0,
-                "tagValuesQuery": "",
-                "tags": [],
-                "tagsQuery": "",
-                "type": "query",
-                "useTags": false
-            },
-            {
-                "current": {
-                    "selected": false,
-                    "text": "default",
-                    "value": "default"
-                },
-                "datasource": {
-                    "uid": "${prometheusds}"
-                },
-                "definition": "label_values(up,juju_model)",
-                "hide": 0,
-                "includeAll": false,
-                "label": "Juju model",
-                "multi": false,
-                "name": "juju_model",
-                "options": [],
-                "query": {
-                    "query": "label_values(up,juju_model)",
-                    "refId": "StandardVariableQuery"
-                },
-                "refresh": 1,
-                "regex": "",
-                "skipUrlSync": false,
-                "sort": 0,
-                "tagValuesQuery": "",
-                "tags": [],
-                "tagsQuery": "",
-                "type": "query",
-                "useTags": false
-            },
-            {
                 "allFormat": "glob",
                 "auto": true,
                 "auto_count": 200,
@@ -2798,35 +2682,6 @@
                 "allFormat": "glob",
                 "current": {
                     "selected": false,
-                    "text": "mongodb",
-                    "value": "mongodb"
-                },
-                "datasource": {
-                    "uid": "${prometheusds}"
-                },
-                "definition": "label_values(mongodb_mongod_replset_my_state{cluster=~\"$cluster\"}, set)",
-                "hide": 0,
-                "includeAll": false,
-                "label": "Replica Set",
-                "multi": false,
-                "multiFormat": "glob",
-                "name": "replication_set",
-                "options": [],
-                "query": {
-                    "query": "label_values(mongodb_mongod_replset_my_state{cluster=~\"$cluster\"}, set)",
-                    "refId": "Metrics-replset-Variable-Query"
-                },
-                "refresh": 2,
-                "regex": "",
-                "skipUrlSync": false,
-                "sort": 5,
-                "type": "query",
-                "useTags": false
-            },
-            {
-                "allFormat": "glob",
-                "current": {
-                    "selected": false,
                     "text": "All",
                     "value": "$__all"
                 },
@@ -2893,7 +2748,7 @@
                 "datasource": {
                     "uid": "${prometheusds}"
                 },
-                "definition": "label_values({__name__=~\"pg_up|mysql_up|mongodb_up|proxysql_mysql_status_active_transactions\"}, environment)",
+                "definition": "label_values({__name__=~\"mongodb_up\"}, environment)",
                 "hide": 2,
                 "includeAll": true,
                 "label": "Environment",
@@ -2901,7 +2756,7 @@
                 "name": "environment",
                 "options": [],
                 "query": {
-                    "query": "label_values({__name__=~\"pg_up|mysql_up|mongodb_up|proxysql_mysql_status_active_transactions\"}, environment)",
+                    "query": "label_values({__name__=~\"mongodb_up\"}, environment)",
                     "refId": "Metrics-environment-Variable-Query"
                 },
                 "refresh": 2,
@@ -2922,65 +2777,7 @@
                 "datasource": {
                     "uid": "${prometheusds}"
                 },
-                "definition": "label_values({__name__=~\"pg_up|mysql_up|mongodb_up|proxysql_mysql_status_active_transactions\"}, replication_set)",
-                "hide": 2,
-                "includeAll": true,
-                "label": "Replication Set",
-                "multi": true,
-                "name": "replication_set",
-                "options": [],
-                "query": {
-                    "query": "label_values({__name__=~\"pg_up|mysql_up|mongodb_up|proxysql_mysql_status_active_transactions\"}, replication_set)",
-                    "refId": "Metrics-replication_set-Variable-Query"
-                },
-                "refresh": 2,
-                "regex": "",
-                "skipUrlSync": false,
-                "sort": 5,
-                "tagValuesQuery": "",
-                "tagsQuery": "",
-                "type": "query",
-                "useTags": false
-            },
-            {
-                "current": {
-                    "selected": false,
-                    "text": "All",
-                    "value": "$__all"
-                },
-                "datasource": {
-                    "uid": "${prometheusds}"
-                },
-                "definition": "label_values(pg_stat_database_tup_fetched{service_name=~\"$service_name\",datname!~\"template.*|postgres\"},datname)",
-                "hide": 2,
-                "includeAll": true,
-                "label": "Database",
-                "multi": true,
-                "name": "database",
-                "options": [],
-                "query": {
-                    "query": "label_values(pg_stat_database_tup_fetched{service_name=~\"$service_name\",datname!~\"template.*|postgres\"},datname)",
-                    "refId": "Metrics-database-Variable-Query"
-                },
-                "refresh": 1,
-                "regex": "",
-                "skipUrlSync": false,
-                "sort": 5,
-                "tagValuesQuery": "",
-                "tagsQuery": "",
-                "type": "query",
-                "useTags": false
-            },
-            {
-                "current": {
-                    "selected": false,
-                    "text": "All",
-                    "value": "$__all"
-                },
-                "datasource": {
-                    "uid": "${prometheusds}"
-                },
-                "definition": "label_values({__name__=~\"pg_up|mysql_up|mongodb_up|proxysql_mysql_status_active_transactions\"}, node_type)",
+                "definition": "label_values({__name__=~\"mongodb_up\"}, node_type)",
                 "hide": 2,
                 "includeAll": true,
                 "label": "Type",
@@ -2988,7 +2785,7 @@
                 "name": "node_type",
                 "options": [],
                 "query": {
-                    "query": "label_values({__name__=~\"pg_up|mysql_up|mongodb_up|proxysql_mysql_status_active_transactions\"}, node_type)",
+                    "query": "label_values({__name__=~\"mongodb_up\"}, node_type)",
                     "refId": "Metrics-node_type-Variable-Query"
                 },
                 "refresh": 1,
@@ -3009,7 +2806,7 @@
                 "datasource": {
                     "uid": "${prometheusds}"
                 },
-                "definition": "label_values({__name__=~\"pg_up|mysql_up|mongodb_up|proxysql_mysql_status_active_transactions\"}, service_type)",
+                "definition": "label_values({__name__=~\"mongodb_up\"}, service_type)",
                 "hide": 2,
                 "includeAll": true,
                 "label": "Type",
@@ -3017,7 +2814,7 @@
                 "name": "service_type",
                 "options": [],
                 "query": {
-                    "query": "label_values({__name__=~\"pg_up|mysql_up|mongodb_up|proxysql_mysql_status_active_transactions\"}, service_type)",
+                    "query": "label_values({__name__=~\"mongodb_up\"}, service_type)",
                     "refId": "Metrics-service_type-Variable-Query"
                 },
                 "refresh": 1,
@@ -3038,7 +2835,7 @@
                 "datasource": {
                     "uid": "${prometheusds}"
                 },
-                "definition": "label_values({__name__=~\"pg_up|mysql_up|mongodb_up|proxysql_mysql_status_active_transactions\"}, schema)",
+                "definition": "label_values({__name__=~\"mongodb_up\"}, schema)",
                 "hide": 2,
                 "includeAll": true,
                 "label": "Schema",
@@ -3046,7 +2843,7 @@
                 "name": "schema",
                 "options": [],
                 "query": {
-                    "query": "label_values({__name__=~\"pg_up|mysql_up|mongodb_up|proxysql_mysql_status_active_transactions\"}, schema)",
+                    "query": "label_values({__name__=~\"mongodb_up\"}, schema)",
                     "refId": "Metrics-schema-Variable-Query"
                 },
                 "refresh": 1,
