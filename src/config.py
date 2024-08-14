@@ -120,6 +120,12 @@ class Config:
         # TODO Future PR add more status messages here as constants
         UNHEALTHY_UPGRADE = BlockedStatus("Unhealthy after upgrade.")
 
+    class Substrate:
+        """Substrate related constants."""
+
+        VM = "vm"
+        K8S = "k8s"
+
     class Upgrade:
         """Upgrade related constants."""
 
