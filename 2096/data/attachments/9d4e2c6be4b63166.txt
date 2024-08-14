@@ -1,0 +1,60 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:834 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.4.4    unsupported  02:18:21Z
+
+App                Version  Status  Scale  Charm    Channel  Rev  Exposed  Message
+config-server-one           active      2  mongodb             0  no       
+shard-one                   active      2  mongodb             1  no       
+shard-three                 active    1/2  mongodb             3  no       
+shard-two                   active      2  mongodb             2  no       
+
+Unit                  Workload  Agent       Machine  Public address  Ports            Message
+config-server-one/0   blocked   idle        0        10.18.62.28     27017-27018/tcp  missing relation to shard(s)
+config-server-one/1*  blocked   idle        1        10.18.62.104    27017-27018/tcp  missing relation to shard(s)
+shard-one/0*          blocked   idle        2        10.18.62.12     27017/tcp        missing relation to config server
+shard-one/1           blocked   idle        3        10.18.62.192    27017/tcp        missing relation to config server
+shard-three/0         waiting   allocating  6                                         waiting for machine
+shard-three/1*        blocked   idle        7        10.18.62.150    27017/tcp        missing relation to config server
+shard-two/0*          blocked   idle        4        10.18.62.32     27017/tcp        missing relation to config server
+shard-two/1           blocked   idle        5        10.18.62.92     27017/tcp        missing relation to config server
+
+Machine  State    Address       Inst id        Base          AZ  Message
+0        started  10.18.62.28   juju-735ee0-0  ubuntu@22.04      Running
+1        started  10.18.62.104  juju-735ee0-1  ubuntu@22.04      Running
+2        started  10.18.62.12   juju-735ee0-2  ubuntu@22.04      Running
+3        started  10.18.62.192  juju-735ee0-3  ubuntu@22.04      Running
+4        started  10.18.62.32   juju-735ee0-4  ubuntu@22.04      Running
+5        started  10.18.62.92   juju-735ee0-5  ubuntu@22.04      Running
+6        pending                juju-735ee0-6  ubuntu@22.04      Running
+7        started  10.18.62.150  juju-735ee0-7  ubuntu@22.04      Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:840 Juju error logs:
+
+machine-2: 01:50:25 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 01:50:25 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-0: 01:50:26 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-1: 01:50:32 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 01:50:32 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 01:50:32 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 01:50:32 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-1: 01:50:33 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-config-server-one-1: 01:50:33 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-0: 01:50:33 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 01:50:33 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-one-0: 01:50:33 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-4: 01:51:25 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-4: 01:51:25 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-two-0: 01:51:25 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-5: 01:51:26 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-5: 01:51:26 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-two-1: 01:51:26 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-7: 01:52:57 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-7: 01:52:57 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-three-1: 01:52:57 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-shard-one-0: 01:53:04 ERROR unit.shard-one/0.juju-log _on_secret_remove: Secret secret:cqu0rhfafk33ke9244qg seems to have no observers, could be removed
+unit-config-server-one-1: 01:53:09 ERROR unit.config-server-one/1.juju-log _on_secret_remove: Secret secret:cqu0rhvafk33ke9244r0 seems to have no observers, could be removed
+unit-shard-two-0: 01:53:39 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:cqu0rufafk33ke9244rg seems to have no observers, could be removed
+unit-shard-three-1: 01:54:11 ERROR unit.shard-three/1.juju-log _on_secret_remove: Secret secret:cqu0s9vafk33ke9244s0 seems to have no observers, could be removed
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:904 Forgetting main...
