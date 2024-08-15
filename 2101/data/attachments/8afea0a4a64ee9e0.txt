@@ -1,0 +1,457 @@
+[32mINFO    [0m juju.model:model.py:2098 Deploying ch:amd64/jammy/self-signed-certificates-155
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  shard-one/3 [idle] active: 
+  shard-one/4 [idle] maintenance: Adding shard to config-server
+  shard-one/5 [idle] active: Primary
+  shard-two/1 [idle] active: Primary
+  config-server/2 [idle] active: 
+  config-server/3 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  shard-one/3 [executing] active: 
+  shard-one/4 [executing] active: 
+  shard-one/5 [executing] active: 
+  config-server/2 [executing] active: 
+  config-server/3 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  shard-one/3 [idle] active: 
+  shard-one/4 [idle] active: 
+  shard-one/5 [idle] active: 
+  config-server/2 [idle] active: 
+  config-server/3 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  shard-one/3 [idle] blocked: Shard requires TLS to be enabled.
+  shard-one/4 [idle] blocked: Shard requires TLS to be enabled.
+  shard-one/5 [idle] blocked: Shard requires TLS to be enabled.
+  shard-two/1 [idle] active: Primary
+  config-server/2 [executing] blocked: shards shard-one are unreachable.
+  config-server/3 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  shard-one/3 [idle] blocked: Shard requires TLS to be enabled.
+  shard-one/4 [idle] blocked: Shard requires TLS to be enabled.
+  shard-one/5 [idle] blocked: Shard requires TLS to be enabled.
+  config-server/2 [idle] blocked: shards shard-one are unreachable.
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  shard-one/3 [idle] blocked: Shard requires TLS to be enabled.
+  shard-one/4 [executing] blocked: Shard requires TLS to be enabled.
+  shard-one/5 [executing] blocked: Shard requires TLS to be enabled.
+  config-server/2 [idle] blocked: shards shard-one are unreachable.
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  shard-one/3 [executing] maintenance: enabling TLS
+  shard-one/4 [executing] maintenance: enabling TLS
+  shard-one/5 [executing] maintenance: enabling TLS
+  config-server/2 [idle] blocked: shards shard-one are unreachable.
+  config-server/3 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  shard-one/3 [executing] active: 
+  shard-one/4 [executing] active: 
+  shard-one/5 [executing] maintenance: enabling TLS
+  config-server/2 [idle] blocked: shards shard-one are unreachable.
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  shard-one/3 [executing] active: 
+  shard-one/4 [executing] active: 
+  shard-one/5 [executing] active: 
+  config-server/2 [idle] blocked: shards shard-one are unreachable.
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  shard-one/3 [executing] active: 
+  shard-one/4 [executing] active: 
+  shard-one/5 [executing] active: 
+  config-server/2 [idle] blocked: shards shard-one are unreachable.
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server/2 [idle] blocked: shards shard-one are unreachable.
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server/2 [idle] blocked: shards shard-one are unreachable.
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server/2 [idle] blocked: shards shard-one are unreachable.
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server/2 [idle] blocked: shards shard-one are unreachable.
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  shard-one/3 [idle] active: 
+  shard-one/4 [idle] active: 
+  shard-one/5 [idle] active: 
+  shard-two/1 [idle] active: Primary
+  config-server/2 [executing] active: 
+  config-server/3 [executing] active: Primary
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server/2 [executing] maintenance: disabling TLS
+  config-server/3 [executing] maintenance: disabling TLS
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  shard-one/3 [executing] active: 
+  shard-one/4 [executing] active: Primary
+  shard-one/5 [executing] active: 
+  shard-two/1 [idle] active: Primary
+  config-server/2 [idle] active: 
+  config-server/3 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  shard-one/3 [idle] blocked: Shard has TLS enabled, but config-server does not.
+  shard-one/4 [idle] blocked: Shard has TLS enabled, but config-server does not.
+  shard-one/5 [idle] blocked: Shard has TLS enabled, but config-server does not.
+  shard-two/1 [idle] blocked: Shard has TLS enabled, but config-server does not.
+  config-server/2 [executing] active: Primary
+  config-server/3 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server/2 [executing] maintenance: enabling TLS
+  config-server/3 [executing] maintenance: enabling TLS
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  shard-one/3 [executing] blocked: Shard has TLS enabled, but config-server does not.
+  shard-one/4 [executing] blocked: Shard has TLS enabled, but config-server does not.
+  shard-one/5 [executing] blocked: Shard has TLS enabled, but config-server does not.
+  shard-two/1 [executing] blocked: Shard has TLS enabled, but config-server does not.
+  config-server/2 [executing] maintenance: enabling TLS
+  config-server/3 [executing] maintenance: enabling TLS
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server/2 [executing] maintenance: enabling TLS
+  config-server/3 [executing] maintenance: enabling TLS
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server/2 [idle] active: 
+  config-server/3 [executing] maintenance: enabling TLS
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server/3 [executing] maintenance: enabling TLS
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server/3 [executing] maintenance: enabling TLS
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server/3 [idle] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:834 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.4.4    unsupported  02:45:25Z
+
+App                                Version  Status  Scale  Charm                     Channel        Rev  Exposed  Message
+config-server                               active      2  mongodb                                    3  no       
+self-signed-certificates                    active      1  self-signed-certificates  latest/stable  155  no       
+self-signed-certificates-separate           active      1  self-signed-certificates  latest/stable  155  no       
+shard-one                                   active      3  mongodb                                    4  no       
+shard-two                                   active      1  mongodb                                    5  no       
+
+Unit                                  Workload  Agent  Machine  Public address  Ports            Message
+config-server/2                       active    idle   7        10.80.171.84    27017-27018/tcp  Primary
+config-server/3*                      active    idle   8        10.80.171.186   27017-27018/tcp  
+self-signed-certificates-separate/0*  active    idle   13       10.80.171.122                    
+self-signed-certificates/0*           active    idle   6        10.80.171.217                    
+shard-one/3*                          blocked   idle   9        10.80.171.41    27017/tcp        Shard CA and Config-Server CA don't match.
+shard-one/4                           blocked   idle   10       10.80.171.109   27017/tcp        Shard CA and Config-Server CA don't match.
+shard-one/5                           blocked   idle   11       10.80.171.213   27017/tcp        Shard CA and Config-Server CA don't match.
+shard-two/1*                          blocked   idle   12       10.80.171.160   27017/tcp        Shard has TLS enabled, but config-server does not.
+
+Machine  State    Address        Inst id         Base          AZ  Message
+6        started  10.80.171.217  juju-2f313b-6   ubuntu@22.04      Running
+7        started  10.80.171.84   juju-2f313b-7   ubuntu@22.04      Running
+8        started  10.80.171.186  juju-2f313b-8   ubuntu@22.04      Running
+9        started  10.80.171.41   juju-2f313b-9   ubuntu@22.04      Running
+10       started  10.80.171.109  juju-2f313b-10  ubuntu@22.04      Running
+11       started  10.80.171.213  juju-2f313b-11  ubuntu@22.04      Running
+12       started  10.80.171.160  juju-2f313b-12  ubuntu@22.04      Running
+13       started  10.80.171.122  juju-2f313b-13  ubuntu@22.04      Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:840 Juju error logs:
+
+machine-1: 01:42:54 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 01:42:55 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-1: 01:42:57 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-0: 01:43:00 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 01:43:00 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-0: 01:43:00 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-2: 01:43:33 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 01:43:33 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-0: 01:43:34 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-3: 01:43:36 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 01:43:36 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-1: 01:43:36 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-5: 01:43:36 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-5: 01:43:36 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-two-0: 01:43:37 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-4: 01:43:37 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-4: 01:43:37 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-2: 01:43:37 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-config-server-1: 01:45:03 ERROR unit.config-server/1.juju-log _on_secret_remove: Secret secret:cqulqpbpac5ib89db6ag seems to have no observers, could be removed
+unit-shard-two-0: 01:45:39 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:cqulr7jpac5ib89db6b0 seems to have no observers, could be removed
+unit-shard-one-0: 01:45:39 ERROR unit.shard-one/0.juju-log _on_secret_remove: Secret secret:cqulr7jpac5ib89db6bg seems to have no observers, could be removed
+machine-6: 01:48:36 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-6: 01:48:36 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-self-signed-certificates-0: 01:48:36 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-config-server-1: 01:49:24 ERROR unit.config-server/1.juju-log config-server:6: Failed to add shard shard-one to the config server, error=OperationFailure('Authentication failed., full error: {\'ok\': 0.0, \'errmsg\': \'Authentication failed.\', \'code\': 18, \'codeName\': \'AuthenticationFailed\', \'$clusterTime\': {\'clusterTime\': Timestamp(1723686563, 3), \'signature\': {\'hash\': b" \\xb1)\\xf1\\x81\\xf9>\\xd8\\xf7\\xb1(\\xdd\\xa2\\xe6\\x1e\\xa1\'\\xd5\\x06S", \'keyId\': 7403176175394095105}}, \'operationTime\': Timestamp(1723686563, 3)}')
+unit-config-server-1: 01:49:24 ERROR unit.config-server/1.juju-log config-server:6: shard-one shard does not have the same auth as the config server.
+unit-config-server-1: 01:49:26 ERROR unit.config-server/1.juju-log config-server:6: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1723686564, 2), 'signature': {'hash': b'\\xd5\\x8f\\xcb\\xc8\\x90c\\x19\\xea\\xd0\\xe3\\x089\\xb2\\x80\\xc3\\x81\\xd0&D=', 'keyId': 7403176175394095105}}, 'operationTime': Timestamp(1723686564, 2)}")
+unit-config-server-1: 01:49:26 ERROR unit.config-server/1.juju-log config-server:6: shard-one shard does not have the same auth as the config server.
+unit-config-server-1: 01:49:28 ERROR unit.config-server/1.juju-log config-server:6: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1723686568, 1), 'signature': {'hash': b'\\x0c\\xed\\x9bF\\x03~\\xbf\\xed\\xd7\\xb6J\\xa4\\x08\\xb0z\\x13.\\x83\\xd7L', 'keyId': 7403176175394095105}}, 'operationTime': Timestamp(1723686568, 1)}")
+unit-config-server-1: 01:49:28 ERROR unit.config-server/1.juju-log config-server:6: shard-one shard does not have the same auth as the config server.
+unit-config-server-1: 01:49:29 ERROR unit.config-server/1.juju-log config-server:6: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1723686568, 4), 'signature': {'hash': b'\\x0c\\xed\\x9bF\\x03~\\xbf\\xed\\xd7\\xb6J\\xa4\\x08\\xb0z\\x13.\\x83\\xd7L', 'keyId': 7403176175394095105}}, 'operationTime': Timestamp(1723686568, 4)}")
+unit-config-server-1: 01:49:29 ERROR unit.config-server/1.juju-log config-server:6: shard-one shard does not have the same auth as the config server.
+unit-config-server-1: 01:49:30 ERROR unit.config-server/1.juju-log config-server:7: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1723686569, 3), 'signature': {'hash': b'\\xb34f\\xd3S?(w\\x94\\xa1\\xc0\\xf3n>\\xbe\\xb2\\x98\\x1e\\xe5\\xf1', 'keyId': 7403176175394095105}}, 'operationTime': Timestamp(1723686569, 3)}")
+unit-config-server-1: 01:49:46 ERROR unit.config-server/1.juju-log config-server:7: Failed to add shard shard-one to the config server, error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1723686584, 2), \'signature\': {\'hash\': b\'\\x1eS3\\xd7\\x87V$oa\\xa6\\x94\\xcfQ$\\x83\\x01?\\xf7zl\', \'keyId\': 7403176175394095105}}, \'operationTime\': Timestamp(1723686584, 2)}')
+unit-config-server-1: 01:49:46 ERROR unit.config-server/1.juju-log config-server:7: Failed to add shard-one to cluster
+unit-config-server-1: 01:49:46 ERROR unit.config-server/1.juju-log config-server:7: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1723686584, 2), \'signature\': {\'hash\': b\'\\x1eS3\\xd7\\x87V$oa\\xa6\\x94\\xcfQ$\\x83\\x01?\\xf7zl\', \'keyId\': 7403176175394095105}}, \'operationTime\': Timestamp(1723686584, 2)}')
+unit-config-server-1: 01:49:47 ERROR unit.config-server/1.juju-log config-server:7: Failed to add shard shard-two to the config server, error=OperationFailure('Authentication failed., full error: {\'ok\': 0.0, \'errmsg\': \'Authentication failed.\', \'code\': 18, \'codeName\': \'AuthenticationFailed\', \'$clusterTime\': {\'clusterTime\': Timestamp(1723686586, 1), \'signature\': {\'hash\': b\'\\xde\\xf5\\x8e\\xa9"!\\xbb\\x14k\\x91\\x92\\xc3=\\xabr\\xa4Qs\\xcdT\', \'keyId\': 7403176175394095105}}, \'operationTime\': Timestamp(1723686586, 1)}')
+unit-config-server-1: 01:49:58 ERROR unit.config-server/1.juju-log config-server:7: shard-two shard does not have the same auth as the config server.
+unit-config-server-1: 01:50:00 ERROR unit.config-server/1.juju-log config-server:7: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1723686599, 4), 'signature': {'hash': b'\\xd5\\xbb\\xfc\\xe1+\\xfe\\xf9\\x8c\\xfdJ\\x12\\\\\\x18\\x91\\xe3\\xa1k\\xf4I/', 'keyId': 7403176175394095105}}, 'operationTime': Timestamp(1723686599, 4)}")
+unit-config-server-1: 01:50:00 ERROR unit.config-server/1.juju-log config-server:7: shard-two shard does not have the same auth as the config server.
+unit-shard-one-0: 01:50:11 ERROR unit.shard-one/0.juju-log _on_secret_remove: Secret secret:cqulr7jpac5ib89db6bg seems to have no observers, could be removed
+unit-shard-one-0: 01:50:19 ERROR unit.shard-one/0.juju-log _on_secret_remove: Secret secret:cqulr7jpac5ib89db6bg seems to have no observers, could be removed
+unit-shard-two-0: 01:50:21 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:cqulr7jpac5ib89db6b0 seems to have no observers, could be removed
+unit-shard-two-0: 01:50:22 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:cqulr7jpac5ib89db6b0 seems to have no observers, could be removed
+unit-shard-one-0: 01:50:24 ERROR unit.shard-one/0.juju-log _on_secret_remove: Secret secret:cqulr7jpac5ib89db6bg seems to have no observers, could be removed
+unit-shard-one-0: 01:50:51 ERROR unit.shard-one/0.juju-log _on_secret_remove: Secret secret:cqulr7jpac5ib89db6bg seems to have no observers, could be removed
+unit-shard-one-1: 01:51:22 ERROR unit.shard-one/1.juju-log certificates:8: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-shard-one-0: 01:51:22 ERROR unit.shard-one/0.juju-log certificates:8: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-shard-one-2: 01:51:22 ERROR unit.shard-one/2.juju-log certificates:8: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-config-server-1: 01:51:22 ERROR unit.config-server/1.juju-log certificates:10: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-shard-two-0: 01:51:22 ERROR unit.shard-two/0.juju-log certificates:9: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-shard-one-1: 01:51:22 ERROR unit.shard-one/1.juju-log certificates:8: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-shard-one-0: 01:51:22 ERROR unit.shard-one/0.juju-log certificates:8: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-config-server-1: 01:51:22 ERROR unit.config-server/1.juju-log certificates:10: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-config-server-0: 01:51:22 ERROR unit.config-server/0.juju-log certificates:10: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-shard-one-2: 01:51:22 ERROR unit.shard-one/2.juju-log certificates:8: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-shard-two-0: 01:51:22 ERROR unit.shard-two/0.juju-log certificates:9: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-config-server-0: 01:51:23 ERROR unit.config-server/0.juju-log certificates:10: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-config-server-0: 01:51:29 ERROR unit.config-server/0.juju-log certificates:10: This operation (update_relation_data()) can only be performed by the leader unit
+unit-config-server-0: 01:51:29 ERROR unit.config-server/0.juju-log certificates:10: This operation (update_relation_data()) can only be performed by the leader unit
+unit-config-server-0: 01:52:19 ERROR unit.config-server/0.juju-log This operation (update_relation_data()) can only be performed by the leader unit
+unit-config-server-0: 01:52:19 ERROR unit.config-server/0.juju-log This operation (update_relation_data()) can only be performed by the leader unit
+unit-config-server-0: 01:53:14 ERROR unit.config-server/0.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6g0 seems to have no observers, could be removed
+unit-config-server-1: 01:53:14 ERROR unit.config-server/1.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6f0 seems to have no observers, could be removed
+unit-config-server-0: 01:53:15 ERROR unit.config-server/0.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6g0 seems to have no observers, could be removed
+unit-config-server-1: 01:53:15 ERROR unit.config-server/1.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6f0 seems to have no observers, could be removed
+unit-config-server-1: 01:53:16 ERROR unit.config-server/1.juju-log _on_secret_remove: Secret secret:cqulthrpac5ib89db6d0 seems to have no observers, could be removed
+unit-config-server-0: 01:53:16 ERROR unit.config-server/0.juju-log certificates:10: This operation (update_relation_data()) can only be performed by the leader unit
+unit-config-server-0: 01:53:16 ERROR unit.config-server/0.juju-log certificates:10: This operation (update_relation_data()) can only be performed by the leader unit
+unit-shard-two-0: 01:53:17 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6fg seems to have no observers, could be removed
+unit-shard-two-0: 01:53:18 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:cqulr7jpac5ib89db6b0 seems to have no observers, could be removed
+unit-shard-two-0: 01:53:19 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6fg seems to have no observers, could be removed
+unit-shard-one-1: 01:53:23 ERROR unit.shard-one/1.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6dg seems to have no observers, could be removed
+unit-shard-one-0: 01:53:24 ERROR unit.shard-one/0.juju-log _on_secret_remove: Secret secret:cqulr7jpac5ib89db6bg seems to have no observers, could be removed
+unit-shard-one-1: 01:53:24 ERROR unit.shard-one/1.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6dg seems to have no observers, could be removed
+unit-shard-one-0: 01:53:24 ERROR unit.shard-one/0.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6e0 seems to have no observers, could be removed
+unit-shard-one-2: 01:53:25 ERROR unit.shard-one/2.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6eg seems to have no observers, could be removed
+unit-shard-one-0: 01:53:25 ERROR unit.shard-one/0.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6e0 seems to have no observers, could be removed
+unit-shard-one-2: 01:53:26 ERROR unit.shard-one/2.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6eg seems to have no observers, could be removed
+unit-config-server-0: 01:54:35 ERROR unit.config-server/0.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6g0 seems to have no observers, could be removed
+unit-shard-one-1: 01:54:36 ERROR unit.shard-one/1.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6dg seems to have no observers, could be removed
+unit-shard-one-0: 01:54:36 ERROR unit.shard-one/0.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6e0 seems to have no observers, could be removed
+unit-shard-one-0: 01:56:30 ERROR unit.shard-one/0.juju-log certificates:8: An unknown certificate is available -- ignoring.
+unit-shard-one-0: 01:56:30 ERROR unit.shard-one/0.juju-log certificates:8: An unknown certificate is available -- ignoring.
+unit-shard-one-1: 01:56:32 ERROR unit.shard-one/1.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6dg seems to have no observers, could be removed
+unit-shard-one-1: 01:56:33 ERROR unit.shard-one/1.juju-log certificates:8: An unknown certificate is available -- ignoring.
+unit-shard-one-1: 01:56:33 ERROR unit.shard-one/1.juju-log certificates:8: An unknown certificate is available -- ignoring.
+unit-shard-one-1: 01:57:35 ERROR unit.shard-one/1.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6dg seems to have no observers, could be removed
+unit-shard-one-0: 01:57:36 ERROR unit.shard-one/0.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6e0 seems to have no observers, could be removed
+unit-shard-one-1: 01:57:36 ERROR unit.shard-one/1.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6dg seems to have no observers, could be removed
+unit-shard-one-2: 01:57:37 ERROR unit.shard-one/2.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6eg seems to have no observers, could be removed
+unit-shard-one-0: 01:57:37 ERROR unit.shard-one/0.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6e0 seems to have no observers, could be removed
+unit-shard-one-1: 01:57:37 ERROR unit.shard-one/1.juju-log certificates:8: An unknown certificate is available -- ignoring.
+unit-shard-one-1: 01:57:37 ERROR unit.shard-one/1.juju-log certificates:8: An unknown certificate is available -- ignoring.
+unit-shard-one-2: 01:57:38 ERROR unit.shard-one/2.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6eg seems to have no observers, could be removed
+unit-shard-one-0: 01:57:38 ERROR unit.shard-one/0.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6e0 seems to have no observers, could be removed
+unit-shard-one-0: 01:57:39 ERROR unit.shard-one/0.juju-log certificates:8: An unknown certificate is available -- ignoring.
+unit-shard-one-2: 01:57:39 ERROR unit.shard-one/2.juju-log certificates:8: An unknown certificate is available -- ignoring.
+unit-shard-one-0: 01:57:39 ERROR unit.shard-one/0.juju-log certificates:8: An unknown certificate is available -- ignoring.
+unit-shard-one-2: 01:57:39 ERROR unit.shard-one/2.juju-log certificates:8: An unknown certificate is available -- ignoring.
+unit-shard-one-2: 01:58:41 ERROR unit.shard-one/2.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6eg seems to have no observers, could be removed
+unit-shard-one-0: 01:58:42 ERROR unit.shard-one/0.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6e0 seems to have no observers, could be removed
+unit-shard-one-1: 01:58:42 ERROR unit.shard-one/1.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6dg seems to have no observers, could be removed
+unit-shard-one-2: 01:58:43 ERROR unit.shard-one/2.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6eg seems to have no observers, could be removed
+unit-shard-two-0: 02:01:19 ERROR unit.shard-two/0.juju-log certificates:9: An unknown certificate is available -- ignoring.
+unit-shard-two-0: 02:01:19 ERROR unit.shard-two/0.juju-log certificates:9: An unknown certificate is available -- ignoring.
+unit-shard-two-0: 02:01:35 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6fg seems to have no observers, could be removed
+unit-shard-two-0: 02:01:36 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6fg seems to have no observers, could be removed
+unit-shard-two-0: 02:01:37 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6fg seems to have no observers, could be removed
+unit-config-server-0: 02:04:02 ERROR unit.config-server/0.juju-log certificates:10: An unknown certificate is available -- ignoring.
+unit-config-server-0: 02:04:02 ERROR unit.config-server/0.juju-log certificates:10: An unknown certificate is available -- ignoring.
+unit-config-server-0: 02:04:02 ERROR unit.config-server/0.juju-log certificates:10: This operation (update_relation_data()) can only be performed by the leader unit
+unit-config-server-0: 02:04:02 ERROR unit.config-server/0.juju-log certificates:10: This operation (update_relation_data()) can only be performed by the leader unit
+unit-config-server-1: 02:04:04 ERROR unit.config-server/1.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6f0 seems to have no observers, could be removed
+unit-config-server-1: 02:04:05 ERROR unit.config-server/1.juju-log certificates:10: An unknown certificate is available -- ignoring.
+unit-config-server-1: 02:04:05 ERROR unit.config-server/1.juju-log certificates:10: An unknown certificate is available -- ignoring.
+unit-config-server-1: 02:05:45 ERROR unit.config-server/1.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6f0 seems to have no observers, could be removed
+unit-config-server-1: 02:05:46 ERROR unit.config-server/1.juju-log _on_secret_remove: Secret secret:cqult8jpac5ib89db6cg seems to have no observers, could be removed
+unit-config-server-0: 02:05:46 ERROR unit.config-server/0.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6g0 seems to have no observers, could be removed
+unit-config-server-1: 02:05:47 ERROR unit.config-server/1.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6f0 seems to have no observers, could be removed
+unit-config-server-0: 02:05:47 ERROR unit.config-server/0.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6g0 seems to have no observers, could be removed
+unit-config-server-0: 02:05:48 ERROR unit.config-server/0.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6g0 seems to have no observers, could be removed
+unit-config-server-0: 02:05:49 ERROR unit.config-server/0.juju-log certificates:10: An unknown certificate is available -- ignoring.
+unit-config-server-0: 02:05:49 ERROR unit.config-server/0.juju-log certificates:10: An unknown certificate is available -- ignoring.
+unit-config-server-0: 02:06:25 ERROR unit.config-server/0.juju-log certificates:10: This operation (update_relation_data()) can only be performed by the leader unit
+unit-config-server-0: 02:06:25 ERROR unit.config-server/0.juju-log certificates:10: This operation (update_relation_data()) can only be performed by the leader unit
+unit-config-server-0: 02:07:07 ERROR unit.config-server/0.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6g0 seems to have no observers, could be removed
+unit-config-server-0: 02:09:19 ERROR unit.config-server/0.juju-log certificates:10: This operation (delete_relation_data()) can only be performed by the leader unit
+unit-config-server-0: 02:09:19 ERROR unit.config-server/0.juju-log certificates:10: This operation (delete_relation_data()) can only be performed by the leader unit
+unit-shard-two-0: 02:09:42 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6fg seems to have no observers, could be removed
+unit-shard-one-2: 02:09:55 ERROR unit.shard-one/2.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6eg seems to have no observers, could be removed
+unit-shard-one-1: 02:09:55 ERROR unit.shard-one/1.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6dg seems to have no observers, could be removed
+unit-shard-one-0: 02:09:56 ERROR unit.shard-one/0.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6e0 seems to have no observers, could be removed
+unit-self-signed-certificates-0: 02:09:56 ERROR juju.worker.dependency "uniter" manifold worker returned unexpected error: relation scope id "64e7065e-3659-4ab5-8344-2783cf2f313b:r#10#config-server": settings 64e7065e-3659-4ab5-8344-2783cf2f313b:r#10#config-server not found (not found)
+unit-config-server-0: 02:09:58 ERROR unit.config-server/0.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6g0 seems to have no observers, could be removed
+unit-shard-two-0: 02:09:58 ERROR unit.shard-two/0.juju-log Unable to access primary due to: 10.80.171.199:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms), Timeout: 1.0s, Topology Description: <TopologyDescription id: 66bd6375ae96a854d34346e8, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.80.171.199', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('10.80.171.199:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)')>]>
+unit-shard-one-0: 02:09:59 ERROR unit.shard-one/0.juju-log Unable to access primary due to: 10.80.171.222:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms),10.80.171.209:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms),10.80.171.72:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms), Timeout: 1.0s, Topology Description: <TopologyDescription id: 66bd63764fc7ddad7883d6f5, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.80.171.209', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('10.80.171.209:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)')>, <ServerDescription ('10.80.171.222', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('10.80.171.222:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)')>, <ServerDescription ('10.80.171.72', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('10.80.171.72:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)')>]>
+unit-config-server-1: 02:10:01 ERROR unit.config-server/1.juju-log _on_secret_remove: Secret secret:cqulu6jpac5ib89db6f0 seems to have no observers, could be removed
+unit-shard-one-0: 02:10:01 ERROR unit.shard-one/0.juju-log Unable to access primary due to: 10.80.171.209:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms),10.80.171.72:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms),10.80.171.222:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms), Timeout: 1.0s, Topology Description: <TopologyDescription id: 66bd6378b1eb0edd37b98f5b, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.80.171.209', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('10.80.171.209:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)')>, <ServerDescription ('10.80.171.222', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('10.80.171.222:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)')>, <ServerDescription ('10.80.171.72', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('10.80.171.72:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)')>]>
+unit-config-server-1: 02:10:03 ERROR unit.config-server/1.juju-log config-server:6: Deferring _on_relation_event for shards interface since: error=ServerSelectionTimeoutError("10.80.171.229:27018: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms),10.80.171.23:27018: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms), Timeout: 1.0s, Topology Description: <TopologyDescription id: 66bd637af3f4d9b7316b30ef, topology_type: Unknown, servers: [<ServerDescription ('10.80.171.229', 27018) server_type: Unknown, rtt: None, error=AutoReconnect('10.80.171.229:27018: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)')>, <ServerDescription ('10.80.171.23', 27018) server_type: Unknown, rtt: None, error=AutoReconnect('10.80.171.23:27018: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)')>]>")
+unit-config-server-1: 02:10:06 ERROR unit.config-server/1.juju-log config-server:7: Deferring _on_relation_event for shards interface since: error=ServerSelectionTimeoutError("10.80.171.229:27018: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms),10.80.171.23:27018: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms), Timeout: 1.0s, Topology Description: <TopologyDescription id: 66bd637d5f767af1e29c8626, topology_type: Unknown, servers: [<ServerDescription ('10.80.171.229', 27018) server_type: Unknown, rtt: None, error=AutoReconnect('10.80.171.229:27018: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)')>, <ServerDescription ('10.80.171.23', 27018) server_type: Unknown, rtt: None, error=AutoReconnect('10.80.171.23:27018: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)')>]>")
+unit-shard-one-0: 02:10:07 ERROR unit.shard-one/0.juju-log Unable to access primary due to: 10.80.171.72:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms),10.80.171.209:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms),10.80.171.222:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms), Timeout: 1.0s, Topology Description: <TopologyDescription id: 66bd637ef722585b0424449c, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.80.171.209', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('10.80.171.209:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)')>, <ServerDescription ('10.80.171.222', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('10.80.171.222:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)')>, <ServerDescription ('10.80.171.72', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('10.80.171.72:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)')>]>
+unit-config-server-1: 02:10:07 ERROR unit.config-server/1.juju-log config-server:7: Deferring _on_relation_event for shards interface since: error=ServerSelectionTimeoutError("10.80.171.229:27018: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms),10.80.171.23:27018: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms), Timeout: 1.0s, Topology Description: <TopologyDescription id: 66bd637e5f767af1e29c8627, topology_type: Unknown, servers: [<ServerDescription ('10.80.171.229', 27018) server_type: Unknown, rtt: None, error=AutoReconnect('10.80.171.229:27018: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)')>, <ServerDescription ('10.80.171.23', 27018) server_type: Unknown, rtt: None, error=AutoReconnect('10.80.171.23:27018: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)')>]>")
+unit-shard-two-0: 02:10:16 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:cqulr7jpac5ib89db6b0 seems to have no observers, could be removed
+machine-8: 02:16:16 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-8: 02:16:16 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-3: 02:16:16 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-7: 02:16:17 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-7: 02:16:17 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-2: 02:16:19 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-9: 02:16:40 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-9: 02:16:40 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-11: 02:16:40 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-3: 02:16:40 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-11: 02:16:40 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-5: 02:16:41 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-10: 02:16:41 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-10: 02:16:41 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-4: 02:16:41 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-12: 02:17:05 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-12: 02:17:05 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-two-1: 02:17:05 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-config-server-3: 02:17:40 ERROR unit.config-server/3.juju-log _on_secret_remove: Secret secret:cquma8bpac5ib89db6sg seems to have no observers, could be removed
+unit-shard-one-3: 02:17:55 ERROR unit.shard-one/3.juju-log _on_secret_remove: Secret secret:cqumaejpac5ib89db6t0 seems to have no observers, could be removed
+unit-shard-two-1: 02:18:10 ERROR unit.shard-two/1.juju-log _on_secret_remove: Secret secret:cqumairpac5ib89db6tg seems to have no observers, could be removed
+unit-shard-one-5: 02:18:46 ERROR unit.shard-one/5.juju-log certificates:17: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-shard-one-4: 02:18:47 ERROR unit.shard-one/4.juju-log certificates:17: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-shard-one-3: 02:18:47 ERROR unit.shard-one/3.juju-log certificates:17: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-shard-one-5: 02:18:47 ERROR unit.shard-one/5.juju-log certificates:17: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-config-server-2: 02:18:47 ERROR unit.config-server/2.juju-log certificates:19: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-shard-one-4: 02:18:47 ERROR unit.shard-one/4.juju-log certificates:17: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-shard-one-3: 02:18:47 ERROR unit.shard-one/3.juju-log certificates:17: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-shard-two-1: 02:18:47 ERROR unit.shard-two/1.juju-log certificates:18: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-config-server-2: 02:18:47 ERROR unit.config-server/2.juju-log certificates:19: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-config-server-3: 02:18:47 ERROR unit.config-server/3.juju-log certificates:19: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-shard-two-1: 02:18:47 ERROR unit.shard-two/1.juju-log certificates:18: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-config-server-3: 02:18:48 ERROR unit.config-server/3.juju-log certificates:19: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-shard-two-1: 02:19:13 ERROR unit.shard-two/1.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db700 seems to have no observers, could be removed
+unit-shard-two-1: 02:19:14 ERROR unit.shard-two/1.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db700 seems to have no observers, could be removed
+unit-shard-one-3: 02:20:08 ERROR unit.shard-one/3.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db6v0 seems to have no observers, could be removed
+unit-shard-one-4: 02:20:08 ERROR unit.shard-one/4.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db6ug seems to have no observers, could be removed
+unit-shard-one-3: 02:20:08 ERROR unit.shard-one/3.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db6v0 seems to have no observers, could be removed
+unit-shard-one-4: 02:20:09 ERROR unit.shard-one/4.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db6ug seems to have no observers, could be removed
+unit-shard-one-5: 02:20:09 ERROR unit.shard-one/5.juju-log _on_secret_remove: Secret secret:cqumb1jpac5ib89db6u0 seems to have no observers, could be removed
+unit-shard-one-5: 02:20:10 ERROR unit.shard-one/5.juju-log _on_secret_remove: Secret secret:cqumb1jpac5ib89db6u0 seems to have no observers, could be removed
+unit-config-server-2: 02:20:38 ERROR unit.config-server/2.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db6vg seems to have no observers, could be removed
+unit-config-server-3: 02:20:38 ERROR unit.config-server/3.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db70g seems to have no observers, could be removed
+unit-config-server-2: 02:20:39 ERROR unit.config-server/2.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db6vg seems to have no observers, could be removed
+unit-config-server-3: 02:20:39 ERROR unit.config-server/3.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db70g seems to have no observers, could be removed
+unit-shard-one-4: 02:20:54 ERROR unit.shard-one/4.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db6ug seems to have no observers, could be removed
+unit-shard-one-3: 02:20:57 ERROR unit.shard-one/3.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db6v0 seems to have no observers, could be removed
+unit-config-server-2: 02:21:58 ERROR unit.config-server/2.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db6vg seems to have no observers, could be removed
+unit-config-server-3: 02:22:44 ERROR unit.config-server/3.juju-log config-server:20: Failed to add shard shard-one to the config server, error=OperationFailure('Could not find user "O=config-server,x500UniqueIdentifier=3de1fb89-5278-4f1e-bc89-1b0211a12720,CN=config-server" for db "$external", full error: {\'ok\': 0.0, \'errmsg\': \'Could not find user "O=config-server,x500UniqueIdentifier=3de1fb89-5278-4f1e-bc89-1b0211a12720,CN=config-server" for db "$external"\', \'code\': 11, \'codeName\': \'UserNotFound\', \'$clusterTime\': {\'clusterTime\': Timestamp(1723688564, 1), \'signature\': {\'hash\': b\'\\x94-pMf\\x1aI\\x94\\xb5\\x0f`\\xea\\xa6\\x93\\n\\x06\\xe7\\x80\\xca\\xdb\', \'keyId\': 7403184619299799065}}, \'operationTime\': Timestamp(1723688564, 1)}')
+unit-config-server-3: 02:22:45 ERROR unit.config-server/3.juju-log config-server:20: Failed to add shard-one to cluster
+unit-config-server-3: 02:22:45 ERROR unit.config-server/3.juju-log config-server:20: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find user "O=config-server,x500UniqueIdentifier=3de1fb89-5278-4f1e-bc89-1b0211a12720,CN=config-server" for db "$external", full error: {\'ok\': 0.0, \'errmsg\': \'Could not find user "O=config-server,x500UniqueIdentifier=3de1fb89-5278-4f1e-bc89-1b0211a12720,CN=config-server" for db "$external"\', \'code\': 11, \'codeName\': \'UserNotFound\', \'$clusterTime\': {\'clusterTime\': Timestamp(1723688564, 1), \'signature\': {\'hash\': b\'\\x94-pMf\\x1aI\\x94\\xb5\\x0f`\\xea\\xa6\\x93\\n\\x06\\xe7\\x80\\xca\\xdb\', \'keyId\': 7403184619299799065}}, \'operationTime\': Timestamp(1723688564, 1)}')
+unit-config-server-3: 02:22:47 ERROR unit.config-server/3.juju-log config-server:20: Failed to add shard shard-one to the config server, error=OperationFailure('Could not find user "O=config-server,x500UniqueIdentifier=3de1fb89-5278-4f1e-bc89-1b0211a12720,CN=config-server" for db "$external", full error: {\'ok\': 0.0, \'errmsg\': \'Could not find user "O=config-server,x500UniqueIdentifier=3de1fb89-5278-4f1e-bc89-1b0211a12720,CN=config-server" for db "$external"\', \'code\': 11, \'codeName\': \'UserNotFound\', \'$clusterTime\': {\'clusterTime\': Timestamp(1723688566, 3), \'signature\': {\'hash\': b\'}\\xec2\\xff\\xe1\\x06\\r\\xf1b\\xe23\\x9a06\\x96^6\\xd9%\\x94\', \'keyId\': 7403184619299799065}}, \'operationTime\': Timestamp(1723688566, 3)}')
+unit-config-server-3: 02:22:47 ERROR unit.config-server/3.juju-log config-server:20: Failed to add shard-one to cluster
+unit-config-server-3: 02:22:47 ERROR unit.config-server/3.juju-log config-server:20: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find user "O=config-server,x500UniqueIdentifier=3de1fb89-5278-4f1e-bc89-1b0211a12720,CN=config-server" for db "$external", full error: {\'ok\': 0.0, \'errmsg\': \'Could not find user "O=config-server,x500UniqueIdentifier=3de1fb89-5278-4f1e-bc89-1b0211a12720,CN=config-server" for db "$external"\', \'code\': 11, \'codeName\': \'UserNotFound\', \'$clusterTime\': {\'clusterTime\': Timestamp(1723688566, 3), \'signature\': {\'hash\': b\'}\\xec2\\xff\\xe1\\x06\\r\\xf1b\\xe23\\x9a06\\x96^6\\xd9%\\x94\', \'keyId\': 7403184619299799065}}, \'operationTime\': Timestamp(1723688566, 3)}')
+unit-shard-one-3: 02:22:51 ERROR unit.shard-one/3.juju-log database-peers:13: Deferring reconfigure: error=ServerSelectionTimeoutError('No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66bd667910dbe8a3b9374d5a, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription (\'10.80.171.109\', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {\'topologyVersion\': {\'processId\': ObjectId(\'66bd660178fc457cbf31be31\'), \'counter\': 4}, \'ok\': 0.0, \'errmsg\': \'The server is in quiesce mode and will shut down\', \'code\': 91, \'codeName\': \'ShutdownInProgress\', \'remainingQuiesceTimeMillis\': 12028}")>, <ServerDescription (\'10.80.171.213\', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {\'topologyVersion\': {\'processId\': ObjectId(\'66bd65c6e2b3f9d0d38070c5\'), \'counter\': 11}, \'ok\': 0.0, \'errmsg\': \'The server is in quiesce mode and will shut down\', \'code\': 91, \'codeName\': \'ShutdownInProgress\', \'remainingQuiesceTimeMillis\': 12967}")>, <ServerDescription (\'10.80.171.41\', 27017) server_type: RSSecondary, rtt: 0.002116051000484731>]>')
+unit-shard-one-3: 02:22:55 ERROR unit.shard-one/3.juju-log sharding:20: Deferring reconfigure: error=ServerSelectionTimeoutError('No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66bd667dc7aa7260dff2abcb, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription (\'10.80.171.109\', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {\'topologyVersion\': {\'processId\': ObjectId(\'66bd660178fc457cbf31be31\'), \'counter\': 4}, \'ok\': 0.0, \'errmsg\': \'The server is in quiesce mode and will shut down\', \'code\': 91, \'codeName\': \'ShutdownInProgress\', \'remainingQuiesceTimeMillis\': 7884}")>, <ServerDescription (\'10.80.171.213\', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {\'topologyVersion\': {\'processId\': ObjectId(\'66bd65c6e2b3f9d0d38070c5\'), \'counter\': 11}, \'ok\': 0.0, \'errmsg\': \'The server is in quiesce mode and will shut down\', \'code\': 91, \'codeName\': \'ShutdownInProgress\', \'remainingQuiesceTimeMillis\': 8350}")>, <ServerDescription (\'10.80.171.41\', 27017) server_type: RSSecondary, rtt: 0.004838818000280298>]>')
+unit-config-server-3: 02:23:05 ERROR unit.config-server/3.juju-log config-server:20: Failed to add shard shard-one to the config server, error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1723688584, 1), \'signature\': {\'hash\': b\'\\x82\\x15T\\x9c\\x87\\xaa\\xe7\\x8d=7\\xa4{&\\xa2,i\\x95\\xa6\\x95m\', \'keyId\': 7403184619299799065}}, \'operationTime\': Timestamp(1723688584, 1)}')
+unit-config-server-3: 02:23:05 ERROR unit.config-server/3.juju-log config-server:20: Failed to add shard-one to cluster
+unit-config-server-3: 02:23:05 ERROR unit.config-server/3.juju-log config-server:20: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1723688584, 1), \'signature\': {\'hash\': b\'\\x82\\x15T\\x9c\\x87\\xaa\\xe7\\x8d=7\\xa4{&\\xa2,i\\x95\\xa6\\x95m\', \'keyId\': 7403184619299799065}}, \'operationTime\': Timestamp(1723688584, 1)}')
+unit-shard-one-4: 02:23:10 ERROR unit.shard-one/4.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db6ug seems to have no observers, could be removed
+unit-shard-one-5: 02:23:11 ERROR unit.shard-one/5.juju-log _on_secret_remove: Secret secret:cqumb1jpac5ib89db6u0 seems to have no observers, could be removed
+unit-shard-one-4: 02:23:14 ERROR unit.shard-one/4.juju-log certificates:17: An unknown certificate is available -- ignoring.
+unit-shard-one-4: 02:23:14 ERROR unit.shard-one/4.juju-log certificates:17: An unknown certificate is available -- ignoring.
+unit-shard-one-3: 02:23:16 ERROR unit.shard-one/3.juju-log Deferring reconfigure: error=ServerSelectionTimeoutError('No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66bd66931b81a379c14ce61d, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription (\'10.80.171.109\', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {\'topologyVersion\': {\'processId\': ObjectId(\'66bd668807ffccb1d63b72e3\'), \'counter\': 4}, \'ok\': 0.0, \'errmsg\': \'The server is in quiesce mode and will shut down\', \'code\': 91, \'codeName\': \'ShutdownInProgress\', \'remainingQuiesceTimeMillis\': 13511}")>, <ServerDescription (\'10.80.171.213\', 27017) server_type: RSSecondary, rtt: 0.0010368459988967516>, <ServerDescription (\'10.80.171.41\', 27017) server_type: RSSecondary, rtt: 0.0026349350009695627>]>')
+unit-shard-one-5: 02:23:20 ERROR unit.shard-one/5.juju-log certificates:17: An unknown certificate is available -- ignoring.
+unit-shard-one-5: 02:23:20 ERROR unit.shard-one/5.juju-log certificates:17: An unknown certificate is available -- ignoring.
+unit-shard-one-3: 02:23:21 ERROR unit.shard-one/3.juju-log Deferring reconfigure: error=ServerSelectionTimeoutError('No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66bd66979c839ee872674827, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription (\'10.80.171.109\', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {\'topologyVersion\': {\'processId\': ObjectId(\'66bd668807ffccb1d63b72e3\'), \'counter\': 4}, \'ok\': 0.0, \'errmsg\': \'The server is in quiesce mode and will shut down\', \'code\': 91, \'codeName\': \'ShutdownInProgress\', \'remainingQuiesceTimeMillis\': 8916}")>, <ServerDescription (\'10.80.171.213\', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {\'topologyVersion\': {\'processId\': ObjectId(\'66bd668aed651c9009a73166\'), \'counter\': 4}, \'ok\': 0.0, \'errmsg\': \'The server is in quiesce mode and will shut down\', \'code\': 91, \'codeName\': \'ShutdownInProgress\', \'remainingQuiesceTimeMillis\': 14991}")>, <ServerDescription (\'10.80.171.41\', 27017) server_type: RSSecondary, rtt: 0.0009053900030266959>]>')
+unit-config-server-3: 02:23:21 ERROR unit.config-server/3.juju-log config-server:20: Failed to add shard shard-one to the config server, error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1723688600, 2), \'signature\': {\'hash\': b\'\\xf6M[.Q\\x91p\\xef\\xe6\\xce\\xfb\\xa6q\\xc2\\x0b\\x00\\x1a\\xe2\\x02\\x17\', \'keyId\': 7403184619299799065}}, \'operationTime\': Timestamp(1723688600, 2)}')
+unit-config-server-3: 02:23:21 ERROR unit.config-server/3.juju-log config-server:20: Failed to add shard-one to cluster
+unit-config-server-3: 02:23:21 ERROR unit.config-server/3.juju-log config-server:20: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1723688600, 2), \'signature\': {\'hash\': b\'\\xf6M[.Q\\x91p\\xef\\xe6\\xce\\xfb\\xa6q\\xc2\\x0b\\x00\\x1a\\xe2\\x02\\x17\', \'keyId\': 7403184619299799065}}, \'operationTime\': Timestamp(1723688600, 2)}')
+unit-shard-one-3: 02:23:25 ERROR unit.shard-one/3.juju-log Deferring reconfigure: error=ServerSelectionTimeoutError('No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66bd669cade1ed4988ebdaa5, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription (\'10.80.171.109\', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {\'topologyVersion\': {\'processId\': ObjectId(\'66bd668807ffccb1d63b72e3\'), \'counter\': 4}, \'ok\': 0.0, \'errmsg\': \'The server is in quiesce mode and will shut down\', \'code\': 91, \'codeName\': \'ShutdownInProgress\', \'remainingQuiesceTimeMillis\': 5213}")>, <ServerDescription (\'10.80.171.213\', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {\'topologyVersion\': {\'processId\': ObjectId(\'66bd668aed651c9009a73166\'), \'counter\': 4}, \'ok\': 0.0, \'errmsg\': \'The server is in quiesce mode and will shut down\', \'code\': 91, \'codeName\': \'ShutdownInProgress\', \'remainingQuiesceTimeMillis\': 10892}")>, <ServerDescription (\'10.80.171.41\', 27017) server_type: RSSecondary, rtt: 0.000909016998775769>]>')
+unit-shard-one-3: 02:23:25 ERROR unit.shard-one/3.juju-log _on_secret_remove: Secret secret:cqumaejpac5ib89db6t0 seems to have no observers, could be removed
+unit-shard-one-3: 02:23:28 ERROR unit.shard-one/3.juju-log Deferring reconfigure: error=ServerSelectionTimeoutError('No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66bd669fd85521d3804611c9, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription (\'10.80.171.109\', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {\'topologyVersion\': {\'processId\': ObjectId(\'66bd668807ffccb1d63b72e3\'), \'counter\': 4}, \'ok\': 0.0, \'errmsg\': \'The server is in quiesce mode and will shut down\', \'code\': 91, \'codeName\': \'ShutdownInProgress\', \'remainingQuiesceTimeMillis\': 1080}")>, <ServerDescription (\'10.80.171.213\', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {\'topologyVersion\': {\'processId\': ObjectId(\'66bd668aed651c9009a73166\'), \'counter\': 4}, \'ok\': 0.0, \'errmsg\': \'The server is in quiesce mode and will shut down\', \'code\': 91, \'codeName\': \'ShutdownInProgress\', \'remainingQuiesceTimeMillis\': 7250}")>, <ServerDescription (\'10.80.171.41\', 27017) server_type: RSSecondary, rtt: 0.0017606740002520382>]>')
+unit-shard-one-3: 02:23:29 ERROR unit.shard-one/3.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db6v0 seems to have no observers, could be removed
+unit-shard-one-3: 02:23:32 ERROR unit.shard-one/3.juju-log database-peers:13: Deferring reconfigure: error=ServerSelectionTimeoutError('No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66bd66a38dd2f88e6c34cd36, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription (\'10.80.171.109\', 27017) server_type: Unknown, rtt: None, error=AutoReconnect(\'10.80.171.109:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)\')>, <ServerDescription (\'10.80.171.213\', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {\'topologyVersion\': {\'processId\': ObjectId(\'66bd668aed651c9009a73166\'), \'counter\': 4}, \'ok\': 0.0, \'errmsg\': \'The server is in quiesce mode and will shut down\', \'code\': 91, \'codeName\': \'ShutdownInProgress\', \'remainingQuiesceTimeMillis\': 3603}")>, <ServerDescription (\'10.80.171.41\', 27017) server_type: RSSecondary, rtt: 0.0012524200028565247>]>')
+unit-shard-one-3: 02:23:34 ERROR unit.shard-one/3.juju-log database-peers:13: Deferring reconfigure: error=ServerSelectionTimeoutError('No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66bd66a58dd2f88e6c34cd37, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription (\'10.80.171.109\', 27017) server_type: RSSecondary, rtt: 0.0017261079992749728>, <ServerDescription (\'10.80.171.213\', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {\'topologyVersion\': {\'processId\': ObjectId(\'66bd668aed651c9009a73166\'), \'counter\': 4}, \'ok\': 0.0, \'errmsg\': \'The server is in quiesce mode and will shut down\', \'code\': 91, \'codeName\': \'ShutdownInProgress\', \'remainingQuiesceTimeMillis\': 1579}")>, <ServerDescription (\'10.80.171.41\', 27017) server_type: RSSecondary, rtt: 0.003559218002919806>]>')
+unit-config-server-3: 02:23:38 ERROR unit.config-server/3.juju-log config-server:20: Failed to add shard shard-one to the config server, error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1723688616, 3), \'signature\': {\'hash\': b\'\\xe3\\x16;\\xaa\\xa0\\x1b\\xf5\\xb2\\x8a\\xd2\\xee\\xa3+R\\xe6~kt\\xc3\\xd8\', \'keyId\': 7403184619299799065}}, \'operationTime\': Timestamp(1723688616, 3)}')
+unit-shard-one-3: 02:23:38 ERROR unit.shard-one/3.juju-log database-peers:13: Deferring reconfigure: error=ServerSelectionTimeoutError('No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66bd66a99538ebda18252ff0, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription (\'10.80.171.109\', 27017) server_type: RSSecondary, rtt: 0.0010079820021928754>, <ServerDescription (\'10.80.171.213\', 27017) server_type: RSSecondary, rtt: 0.003687649001221871>, <ServerDescription (\'10.80.171.41\', 27017) server_type: RSOther, rtt: 0.001253282401012257>]>')
+unit-config-server-3: 02:23:38 ERROR unit.config-server/3.juju-log config-server:20: Failed to add shard-one to cluster
+unit-config-server-3: 02:23:38 ERROR unit.config-server/3.juju-log config-server:20: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1723688616, 3), \'signature\': {\'hash\': b\'\\xe3\\x16;\\xaa\\xa0\\x1b\\xf5\\xb2\\x8a\\xd2\\xee\\xa3+R\\xe6~kt\\xc3\\xd8\', \'keyId\': 7403184619299799065}}, \'operationTime\': Timestamp(1723688616, 3)}')
+unit-shard-one-3: 02:23:41 ERROR unit.shard-one/3.juju-log database-peers:13: Deferring reconfigure: error=ServerSelectionTimeoutError('No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66bd66ab9538ebda18252ff1, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription (\'10.80.171.109\', 27017) server_type: RSSecondary, rtt: 0.002843575999577297>, <ServerDescription (\'10.80.171.213\', 27017) server_type: RSSecondary, rtt: 0.00965240200093831>, <ServerDescription (\'10.80.171.41\', 27017) server_type: RSOther, rtt: 0.0033086490017012696>]>')
+unit-shard-one-3: 02:23:51 ERROR unit.shard-one/3.juju-log certificates:17: Deferring reconfigure: error=ServerSelectionTimeoutError('No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66bd66b51667d075d21e6c45, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription (\'10.80.171.109\', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError(\'The server is in quiesce mode and will shut down, full error: {\\\'topologyVersion\\\': {\\\'processId\\\': ObjectId(\\\'66bd66a3bdba180afcfa7c53\\\'), \\\'counter\\\': 10}, \\\'ok\\\': 0.0, \\\'errmsg\\\': \\\'The server is in quiesce mode and will shut down\\\', \\\'code\\\': 91, \\\'codeName\\\': \\\'ShutdownInProgress\\\', \\\'remainingQuiesceTimeMillis\\\': 12814, \\\'lastCommittedOpTime\\\': Timestamp(1723688624, 3), \\\'$clusterTime\\\': {\\\'clusterTime\\\': Timestamp(1723688628, 1), \\\'signature\\\': {\\\'hash\\\': b"\\\\xc1v\\\\\\\\\\\\x85a\\\'\\\\xf6\\\\xc9:\\\\xe8`\\\\x8d\\\\xc2\\\\xaa3Yr$\\\\x05Q", \\\'keyId\\\': 7403184619299799065}}, \\\'operationTime\\\': Timestamp(1723688624, 3)}\')>, <ServerDescription (\'10.80.171.213\', 27017) server_type: RSSecondary, rtt: 0.0020546549967548344>, <ServerDescription (\'10.80.171.41\', 27017) server_type: RSOther, rtt: 0.005046699399099453>]>')
+unit-shard-one-3: 02:23:53 ERROR unit.shard-one/3.juju-log certificates:17: Deferring reconfigure: error=ServerSelectionTimeoutError('No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66bd66b81667d075d21e6c46, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription (\'10.80.171.109\', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError(\'The server is in quiesce mode and will shut down, full error: {\\\'topologyVersion\\\': {\\\'processId\\\': ObjectId(\\\'66bd66a3bdba180afcfa7c53\\\'), \\\'counter\\\': 10}, \\\'ok\\\': 0.0, \\\'errmsg\\\': \\\'The server is in quiesce mode and will shut down\\\', \\\'code\\\': 91, \\\'codeName\\\': \\\'ShutdownInProgress\\\', \\\'remainingQuiesceTimeMillis\\\': 10168, \\\'lastCommittedOpTime\\\': Timestamp(1723688624, 3), \\\'$clusterTime\\\': {\\\'clusterTime\\\': Timestamp(1723688628, 1), \\\'signature\\\': {\\\'hash\\\': b"\\\\xc1v\\\\\\\\\\\\x85a\\\'\\\\xf6\\\\xc9:\\\\xe8`\\\\x8d\\\\xc2\\\\xaa3Yr$\\\\x05Q", \\\'keyId\\\': 7403184619299799065}}, \\\'operationTime\\\': Timestamp(1723688624, 3)}\')>, <ServerDescription (\'10.80.171.213\', 27017) server_type: RSSecondary, rtt: 0.006162401998153655>, <ServerDescription (\'10.80.171.41\', 27017) server_type: RSOther, rtt: 0.0049059929981012836>]>')
+unit-shard-one-3: 02:23:54 ERROR unit.shard-one/3.juju-log certificates:17: An unknown certificate is available -- ignoring.
+unit-shard-one-3: 02:23:54 ERROR unit.shard-one/3.juju-log certificates:17: An unknown certificate is available -- ignoring.
+unit-config-server-3: 02:24:01 ERROR unit.config-server/3.juju-log config-server:20: Failed to add shard shard-two to the config server, error=OperationFailure('Could not find user "O=config-server,x500UniqueIdentifier=3de1fb89-5278-4f1e-bc89-1b0211a12720,CN=config-server" for db "$external", full error: {\'ok\': 0.0, \'errmsg\': \'Could not find user "O=config-server,x500UniqueIdentifier=3de1fb89-5278-4f1e-bc89-1b0211a12720,CN=config-server" for db "$external"\', \'code\': 11, \'codeName\': \'UserNotFound\', \'$clusterTime\': {\'clusterTime\': Timestamp(1723688640, 3), \'signature\': {\'hash\': b\'\\xe2\\xed \\xb1~!1\\x98\\xc2"\\xae\\xf1\\x06J`\\x97M\\xd4`+\', \'keyId\': 7403184619299799065}}, \'operationTime\': Timestamp(1723688640, 3)}')
+unit-config-server-3: 02:24:01 ERROR unit.config-server/3.juju-log config-server:20: Failed to add shard-two to cluster
+unit-config-server-3: 02:24:01 ERROR unit.config-server/3.juju-log config-server:20: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find user "O=config-server,x500UniqueIdentifier=3de1fb89-5278-4f1e-bc89-1b0211a12720,CN=config-server" for db "$external", full error: {\'ok\': 0.0, \'errmsg\': \'Could not find user "O=config-server,x500UniqueIdentifier=3de1fb89-5278-4f1e-bc89-1b0211a12720,CN=config-server" for db "$external"\', \'code\': 11, \'codeName\': \'UserNotFound\', \'$clusterTime\': {\'clusterTime\': Timestamp(1723688640, 3), \'signature\': {\'hash\': b\'\\xe2\\xed \\xb1~!1\\x98\\xc2"\\xae\\xf1\\x06J`\\x97M\\xd4`+\', \'keyId\': 7403184619299799065}}, \'operationTime\': Timestamp(1723688640, 3)}')
+unit-shard-two-1: 02:24:19 ERROR unit.shard-two/1.juju-log _on_secret_remove: Secret secret:cqumairpac5ib89db6tg seems to have no observers, could be removed
+unit-config-server-3: 02:24:19 ERROR unit.config-server/3.juju-log config-server:21: Failed to add shard shard-two to the config server, error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-two, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-two\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1723688659, 1), \'signature\': {\'hash\': b\'X6N]\\x85\\xa5\\x8e\\xf4?\\x0f\\xef\\xbc\\xc9\\x02\\x82\\x9c_P\\xd4\\x94\', \'keyId\': 7403184619299799065}}, \'operationTime\': Timestamp(1723688659, 1)}')
+unit-config-server-3: 02:24:19 ERROR unit.config-server/3.juju-log config-server:21: Failed to add shard-two to cluster
+unit-config-server-3: 02:24:19 ERROR unit.config-server/3.juju-log config-server:21: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-two, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-two\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1723688659, 1), \'signature\': {\'hash\': b\'X6N]\\x85\\xa5\\x8e\\xf4?\\x0f\\xef\\xbc\\xc9\\x02\\x82\\x9c_P\\xd4\\x94\', \'keyId\': 7403184619299799065}}, \'operationTime\': Timestamp(1723688659, 1)}')
+unit-shard-two-1: 02:24:21 ERROR unit.shard-two/1.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db700 seems to have no observers, could be removed
+unit-shard-two-1: 02:24:24 ERROR unit.shard-two/1.juju-log certificates:18: An unknown certificate is available -- ignoring.
+unit-shard-one-4: 02:24:24 ERROR unit.shard-one/4.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db6ug seems to have no observers, could be removed
+unit-shard-two-1: 02:24:24 ERROR unit.shard-two/1.juju-log certificates:18: An unknown certificate is available -- ignoring.
+unit-shard-one-4: 02:24:25 ERROR unit.shard-one/4.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db6ug seems to have no observers, could be removed
+unit-shard-one-4: 02:24:27 ERROR unit.shard-one/4.juju-log certificates:17: An unknown certificate is available -- ignoring.
+unit-shard-one-4: 02:24:27 ERROR unit.shard-one/4.juju-log certificates:17: An unknown certificate is available -- ignoring.
+unit-shard-two-1: 02:25:00 ERROR unit.shard-two/1.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db700 seems to have no observers, could be removed
+unit-shard-one-3: 02:25:01 ERROR unit.shard-one/3.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db6v0 seems to have no observers, could be removed
+unit-shard-two-1: 02:25:01 ERROR unit.shard-two/1.juju-log _on_secret_remove: Secret secret:cqumairpac5ib89db6tg seems to have no observers, could be removed
+unit-shard-one-3: 02:25:02 ERROR unit.shard-one/3.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db6v0 seems to have no observers, could be removed
+unit-shard-two-1: 02:25:02 ERROR unit.shard-two/1.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db700 seems to have no observers, could be removed
+unit-shard-one-3: 02:25:12 ERROR unit.shard-one/3.juju-log _on_secret_remove: Secret secret:cqumaejpac5ib89db6t0 seems to have no observers, could be removed
+unit-shard-one-3: 02:25:21 ERROR unit.shard-one/3.juju-log _on_secret_remove: Secret secret:cqumaejpac5ib89db6t0 seems to have no observers, could be removed
+unit-shard-one-5: 02:25:31 ERROR unit.shard-one/5.juju-log _on_secret_remove: Secret secret:cqumb1jpac5ib89db6u0 seems to have no observers, could be removed
+unit-shard-one-5: 02:25:33 ERROR unit.shard-one/5.juju-log _on_secret_remove: Secret secret:cqumb1jpac5ib89db6u0 seems to have no observers, could be removed
+unit-shard-one-3: 02:27:07 ERROR unit.shard-one/3.juju-log _on_secret_remove: Secret secret:cqumaejpac5ib89db6t0 seems to have no observers, could be removed
+unit-shard-one-4: 02:27:13 ERROR unit.shard-one/4.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db6ug seems to have no observers, could be removed
+unit-shard-one-5: 02:29:25 ERROR unit.shard-one/5.juju-log _on_secret_remove: Secret secret:cqumb1jpac5ib89db6u0 seems to have no observers, could be removed
+unit-shard-one-4: 02:29:26 ERROR unit.shard-one/4.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db6ug seems to have no observers, could be removed
+unit-shard-one-3: 02:29:27 ERROR unit.shard-one/3.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db6v0 seems to have no observers, could be removed
+machine-13: 02:31:31 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-13: 02:31:31 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-self-signed-certificates-separate-0: 02:31:31 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-shard-one-4: 02:32:56 ERROR unit.shard-one/4.juju-log certificates:22: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-shard-one-4: 02:32:57 ERROR unit.shard-one/4.juju-log certificates:22: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-shard-one-5: 02:32:57 ERROR unit.shard-one/5.juju-log certificates:22: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-shard-one-5: 02:32:57 ERROR unit.shard-one/5.juju-log certificates:22: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-shard-one-4: 02:33:02 ERROR unit.shard-one/4.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db6ug seems to have no observers, could be removed
+unit-shard-one-5: 02:33:02 ERROR unit.shard-one/5.juju-log _on_secret_remove: Secret secret:cqumb1jpac5ib89db6u0 seems to have no observers, could be removed
+unit-shard-one-3: 02:33:10 ERROR unit.shard-one/3.juju-log certificates:22: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-shard-one-3: 02:33:10 ERROR unit.shard-one/3.juju-log certificates:22: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-shard-one-3: 02:33:15 ERROR unit.shard-one/3.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db6v0 seems to have no observers, could be removed
+unit-shard-one-4: 02:34:01 ERROR unit.shard-one/4.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db6ug seems to have no observers, could be removed
+unit-shard-one-3: 02:34:01 ERROR unit.shard-one/3.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db6v0 seems to have no observers, could be removed
+unit-shard-one-4: 02:34:02 ERROR unit.shard-one/4.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db6ug seems to have no observers, could be removed
+unit-shard-one-3: 02:34:02 ERROR unit.shard-one/3.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db6v0 seems to have no observers, could be removed
+unit-shard-one-5: 02:35:08 ERROR unit.shard-one/5.juju-log _on_secret_remove: Secret secret:cqumb1jpac5ib89db6u0 seems to have no observers, could be removed
+unit-shard-one-4: 02:35:08 ERROR unit.shard-one/4.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db6ug seems to have no observers, could be removed
+unit-shard-one-3: 02:35:08 ERROR unit.shard-one/3.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db6v0 seems to have no observers, could be removed
+unit-shard-one-5: 02:35:09 ERROR unit.shard-one/5.juju-log _on_secret_remove: Secret secret:cqumb1jpac5ib89db6u0 seems to have no observers, could be removed
+unit-config-server-2: 02:37:49 ERROR unit.config-server/2.juju-log certificates:19: This operation (delete_relation_data()) can only be performed by the leader unit
+unit-config-server-2: 02:37:49 ERROR unit.config-server/2.juju-log certificates:19: This operation (delete_relation_data()) can only be performed by the leader unit
+unit-config-server-2: 02:38:29 ERROR unit.config-server/2.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db6vg seems to have no observers, could be removed
+unit-config-server-3: 02:38:32 ERROR unit.config-server/3.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db70g seems to have no observers, could be removed
+unit-shard-two-1: 02:38:33 ERROR unit.shard-two/1.juju-log _on_secret_remove: Secret secret:cqumairpac5ib89db6tg seems to have no observers, could be removed
+unit-shard-one-3: 02:38:48 ERROR unit.shard-one/3.juju-log _on_secret_remove: Secret secret:cqumaejpac5ib89db6t0 seems to have no observers, could be removed
+unit-config-server-2: 02:40:30 ERROR unit.config-server/2.juju-log certificates:23: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-config-server-3: 02:40:30 ERROR unit.config-server/3.juju-log certificates:23: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-config-server-3: 02:40:30 ERROR unit.config-server/3.juju-log certificates:23: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-config-server-2: 02:40:30 ERROR unit.config-server/2.juju-log certificates:23: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-config-server-3: 02:40:34 ERROR unit.config-server/3.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db70g seems to have no observers, could be removed
+unit-config-server-2: 02:40:34 ERROR unit.config-server/2.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db6vg seems to have no observers, could be removed
+unit-config-server-2: 02:40:35 ERROR unit.config-server/2.juju-log certificates:23: This operation (update_relation_data()) can only be performed by the leader unit
+unit-config-server-2: 02:40:35 ERROR unit.config-server/2.juju-log certificates:23: This operation (update_relation_data()) can only be performed by the leader unit
+unit-config-server-2: 02:41:26 ERROR unit.config-server/2.juju-log This operation (update_relation_data()) can only be performed by the leader unit
+unit-config-server-2: 02:41:26 ERROR unit.config-server/2.juju-log This operation (update_relation_data()) can only be performed by the leader unit
+unit-shard-two-1: 02:41:31 ERROR unit.shard-two/1.juju-log _on_secret_remove: Secret secret:cqumairpac5ib89db6tg seems to have no observers, could be removed
+unit-shard-one-3: 02:41:32 ERROR unit.shard-one/3.juju-log _on_secret_remove: Secret secret:cqumaejpac5ib89db6t0 seems to have no observers, could be removed
+unit-config-server-2: 02:42:18 ERROR unit.config-server/2.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db6vg seems to have no observers, could be removed
+unit-config-server-2: 02:42:19 ERROR unit.config-server/2.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db6vg seems to have no observers, could be removed
+unit-config-server-3: 02:42:20 ERROR unit.config-server/3.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db70g seems to have no observers, could be removed
+unit-config-server-3: 02:42:20 ERROR unit.config-server/3.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db70g seems to have no observers, could be removed
+unit-config-server-3: 02:42:21 ERROR unit.config-server/3.juju-log _on_secret_remove: Secret secret:cqumdfjpac5ib89db7ag seems to have no observers, could be removed
+unit-config-server-3: 02:42:22 ERROR unit.config-server/3.juju-log _on_secret_remove: Secret secret:cqumdfjpac5ib89db7ag seems to have no observers, could be removed
+unit-config-server-3: 02:42:23 ERROR unit.config-server/3.juju-log _on_secret_remove: Secret secret:cqumcsjpac5ib89db770 seems to have no observers, could be removed
+unit-config-server-3: 02:43:54 ERROR unit.config-server/3.juju-log _on_secret_remove: Secret secret:cqumb1rpac5ib89db70g seems to have no observers, could be removed
+unit-shard-one-4: 02:45:07 ERROR unit.shard-one/4.juju-log Shard is integrated to a different CA than the config server. Please use the same CA for all cluster components.
+unit-shard-one-5: 02:45:07 ERROR unit.shard-one/5.juju-log Shard is integrated to a different CA than the config server. Please use the same CA for all cluster components.
+unit-config-server-3: 02:45:11 ERROR unit.config-server/3.juju-log _on_secret_remove: Secret secret:cqumcsjpac5ib89db770 seems to have no observers, could be removed
+unit-shard-one-3: 02:45:20 ERROR unit.shard-one/3.juju-log Shard is integrated to a different CA than the config server. Please use the same CA for all cluster components.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:904 Forgetting main...
