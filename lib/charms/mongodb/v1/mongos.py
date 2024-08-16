@@ -1,6 +1,6 @@
-"""Code for interactions with MongoS."""
+"""Code for interactions with MongoDB."""
 
-# Copyright 2024 Canonical Ltd.
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 import logging
@@ -8,8 +8,8 @@ from dataclasses import dataclass
 from typing import List, Optional, Set, Tuple
 from urllib.parse import quote_plus
 
-from charms.mongodb.v1.mongodb import NotReadyError
-from pymongo import MongoClient, collection
+from charms.mongodb.v0.mongo import MongoConfiguration, MongoConnection, NotReadyError
+from pymongo import collection
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from config import Config
@@ -22,7 +22,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 6
+LIBPATCH = 5
 
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
@@ -31,26 +31,8 @@ SHARD_AWARE_STATE = 1
 
 
 @dataclass
-class MongosConfiguration:
-    """Class for mongos configuration.
-
-    — database: database name.
-    — username: username.
-    — password: password.
-    — hosts: full list of hosts to connect to, needed for the URI.
-    - port: integer for the port to connect to connect to mongodb.
-    - tls_external: indicator for use of internal TLS connection.
-    - tls_internal: indicator for use of external TLS connection.
-    """
-
-    database: Optional[str]
-    username: str
-    password: str
-    hosts: Set[str]
-    port: int
-    roles: Set[str]
-    tls_external: bool
-    tls_internal: bool
+class MongosConfiguration(MongoConfiguration):
+    """Class for mongos configuration."""
 
     @property
     def uri(self):
@@ -95,7 +77,7 @@ class BalancerNotEnabledError(Exception):
     """Raised when balancer process is not enabled."""
 
 
-class MongosConnection:
+class MongosConnection(MongoConnection):
     """In this class we create connection object to Mongos.
 
     Real connection is created on the first call to Mongos.
@@ -125,26 +107,7 @@ class MongosConnection:
             direct: force a direct connection to a specific host, avoiding
                     reading replica set configuration and reconnection.
         """
-        if uri is None:
-            uri = config.uri
-
-        self.client = MongoClient(
-            uri,
-            directConnection=direct,
-            connect=False,
-            serverSelectionTimeoutMS=1000,
-            connectTimeoutMS=2000,
-        )
-        return
-
-    def __enter__(self):
-        """Return a reference to the new connection."""
-        return self
-
-    def __exit__(self, object_type, value, traceback):
-        """Disconnect from MongoDB client."""
-        self.client.close()
-        self.client = None
+        MongoConnection.__init__(self, config, uri, direct)
 
     def get_shard_members(self) -> Set[str]:
         """Gets shard members.
