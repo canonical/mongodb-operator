@@ -356,10 +356,10 @@ class MongodbOperatorCharm(CharmBase):
         return self.upgrade._upgrade.in_progress
 
     @property
-    def get_charm_internal_revision(self) -> int:
+    def get_charm_internal_revision(self) -> str:
         """Returns the contents of the get_charm_internal_revision file."""
         with open(Config.CHARM_INTERNAL_VERSION_FILE, "r") as f:
-            return int(f.read())
+            return f.read().strip()
 
     # END: properties
 
