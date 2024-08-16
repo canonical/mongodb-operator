@@ -1,11 +1,11 @@
 """Code for interactions with MongoDB."""
 
-# Copyright 2023 Canonical Ltd.
+# Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, Set
+from typing import Dict, Optional, Set
 from urllib.parse import quote_plus
 
 from bson.json_util import dumps
@@ -31,7 +31,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 3
 
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
@@ -44,6 +44,9 @@ class FailedToMovePrimaryError(Exception):
 @dataclass
 class MongoDBConfiguration(MongoConfiguration):
     """Class for MongoDB configuration."""
+
+    replset: Optional[str]
+    standalone: bool = False
 
     @property
     def uri(self):

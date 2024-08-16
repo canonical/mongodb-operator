@@ -1,5 +1,8 @@
 """Code for interactions with MongoDB."""
 
+# Copyright 2024 Canonical Ltd.
+# See LICENSE file for licensing details.
+
 import logging
 import re
 from dataclasses import dataclass
@@ -45,8 +48,6 @@ class MongoConfiguration:
     - tls_internal: indicator for use of external TLS connection.
     """
 
-    replset: Optional[str]
-    port: Optional[str]
     database: Optional[str]
     username: str
     password: str
@@ -54,7 +55,6 @@ class MongoConfiguration:
     roles: Set[str]
     tls_external: bool
     tls_internal: bool
-    standalone: bool = False
 
 
 class MongoConnection:

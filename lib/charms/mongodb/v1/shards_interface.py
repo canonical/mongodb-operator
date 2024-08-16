@@ -16,12 +16,7 @@ from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseRequires,
 )
 from charms.mongodb.v1.helpers import KEY_FILE
-from charms.mongodb.v1.mongodb import (
-    MongoDBConnection,
-    NotReadyError,
-    OperationFailure,
-    PyMongoError,
-)
+from charms.mongodb.v1.mongodb import MongoDBConnection, NotReadyError, OperationFailure
 from charms.mongodb.v1.mongodb_provider import REL_NAME
 from charms.mongodb.v1.mongos import (
     BalancerNotEnabledError,
@@ -47,7 +42,7 @@ from ops.model import (
     StatusBase,
     WaitingStatus,
 )
-from pymongo.errors import ServerSelectionTimeoutError
+from pymongo.errors import PyMongoError, ServerSelectionTimeoutError
 from tenacity import Retrying, stop_after_delay, wait_fixed
 
 from config import Config

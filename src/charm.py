@@ -30,7 +30,6 @@ from charms.mongodb.v1.mongodb import (
     MongoDBConfiguration,
     MongoDBConnection,
     NotReadyError,
-    PyMongoError,
 )
 from charms.mongodb.v1.mongodb_backups import MongoDBBackups
 from charms.mongodb.v1.mongodb_provider import MongoDBProvider
@@ -77,7 +76,7 @@ from ops.model import (
     Unit,
     WaitingStatus,
 )
-from pymongo.errors import ServerSelectionTimeoutError
+from pymongo.errors import PyMongoError, ServerSelectionTimeoutError
 from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
 from config import Config, Package

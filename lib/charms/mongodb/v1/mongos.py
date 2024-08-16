@@ -1,6 +1,6 @@
 """Code for interactions with MongoDB."""
 
-# Copyright 2023 Canonical Ltd.
+# Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 import logging
@@ -22,7 +22,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 5
+LIBPATCH = 7
 
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
@@ -33,6 +33,8 @@ SHARD_AWARE_STATE = 1
 @dataclass
 class MongosConfiguration(MongoConfiguration):
     """Class for mongos configuration."""
+
+    port: Optional[str]
 
     @property
     def uri(self):
