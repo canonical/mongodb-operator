@@ -104,6 +104,7 @@ class MongoDBConnection(MongoConnection):
                     reading replica set configuration and reconnection.
         """
         MongoConnection.__init__(self, config, uri, direct)
+        self.mongodb_config = config
 
     @retry(
         stop=stop_after_attempt(3),

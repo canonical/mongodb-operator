@@ -2,7 +2,7 @@
 
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
-
+import abc
 import logging
 import re
 from dataclasses import dataclass
@@ -55,6 +55,11 @@ class MongoConfiguration:
     roles: Set[str]
     tls_external: bool
     tls_internal: bool
+
+    @property
+    @abc.abstractmethod
+    def uri(self):
+        """Return URI concatenated from fields."""
 
 
 class MongoConnection:

@@ -16,9 +16,9 @@ PYMONGO_EXCEPTIONS = [
 
 
 class TestMongo(unittest.TestCase):
-    @patch("charms.mongodb.v1.mongodb.Retrying")
+    @patch("charms.mongodb.v0.mongo.Retrying")
     @patch("charms.mongodb.v0.mongo.MongoClient")
-    @patch("charms.mongodb.v1.mongodb.MongoDBConfiguration")
+    @patch("charms.mongodb.v0.mongo.MongoConfiguration")
     def test_is_ready_error_handling(self, config, mock_client, retrying):
         """Test failure to check ready of replica returns False.
 
@@ -40,13 +40,14 @@ class TestMongo(unittest.TestCase):
             (mock_client.return_value.close).assert_called()
 
     @patch("charms.mongodb.v0.mongo.MongoClient")
-    @patch("charms.mongodb.v1.mongodb.MongoDBConfiguration")
+    @patch("charms.mongodb.v0.mongo.MongoConfiguration")
     def test_init_replset_error_handling(self, config, mock_client):
         """Test failure to initialise replica set raises an error.
 
         Test also verifies that when an exception is raised we still close the client connection.
         """
         for exception, expected_raise in PYMONGO_EXCEPTIONS:
+            config.replset = "my-replset"
             with self.assertRaises(expected_raise):
                 with MongoDBConnection(config) as mongo:
                     # disable tenacity retry
