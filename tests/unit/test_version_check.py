@@ -17,9 +17,9 @@ from .helpers import patch_network_get
 CHARMHUB_DEPLOYMENT = "ch"
 LOCAL_DEPLOYMENT = "local"
 RELATION_TO_CHECK_VERSION = "sharding"
-CHARM_VERSION = 123
+CHARM_VERSION = "123"
 VALID_VERSION = CHARM_VERSION
-INVALID_VERSION = 456
+INVALID_VERSION = "456"
 APP_0 = "APP_0"
 APP_1 = "APP_1"
 APP_2 = "APP_2"
@@ -40,7 +40,7 @@ class TestCharm(unittest.TestCase):
         self.harness.update_relation_data(
             rel_id,
             f"{APP_0}",
-            {VERSION_CONST: str(INVALID_VERSION), DEPLOYMENT_TYPE: deployment},
+            {VERSION_CONST: INVALID_VERSION, DEPLOYMENT_TYPE: deployment},
         )
 
     def add_valid_relation(self, deployment=LOCAL_DEPLOYMENT):
@@ -49,7 +49,7 @@ class TestCharm(unittest.TestCase):
         self.harness.update_relation_data(
             rel_id,
             f"{APP_1}",
-            {VERSION_CONST: str(VALID_VERSION), DEPLOYMENT_TYPE: deployment},
+            {VERSION_CONST: VALID_VERSION, DEPLOYMENT_TYPE: deployment},
         )
 
     def add_relation_with_no_version(self):
