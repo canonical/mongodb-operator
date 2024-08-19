@@ -6,6 +6,7 @@ import abc
 import logging
 import re
 from dataclasses import dataclass
+from itertools import chain
 from typing import List, Optional, Set
 
 from pymongo import MongoClient
@@ -31,6 +32,25 @@ LIBAPI = 0
 LIBPATCH = 1
 
 SYSTEM_DBS = ("admin", "local", "config")
+REGULAR_ROLES = {
+    "admin": [
+        {"role": "userAdminAnyDatabase", "db": "admin"},
+        {"role": "readWriteAnyDatabase", "db": "admin"},
+        {"role": "userAdmin", "db": "admin"},
+    ],
+    "monitor": [
+        {"role": "explainRole", "db": "admin"},
+        {"role": "clusterMonitor", "db": "admin"},
+        {"role": "read", "db": "local"},
+    ],
+    "backup": [
+        {"db": "admin", "role": "readWrite", "collection": ""},
+        {"db": "admin", "role": "backup"},
+        {"db": "admin", "role": "clusterMonitor"},
+        {"db": "admin", "role": "restore"},
+        {"db": "admin", "role": "pbmAnyAction"},
+    ],
+}
 
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
@@ -52,13 +72,12 @@ class MongoConfiguration:
     """Class for Mongo configurations usable my mongos and mongodb.
 
     — replset: name of replica set
-    - port: connection port
     — database: database name.
     — username: username.
     — password: password.
     — hosts: full list of hosts to connect to, needed for the URI.
-    - tls_external: indicator for use of internal TLS connection.
-    - tls_internal: indicator for use of external TLS connection.
+    — tls_external: indicator for use of internal TLS connection.
+    — tls_internal: indicator for use of external TLS connection.
     """
 
     database: Optional[str]
@@ -74,6 +93,11 @@ class MongoConfiguration:
     def uri(self):
         """Return URI concatenated from fields."""
         raise NotImplementedError("uri property is not implemented")
+
+
+def supported_roles(config: MongoConfiguration):
+    """Return the supported roles for the given configuration."""
+    return REGULAR_ROLES | {"default": [{"db": config.database, "role": "readWrite"}]}
 
 
 class MongoConnection(AbstractDataclass):
@@ -200,30 +224,8 @@ class MongoConnection(AbstractDataclass):
 
     @staticmethod
     def _get_roles(config: MongoConfiguration) -> List[dict]:
-        """Generate roles List."""
-        supported_roles = {
-            "admin": [
-                {"role": "userAdminAnyDatabase", "db": "admin"},
-                {"role": "readWriteAnyDatabase", "db": "admin"},
-                {"role": "userAdmin", "db": "admin"},
-            ],
-            "monitor": [
-                {"role": "explainRole", "db": "admin"},
-                {"role": "clusterMonitor", "db": "admin"},
-                {"role": "read", "db": "local"},
-            ],
-            "backup": [
-                {"db": "admin", "role": "readWrite", "collection": ""},
-                {"db": "admin", "role": "backup"},
-                {"db": "admin", "role": "clusterMonitor"},
-                {"db": "admin", "role": "restore"},
-                {"db": "admin", "role": "pbmAnyAction"},
-            ],
-            "default": [
-                {"role": "readWrite", "db": config.database},
-            ],
-        }
-        return [role_dict for role in config.roles for role_dict in supported_roles[role]]
+        all_roles = supported_roles(config)
+        return list(chain.from_iterable(all_roles[role] for role in config.roles))
 
     def drop_user(self, username: str):
         """Drop user."""
