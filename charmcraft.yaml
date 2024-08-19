@@ -10,6 +10,13 @@ bases:
       - name: "ubuntu"
         channel: "22.04"
 parts:
+  files:
+    plugin: dump
+    source: .
+    prime:
+      - charm_version
+      - charm_internal_version
+      - workload_version
   charm:
     override-build: |
       rustup default stable
@@ -26,10 +33,3 @@ parts:
       - pkg-config
       - rustc
       - cargo
-  version_data:
-    plugin: dump
-    source: .
-    prime:
-      - charm_version
-      - charm_internal_version
-      - workload_version
