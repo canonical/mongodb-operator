@@ -88,6 +88,9 @@ minversion = "6.0"
 log_cli_level = "INFO"
 markers = ["unstable"]
 asyncio_mode = "auto"
+filterwarnings = [
+    "error:RuntimeWarning"
+]
 
 # Formatting tools configuration
 [tool.black]

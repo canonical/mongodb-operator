@@ -27,7 +27,7 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongoDBStatusHandler.is_status_related_to_mismatched_revision")
     @patch("charm.MongoDBStatusHandler.are_all_units_ready_for_upgrade")
     @patch("charms.mongodb.v0.set_status.MongoDBConnection")
-    @patch("upgrades.mongodb_upgrade.MongoDBConnection")
+    @patch("charms.mongodb.v0.upgrade_helpers.MongoDBConnection")
     @patch("charms.mongodb.v1.mongodb.MongoDBConnection.is_any_sync")
     def test_is_cluster_healthy(
         self,
@@ -83,7 +83,7 @@ class TestCharm(unittest.TestCase):
         assert not self.harness.charm.upgrade.is_cluster_healthy()
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("upgrades.mongodb_upgrade.MongoDBConnection")
+    @patch("charms.mongodb.v0.upgrade_helpers.MongoDBConnection")
     @patch("charm.MongoDBUpgrade.is_write_on_secondaries")
     def test_is_replica_set_able_read_write(self, is_write_on_secondaries, connection):
         """Test test_is_replica_set_able_read_write function."""
