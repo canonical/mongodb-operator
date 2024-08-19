@@ -103,8 +103,7 @@ class MongoDBConnection(MongoConnection):
             direct: force a direct connection to a specific host, avoiding
                     reading replica set configuration and reconnection.
         """
-        MongoConnection.__init__(self, config, uri, direct)
-        self.mongodb_config = config
+        super().__init__(config, uri, direct)
 
     @retry(
         stop=stop_after_attempt(3),
@@ -119,8 +118,8 @@ class MongoDBConnection(MongoConnection):
             ConfigurationError, ConfigurationError, OperationFailure
         """
         config = {
-            "_id": self.mongodb_config.replset,
-            "members": [{"_id": i, "host": h} for i, h in enumerate(self.mongodb_config.hosts)],
+            "_id": self.config.replset,
+            "members": [{"_id": i, "host": h} for i, h in enumerate(self.config.hosts)],
         }
         try:
             self.client.admin.command("replSetInitiate", config)

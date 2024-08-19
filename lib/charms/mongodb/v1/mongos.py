@@ -109,7 +109,7 @@ class MongosConnection(MongoConnection):
             direct: force a direct connection to a specific host, avoiding
                     reading replica set configuration and reconnection.
         """
-        MongoConnection.__init__(self, config, uri, direct)
+        super.__init__(config, uri, direct)
 
     def get_shard_members(self) -> Set[str]:
         """Gets shard members.

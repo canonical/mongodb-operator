@@ -30,8 +30,21 @@ LIBAPI = 0
 # to 0 if you are raising the major API version
 LIBPATCH = 1
 
+SYSTEM_DBS = ("admin", "local", "config")
+
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class AbstractDataclass(abc.ABC):
+    """Abstract data class."""
+
+    def __new__(cls, *args, **kwargs):
+        """Implement __new__."""
+        if cls == AbstractDataclass or cls.__bases__[0] == AbstractDataclass:
+            raise TypeError("Cannot instantiate abstract class.")
+        return super().__new__(cls)
 
 
 @dataclass
@@ -60,9 +73,10 @@ class MongoConfiguration:
     @abc.abstractmethod
     def uri(self):
         """Return URI concatenated from fields."""
+        raise NotImplementedError("uri property is not implemented")
 
 
-class MongoConnection:
+class MongoConnection(AbstractDataclass):
     """In this class we create connection object to Mongo[s/db].
 
     This class is meant for agnositc functions in mongos and mongodb.
@@ -94,6 +108,8 @@ class MongoConnection:
             direct: force a direct connection to a specific host, avoiding
                     reading replica set configuration and reconnection.
         """
+        self.config = config
+
         if uri is None:
             uri = config.uri
 
@@ -226,13 +242,11 @@ class MongoConnection:
 
     def get_databases(self) -> Set[str]:
         """Return list of all non-default databases."""
-        system_dbs = ("admin", "local", "config")
         databases = self.client.list_database_names()
-        return set([db for db in databases if db not in system_dbs])
+        return set([db for db in databases if db not in SYSTEM_DBS])
 
     def drop_database(self, database: str):
         """Drop a non-default database."""
-        system_dbs = ("admin", "local", "config")
-        if database in system_dbs:
+        if database in SYSTEM_DBS:
             return
         self.client.drop_database(database)
