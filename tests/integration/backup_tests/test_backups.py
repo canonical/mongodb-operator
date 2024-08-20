@@ -314,7 +314,7 @@ async def test_restore_new_cluster(
 ):
     # configure test for the cloud provider
     db_app_name = await get_app_name(ops_test)
-    new_cluster_app_name = f"{NEW_CLUSTER}-{cloud_provider}"
+    new_cluster_app_name = f"{NEW_CLUSTER}-{cloud_provider.lower()}"
     await helpers.set_credentials(ops_test, github_secrets, cloud=cloud_provider)
     if cloud_provider == "AWS":
         configuration_parameters = {
