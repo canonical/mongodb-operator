@@ -1,5 +1,11 @@
 #!/bin/sh
 
+# Copyright 2024 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+# This file consistently generates a hash, whether there's uncommited code or not
+# and writes it into the `charm_internal_version` file
+
 if git --version > /dev/null; then
     # Compute base files
     BASE=$(git ls-files -s)
