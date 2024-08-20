@@ -6,7 +6,7 @@ import logging
 import re
 from dataclasses import dataclass
 from itertools import chain
-from typing import List, Optional, Set
+from typing import List, Set
 from urllib.parse import quote_plus
 
 from pymongo import MongoClient
@@ -59,7 +59,7 @@ REGULAR_ROLES = {
 logger = logging.getLogger(__name__)
 
 
-class AmbigiousConfigError(Exception):
+class AmbiguousConfigError(Exception):
     """Raised when the config could correspond to a mongod config or mongos config."""
 
 
@@ -91,7 +91,7 @@ class MongoConfiguration:
     def uri(self):
         """Return URI concatenated from fields."""
         if self.port == Config.MONGOS_PORT and self.replset:
-            raise AmbigiousConfigError("Mongos cannot support replica set")
+            raise AmbiguousConfigError("Mongos cannot support replica set")
 
         if self.standalone:
             return (
