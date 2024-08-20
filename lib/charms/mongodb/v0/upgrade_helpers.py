@@ -8,8 +8,9 @@ import secrets
 import string
 from typing import List, Tuple
 
-from charms.mongodb.v1.mongodb import MongoDBConfiguration, MongoDBConnection
-from charms.mongodb.v1.mongos import MongosConfiguration, MongosConnection
+from charms.mongodb.v0.mongo import MongoConfiguration
+from charms.mongodb.v1.mongodb import MongoDBConnection
+from charms.mongodb.v1.mongos import MongosConnection
 from ops.charm import CharmBase
 from ops.framework import Object
 from pymongo.errors import OperationFailure, PyMongoError, ServerSelectionTimeoutError
@@ -169,7 +170,7 @@ class GenericMongoDBUpgrade(Object, metaclass=abc.ABCMeta):
 
         return True
 
-    def are_replicas_in_sharded_cluster_healthy(self, mongos_config: MongosConfiguration) -> bool:
+    def are_replicas_in_sharded_cluster_healthy(self, mongos_config: MongoConfiguration) -> bool:
         """Returns True if all replicas in the sharded cluster are healthy."""
         # dictionary of all replica sets in the sharded cluster
         for mongodb_config in self.get_all_replica_set_configs_in_cluster():
@@ -179,7 +180,7 @@ class GenericMongoDBUpgrade(Object, metaclass=abc.ABCMeta):
 
         return True
 
-    def are_shards_healthy(self, mongos_config: MongosConfiguration) -> bool:
+    def are_shards_healthy(self, mongos_config: MongoConfiguration) -> bool:
         """Returns True if all shards in the cluster are healthy."""
         with MongosConnection(mongos_config) as mongos:
             if mongos.is_any_draining():
@@ -202,7 +203,7 @@ class GenericMongoDBUpgrade(Object, metaclass=abc.ABCMeta):
 
         return True
 
-    def get_all_replica_set_configs_in_cluster(self) -> List[MongoDBConfiguration]:
+    def get_all_replica_set_configs_in_cluster(self) -> List[MongoConfiguration]:
         """Returns a list of all the mongodb_configurations for each application in the cluster."""
         mongos_config = self.get_cluster_mongos()
         mongodb_configurations = []
@@ -224,7 +225,7 @@ class GenericMongoDBUpgrade(Object, metaclass=abc.ABCMeta):
 
         return mongodb_configurations
 
-    def are_replica_set_nodes_healthy(self, mongodb_config: MongoDBConfiguration) -> bool:
+    def are_replica_set_nodes_healthy(self, mongodb_config: MongoConfiguration) -> bool:
         """Returns true if all nodes in the MongoDB replica set are healthy."""
         with MongoDBConnection(mongodb_config) as mongod:
             rs_status = mongod.get_replset_status()
@@ -266,14 +267,14 @@ class GenericMongoDBUpgrade(Object, metaclass=abc.ABCMeta):
 
         return True
 
-    def get_mongodb_config_from_shard_entry(self, shard_entry: dict) -> MongoDBConfiguration:
-        """Returns a replica set MongoDBConfiguration based on a shard entry from ListShards."""
+    def get_mongodb_config_from_shard_entry(self, shard_entry: dict) -> MongoConfiguration:
+        """Returns a replica set MongoConfiguration based on a shard entry from ListShards."""
         # field hosts is of the form shard01/host1:27018,host2:27018,host3:27018
         shard_hosts = shard_entry["host"].split("/")[1]
         parsed_ips = [host.split(":")[0] for host in shard_hosts.split(",")]
         return self.charm.remote_mongodb_config(parsed_ips, replset=shard_entry[SHARD_NAME_INDEX])
 
-    def get_cluster_mongos(self) -> MongosConfiguration:
+    def get_cluster_mongos(self) -> MongoConfiguration:
         """Return a mongos configuration for the sharded cluster."""
         return (
             self.charm.mongos_config
@@ -291,13 +292,13 @@ class GenericMongoDBUpgrade(Object, metaclass=abc.ABCMeta):
         self.clear_tmp_collection(self.charm.mongodb_config, collection_name)
         return write_replicated
 
-    def clear_db_collection(self, mongos_config: MongosConfiguration, db_name: str) -> None:
+    def clear_db_collection(self, mongos_config: MongoConfiguration, db_name: str) -> None:
         """Clears the temporary collection."""
         with MongoDBConnection(mongos_config) as mongos:
             mongos.client.drop_database(db_name)
 
     def clear_tmp_collection(
-        self, mongodb_config: MongoDBConfiguration, collection_name: str
+        self, mongodb_config: MongoConfiguration, collection_name: str
     ) -> None:
         """Clears the temporary collection."""
         with MongoDBConnection(mongodb_config) as mongod:
@@ -315,7 +316,7 @@ class GenericMongoDBUpgrade(Object, metaclass=abc.ABCMeta):
         db_name: str,
         collection: str,
         expected_write_value: str,
-        secondary_config: MongoDBConfiguration,
+        secondary_config: MongoConfiguration,
     ) -> bool:
         """Returns True if the replica contains the expected write in the provided collection."""
         secondary_config.hosts = {host}
@@ -335,7 +336,7 @@ class GenericMongoDBUpgrade(Object, metaclass=abc.ABCMeta):
         return (db_name, collection_name, write_value)
 
     def add_write_to_sharded_cluster(
-        self, mongos_config: MongosConfiguration, db_name, collection_name, write_value
+        self, mongos_config: MongoConfiguration, db_name, collection_name, write_value
     ) -> None:
         """Adds a the provided write to the provided database with the provided collection."""
         with MongoDBConnection(mongos_config) as mongod:
@@ -345,7 +346,7 @@ class GenericMongoDBUpgrade(Object, metaclass=abc.ABCMeta):
             test_collection.insert_one(write)
 
     def add_write_to_replica_set(
-        self, mongodb_config: MongoDBConfiguration, collection_name, write_value
+        self, mongodb_config: MongoConfiguration, collection_name, write_value
     ) -> None:
         """Adds a the provided write to the admin database with the provided collection."""
         with MongoDBConnection(mongodb_config) as mongod:
@@ -356,7 +357,7 @@ class GenericMongoDBUpgrade(Object, metaclass=abc.ABCMeta):
 
     def is_write_on_secondaries(
         self,
-        mongodb_config: MongoDBConfiguration,
+        mongodb_config: MongoConfiguration,
         collection_name,
         expected_write_value,
         db_name: str = "admin",
