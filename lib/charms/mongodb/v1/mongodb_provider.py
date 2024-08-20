@@ -168,7 +168,6 @@ class MongoDBProvider(Object):
         relation is still on the list of all relations. Therefore, for proper
         work of the function, we need to exclude departed relation from the list.
         """
-        # TODO create a good condition here
         with MongoConnection(self.charm.mongo_config) as mongo:
             database_users = mongo.get_users()
             relation_users = self._get_users_from_relations(departed_relation_id)
