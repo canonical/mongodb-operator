@@ -41,38 +41,6 @@ class FailedToMovePrimaryError(Exception):
     """Raised when attempt to move a primary fails."""
 
 
-@dataclass
-class MongoDBConfiguration(MongoConfiguration):
-    """Class for MongoDB configuration."""
-
-    replset: Optional[str]
-    standalone: bool = False
-
-    @property
-    def uri(self):
-        """Return URI concatenated from fields."""
-        hosts = ",".join(self.hosts)
-        # Auth DB should be specified while user connects to application DB.
-        auth_source = ""
-        if self.database != "admin":
-            auth_source = "&authSource=admin"
-
-        if self.standalone:
-            return (
-                f"mongodb://{quote_plus(self.username)}:"
-                f"{quote_plus(self.password)}@"
-                f"localhost:{Config.MONGODB_PORT}/?authSource=admin"
-            )
-
-        return (
-            f"mongodb://{quote_plus(self.username)}:"
-            f"{quote_plus(self.password)}@"
-            f"{hosts}/{quote_plus(self.database)}?"
-            f"replicaSet={quote_plus(self.replset)}"
-            f"{auth_source}"
-        )
-
-
 class MongoDBConnection(MongoConnection):
     """In this class we create connection object to MongoDB.
 
@@ -94,7 +62,7 @@ class MongoDBConnection(MongoConnection):
             <error handling as needed>
     """
 
-    def __init__(self, config: MongoDBConfiguration, uri=None, direct=False):
+    def __init__(self, config: MongoConfiguration, uri=None, direct=False):
         """A MongoDB client interface.
 
         Args:

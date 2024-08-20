@@ -30,35 +30,6 @@ logger = logging.getLogger(__name__)
 SHARD_AWARE_STATE = 1
 
 
-@dataclass
-class MongosConfiguration(MongoConfiguration):
-    """Class for mongos configuration."""
-
-    port: Optional[str]
-
-    @property
-    def uri(self):
-        """Return URI concatenated from fields."""
-        self.complete_hosts = self.hosts
-
-        # mongos using Unix Domain Socket to communicate do not use port
-        if self.port:
-            self.complete_hosts = [f"{host}:{self.port}" for host in self.hosts]
-
-        complete_hosts = ",".join(self.complete_hosts)
-
-        # Auth DB should be specified while user connects to application DB.
-        auth_source = ""
-        if self.database != "admin":
-            auth_source = "authSource=admin"
-        return (
-            f"mongodb://{quote_plus(self.username)}:"
-            f"{quote_plus(self.password)}@"
-            f"{complete_hosts}/{quote_plus(self.database)}?"
-            f"{auth_source}"
-        )
-
-
 class NotEnoughSpaceError(Exception):
     """Raised when there isn't enough space to movePrimary."""
 
@@ -100,7 +71,7 @@ class MongosConnection(MongoConnection):
             <error handling as needed>
     """
 
-    def __init__(self, config: MongosConfiguration, uri=None, direct=False):
+    def __init__(self, config: MongoConfiguration, uri=None, direct=False):
         """A MongoDB client interface.
 
         Args:

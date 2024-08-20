@@ -2,12 +2,14 @@
 
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
-import abc
 import logging
 import re
 from dataclasses import dataclass
 from itertools import chain
 from typing import List, Optional, Set
+from config import Config
+from urllib.parse import quote_plus
+
 
 from pymongo import MongoClient
 from pymongo.errors import OperationFailure, PyMongoError
@@ -31,6 +33,7 @@ LIBAPI = 0
 # to 0 if you are raising the major API version
 LIBPATCH = 1
 
+ADMIN_AUTH_SOURCE = "authSource=admin"
 SYSTEM_DBS = ("admin", "local", "config")
 REGULAR_ROLES = {
     "admin": [
@@ -56,15 +59,8 @@ REGULAR_ROLES = {
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class AbstractDataclass(abc.ABC):
-    """Abstract data class."""
-
-    def __new__(cls, *args, **kwargs):
-        """Implement __new__."""
-        if cls == AbstractDataclass or cls.__bases__[0] == AbstractDataclass:
-            raise TypeError("Cannot instantiate abstract class.")
-        return super().__new__(cls)
+class AmbigiousConfigError(Exception):
+    """Raised when the config could correspond to a mongod config or mongos config."""
 
 
 @dataclass
@@ -87,12 +83,46 @@ class MongoConfiguration:
     roles: Set[str]
     tls_external: bool
     tls_internal: bool
+    port: Optional[str] = Config.MONGODB_PORT
+    replset: Optional[str] = None
+    standalone: bool = False
 
     @property
-    @abc.abstractmethod
     def uri(self):
         """Return URI concatenated from fields."""
-        raise NotImplementedError("uri property is not implemented")
+        if self.port == Config.MONGOS_PORT and self.replset:
+            raise AmbigiousConfigError("Mongos cannot support replica set")
+
+        if self.standalone:
+            return (
+                f"mongodb://{quote_plus(self.username)}:"
+                f"{quote_plus(self.password)}@"
+                f"localhost:{self.port}/?authSource=admin"
+            )
+
+        self.complete_hosts = self.hosts
+
+        # mongos using Unix Domain Socket to communicate do not use port
+        if self.port:
+            self.complete_hosts = [f"{host}:{self.port}" for host in self.hosts]
+
+        complete_hosts = ",".join(self.complete_hosts)
+
+        replset_str = f"replicaSet={quote_plus(self.replset)}" if self.replset else ""
+
+        # Auth DB should be specified while user connects to application DB.
+        auth_source = ""
+        if self.database != "admin":
+            # "&"" is needed to concatinate multiple values in URI
+            auth_source = f"&{ADMIN_AUTH_SOURCE}" if self.replset else ADMIN_AUTH_SOURCE
+
+        return (
+            f"mongodb://{quote_plus(self.username)}:"
+            f"{quote_plus(self.password)}@"
+            f"{complete_hosts}/{quote_plus(self.database)}?"
+            f"{replset_str}"
+            f"{auth_source}"
+        )
 
 
 def supported_roles(config: MongoConfiguration):
@@ -100,7 +130,7 @@ def supported_roles(config: MongoConfiguration):
     return REGULAR_ROLES | {"default": [{"db": config.database, "role": "readWrite"}]}
 
 
-class MongoConnection(AbstractDataclass):
+class MongoConnection:
     """In this class we create connection object to Mongo[s/db].
 
     This class is meant for agnositc functions in mongos and mongodb.
