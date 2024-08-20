@@ -31,19 +31,13 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 10
+LIBPATCH = 11
 
 logger = logging.getLogger(__name__)
 REL_NAME = "database"
 
-MONGOS_RELATIONS = "cluster"
-MONGOS_CLIENT_RELATIONS = "mongos_proxy"
-
 
 # We expect the MongoDB container to use the default ports
-MONGODB_PORT = 27017
-MONGODB_VERSION = "5.0"
-PEER = "database-peers"
 
 Diff = namedtuple("Diff", "added changed deleted")
 Diff.__doc__ = """
@@ -56,7 +50,7 @@ deleted — key that were deleted."""
 class MongoDBProvider(Object):
     """In this class, we manage client database relations."""
 
-    def __init__(self, charm: CharmBase, substrate="k8s", relation_name: str = "database") -> None:
+    def __init__(self, charm: CharmBase, substrate="k8s", relation_name: str = REL_NAME) -> None:
         """Constructor for MongoDBProvider object.
 
         Args:
@@ -258,7 +252,7 @@ class MongoDBProvider(Object):
         with MongoConnection(self.charm.mongo_config) as mongo:
             database_users = mongo.get_users()
 
-        for relation in self._get_relations(rel=REL_NAME):
+        for relation in self._get_relations():
             username = self._get_username_from_relation_id(relation.id)
             password = self._get_or_set_password(relation)
             config = self._get_config(username, password)
@@ -348,9 +342,9 @@ class MongoDBProvider(Object):
         """Construct username."""
         return f"relation-{relation_id}"
 
-    def _get_users_from_relations(self, departed_relation_id: Optional[int], rel=REL_NAME):
+    def _get_users_from_relations(self, departed_relation_id: Optional[int]):
         """Return usernames for all relations except departed relation."""
-        relations = self._get_relations(rel)
+        relations = self._get_relations()
         return set(
             [
                 self._get_username_from_relation_id(relation.id)
@@ -367,7 +361,7 @@ class MongoDBProvider(Object):
                 except for those databases that belong to the departing
                 relation specified.
         """
-        relations = self._get_relations(rel=REL_NAME)
+        relations = self._get_relations()
         databases = set()
         for relation in relations:
             if relation.id == departed_relation_id:
@@ -386,25 +380,16 @@ class MongoDBProvider(Object):
         assert match is not None, "No relation match"
         relation_id = int(match.group(1))
         logger.debug("Relation ID: %s", relation_id)
-        relation_name = self.get_relation_name()
+        relation_name = self.relation_name
         return self.model.get_relation(relation_name, relation_id)
 
-    def _get_relations(self, rel=REL_NAME) -> List[Relation]:
+    def _get_relations(self) -> List[Relation]:
         """Return the set of relations for users.
 
         We create users for either direct relations to charm or for relations through the mongos
         charm.
         """
-        return self.model.relations[self.get_relation_name()]
-
-    def get_relation_name(self):
-        """Returns the name of the relation to use."""
-        if self.charm.is_role(Config.Role.CONFIG_SERVER):
-            return MONGOS_RELATIONS
-        elif self.charm.is_role(Config.Role.MONGOS):
-            return MONGOS_CLIENT_RELATIONS
-        else:
-            return REL_NAME
+        return self.model.relations[self.relation_name]
 
     @staticmethod
     def _get_database_from_relation(relation: Relation) -> Optional[str]:
