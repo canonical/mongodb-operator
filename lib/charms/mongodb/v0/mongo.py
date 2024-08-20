@@ -76,15 +76,15 @@ class MongoConfiguration:
     — tls_internal: indicator for use of external TLS connection.
     """
 
-    database: Optional[str]
+    database: str | None
     username: str
     password: str
     hosts: Set[str]
     roles: Set[str]
     tls_external: bool
     tls_internal: bool
-    port: Optional[str] = Config.MONGODB_PORT
-    replset: Optional[str] = None
+    port: int = Config.MONGODB_PORT
+    replset: str | None = None
     standalone: bool = False
 
     @property
@@ -193,8 +193,6 @@ class MongoConnection:
             True if services is ready False otherwise. Retries over a period of 60 seconds times to
             allow server time to start up.
 
-        Raises:
-            ConfigurationError, ConfigurationError, OperationFailure
         """
         try:
             for attempt in Retrying(stop=stop_after_delay(60), wait=wait_fixed(3)):
@@ -275,7 +273,7 @@ class MongoConnection:
     def get_databases(self) -> Set[str]:
         """Return list of all non-default databases."""
         databases = self.client.list_database_names()
-        return set([db for db in databases if db not in SYSTEM_DBS])
+        return {db for db in databases if db not in SYSTEM_DBS}
 
     def drop_database(self, database: str):
         """Drop a non-default database."""
