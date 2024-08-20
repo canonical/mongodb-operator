@@ -37,6 +37,7 @@ MEDIAN_REELECTION_TIME = 12
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
+@pytest.mark.skip("Need a new version published with new charm internal version")
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build deploy, and integrate, a sharded cluster."""
     num_units_cluster_config = {
@@ -58,6 +59,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
+@pytest.mark.skip("Need a new version published with new charm internal version")
 async def test_upgrade(
     ops_test: OpsTest, continuous_writes_to_shard_one, continuous_writes_to_shard_two
 ) -> None:
@@ -113,6 +115,7 @@ async def test_upgrade(
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
+@pytest.mark.skip("Need a new version published with new charm internal version")
 async def test_pre_upgrade_check_failure(ops_test: OpsTest) -> None:
     """Verify that the pre-upgrade check fails if there is a problem with one of the shards."""
     # Disable network on a replicas prior to integration.
