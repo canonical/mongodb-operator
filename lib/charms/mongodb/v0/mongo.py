@@ -7,13 +7,13 @@ import re
 from dataclasses import dataclass
 from itertools import chain
 from typing import List, Optional, Set
-from config import Config
 from urllib.parse import quote_plus
-
 
 from pymongo import MongoClient
 from pymongo.errors import OperationFailure, PyMongoError
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
+
+from config import Config
 
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
@@ -113,7 +113,7 @@ class MongoConfiguration:
         # Auth DB should be specified while user connects to application DB.
         auth_source = ""
         if self.database != "admin":
-            # "&"" is needed to concatinate multiple values in URI
+            # "&"" is needed to concatenate multiple values in URI
             auth_source = f"&{ADMIN_AUTH_SOURCE}" if self.replset else ADMIN_AUTH_SOURCE
 
         return (

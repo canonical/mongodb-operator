@@ -4,9 +4,7 @@
 # See LICENSE file for licensing details.
 
 import logging
-from dataclasses import dataclass
-from typing import Dict, Optional, Set
-from urllib.parse import quote_plus
+from typing import Dict, Set
 
 from bson.json_util import dumps
 from charms.mongodb.v0.mongo import MongoConfiguration, MongoConnection, NotReadyError
@@ -20,8 +18,6 @@ from tenacity import (
     stop_after_delay,
     wait_fixed,
 )
-
-from config import Config
 
 # The unique Charmhub library identifier, never change it
 LIBID = "49c69d9977574dd7942eb7b54f43355b"

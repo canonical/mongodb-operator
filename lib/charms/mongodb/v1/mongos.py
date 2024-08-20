@@ -4,9 +4,7 @@
 # See LICENSE file for licensing details.
 
 import logging
-from dataclasses import dataclass
 from typing import List, Optional, Set, Tuple
-from urllib.parse import quote_plus
 
 from charms.mongodb.v0.mongo import MongoConfiguration, MongoConnection, NotReadyError
 from pymongo import collection

@@ -9,11 +9,7 @@ import string
 from typing import List, Optional, Tuple
 
 from charms.mongodb.v1.mongodb import MongoConfiguration, MongoDBConnection
-from charms.mongodb.v1.mongos import (
-    BalancerNotEnabledError,
-    MongoConfiguration,
-    MongosConnection,
-)
+from charms.mongodb.v1.mongos import BalancerNotEnabledError, MongosConnection
 from ops.charm import ActionEvent, CharmBase
 from ops.framework import EventBase, EventSource, Object
 from ops.model import ActiveStatus, BlockedStatus
