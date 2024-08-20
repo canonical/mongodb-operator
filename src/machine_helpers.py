@@ -12,7 +12,7 @@ from charms.mongodb.v1.helpers import (
     get_mongod_args,
     get_mongos_args,
 )
-from charms.mongodb.v1.mongodb import MongoDBConfiguration
+from charms.mongodb.v1.mongodb import MongoConfiguration
 
 from config import Config
 
@@ -24,7 +24,7 @@ MONGO_USER = "snap_daemon"
 
 
 def update_mongod_service(
-    machine_ip: str, config: MongoDBConfiguration, role: str = "replication"
+    machine_ip: str, config: MongoConfiguration, role: str = "replication"
 ) -> None:
     """Updates the mongod service file with the new options for starting."""
     # write our arguments and write them to /etc/environment - the environment variable here is

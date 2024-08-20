@@ -235,7 +235,7 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBConnection")
-    @patch("charms.mongodb.v1.mongodb.MongoClient")
+    @patch("charms.mongodb.v0.mongo.MongoClient")
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
     def test_relation_joined_get_members_failure(self, _, client, connection, defer):
         """Tests reconfigure does not execute when unable to get the replica set members.
@@ -725,7 +725,7 @@ class TestCharm(unittest.TestCase):
             connection.return_value.__enter__.return_value.remove_replset_member.assert_called()
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongoDBConfiguration")
+    @patch("charm.MongoConfiguration")
     @patch("charm.subprocess.run")
     def test_start_init_user_after_second_call(self, run, config):
         """Tests that the creation of the admin user is only performed once.
