@@ -258,6 +258,11 @@ class MongodbOperatorCharm(CharmBase):
         )
 
     @property
+    def mongo_config(self) -> MongoConfiguration:
+        """Returns a MongoConfiguration object for shared libs with agnoistic mongo commands."""
+        return self.mongodb_config
+
+    @property
     def mongodb_config(self) -> MongoConfiguration:
         """Generates a MongoConfiguration object for this deployment of MongoDB."""
         return self._get_mongodb_config_for_user(OperatorUser, set(self.app_hosts))
