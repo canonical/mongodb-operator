@@ -12,7 +12,7 @@ from charms.mongodb.v0.upgrade_helpers import (
 )
 from charms.mongodb.v1.mongos import BalancerNotEnabledError, MongosConnection
 from ops.charm import ActionEvent, CharmBase
-from ops.framework import EventBase
+from ops.framework import EventBase, EventSource
 from ops.model import ActiveStatus, BlockedStatus
 from tenacity import RetryError
 
@@ -22,8 +22,18 @@ from upgrades import machine_upgrade, upgrade
 logger = logging.getLogger(__name__)
 
 
+class _PostUpgradeCheckMongoDB(EventBase):
+    """Run post upgrade check on MongoDB to verify that the cluster is healhty."""
+
+    def __init__(self, handle):
+        super().__init__(handle)
+
+
 class MongoDBUpgrade(GenericMongoDBUpgrade):
     """Handlers for upgrade events."""
+
+    post_app_upgrade_event = EventSource(_PostUpgradeCheckMongoDB)
+    post_cluster_upgrade_event = EventSource(_PostUpgradeCheckMongoDB)
 
     def __init__(self, charm: CharmBase):
         self.charm = charm

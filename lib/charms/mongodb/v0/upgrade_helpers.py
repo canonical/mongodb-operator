@@ -11,7 +11,7 @@ from typing import List, Tuple
 from charms.mongodb.v1.mongodb import MongoDBConfiguration, MongoDBConnection
 from charms.mongodb.v1.mongos import MongosConfiguration, MongosConnection
 from ops.charm import CharmBase
-from ops.framework import EventBase, EventSource, Object
+from ops.framework import Object
 from pymongo.errors import OperationFailure, PyMongoError, ServerSelectionTimeoutError
 from tenacity import Retrying, retry, stop_after_attempt, wait_fixed
 
@@ -61,18 +61,8 @@ class BalancerStillRunningError(Exception):
 # END: Exceptions
 
 
-class _PostUpgradeCheckMongoDB(EventBase):
-    """Run post upgrade check on MongoDB to verify that the cluster is healhty."""
-
-    def __init__(self, handle):
-        super().__init__(handle)
-
-
 class GenericMongoDBUpgrade(Object, metaclass=abc.ABCMeta):
     """Substrate agnostif, abstract handler for upgrade events."""
-
-    post_app_upgrade_event = EventSource(_PostUpgradeCheckMongoDB)
-    post_cluster_upgrade_event = EventSource(_PostUpgradeCheckMongoDB)
 
     def __init__(self, charm: CharmBase, *args, **kwargs):
         super().__init__(charm, *args, **kwargs)
