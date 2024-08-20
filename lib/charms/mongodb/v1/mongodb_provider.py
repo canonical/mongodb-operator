@@ -14,8 +14,8 @@ from collections import namedtuple
 from typing import List, Optional, Set
 
 from charms.data_platform_libs.v0.data_interfaces import DatabaseProvides
+from charms.mongodb.v0.mongo import MongoConfiguration, MongoConnection
 from charms.mongodb.v1.helpers import generate_password
-from charms.mongodb.v1.mongodb import MongoConfiguration, MongoDBConnection
 from ops.charm import CharmBase, EventBase, RelationBrokenEvent, RelationChangedEvent
 from ops.framework import Object
 from ops.model import Relation
@@ -37,6 +37,8 @@ logger = logging.getLogger(__name__)
 REL_NAME = "database"
 
 MONGOS_RELATIONS = "cluster"
+MONGOS_CLIENT_RELATIONS = "mongos_proxy"
+
 
 # We expect the MongoDB container to use the default ports
 MONGODB_PORT = 27017
@@ -91,7 +93,9 @@ class MongoDBProvider(Object):
         if not self.charm.db_initialised:
             return False
 
-        if not self.charm.is_relation_feasible(self.relation_name):
+        if not self.charm.is_role(Config.Role.MONGOS) and not self.charm.is_relation_feasible(
+            self.relation_name
+        ):
             logger.info("Skipping code for relations.")
             return False
 
@@ -164,12 +168,19 @@ class MongoDBProvider(Object):
         relation is still on the list of all relations. Therefore, for proper
         work of the function, we need to exclude departed relation from the list.
         """
-        with MongoDBConnection(self.charm.mongodb_config) as mongo:
+        # TODO create a good condition here
+        with MongoConnection(self.charm.mongo_config) as mongo:
             database_users = mongo.get_users()
             relation_users = self._get_users_from_relations(departed_relation_id)
 
             for username in database_users - relation_users:
                 logger.info("Remove relation user: %s", username)
+                if (
+                    self.charm.is_role(Config.Role.MONGOS)
+                    and username == self.charm.mongo_config.username
+                ):
+                    continue
+
                 mongo.drop_user(username)
 
             for username in relation_users - database_users:
@@ -245,7 +256,7 @@ class MongoDBProvider(Object):
 
         database_users = set()
 
-        with MongoDBConnection(self.charm.mongodb_config) as mongo:
+        with MongoConnection(self.charm.mongo_config) as mongo:
             database_users = mongo.get_users()
 
         for relation in self._get_relations(rel=REL_NAME):
@@ -290,16 +301,21 @@ class MongoDBProvider(Object):
 
         database_name = self._get_database_from_relation(relation)
 
-        return MongoConfiguration(
-            replset=self.charm.app.name,
-            database=database_name,
-            username=username,
-            password=password,
-            hosts=self.charm.mongodb_config.hosts,
-            roles=self._get_roles_from_relation(relation),
-            tls_external=False,
-            tls_internal=False,
-        )
+        mongo_args = {
+            "database": database_name,
+            "username": username,
+            "password": password,
+            "hosts": self.charm.mongo_config.hosts,
+            "roles": self._get_roles_from_relation(relation),
+            "tls_external": False,
+            "tls_internal": False,
+        }
+        if self.charm.is_role(Config.Role.MONGOS):
+            mongo_args["port"] = Config.MONGOS_PORT
+        else:
+            mongo_args["replset"] = self.charm.app.name
+
+        return MongoConfiguration(**mongo_args)
 
     def _set_relation(self, config: MongoConfiguration):
         """Save all output fields into application relation."""
@@ -318,10 +334,11 @@ class MongoDBProvider(Object):
             relation.id,
             ",".join(config.hosts),
         )
-        self.database_provides.set_replset(
-            relation.id,
-            config.replset,
-        )
+        if not self.charm.is_role(Config.Role.MONGOS):
+            self.database_provides.set_replset(
+                relation.id,
+                config.replset,
+            )
         self.database_provides.set_uris(
             relation.id,
             config.uri,
@@ -370,9 +387,7 @@ class MongoDBProvider(Object):
         assert match is not None, "No relation match"
         relation_id = int(match.group(1))
         logger.debug("Relation ID: %s", relation_id)
-        relation_name = (
-            MONGOS_RELATIONS if self.charm.is_role(Config.Role.CONFIG_SERVER) else REL_NAME
-        )
+        relation_name = self.get_relation_name()
         return self.model.get_relation(relation_name, relation_id)
 
     def _get_relations(self, rel=REL_NAME) -> List[Relation]:
@@ -381,11 +396,16 @@ class MongoDBProvider(Object):
         We create users for either direct relations to charm or for relations through the mongos
         charm.
         """
-        return (
-            self.model.relations[MONGOS_RELATIONS]
-            if self.charm.is_role(Config.Role.CONFIG_SERVER)
-            else self.model.relations[rel]
-        )
+        return self.model.relations[self.get_relation_name()]
+
+    def get_relation_name(self):
+        """Returns the name of the relation to use."""
+        if self.charm.is_role(Config.Role.CONFIG_SERVER):
+            return MONGOS_RELATIONS
+        elif self.charm.is_role(Config.Role.MONGOS):
+            return MONGOS_CLIENT_RELATIONS
+        else:
+            return REL_NAME
 
     @staticmethod
     def _get_database_from_relation(relation: Relation) -> Optional[str]:
