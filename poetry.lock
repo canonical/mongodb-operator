@@ -175,13 +175,13 @@ uvloop = ["uvloop (>=0.15.2)"]
 
 [[package]]
 name = "cachetools"
-version = "5.4.0"
+version = "5.5.0"
 description = "Extensible memoizing collections and decorators"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "cachetools-5.4.0-py3-none-any.whl", hash = "sha256:3ae3b49a3d5e28a77a0be2b37dbcb89005058959cb2323858c2657c4a8cab474"},
-    {file = "cachetools-5.4.0.tar.gz", hash = "sha256:b8adc2e7c07f105ced7bc56dbb6dfbe7c4a00acce20e2227b3f355be89bc6827"},
+    {file = "cachetools-5.5.0-py3-none-any.whl", hash = "sha256:02134e8439cdc2ffb62023ce1debca2944c3f289d66bb17ead3ab3dede74b292"},
+    {file = "cachetools-5.5.0.tar.gz", hash = "sha256:2cc24fb4cbe39633fb7badd9db9ca6295d766d9c2995f245725a46715d050f2a"},
 ]
 
 [[package]]
@@ -575,17 +575,18 @@ test-randomorder = ["pytest-randomly"]
 
 [[package]]
 name = "data-platform-helpers"
-version = "0.1.2"
+version = "0.1.3"
 description = ""
 optional = false
 python-versions = "<4.0,>=3.10"
 files = [
-    {file = "data_platform_helpers-0.1.2-py3-none-any.whl", hash = "sha256:079cda5a3a65cd2e2c3e349467a1bfa6bf53eff4e24b4197312c15cbd818225c"},
-    {file = "data_platform_helpers-0.1.2.tar.gz", hash = "sha256:f62ca1710f798f5870a3ef5d515f6221b63976441d62861e0817a2cfcd3e8150"},
+    {file = "data_platform_helpers-0.1.3-py3-none-any.whl", hash = "sha256:1fbaff7972430e4452ed7d6b4183f88599ee4a67e7828682b8fb0bb908b17786"},
+    {file = "data_platform_helpers-0.1.3.tar.gz", hash = "sha256:5b63e4ec26f611369349058d05a7aac1c5f11001d44884d40cec0552782f8346"},
 ]
 
 [package.dependencies]
-ops = ">=2.12.0,<3.0.0"
+ops = ">=2.15.0,<3.0.0"
+pytest_operator = ">=0.36.0,<0.37.0"
 
 [[package]]
 name = "decorator"
@@ -710,13 +711,13 @@ pydocstyle = ">=2.1"
 
 [[package]]
 name = "google-auth"
-version = "2.33.0"
+version = "2.34.0"
 description = "Google Authentication Library"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "google_auth-2.33.0-py2.py3-none-any.whl", hash = "sha256:8eff47d0d4a34ab6265c50a106a3362de6a9975bb08998700e389f857e4d39df"},
-    {file = "google_auth-2.33.0.tar.gz", hash = "sha256:d6a52342160d7290e334b4d47ba390767e4438ad0d45b7630774533e82655b95"},
+    {file = "google_auth-2.34.0-py2.py3-none-any.whl", hash = "sha256:72fd4733b80b6d777dcde515628a9eb4a577339437012874ea286bca7261ee65"},
+    {file = "google_auth-2.34.0.tar.gz", hash = "sha256:8eb87396435c19b20d32abd2f984e31c191a15284af72eb922f10e5bde9c04cc"},
 ]
 
 [package.dependencies]
@@ -726,7 +727,7 @@ rsa = ">=3.1.4,<5"
 
 [package.extras]
 aiohttp = ["aiohttp (>=3.6.2,<4.0.0.dev0)", "requests (>=2.20.0,<3.0.0.dev0)"]
-enterprise-cert = ["cryptography (==36.0.2)", "pyopenssl (==22.0.0)"]
+enterprise-cert = ["cryptography", "pyopenssl"]
 pyopenssl = ["cryptography (>=38.0.3)", "pyopenssl (>=20.0.0)"]
 reauth = ["pyu2f (>=0.1.5)"]
 requests = ["requests (>=2.20.0,<3.0.0.dev0)"]
@@ -1143,13 +1144,13 @@ dev = ["jinja2"]
 
 [[package]]
 name = "paramiko"
-version = "3.4.0"
+version = "3.4.1"
 description = "SSH2 protocol library"
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "paramiko-3.4.0-py3-none-any.whl", hash = "sha256:43f0b51115a896f9c00f59618023484cb3a14b98bbceab43394a39c6739b7ee7"},
-    {file = "paramiko-3.4.0.tar.gz", hash = "sha256:aac08f26a31dc4dffd92821527d1682d99d52f9ef6851968114a8728f3c274d3"},
+    {file = "paramiko-3.4.1-py3-none-any.whl", hash = "sha256:8e49fd2f82f84acf7ffd57c64311aa2b30e575370dc23bdb375b10262f7eac32"},
+    {file = "paramiko-3.4.1.tar.gz", hash = "sha256:8b15302870af7f6652f2e038975c1d2973f06046cb5d7d65355668b3ecbece0c"},
 ]
 
 [package.dependencies]
@@ -1700,13 +1701,13 @@ dev = ["pre-commit", "pytest-asyncio", "tox"]
 
 [[package]]
 name = "pytest-operator"
-version = "0.34.0"
+version = "0.36.0"
 description = "Fixtures for Operators"
 optional = false
 python-versions = "*"
 files = [
-    {file = "pytest-operator-0.34.0.tar.gz", hash = "sha256:b2d85c666436fae41e8e8f914e12c07362c473caa0f325c58e1270b00fd4fca4"},
-    {file = "pytest_operator-0.34.0-py3-none-any.whl", hash = "sha256:a3534ef376c5931beb04859359f18a4477001e14ed664459fb148cfafaffb943"},
+    {file = "pytest_operator-0.36.0-py3-none-any.whl", hash = "sha256:edab65d9d80b19fc85acddeda4a1fd3bb55a781f43ffbb6e9c4002aeeada6ad2"},
+    {file = "pytest_operator-0.36.0.tar.gz", hash = "sha256:041eeabd4c9590614f78b7568c74b0d42f768815a6b5c183da8ccfc23345bea9"},
 ]
 
 [package.dependencies]
@@ -2024,18 +2025,18 @@ pyasn1 = ">=0.1.3"
 
 [[package]]
 name = "setuptools"
-version = "72.1.0"
+version = "72.2.0"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "setuptools-72.1.0-py3-none-any.whl", hash = "sha256:5a03e1860cf56bb6ef48ce186b0e557fdba433237481a9a625176c2831be15d1"},
-    {file = "setuptools-72.1.0.tar.gz", hash = "sha256:8d243eff56d095e5817f796ede6ae32941278f542e0f941867cc05ae52b162ec"},
+    {file = "setuptools-72.2.0-py3-none-any.whl", hash = "sha256:f11dd94b7bae3a156a95ec151f24e4637fb4fa19c878e4d191bfb8b2d82728c4"},
+    {file = "setuptools-72.2.0.tar.gz", hash = "sha256:80aacbf633704e9c8bfa1d99fa5dd4dc59573efcf9e4042c13d3bcef91ac2ef9"},
 ]
 
 [package.extras]
 core = ["importlib-metadata (>=6)", "importlib-resources (>=5.10.2)", "jaraco.text (>=3.7)", "more-itertools (>=8.8)", "ordered-set (>=3.1.1)", "packaging (>=24)", "platformdirs (>=2.6.2)", "tomli (>=2.0.1)", "wheel (>=0.43.0)"]
-doc = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "pygments-github-lexers (==0.0.5)", "pyproject-hooks (!=1.1)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-favicon", "sphinx-inline-tabs", "sphinx-lint", "sphinx-notfound-page (>=1,<2)", "sphinx-reredirects", "sphinxcontrib-towncrier"]
+doc = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "pygments-github-lexers (==0.0.5)", "pyproject-hooks (!=1.1)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-favicon", "sphinx-inline-tabs", "sphinx-lint", "sphinx-notfound-page (>=1,<2)", "sphinx-reredirects", "sphinxcontrib-towncrier", "towncrier (<24.7)"]
 test = ["build[virtualenv] (>=1.0.3)", "filelock (>=3.4.0)", "importlib-metadata", "ini2toml[lite] (>=0.14)", "jaraco.develop (>=7.21)", "jaraco.envs (>=2.2)", "jaraco.path (>=3.2.0)", "jaraco.test", "mypy (==1.11.*)", "packaging (>=23.2)", "pip (>=19.1)", "pyproject-hooks (!=1.1)", "pytest (>=6,!=8.1.*)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-home (>=0.5)", "pytest-mypy", "pytest-perf", "pytest-ruff (<0.4)", "pytest-ruff (>=0.2.1)", "pytest-ruff (>=0.3.2)", "pytest-subprocess", "pytest-timeout", "pytest-xdist (>=3)", "tomli", "tomli-w (>=1.0.0)", "virtualenv (>=13.0.0)", "wheel"]
 
 [[package]]
@@ -2299,4 +2300,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10.12"
-content-hash = "a871b380e0aa757508c25387a669eb93a1b1e7407ed2343bd620c1fb036d5556"
+content-hash = "778981e1e0ec0095de46c50abb7398bc78c2619087e97ebbfea7cd27c8222ca5"
