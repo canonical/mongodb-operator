@@ -135,11 +135,11 @@ class MongodbOperatorCharm(CharmBase):
 
         relation_name = (
             Config.Relations.CLUSTER_RELATIONS_NAME
-            if self.charm.is_role(Config.Role.CONFIG_SERVER)
+            if self.is_role(Config.Role.CONFIG_SERVER)
             else Config.Relations.NAME
         )
         self.client_relations = MongoDBProvider(
-            self, substrate=Config.SUBSTRATE, relation=relation_name
+            self, substrate=Config.SUBSTRATE, relation_name=relation_name
         )
         self.tls = MongoDBTLS(self, Config.Relations.PEERS, substrate=Config.SUBSTRATE)
         self.backups = MongoDBBackups(self)
