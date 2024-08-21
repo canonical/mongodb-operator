@@ -132,15 +132,7 @@ class MongodbOperatorCharm(CharmBase):
         self.framework.observe(self.on.secret_changed, self._on_secret_changed)
 
         # handle provider side of relations
-
-        relation_name = (
-            Config.Relations.CLUSTER_RELATIONS_NAME
-            if self.is_role(Config.Role.CONFIG_SERVER)
-            else Config.Relations.NAME
-        )
-        self.client_relations = MongoDBProvider(
-            self, substrate=Config.SUBSTRATE, relation_name=relation_name
-        )
+        self.client_relations = MongoDBProvider(self, substrate=Config.SUBSTRATE)
         self.tls = MongoDBTLS(self, Config.Relations.PEERS, substrate=Config.SUBSTRATE)
         self.backups = MongoDBBackups(self)
 

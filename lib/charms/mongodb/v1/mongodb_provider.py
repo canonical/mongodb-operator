@@ -35,7 +35,8 @@ LIBPATCH = 11
 
 logger = logging.getLogger(__name__)
 REL_NAME = "database"
-
+MONGOS_RELATIONS = "cluster"
+MONGOS_CLIENT_RELATIONS = "mongos_proxy"
 
 # We expect the MongoDB container to use the default ports
 
@@ -50,7 +51,7 @@ deleted — key that were deleted."""
 class MongoDBProvider(Object):
     """In this class, we manage client database relations."""
 
-    def __init__(self, charm: CharmBase, substrate="k8s", relation_name: str = REL_NAME) -> None:
+    def __init__(self, charm: CharmBase, substrate="k8s", relation_name: str = "database") -> None:
         """Constructor for MongoDBProvider object.
 
         Args:
@@ -58,24 +59,19 @@ class MongoDBProvider(Object):
             substrate: host type, either "k8s" or "vm"
             relation_name: the name of the relation
         """
-        self.relation_name = relation_name
         self.substrate = substrate
         self.charm = charm
 
-        super().__init__(charm, self.relation_name)
+        super().__init__(charm, relation_name)
         self.framework.observe(
-            charm.on[self.relation_name].relation_departed,
+            charm.on[relation_name].relation_departed,
             self.charm.check_relation_broken_or_scale_down,
         )
-        self.framework.observe(
-            charm.on[self.relation_name].relation_broken, self._on_relation_event
-        )
-        self.framework.observe(
-            charm.on[self.relation_name].relation_changed, self._on_relation_event
-        )
+        self.framework.observe(charm.on[relation_name].relation_broken, self._on_relation_event)
+        self.framework.observe(charm.on[relation_name].relation_changed, self._on_relation_event)
 
         # Charm events defined in the database provides charm library.
-        self.database_provides = DatabaseProvides(self.charm, relation_name=self.relation_name)
+        self.database_provides = DatabaseProvides(self.charm, relation_name=relation_name)
         self.framework.observe(
             self.database_provides.on.database_requested, self._on_relation_event
         )
@@ -88,7 +84,7 @@ class MongoDBProvider(Object):
             return False
 
         if not self.charm.is_role(Config.Role.MONGOS) and not self.charm.is_relation_feasible(
-            self.relation_name
+            self.get_relation_name()
         ):
             logger.info("Skipping code for relations.")
             return False
@@ -380,7 +376,7 @@ class MongoDBProvider(Object):
         assert match is not None, "No relation match"
         relation_id = int(match.group(1))
         logger.debug("Relation ID: %s", relation_id)
-        relation_name = self.relation_name
+        relation_name = self.get_relation_name()
         return self.model.get_relation(relation_name, relation_id)
 
     def _get_relations(self) -> List[Relation]:
@@ -389,7 +385,16 @@ class MongoDBProvider(Object):
         We create users for either direct relations to charm or for relations through the mongos
         charm.
         """
-        return self.model.relations[self.relation_name]
+        return self.model.relations[self.get_relation_name()]
+
+    def get_relation_name(self):
+        """Returns the name of the relation to use."""
+        if self.charm.is_role(Config.Role.CONFIG_SERVER):
+            return MONGOS_RELATIONS
+        elif self.charm.is_role(Config.Role.MONGOS):
+            return MONGOS_CLIENT_RELATIONS
+        else:
+            return REL_NAME
 
     @staticmethod
     def _get_database_from_relation(relation: Relation) -> Optional[str]:
