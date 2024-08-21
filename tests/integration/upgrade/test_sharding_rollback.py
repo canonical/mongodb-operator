@@ -32,7 +32,6 @@ MEDIAN_REELECTION_TIME = 12
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
-@pytest.mark.skip("Need a new version published with upgrade bug fixed")
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build deploy, and integrate, a sharded cluster."""
     num_units_cluster_config = {
@@ -54,7 +53,6 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
-@pytest.mark.skip("Need a new version published with upgrade bug fixed")
 async def test_rollback_on_config_server(
     ops_test: OpsTest, continuous_writes_to_shard_one, continuous_writes_to_shard_two
 ) -> None:
@@ -109,7 +107,6 @@ async def test_rollback_on_config_server(
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
-@pytest.mark.skip("Need a new version published with upgrade bug fixed")
 async def test_rollback_on_shard_and_config_server(
     ops_test: OpsTest, continuous_writes_to_shard_one, continuous_writes_to_shard_two
 ) -> None:
