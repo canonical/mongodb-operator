@@ -73,7 +73,7 @@ async def test_rollback_on_config_server(
     # await ops_test.model.applications[CONFIG_SERVER_APP_NAME].refresh(
     #     channel="6/edge", switch="ch:mongodb"
     # )
-    await refresh_with_juju(ops_test, CONFIG_SERVER_APP_NAME, "6/stable")
+    await refresh_with_juju(ops_test, CONFIG_SERVER_APP_NAME, "6/edge")
 
     # verify no writes were skipped during upgrade/rollback process
     shard_one_expected_writes = await stop_continous_writes(
@@ -123,7 +123,7 @@ async def test_rollback_on_shard_and_config_server(
     # await ops_test.model.applications[SHARD_ONE_APP_NAME].refresh(
     #     channel="6/edge", switch="ch:mongodb"
     # )
-    await refresh_with_juju(ops_test, SHARD_ONE_APP_NAME, "6/stable")
+    await refresh_with_juju(ops_test, SHARD_ONE_APP_NAME, "6/edge")
     await ops_test.model.wait_for_idle(
         apps=[CONFIG_SERVER_APP_NAME], timeout=1000, idle_period=120
     )
