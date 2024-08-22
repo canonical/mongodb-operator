@@ -6,7 +6,7 @@ import json
 import logging
 from typing import Optional, Tuple
 
-from charms.mongodb.v1.mongodb import MongoDBConfiguration, MongoDBConnection
+from charms.mongodb.v1.mongodb import MongoConfiguration, MongoDBConnection
 from ops.charm import CharmBase
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, StatusBase, WaitingStatus
