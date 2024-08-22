@@ -238,7 +238,7 @@ class MongoDBStatusHandler(Object):
         return self.charm.get_cluster_mismatched_revision_status()
 
 
-def build_unit_status(mongodb_config: MongoDBConfiguration, unit_host: str) -> StatusBase:
+def build_unit_status(mongodb_config: MongoConfiguration, unit_host: str) -> StatusBase:
     """Generates the status of a unit based on its status reported by mongod."""
     try:
         with MongoDBConnection(mongodb_config) as mongo:
