@@ -5,7 +5,6 @@
 
 import logging
 from typing import Optional
-from overrides import override
 
 from charms.mongodb.v0.upgrade_helpers import (
     ROLLBACK_INSTRUCTIONS,
@@ -15,6 +14,7 @@ from charms.mongodb.v1.mongos import BalancerNotEnabledError, MongosConnection
 from ops.charm import ActionEvent, CharmBase
 from ops.framework import EventBase, EventSource
 from ops.model import ActiveStatus, BlockedStatus
+from overrides import override
 from tenacity import RetryError
 
 from config import Config
