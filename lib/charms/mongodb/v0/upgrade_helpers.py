@@ -62,7 +62,7 @@ class BalancerStillRunningError(Exception):
 # END: Exceptions
 
 
-class GenericMongoDBUpgrade(Object, metaclass=abc.ABCMeta):
+class GenericMongoDBUpgrade(Object, abc.ABC):
     """Substrate agnostif, abstract handler for upgrade events."""
 
     def __init__(self, charm: CharmBase, *args, **kwargs):

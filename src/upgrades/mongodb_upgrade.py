@@ -5,6 +5,7 @@
 
 import logging
 from typing import Optional
+from overrides import override
 
 from charms.mongodb.v0.upgrade_helpers import (
     ROLLBACK_INSTRUCTIONS,
@@ -39,6 +40,7 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
         self.charm = charm
         super().__init__(charm, upgrade.PEER_RELATION_ENDPOINT_NAME)
 
+    @override
     def _observe_events(self, charm: CharmBase) -> None:
         self.framework.observe(
             charm.on[upgrade.PRECHECK_ACTION_NAME].action, self._on_pre_upgrade_check_action
@@ -61,11 +63,12 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
 
     # BEGIN: properties
     @property
+    @override
     def _upgrade(self) -> Optional[machine_upgrade.Upgrade]:
         try:
             return machine_upgrade.Upgrade(self.charm)
         except upgrade.PeerRelationNotReady:
-            pass
+            return None
 
     # END: properties
 
