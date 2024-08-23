@@ -2,12 +2,13 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import asyncio
 from pathlib import Path
 
 import pytest
 from pytest_operator.plugin import OpsTest
 
-from ..helpers import find_unit
+from ..helpers import find_unit, wait_for_mongodb_units_blocked
 from ..sharding_tests.helpers import deploy_cluster_components, integrate_cluster
 from ..sharding_tests.writes_helpers import (
     SHARD_ONE_DB_NAME,
@@ -100,6 +101,10 @@ async def test_rollback_on_config_server(
         shard_two_actual_writes == shard_two_expected_writes["number"]
     ), "continuous writes to shard two failed during upgrade"
 
+    await ops_test.model.wait_for_idle(
+        apps=CLUSTER_COMPONENTS, status="active", timeout=1000, idle_period=20
+    )
+
     # after all shards have upgraded, verify that the balancer has been turned back on
     # TODO implement this check once we have implemented the post-cluster-upgrade code DPE-4143
 
@@ -113,6 +118,21 @@ async def test_rollback_on_shard_and_config_server(
     """Verify that a config-server and shard can safely rollback without losing writes."""
     new_charm = await ops_test.build_charm(".")
     await run_upgrade_sequence(ops_test, CONFIG_SERVER_APP_NAME, new_charm=new_charm)
+
+    with open("charm_internal_version", mode="r") as fd:
+        revision = fd.read().strip()
+
+    # Wait for statuses to settle down
+    asyncio.gather(
+        wait_for_mongodb_units_blocked(ops_test, SHARD_ONE_APP_NAME),
+        wait_for_mongodb_units_blocked(ops_test, SHARD_TWO_APP_NAME),
+        ops_test.model.wait_for_idle(
+            apps=[CONFIG_SERVER_APP_NAME],
+            timeout=1000,
+            idle_period=20,
+            status=f"Waiting for shards to upgrade/downgrade to revision {revision}-locally built.",
+        ),
+    )
 
     shard_unit = await find_unit(ops_test, leader=True, app_name=SHARD_ONE_APP_NAME)
     action = await shard_unit.run_action("pre-upgrade-check")
