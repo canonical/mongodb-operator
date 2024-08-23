@@ -17,6 +17,7 @@ import typing
 
 import ops
 import poetry.core.constraints.version as poetry_version
+from charms.mongodb.v0.upgrade_helpers import AbstractUpgrade
 from charms.mongodb.v1.mongodb import FailedToMovePrimaryError
 from tenacity import RetryError
 
@@ -61,7 +62,7 @@ class UnitState(str, enum.Enum):
     OUTDATED = "outdated"  # Machines only
 
 
-class Upgrade(abc.ABC):
+class Upgrade(AbstractUpgrade):
     """In-place upgrades."""
 
     def __init__(self, charm_: ops.CharmBase) -> None:

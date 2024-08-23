@@ -11,6 +11,7 @@ repository = "https://github.com/canonical/mongodb-operator"
 [tool.poetry.dependencies]
 python = "^3.10.12"
 ops = "^2.15.0"
+overrides = "^7.7.0"
 pymongo = "^4.7.3"
 tenacity = "^8.2.3"
 pyyaml = "^6.0.1"
@@ -88,6 +89,9 @@ minversion = "6.0"
 log_cli_level = "INFO"
 markers = ["unstable"]
 asyncio_mode = "auto"
+filterwarnings = [
+    "error:RuntimeWarning"
+]
 
 # Formatting tools configuration
 [tool.black]
