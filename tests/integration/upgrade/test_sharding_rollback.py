@@ -111,7 +111,6 @@ async def test_rollback_on_config_server(
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
-@pytest.mark.skip("Needs a new fixed version of libs before re-enabling (#463 merged)")
 @pytest.mark.abort_on_fail
 async def test_rollback_on_shard_and_config_server(
     ops_test: OpsTest, continuous_writes_to_shard_one, continuous_writes_to_shard_two
@@ -149,7 +148,7 @@ async def test_rollback_on_shard_and_config_server(
         ),
     )
 
-    await run_upgrade_sequence(ops_test, CONFIG_SERVER_APP_NAME, channel="6/edge")
+    await refresh_with_juju(ops_test, CONFIG_SERVER_APP_NAME, channel="6/edge")
 
     # verify no writes were skipped during upgrade process
     shard_one_expected_writes = await stop_continous_writes(
