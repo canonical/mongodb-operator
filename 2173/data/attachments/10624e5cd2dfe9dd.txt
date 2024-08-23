@@ -1,0 +1,49 @@
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server-one/0 [idle] active: 
+  mongos/0 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongos/0 [idle] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.4.4    unsupported  02:09:19Z
+
+App                Version  Status  Scale  Charm        Channel  Rev  Exposed  Message
+application                 active      1  application             0  no       
+config-server-one           active      1  mongodb                 0  no       
+mongos                      active      1  mongos       6/edge     3  no       
+shard-one                   active      1  mongodb                 1  no       
+
+Unit                  Workload     Agent  Machine  Public address  Ports            Message
+application/0*        active       idle   2        10.154.126.207                   
+  mongos/0*           active       idle            10.154.126.207                   
+config-server-one/0*  active       idle   0        10.154.126.46   27017-27018/tcp  
+shard-one/0*          maintenance  idle   1        10.154.126.219  27017/tcp        Adding shard to config-server
+
+Machine  State    Address         Inst id        Base          AZ  Message
+0        started  10.154.126.46   juju-94d9d0-0  ubuntu@22.04      Running
+1        started  10.154.126.219  juju-94d9d0-1  ubuntu@22.04      Running
+2        started  10.154.126.207  juju-94d9d0-2  ubuntu@22.04      Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+machine-0: 02:04:24 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 02:04:24 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-one-0: 02:04:25 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-1: 02:05:20 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 02:05:20 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-0: 02:05:20 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-2: 02:05:38 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 02:05:38 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-application-0: 02:05:38 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-config-server-one-0: 02:06:19 ERROR unit.config-server-one/0.juju-log _on_secret_remove: Secret secret:cr3ut1nrasjjlsmsbq8g seems to have no observers, could be removed
+unit-shard-one-0: 02:06:51 ERROR unit.shard-one/0.juju-log _on_secret_remove: Secret secret:cr3ut9vrasjjlsmsbq90 seems to have no observers, could be removed
+unit-mongos-0: 02:07:16 ERROR juju.worker.meterstatus error running "meter-status-changed": exit status 127
+unit-config-server-one-0: 02:07:19 ERROR unit.config-server-one/0.juju-log config-server:5: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1724378838, 2), 'signature': {'hash': b'\\x8fsI\\xe0\\x019\\xf7\\xa7z\\xdfk\\xfcLe\\xef\\x9a\\xc7JH\\x97', 'keyId': 7406150410181804037}}, 'operationTime': Timestamp(1724378838, 2)}")
+unit-config-server-one-0: 02:07:19 ERROR unit.config-server-one/0.juju-log config-server:5: shard-one shard does not have the same auth as the config server.
+unit-shard-one-0: 02:07:31 ERROR unit.shard-one/0.juju-log _on_secret_remove: Secret secret:cr3ut9vrasjjlsmsbq90 seems to have no observers, could be removed
+unit-shard-one-0: 02:07:32 ERROR unit.shard-one/0.juju-log _on_secret_remove: Secret secret:cr3ut9vrasjjlsmsbq90 seems to have no observers, could be removed
+unit-shard-one-0: 02:07:38 ERROR unit.shard-one/0.juju-log _on_secret_remove: Secret secret:cr3ut9vrasjjlsmsbq90 seems to have no observers, could be removed
+unit-shard-one-0: 02:07:44 ERROR unit.shard-one/0.juju-log _on_secret_remove: Secret secret:cr3ut9vrasjjlsmsbq90 seems to have no observers, could be removed
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
