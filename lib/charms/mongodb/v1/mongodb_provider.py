@@ -31,7 +31,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 10
+LIBPATCH = 11
 
 logger = logging.getLogger(__name__)
 REL_NAME = "database"
@@ -54,7 +54,7 @@ deleted — key that were deleted."""
 class MongoDBProvider(Object):
     """In this class, we manage client database relations."""
 
-    def __init__(self, charm: CharmBase, substrate="k8s", relation_name: str = "database") -> None:
+    def __init__(self, charm: CharmBase, substrate="k8s", relation_name: str = REL_NAME) -> None:
         """Constructor for MongoDBProvider object.
 
         Args:

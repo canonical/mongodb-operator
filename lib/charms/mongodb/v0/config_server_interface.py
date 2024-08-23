@@ -42,7 +42,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 9
+LIBPATCH = 10
 
 
 class ClusterProvider(Object):
@@ -371,7 +371,7 @@ class ClusterRequirer(Object):
         connection_uri = f"mongodb://{self.charm.get_mongos_host()}"
 
         # use the mongos port for k8s charms and external connections on VM
-        if self.charm.is_external_client or self.substrate == Config.K8S_SUBSTRATE:
+        if self.substrate == Config.K8S_SUBSTRATE or self.charm.is_external_client:
             connection_uri = connection_uri + f":{Config.MONGOS_PORT}"
 
         with MongosConnection(None, connection_uri) as mongo:
