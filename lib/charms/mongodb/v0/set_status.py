@@ -22,7 +22,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 3
+LIBPATCH = 4
 
 AUTH_FAILED_CODE = 18
 UNAUTHORISED_CODE = 13
@@ -153,7 +153,7 @@ class MongoDBStatusHandler(Object):
         if isinstance(current_status, ActiveStatus):
             return True
 
-        if not isinstance(current_status, WaitingStatus):
+        if not isinstance(current_status, BlockedStatus):
             return False
 
         if status_message and "is not up-to date with config-server" in status_message:
