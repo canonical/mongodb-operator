@@ -21,6 +21,7 @@ class TestMongoTLS(unittest.TestCase):
         self.harness = Harness(MongodbOperatorCharm)
         self.harness.begin()
         self.harness.add_relation("database-peers", "database-peers")
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
         self.harness.set_leader(True)
         self.charm = self.harness.charm
         self.addCleanup(self.harness.cleanup)
@@ -223,6 +224,40 @@ class TestMongoTLS(unittest.TestCase):
         self.assertEqual(ca_secret, "app-ca-old")
 
         restart_charm_services.assert_not_called()
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongodbOperatorCharm.push_tls_certificate_to_workload")
+    @patch("ops.framework.EventBase.defer")
+    def test_external_certificate_available_deferred(self, defer, _):
+        """Tests behavior when external certificate is made available."""
+        del self.harness.charm.app_peer_data["db_initialised"]
+
+        # assume relation exists with a current certificate
+        self.relate_to_tls_certificates_operator()
+        self.harness.charm.set_secret("unit", "ext-csr-secret", "csr-secret")
+        self.harness.charm.set_secret("unit", "ext-cert-secret", "unit-cert-old")
+        self.harness.charm.set_secret("unit", "int-cert-secret", "app-cert")
+
+        self.charm.tls.certs.on.certificate_available.emit(
+            certificate_signing_request="csr-secret",
+            chain=["unit-chain"],
+            certificate="unit-cert",
+            ca="unit-ca",
+        )
+        defer.assert_called()
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongodbOperatorCharm.push_tls_certificate_to_workload")
+    @patch("ops.framework.EventBase.defer")
+    def test_external_certificate_broken_deferred(self, defer, _):
+        """Tests behavior when external certificate is made available."""
+        del self.harness.charm.app_peer_data["db_initialised"]
+
+        # assume relation exists with a current certificate
+        rel_id = self.relate_to_tls_certificates_operator()
+        self.harness.remove_relation(rel_id)
+
+        defer.assert_called()
 
     # Helper functions
     def relate_to_tls_certificates_operator(self) -> int:
