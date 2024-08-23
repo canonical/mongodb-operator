@@ -636,7 +636,7 @@ class MongodbOperatorCharm(CharmBase):
     def _on_update_status(self, event: UpdateStatusEvent):
         # user-made mistakes might result in other incorrect statues. Prioritise informing users of
         # their mistake.
-        invalid_integration_status = self.get_invalid_integration_status()
+        invalid_integration_status = self.status.get_invalid_integration_status()
         if invalid_integration_status:
             self.status.set_and_share_status(invalid_integration_status)
             return
@@ -1494,20 +1494,6 @@ class MongodbOperatorCharm(CharmBase):
     def _is_removing_last_replica(self) -> bool:
         """Returns True if the last replica (juju unit) is getting removed."""
         return self.app.planned_units() == 0 and len(self.peers_units) == 0
-
-    def get_invalid_integration_status(self) -> Optional[StatusBase]:
-        """Returns a status if an invalid integration is present."""
-        if not self.cluster.is_valid_mongos_integration():
-            return BlockedStatus(
-                "Relation to mongos not supported, config role must be config-server"
-            )
-
-        if not self.backups.is_valid_s3_integration():
-            return BlockedStatus(
-                "Relation to s3-integrator is not supported, config role must be config-server"
-            )
-
-        return self.get_cluster_mismatched_revision_status()
 
     def is_relation_feasible(self, rel_interface) -> bool:
         """Returns true if the proposed relation is feasible."""
