@@ -51,7 +51,7 @@ deleted — key that were deleted."""
 class MongoDBProvider(Object):
     """In this class, we manage client database relations."""
 
-    def __init__(self, charm: CharmBase, substrate="k8s", relation_name: str = "database") -> None:
+    def __init__(self, charm: CharmBase, substrate="k8s", relation_name: str = REL_NAME) -> None:
         """Constructor for MongoDBProvider object.
 
         Args:
