@@ -175,7 +175,9 @@ class MongodbOperatorCharm(CharmBase):
                         "targets": [
                             f"{self.unit_host(self.unit)}:{Config.Monitoring.MONGODB_EXPORTER_PORT}"
                         ],
-                        "labels": {"cluster": self.app.name, "replication_set": self.app.name},
+                        "labels": {
+                            "cluster": self.get_config_server_name() or self.app.name,
+                        },
                     }
                 ],
             }
