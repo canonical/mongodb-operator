@@ -9,7 +9,7 @@ import pwd
 import subprocess
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Mapping, Optional, Set
 
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from charms.mongodb.v0.config_server_interface import ClusterProvider
@@ -46,6 +46,7 @@ from data_platform_helpers.version_check import (
     NoVersionError,
     get_charm_revision,
 )
+from ops import StorageAttachedEvent
 from ops.charm import (
     ActionEvent,
     CharmBase,
@@ -108,6 +109,7 @@ class MongodbOperatorCharm(CharmBase):
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.start, self._on_start)
         self.framework.observe(self.on.update_status, self._on_update_status)
+        self.framework.observe(self.on.mongodb_storage_attached, self._on_storage_attached)
         self.framework.observe(
             self.on[Config.Relations.PEERS].relation_joined, self._on_relation_joined
         )
@@ -148,7 +150,7 @@ class MongodbOperatorCharm(CharmBase):
             ],
         )
         self.upgrade = MongoDBUpgrade(self)
-        self.config_server = ShardingProvider(self, substrate="vm")
+        self.config_server = ShardingProvider(self, substrate=Config.SUBSTRATE)
         self.cluster = ClusterProvider(self)
         self.shard = ConfigServerRequirer(self)
         self.status = MongoDBStatusHandler(self)
@@ -587,6 +589,36 @@ class MongodbOperatorCharm(CharmBase):
             )
 
         self._update_hosts(event)
+
+    def exec(
+        self,
+        command: list[str] | str,
+        env: Mapping[str, str] | None = None,
+        working_dir: str | None = None,
+    ) -> str:
+        """Execs a command on the workload in a safe way."""
+        try:
+            output = subprocess.check_output(
+                command,
+                stderr=subprocess.PIPE,
+                universal_newlines=True,
+                shell=isinstance(command, str),
+                env=env,
+                cwd=working_dir,
+            )
+            logger.debug(f"{output=}")
+            return output
+        except subprocess.CalledProcessError as err:
+            logger.error(f"cmd failed - {err.cmd = }, {err.stdout = }, {err.stderr = }")
+            raise
+
+    def _on_storage_attached(self, event: StorageAttachedEvent) -> None:
+        """Handler for `storage_attached` event.
+
+        This should handle fixing the permissions for the data dir.
+        """
+        self.exec(f"chmod -R 770 {Config.MONGODB_COMMON_PATH}".split())
+        self.exec(f"chown -R {Config.SNAP_USER}:root  {Config.MONGODB_COMMON_PATH}".split())
 
     def _on_storage_detaching(self, event: StorageDetachingEvent) -> None:
         """Before storage detaches, allow removing unit to remove itself from the set.
@@ -1060,7 +1092,7 @@ class MongodbOperatorCharm(CharmBase):
                 logger.error(
                     "An exception occurred when installing %s. Reason: %s", snap_name, str(e)
                 )
-                raise
+            raise
 
     def _instatiate_keyfile(self, event: StartEvent) -> None:
         # wait for keyFile to be created by leader unit
