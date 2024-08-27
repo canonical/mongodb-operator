@@ -77,7 +77,10 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         return
 
     my_charm = await ops_test.build_charm(".")
-    await ops_test.model.deploy(my_charm, num_units=required_units)
+
+    storage = {"mongodb": {"pool": "lxd", "size": 2048}}
+
+    await ops_test.model.deploy(my_charm, num_units=required_units, storage=storage)
     await ops_test.model.wait_for_idle()
 
 
@@ -120,6 +123,50 @@ async def test_storage_re_use(ops_test, continuous_writes):
     total_expected_writes = await stop_continous_writes(ops_test, app_name=app_name)
     actual_writes = await count_writes(ops_test, app_name=app_name)
     assert total_expected_writes["number"] == actual_writes
+
+
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
+@pytest.mark.group(1)
+async def test_storage_re_use_different_cluster(ops_test: OpsTest, continuous_writes):
+    """Tests that we can reuse storage from a different cluster.
+
+    For that, we completely remove the application while keeping the storages,
+    and then we deploy a new application with storage reuse and check that the
+    storage has been reused.
+    """
+    app_name = await get_app_name(ops_test)
+    if storage_type(ops_test, app_name) == "rootfs":
+        pytest.skip(
+            "reuse of storage can only be used on deployments with persistent storage not on rootfs deployments"
+        )
+
+    writes_results = await stop_continous_writes(ops_test, app_name=app_name)
+    unit_ids = (unit.name for unit in ops_test.models.applications[app_name].units)
+    storage_ids = {}
+    for unit_id in unit_ids:
+        storage_ids[unit_id] = storage_id(ops_test, app_name, unit_id)
+        await ops_test.model.applications[app_name].destroy_unit(f"{app_name}/{unit_id}")
+        # Give some time to remove the unit. We don't use asyncio.sleep here to
+        # leave time for each unit to be removed before removing the next one.
+        time.sleep(60)
+
+    # Wait until all apps are cleaned up
+    await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, wait_for_exact_units=0)
+
+    for unit_id in unit_ids:
+        await add_unit_with_storage(ops_test, app_name, storage_ids[unit_id])
+        await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000)
+
+    await ops_test.model.wait_for_idle(
+        apps=[app_name],
+        status="active",
+        timeout=1000,
+        idle_period=20,
+        wait_for_exact_units=len(unit_ids),
+    )
+
+    actual_writes = await count_writes(ops_test, app_name=app_name)
+    assert writes_results["number"] == actual_writes
 
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
