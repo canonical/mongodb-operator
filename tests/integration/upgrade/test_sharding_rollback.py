@@ -2,12 +2,13 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import asyncio
 from pathlib import Path
 
 import pytest
 from pytest_operator.plugin import OpsTest
 
-from ..helpers import find_unit
+from ..helpers import find_unit, wait_for_mongodb_units_blocked
 from ..sharding_tests.helpers import deploy_cluster_components, integrate_cluster
 from ..sharding_tests.writes_helpers import (
     SHARD_ONE_DB_NAME,
@@ -32,7 +33,6 @@ MEDIAN_REELECTION_TIME = 12
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
-@pytest.mark.skip("Need a new version published with upgrade bug fixed")
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build deploy, and integrate, a sharded cluster."""
     num_units_cluster_config = {
@@ -54,7 +54,6 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
-@pytest.mark.skip("Need a new version published with upgrade bug fixed")
 async def test_rollback_on_config_server(
     ops_test: OpsTest, continuous_writes_to_shard_one, continuous_writes_to_shard_two
 ) -> None:
@@ -75,7 +74,7 @@ async def test_rollback_on_config_server(
     # await ops_test.model.applications[CONFIG_SERVER_APP_NAME].refresh(
     #     channel="6/edge", switch="ch:mongodb"
     # )
-    await refresh_with_juju(ops_test, CONFIG_SERVER_APP_NAME, "6/stable")
+    await refresh_with_juju(ops_test, CONFIG_SERVER_APP_NAME, "6/edge")
 
     # verify no writes were skipped during upgrade/rollback process
     shard_one_expected_writes = await stop_continous_writes(
@@ -102,6 +101,10 @@ async def test_rollback_on_config_server(
         shard_two_actual_writes == shard_two_expected_writes["number"]
     ), "continuous writes to shard two failed during upgrade"
 
+    await ops_test.model.wait_for_idle(
+        apps=CLUSTER_COMPONENTS, status="active", timeout=1000, idle_period=20
+    )
+
     # after all shards have upgraded, verify that the balancer has been turned back on
     # TODO implement this check once we have implemented the post-cluster-upgrade code DPE-4143
 
@@ -109,7 +112,6 @@ async def test_rollback_on_config_server(
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
-@pytest.mark.skip("Need a new version published with upgrade bug fixed")
 async def test_rollback_on_shard_and_config_server(
     ops_test: OpsTest, continuous_writes_to_shard_one, continuous_writes_to_shard_two
 ) -> None:
@@ -117,21 +119,36 @@ async def test_rollback_on_shard_and_config_server(
     new_charm = await ops_test.build_charm(".")
     await run_upgrade_sequence(ops_test, CONFIG_SERVER_APP_NAME, new_charm=new_charm)
 
-    shard_unit = await find_unit(ops_test, leader=True, app_name=SHARD_ONE_APP_NAME)
-    action = await shard_unit.run_action("pre-upgrade-check")
-    await action.wait()
-    assert action.status == "completed", "pre-upgrade-check failed, expected to succeed."
+    with open("charm_internal_version", mode="r") as fd:
+        revision = fd.read().strip()
 
-    # TODO: Use this when https://github.com/juju/python-libjuju/issues/1086 is fixed
-    # await ops_test.model.applications[SHARD_ONE_APP_NAME].refresh(
-    #     channel="6/edge", switch="ch:mongodb"
-    # )
-    await refresh_with_juju(ops_test, SHARD_ONE_APP_NAME, "6/stable")
-    await ops_test.model.wait_for_idle(
-        apps=[CONFIG_SERVER_APP_NAME], timeout=1000, idle_period=120
+    # Wait for statuses to settle down
+    asyncio.gather(
+        wait_for_mongodb_units_blocked(ops_test, SHARD_ONE_APP_NAME),
+        wait_for_mongodb_units_blocked(ops_test, SHARD_TWO_APP_NAME),
+        ops_test.model.wait_for_idle(
+            apps=[CONFIG_SERVER_APP_NAME],
+            timeout=1000,
+            idle_period=20,
+            status=f"Waiting for shards to upgrade/downgrade to revision {revision}-locally built.",
+        ),
     )
 
-    await run_upgrade_sequence(ops_test, CONFIG_SERVER_APP_NAME, channel="6/edge")
+    await run_upgrade_sequence(ops_test, SHARD_ONE_APP_NAME, new_charm=new_charm)
+
+    # Wait for statuses to settle down
+    asyncio.gather(
+        wait_for_mongodb_units_blocked(ops_test, SHARD_TWO_APP_NAME),
+        ops_test.model.wait_for_idle(apps=[SHARD_ONE_APP_NAME], timeout=1000, idle_period=20),
+        ops_test.model.wait_for_idle(
+            apps=[CONFIG_SERVER_APP_NAME],
+            timeout=1000,
+            idle_period=20,
+            status=f"Waiting for shards to upgrade/downgrade to revision {revision}-locally built.",
+        ),
+    )
+
+    await refresh_with_juju(ops_test, CONFIG_SERVER_APP_NAME, channel="6/edge")
 
     # verify no writes were skipped during upgrade process
     shard_one_expected_writes = await stop_continous_writes(
@@ -163,7 +180,7 @@ async def test_rollback_on_shard_and_config_server(
 
 
 async def refresh_with_juju(ops_test: OpsTest, app_name: str, channel: str) -> None:
-    refresh_cmd = f"refresh {app_name} --channel {channel} --switch ch:mongodb"
+    refresh_cmd = f"refresh {app_name} --model {ops_test.model.info.name} --channel {channel} --switch ch:mongodb"
     await ops_test.juju(*refresh_cmd.split())
 
 
