@@ -7,6 +7,7 @@ import os
 import time
 
 import pytest
+from juju import tag
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
@@ -20,7 +21,6 @@ from ..helpers import (
     unit_uri,
 )
 from .helpers import (
-    add_unit_with_storage,
     all_db_processes_down,
     clear_db_writes,
     count_primaries,
@@ -114,7 +114,11 @@ async def test_storage_re_use(ops_test, continuous_writes):
     await ops_test.model.wait_for_idle(
         apps=[app_name], status="active", timeout=1000, wait_for_exact_units=expected_units
     )
-    new_unit = await add_unit_with_storage(ops_test, app_name, unit_storage_id)
+    new_unit = await ops_test.model.applications[app_name].add_unit(
+        count=1, attach_storage=[tag.storage(unit_storage_id)]
+    )
+
+    await ops_test.model.wait_for_idle(apps=[app_name], status="active", timeout=1000)
 
     assert await reused_storage(
         ops_test, new_unit.name, removal_time
@@ -128,6 +132,7 @@ async def test_storage_re_use(ops_test, continuous_writes):
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
+@pytest.mark.skip("This is currently unsupported on MongoDB charm.")
 @pytest.mark.abort_on_fail
 async def test_storage_re_use_different_cluster(ops_test: OpsTest, continuous_writes):
     """Tests that we can reuse storage from a different cluster.
@@ -143,11 +148,11 @@ async def test_storage_re_use_different_cluster(ops_test: OpsTest, continuous_wr
         )
 
     writes_results = await stop_continous_writes(ops_test, app_name=app_name)
-    unit_ids = (unit.name for unit in ops_test.models.applications[app_name].units)
+    unit_ids = [unit.name for unit in ops_test.model.applications[app_name].units]
     storage_ids = {}
     for unit_id in unit_ids:
-        storage_ids[unit_id] = storage_id(ops_test, app_name, unit_id)
-        await ops_test.model.applications[app_name].destroy_unit(f"{app_name}/{unit_id}")
+        storage_ids[unit_id] = storage_id(ops_test, unit_id)
+        await ops_test.model.applications[app_name].destroy_unit(unit_id)
         # Give some time to remove the unit. We don't use asyncio.sleep here to
         # leave time for each unit to be removed before removing the next one.
         time.sleep(60)
@@ -156,8 +161,10 @@ async def test_storage_re_use_different_cluster(ops_test: OpsTest, continuous_wr
     await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, wait_for_exact_units=0)
 
     for unit_id in unit_ids:
-        await add_unit_with_storage(ops_test, app_name, storage_ids[unit_id])
-        await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000)
+        await ops_test.model.applications[app_name].add_unit(
+            count=1, attach_storage=[tag.storage(storage_ids[unit_id])]
+        )
+        time.sleep(10)
 
     await ops_test.model.wait_for_idle(
         apps=[app_name],

@@ -400,34 +400,7 @@ def storage_id(ops_test, unit_name):
             return line.split()[1]
 
 
-async def add_unit_with_storage(ops_test, app_name, storage):
-    """Adds unit with storage.
-
-    Note: this function exists as a temporary solution until this issue is resolved:
-    https://github.com/juju/python-libjuju/issues/695
-    """
-    expected_units = len(ops_test.model.applications[app_name].units) + 1
-    prev_units = [unit.name for unit in ops_test.model.applications[app_name].units]
-    model_name = ops_test.model.info.name
-    add_unit_cmd = f"add-unit {app_name} --model={model_name} --attach-storage={storage}".split()
-    await ops_test.juju(*add_unit_cmd)
-    await ops_test.model.wait_for_idle(apps=[app_name], status="active", timeout=1000)
-    assert (
-        len(ops_test.model.applications[app_name].units) == expected_units
-    ), "New unit not added to model"
-
-    # verify storage attached
-    curr_units = [unit.name for unit in ops_test.model.applications[app_name].units]
-    new_unit = list(set(curr_units) - set(prev_units))[0]
-    assert storage_id(ops_test, new_unit) == storage, "unit added with incorrect storage"
-
-    # return a reference to newly added unit
-    for unit in ops_test.model.applications[app_name].units:
-        if unit.name == new_unit:
-            return unit
-
-
-async def reused_storage(ops_test: OpsTest, unit_name, removal_time) -> bool:
+async def reused_storage(ops_test: OpsTest, unit_name: str, removal_time: float) -> bool:
     """Returns True if storage provided to mongod has been reused.
 
     MongoDB startup message indicates storage reuse:
@@ -450,11 +423,21 @@ async def reused_storage(ops_test: OpsTest, unit_name, removal_time) -> bool:
 
         item = json.loads(line)
 
+        # We need a msg
         if "msg" not in item:
             continue
 
+        # We need the attrs
+        if "attr" not in item:
+            continue
+
+        # Compute reuse time
         re_use_time = convert_time(item["t"]["$date"])
-        if '"newState": "STARTUP2", "oldState": "REMOVED"' in line and re_use_time > removal_time:
+
+        # Get newstate and oldstate if present
+        newstate = item["attr"].get("newState", "")
+        oldstate = item["attr"].get("oldState", "")
+        if newstate == "STARTUP2" and oldstate == "REMOVED" and re_use_time > removal_time:
             return True
 
     return False
