@@ -86,6 +86,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_storage_re_use(ops_test, continuous_writes):
     """Verifies that database units with attached storage correctly repurpose storage.
 
@@ -116,7 +117,7 @@ async def test_storage_re_use(ops_test, continuous_writes):
     new_unit = await add_unit_with_storage(ops_test, app_name, unit_storage_id)
 
     assert await reused_storage(
-        ops_test, new_unit.public_address, removal_time
+        ops_test, new_unit.name, removal_time
     ), "attached storage not properly reused by MongoDB."
 
     # verify that the no writes were skipped
@@ -127,6 +128,7 @@ async def test_storage_re_use(ops_test, continuous_writes):
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_storage_re_use_different_cluster(ops_test: OpsTest, continuous_writes):
     """Tests that we can reuse storage from a different cluster.
 
@@ -282,6 +284,7 @@ async def test_scale_down_capablities(ops_test: OpsTest, continuous_writes) -> N
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_replication_across_members(ops_test: OpsTest, continuous_writes) -> None:
     """Check consistency, ie write to primary, read data from secondaries."""
     # first find primary, write to primary, then read from each unit
@@ -310,6 +313,7 @@ async def test_replication_across_members(ops_test: OpsTest, continuous_writes) 
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_unique_cluster_dbs(ops_test: OpsTest, continuous_writes) -> None:
     """Verify unique clusters do not share DBs."""
     # first find primary, write to primary,
@@ -360,6 +364,7 @@ async def test_unique_cluster_dbs(ops_test: OpsTest, continuous_writes) -> None:
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_replication_member_scaling(ops_test: OpsTest, continuous_writes) -> None:
     """Verify newly added and newly removed members properly replica data.
 
@@ -407,6 +412,7 @@ async def test_replication_member_scaling(ops_test: OpsTest, continuous_writes) 
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_kill_db_process(ops_test, continuous_writes):
     # locate primary unit
     app_name = await get_app_name(ops_test)
@@ -445,6 +451,7 @@ async def test_kill_db_process(ops_test, continuous_writes):
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_freeze_db_process(ops_test, continuous_writes):
     # locate primary unit
     app_name = await get_app_name(ops_test)
@@ -500,6 +507,7 @@ async def test_freeze_db_process(ops_test, continuous_writes):
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_restart_db_process(ops_test, continuous_writes):
     # locate primary unit
     app_name = await get_app_name(ops_test)
@@ -548,6 +556,7 @@ async def test_restart_db_process(ops_test, continuous_writes):
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_full_cluster_crash(ops_test: OpsTest, continuous_writes, reset_restart_delay):
     app_name = await get_app_name(ops_test)
 
@@ -600,6 +609,7 @@ async def test_full_cluster_crash(ops_test: OpsTest, continuous_writes, reset_re
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_full_cluster_restart(ops_test: OpsTest, continuous_writes, reset_restart_delay):
     app_name = await get_app_name(ops_test)
 
@@ -650,6 +660,7 @@ async def test_full_cluster_restart(ops_test: OpsTest, continuous_writes, reset_
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_network_cut(ops_test, continuous_writes):
     # locate primary unit
     app_name = await get_app_name(ops_test)
