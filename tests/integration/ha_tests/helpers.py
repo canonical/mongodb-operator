@@ -1,10 +1,10 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import calendar
 import json
 import logging
 import subprocess
-import time
 from datetime import datetime
 from pathlib import Path
 from subprocess import PIPE, check_output
@@ -641,10 +641,10 @@ async def verify_replica_set_configuration(ops_test: OpsTest, app_name=None) -> 
 
 
 def convert_time(time_as_str: str) -> int:
-    """Converts a string time representation to an integer time representation."""
+    """Converts a string time representation to an integer time representation, in UTC."""
     # parse time representation, provided in this format: 'YYYY-MM-DDTHH:MM:SS.MMM+00:00'
     d = datetime.strptime(time_as_str, "%Y-%m-%dT%H:%M:%S.%f%z")
-    return time.mktime(d.timetuple())
+    return calendar.timegm(d.timetuple())
 
 
 def cut_network_from_unit(machine_name: str) -> None:
