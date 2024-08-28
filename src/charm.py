@@ -1092,7 +1092,7 @@ class MongodbOperatorCharm(CharmBase):
                 logger.error(
                     "An exception occurred when installing %s. Reason: %s", snap_name, str(e)
                 )
-            raise
+                raise
 
     def _instatiate_keyfile(self, event: StartEvent) -> None:
         # wait for keyFile to be created by leader unit
