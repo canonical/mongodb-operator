@@ -114,9 +114,11 @@ async def test_storage_re_use(ops_test, continuous_writes):
     await ops_test.model.wait_for_idle(
         apps=[app_name], status="active", timeout=1000, wait_for_exact_units=expected_units
     )
-    new_unit = await ops_test.model.applications[app_name].add_unit(
-        count=1, attach_storage=[tag.storage(unit_storage_id)]
-    )
+    new_unit = (
+        await ops_test.model.applications[app_name].add_unit(
+            count=1, attach_storage=[tag.storage(unit_storage_id)]
+        )
+    )[0]
 
     await ops_test.model.wait_for_idle(apps=[app_name], status="active", timeout=1000)
 
