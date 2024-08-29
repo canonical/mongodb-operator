@@ -178,7 +178,7 @@ class Upgrade(AbstractUpgrade):
             resume_string = ""
             if len(self._sorted_units) > 1:
                 resume_string = (
-                    "Verify highest unit is healthy & run `{RESUME_ACTION_NAME}` action. "
+                    f"Verify highest unit is healthy & run `{RESUME_ACTION_NAME}` action. "
                 )
             return ops.BlockedStatus(
                 f"Upgrading. {resume_string}To rollback, `juju refresh` to last revision"
