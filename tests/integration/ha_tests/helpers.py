@@ -427,7 +427,7 @@ async def reused_storage(ops_test: OpsTest, unit_name: str, removal_time: float)
         if "msg" not in item:
             continue
 
-        # We need the attrs
+        # "attr" is needed and stores the state information and changes of mongodb
         if "attr" not in item:
             continue
 

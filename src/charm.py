@@ -9,7 +9,7 @@ import pwd
 import subprocess
 import time
 from pathlib import Path
-from typing import Dict, List, Mapping, Optional, Set
+from typing import Dict, List, Optional, Set
 
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from charms.mongodb.v0.config_server_interface import ClusterProvider
@@ -26,6 +26,7 @@ from charms.mongodb.v1.helpers import (
     generate_keyfile,
     generate_password,
     get_create_user_cmd,
+    safe_exec,
 )
 from charms.mongodb.v1.mongodb import MongoDBConnection, NotReadyError
 from charms.mongodb.v1.mongodb_backups import MongoDBBackups
@@ -590,35 +591,13 @@ class MongodbOperatorCharm(CharmBase):
 
         self._update_hosts(event)
 
-    def exec(
-        self,
-        command: list[str] | str,
-        env: Mapping[str, str] | None = None,
-        working_dir: str | None = None,
-    ) -> str:
-        """Execs a command on the workload in a safe way."""
-        try:
-            output = subprocess.check_output(
-                command,
-                stderr=subprocess.PIPE,
-                universal_newlines=True,
-                shell=isinstance(command, str),
-                env=env,
-                cwd=working_dir,
-            )
-            logger.debug(f"{output=}")
-            return output
-        except subprocess.CalledProcessError as err:
-            logger.error(f"cmd failed - {err.cmd = }, {err.stdout = }, {err.stderr = }")
-            raise
-
     def _on_storage_attached(self, event: StorageAttachedEvent) -> None:
         """Handler for `storage_attached` event.
 
         This should handle fixing the permissions for the data dir.
         """
-        self.exec(f"chmod -R 770 {Config.MONGODB_COMMON_PATH}".split())
-        self.exec(f"chown -R {Config.SNAP_USER}:root  {Config.MONGODB_COMMON_PATH}".split())
+        safe_exec(f"chmod -R 770 {Config.MONGODB_COMMON_PATH}".split())
+        safe_exec(f"chown -R {Config.SNAP_USER}:root  {Config.MONGODB_COMMON_PATH}".split())
 
     def _on_storage_detaching(self, event: StorageDetachingEvent) -> None:
         """Before storage detaches, allow removing unit to remove itself from the set.
