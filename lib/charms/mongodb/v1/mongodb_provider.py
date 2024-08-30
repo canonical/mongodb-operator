@@ -31,12 +31,13 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 11
+LIBPATCH = 12
 
 logger = logging.getLogger(__name__)
 REL_NAME = "database"
 MONGOS_RELATIONS = "cluster"
 MONGOS_CLIENT_RELATIONS = "mongos_proxy"
+EXTERNAL_CONNECTIVITY_TAG = "external-node-connectivity"
 
 # We expect the MongoDB container to use the default ports
 
@@ -301,6 +302,10 @@ class MongoDBProvider(Object):
         }
         if self.charm.is_role(Config.Role.MONGOS):
             mongo_args["port"] = Config.MONGOS_PORT
+            if self.substrate == Config.Substrate.K8S:
+                external = self.is_external_client(relation.id)
+                mongo_args["port"] = self.charm.get_mongos_port(external)
+                mongo_args["hosts"] = self.charm.get_mongos_hosts(external)
         else:
             mongo_args["replset"] = self.charm.app.name
 
@@ -395,6 +400,12 @@ class MongoDBProvider(Object):
             return MONGOS_CLIENT_RELATIONS
         else:
             return REL_NAME
+
+    def is_external_client(self, rel_id) -> bool:
+        return (
+            self.database_provides.fetch_relation_field(rel_id, EXTERNAL_CONNECTIVITY_TAG)
+            == "true"
+        )
 
     @staticmethod
     def _get_database_from_relation(relation: Relation) -> Optional[str]:
