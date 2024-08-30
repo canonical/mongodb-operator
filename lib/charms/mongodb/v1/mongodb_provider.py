@@ -402,6 +402,7 @@ class MongoDBProvider(Object):
             return REL_NAME
 
     def is_external_client(self, rel_id) -> bool:
+        """Returns true if the integrated client requests external connectivity."""
         return (
             self.database_provides.fetch_relation_field(rel_id, EXTERNAL_CONNECTIVITY_TAG)
             == "true"
