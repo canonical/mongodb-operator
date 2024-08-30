@@ -1,0 +1,127 @@
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/0 [idle] active: 
+  mongodb/1 [idle] active: 
+  mongodb/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/0 [idle] active: 
+  mongodb/1 [idle] active: 
+  mongodb/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/0 [idle] active: 
+  mongodb/1 [idle] active: 
+  mongodb/2 [idle] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.4.4    unsupported  02:04:51Z
+
+App                       Version  Status  Scale  Charm                     Channel        Rev  Exposed  Message
+mongodb                            active      3  mongodb                                    0  no       
+self-signed-certificates           active      1  self-signed-certificates  latest/stable  155  no       
+
+Unit                         Workload  Agent  Machine  Public address  Ports      Message
+mongodb/0                    active    idle   0        10.28.51.85     27017/tcp  
+mongodb/1                    active    idle   1        10.28.51.91     27017/tcp  
+mongodb/2*                   active    idle   2        10.28.51.100    27017/tcp  
+self-signed-certificates/0*  active    idle   3        10.28.51.60                
+
+Machine  State    Address       Inst id        Base          AZ  Message
+0        started  10.28.51.85   juju-dd6d25-0  ubuntu@22.04      Running
+1        started  10.28.51.91   juju-dd6d25-1  ubuntu@22.04      Running
+2        started  10.28.51.100  juju-dd6d25-2  ubuntu@22.04      Running
+3        started  10.28.51.60   juju-dd6d25-3  ubuntu@22.04      Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+machine-1: 01:44:26 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 01:44:26 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 01:44:26 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 01:44:26 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-2: 01:44:26 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-1: 01:44:26 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-0: 01:44:28 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 01:44:28 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-0: 01:44:28 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-2: 01:46:11 ERROR unit.mongodb/2.juju-log _on_secret_remove: Secret secret:cr8i8hovjhtia7va4m1g seems to have no observers, could be removed
+machine-3: 01:48:42 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 01:48:42 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-self-signed-certificates-0: 01:48:42 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-1: 01:49:15 ERROR unit.mongodb/1.juju-log certificates:2: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-mongodb-0: 01:49:15 ERROR unit.mongodb/0.juju-log certificates:2: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-mongodb-2: 01:49:15 ERROR unit.mongodb/2.juju-log certificates:2: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-mongodb-0: 01:49:15 ERROR unit.mongodb/0.juju-log certificates:2: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-mongodb-1: 01:49:15 ERROR unit.mongodb/1.juju-log certificates:2: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-mongodb-2: 01:49:15 ERROR unit.mongodb/2.juju-log certificates:2: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-mongodb-0: 01:50:28 ERROR unit.mongodb/0.juju-log _on_secret_remove: Secret secret:cr8ia6ovjhtia7va4m30 seems to have no observers, could be removed
+unit-mongodb-2: 01:50:28 ERROR unit.mongodb/2.juju-log _on_secret_remove: Secret secret:cr8ia6ovjhtia7va4m3g seems to have no observers, could be removed
+unit-mongodb-1: 01:50:29 ERROR unit.mongodb/1.juju-log _on_secret_remove: Secret secret:cr8ia6gvjhtia7va4m2g seems to have no observers, could be removed
+unit-mongodb-2: 01:50:29 ERROR unit.mongodb/2.juju-log _on_secret_remove: Secret secret:cr8ia6ovjhtia7va4m3g seems to have no observers, could be removed
+unit-mongodb-0: 01:50:29 ERROR unit.mongodb/0.juju-log _on_secret_remove: Secret secret:cr8ia6ovjhtia7va4m30 seems to have no observers, could be removed
+unit-mongodb-1: 01:50:29 ERROR unit.mongodb/1.juju-log _on_secret_remove: Secret secret:cr8ia6gvjhtia7va4m2g seems to have no observers, could be removed
+unit-mongodb-2: 01:51:24 ERROR unit.mongodb/2.juju-log _on_secret_remove: Secret secret:cr8ia6ovjhtia7va4m3g seems to have no observers, could be removed
+unit-mongodb-0: 01:51:30 ERROR unit.mongodb/0.juju-log _on_secret_remove: Secret secret:cr8ia6ovjhtia7va4m30 seems to have no observers, could be removed
+unit-mongodb-1: 01:51:44 ERROR unit.mongodb/1.juju-log _on_secret_remove: Secret secret:cr8ia6gvjhtia7va4m2g seems to have no observers, could be removed
+unit-mongodb-0: 01:53:41 ERROR unit.mongodb/0.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-0: 01:53:41 ERROR unit.mongodb/0.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-1: 01:53:43 ERROR unit.mongodb/1.juju-log _on_secret_remove: Secret secret:cr8ia6gvjhtia7va4m2g seems to have no observers, could be removed
+unit-mongodb-1: 01:53:44 ERROR unit.mongodb/1.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-1: 01:53:44 ERROR unit.mongodb/1.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-1: 01:54:47 ERROR unit.mongodb/1.juju-log _on_secret_remove: Secret secret:cr8ia6gvjhtia7va4m2g seems to have no observers, could be removed
+unit-mongodb-0: 01:54:47 ERROR unit.mongodb/0.juju-log _on_secret_remove: Secret secret:cr8ia6ovjhtia7va4m30 seems to have no observers, could be removed
+unit-mongodb-1: 01:54:48 ERROR unit.mongodb/1.juju-log _on_secret_remove: Secret secret:cr8ia6gvjhtia7va4m2g seems to have no observers, could be removed
+unit-mongodb-0: 01:54:48 ERROR unit.mongodb/0.juju-log _on_secret_remove: Secret secret:cr8ia6ovjhtia7va4m30 seems to have no observers, could be removed
+unit-mongodb-0: 01:54:49 ERROR unit.mongodb/0.juju-log _on_secret_remove: Secret secret:cr8ia6ovjhtia7va4m30 seems to have no observers, could be removed
+unit-mongodb-0: 01:54:50 ERROR unit.mongodb/0.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-0: 01:54:50 ERROR unit.mongodb/0.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-1: 01:54:51 ERROR unit.mongodb/1.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-1: 01:54:51 ERROR unit.mongodb/1.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-2: 01:54:51 ERROR unit.mongodb/2.juju-log _on_secret_remove: Secret secret:cr8ia6ovjhtia7va4m3g seems to have no observers, could be removed
+unit-mongodb-2: 01:54:52 ERROR unit.mongodb/2.juju-log _on_secret_remove: Secret secret:cr8ia6ovjhtia7va4m3g seems to have no observers, could be removed
+unit-mongodb-2: 01:54:53 ERROR unit.mongodb/2.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-2: 01:54:53 ERROR unit.mongodb/2.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-0: 01:55:51 ERROR unit.mongodb/0.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-0: 01:55:52 ERROR unit.mongodb/0.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-1: 01:55:52 ERROR unit.mongodb/1.juju-log _on_secret_remove: Secret secret:cr8ia6gvjhtia7va4m2g seems to have no observers, could be removed
+unit-mongodb-2: 01:55:52 ERROR unit.mongodb/2.juju-log _on_secret_remove: Secret secret:cr8ia6ovjhtia7va4m3g seems to have no observers, could be removed
+unit-mongodb-2: 01:55:53 ERROR unit.mongodb/2.juju-log _on_secret_remove: Secret secret:cr8ia6ovjhtia7va4m3g seems to have no observers, could be removed
+unit-mongodb-0: 01:56:13 ERROR unit.mongodb/0.juju-log _on_secret_remove: Secret secret:cr8ia6ovjhtia7va4m30 seems to have no observers, could be removed
+unit-mongodb-0: 01:56:14 ERROR unit.mongodb/0.juju-log _on_secret_remove: Secret secret:cr8ia6ovjhtia7va4m30 seems to have no observers, could be removed
+unit-mongodb-2: 01:59:05 ERROR unit.mongodb/2.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-2: 01:59:05 ERROR unit.mongodb/2.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-0: 01:59:06 ERROR unit.mongodb/0.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-0: 01:59:06 ERROR unit.mongodb/0.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-0: 01:59:06 ERROR unit.mongodb/0.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-0: 01:59:06 ERROR unit.mongodb/0.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-1: 01:59:08 ERROR unit.mongodb/1.juju-log _on_secret_remove: Secret secret:cr8ia6gvjhtia7va4m2g seems to have no observers, could be removed
+unit-mongodb-1: 01:59:09 ERROR unit.mongodb/1.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-1: 01:59:09 ERROR unit.mongodb/1.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-1: 01:59:09 ERROR unit.mongodb/1.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-1: 01:59:09 ERROR unit.mongodb/1.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-0: 02:00:11 ERROR unit.mongodb/0.juju-log _on_secret_remove: Secret secret:cr8ia6ovjhtia7va4m30 seems to have no observers, could be removed
+unit-mongodb-0: 02:00:12 ERROR unit.mongodb/0.juju-log _on_secret_remove: Secret secret:cr8ia6ovjhtia7va4m30 seems to have no observers, could be removed
+unit-mongodb-0: 02:00:13 ERROR unit.mongodb/0.juju-log _on_secret_remove: Secret secret:cr8ia6ovjhtia7va4m30 seems to have no observers, could be removed
+unit-mongodb-2: 02:00:13 ERROR unit.mongodb/2.juju-log _on_secret_remove: Secret secret:cr8ia6ovjhtia7va4m3g seems to have no observers, could be removed
+unit-mongodb-1: 02:00:14 ERROR unit.mongodb/1.juju-log _on_secret_remove: Secret secret:cr8ia6gvjhtia7va4m2g seems to have no observers, could be removed
+unit-mongodb-0: 02:00:14 ERROR unit.mongodb/0.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-0: 02:00:14 ERROR unit.mongodb/0.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-0: 02:00:14 ERROR unit.mongodb/0.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-0: 02:00:14 ERROR unit.mongodb/0.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-2: 02:00:14 ERROR unit.mongodb/2.juju-log _on_secret_remove: Secret secret:cr8ia6ovjhtia7va4m3g seems to have no observers, could be removed
+unit-mongodb-1: 02:00:14 ERROR unit.mongodb/1.juju-log _on_secret_remove: Secret secret:cr8ia6gvjhtia7va4m2g seems to have no observers, could be removed
+unit-mongodb-2: 02:00:15 ERROR unit.mongodb/2.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-2: 02:00:15 ERROR unit.mongodb/2.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-2: 02:00:15 ERROR unit.mongodb/2.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-1: 02:00:15 ERROR unit.mongodb/1.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-2: 02:00:15 ERROR unit.mongodb/2.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-1: 02:00:15 ERROR unit.mongodb/1.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-1: 02:00:16 ERROR unit.mongodb/1.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-1: 02:00:16 ERROR unit.mongodb/1.juju-log certificates:2: An unknown certificate is available -- ignoring.
+unit-mongodb-1: 02:01:12 ERROR unit.mongodb/1.juju-log _on_secret_remove: Secret secret:cr8ia6gvjhtia7va4m2g seems to have no observers, could be removed
+unit-mongodb-2: 02:01:14 ERROR unit.mongodb/2.juju-log _on_secret_remove: Secret secret:cr8ia6ovjhtia7va4m3g seems to have no observers, could be removed
+unit-mongodb-2: 02:01:15 ERROR unit.mongodb/2.juju-log _on_secret_remove: Secret secret:cr8ia6ovjhtia7va4m3g seems to have no observers, could be removed
+unit-mongodb-0: 02:01:31 ERROR unit.mongodb/0.juju-log _on_secret_remove: Secret secret:cr8ia6ovjhtia7va4m30 seems to have no observers, could be removed
+unit-mongodb-2: 02:03:40 ERROR unit.mongodb/2.juju-log _on_secret_remove: Secret secret:cr8ia6ovjhtia7va4m3g seems to have no observers, could be removed
+unit-mongodb-1: 02:03:40 ERROR unit.mongodb/1.juju-log _on_secret_remove: Secret secret:cr8ia6gvjhtia7va4m2g seems to have no observers, could be removed
+unit-mongodb-0: 02:03:40 ERROR unit.mongodb/0.juju-log _on_secret_remove: Secret secret:cr8ia6ovjhtia7va4m30 seems to have no observers, could be removed
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...

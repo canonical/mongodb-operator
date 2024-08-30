@@ -1,0 +1,748 @@
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:725 Scaling up by 3 units
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:740 Waiting for idle
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/3 [idle] active: 
+  mongodb/28 [idle] active: 
+  mongodb/29 [idle] active: 
+  mongodb/30 [idle] active: 
+  mongodb/31 [allocating] waiting: waiting for machine
+  mongodb/32 [allocating] waiting: waiting for machine
+  mongodb/33 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/31 [allocating] waiting: waiting for machine
+  mongodb/32 [allocating] waiting: waiting for machine
+  mongodb/33 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/31 [allocating] waiting: waiting for machine
+  mongodb/32 [allocating] waiting: waiting for machine
+  mongodb/33 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/31 [allocating] waiting: waiting for machine
+  mongodb/32 [allocating] waiting: agent initialising
+  mongodb/33 [allocating] waiting: agent initialising
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/31 [executing] maintenance: installing MongoDB
+  mongodb/32 [executing] maintenance: installing MongoDB
+  mongodb/33 [executing] maintenance: installing MongoDB
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/3 [executing] active: 
+  mongodb/28 [executing] active: 
+  mongodb/29 [executing] active: 
+  mongodb/30 [idle] active: 
+  mongodb/31 [executing] active: 
+  mongodb/32 [executing] active: 
+  mongodb/33 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/3 [idle] active: 
+  mongodb/31 [executing] active: 
+  mongodb/32 [executing] active: 
+  mongodb/33 [executing] active: 
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:746 Validating replica set has primary
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:728 Scaling down by 3 units
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:738 Units to remove ['mongodb/3', 'mongodb/28', 'mongodb/29']
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:740 Waiting for idle
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/3 [executing] active: 
+  mongodb/28 [executing] active: 
+  mongodb/29 [executing] active: 
+  mongodb/30 [executing] active: 
+  mongodb/31 [executing] active: 
+  mongodb/32 [executing] active: 
+  mongodb/33 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/3 [executing] maintenance: stopping charm software
+  mongodb/28 [executing] active: 
+  mongodb/29 [executing] maintenance: cleaning up prior to charm deletion
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:746 Validating replica set has primary
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:725 Scaling up by 4 units
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:740 Waiting for idle
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/30 [idle] active: Primary
+  mongodb/31 [idle] active: 
+  mongodb/32 [idle] active: 
+  mongodb/33 [idle] active: 
+  mongodb/34 [allocating] waiting: waiting for machine
+  mongodb/35 [allocating] waiting: waiting for machine
+  mongodb/36 [allocating] waiting: waiting for machine
+  mongodb/37 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/34 [allocating] waiting: waiting for machine
+  mongodb/35 [allocating] waiting: waiting for machine
+  mongodb/36 [allocating] waiting: waiting for machine
+  mongodb/37 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/34 [allocating] waiting: waiting for machine
+  mongodb/35 [allocating] waiting: waiting for machine
+  mongodb/36 [allocating] waiting: waiting for machine
+  mongodb/37 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/34 [allocating] waiting: waiting for machine
+  mongodb/35 [allocating] waiting: waiting for machine
+  mongodb/36 [allocating] waiting: waiting for machine
+  mongodb/37 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/34 [executing] waiting: agent initialising
+  mongodb/35 [executing] waiting: agent initialising
+  mongodb/36 [allocating] waiting: agent initialising
+  mongodb/37 [allocating] waiting: agent initialising
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/30 [executing] active: Primary
+  mongodb/31 [executing] active: 
+  mongodb/32 [executing] active: 
+  mongodb/33 [executing] active: 
+  mongodb/34 [executing] maintenance: installing MongoDB
+  mongodb/35 [executing] maintenance: installing MongoDB
+  mongodb/36 [executing] maintenance: installing MongoDB
+  mongodb/37 [executing] maintenance: installing MongoDB
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/30 [idle] active: 
+  mongodb/31 [idle] active: 
+  mongodb/32 [idle] active: 
+  mongodb/33 [executing] active: 
+  mongodb/34 [executing] active: 
+  mongodb/35 [executing] active: 
+  mongodb/36 [executing] active: 
+  mongodb/37 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/33 [idle] active: 
+  mongodb/34 [executing] active: 
+  mongodb/35 [executing] active: 
+  mongodb/36 [executing] active: 
+  mongodb/37 [executing] active: 
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:746 Validating replica set has primary
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:728 Scaling down by 4 units
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:738 Units to remove ['mongodb/30', 'mongodb/31', 'mongodb/32', 'mongodb/33']
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:740 Waiting for idle
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/30 [executing] active: 
+  mongodb/31 [executing] active: 
+  mongodb/32 [executing] active: 
+  mongodb/33 [executing] active: 
+  mongodb/34 [executing] active: 
+  mongodb/35 [executing] active: 
+  mongodb/36 [executing] active: 
+  mongodb/37 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/30 [executing] active: 
+  mongodb/31 [executing] active: 
+  mongodb/32 [executing] terminated: 
+  mongodb/33 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/34 [idle] active: 
+  mongodb/35 [idle] active: 
+  mongodb/36 [idle] active: 
+  mongodb/37 [idle] active: 
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:746 Validating replica set has primary
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:725 Scaling up by 5 units
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:740 Waiting for idle
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/34 [idle] active: 
+  mongodb/35 [idle] active: 
+  mongodb/36 [idle] active: 
+  mongodb/37 [idle] active: 
+  mongodb/38 [allocating] waiting: waiting for machine
+  mongodb/39 [allocating] waiting: waiting for machine
+  mongodb/40 [allocating] waiting: waiting for machine
+  mongodb/41 [allocating] waiting: waiting for machine
+  mongodb/42 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/38 [allocating] waiting: waiting for machine
+  mongodb/39 [allocating] waiting: waiting for machine
+  mongodb/40 [allocating] waiting: waiting for machine
+  mongodb/41 [allocating] waiting: waiting for machine
+  mongodb/42 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/38 [allocating] waiting: waiting for machine
+  mongodb/39 [allocating] waiting: waiting for machine
+  mongodb/40 [allocating] waiting: waiting for machine
+  mongodb/41 [allocating] waiting: waiting for machine
+  mongodb/42 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/34 [idle] active: Primary
+  mongodb/35 [idle] active: 
+  mongodb/36 [idle] active: 
+  mongodb/37 [idle] active: 
+  mongodb/38 [allocating] waiting: waiting for machine
+  mongodb/39 [allocating] waiting: waiting for machine
+  mongodb/40 [allocating] waiting: waiting for machine
+  mongodb/41 [allocating] waiting: waiting for machine
+  mongodb/42 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/38 [allocating] waiting: agent initialising
+  mongodb/39 [allocating] waiting: agent initialising
+  mongodb/40 [allocating] waiting: agent initialising
+  mongodb/41 [allocating] waiting: agent initialising
+  mongodb/42 [allocating] waiting: agent initialising
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/34 [executing] active: 
+  mongodb/35 [executing] active: 
+  mongodb/36 [executing] active: 
+  mongodb/37 [executing] active: 
+  mongodb/38 [executing] maintenance: installing MongoDB
+  mongodb/39 [executing] maintenance: installing MongoDB
+  mongodb/40 [executing] maintenance: installing MongoDB
+  mongodb/41 [executing] maintenance: installing MongoDB
+  mongodb/42 [executing] maintenance: installing MongoDB
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/34 [executing] active: 
+  mongodb/35 [executing] active: 
+  mongodb/36 [executing] active: 
+  mongodb/37 [executing] active: 
+  mongodb/38 [executing] active: 
+  mongodb/39 [executing] active: 
+  mongodb/40 [executing] active: 
+  mongodb/41 [executing] active: 
+  mongodb/42 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/35 [executing] active: 
+  mongodb/38 [executing] active: 
+  mongodb/39 [executing] active: 
+  mongodb/40 [executing] active: 
+  mongodb/41 [executing] active: 
+  mongodb/42 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/35 [idle] active: 
+  mongodb/38 [idle] active: 
+  mongodb/39 [idle] active: 
+  mongodb/40 [idle] active: 
+  mongodb/41 [idle] active: 
+  mongodb/42 [idle] active: 
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:746 Validating replica set has primary
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:728 Scaling down by 5 units
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:738 Units to remove ['mongodb/34', 'mongodb/35', 'mongodb/36', 'mongodb/37', 'mongodb/38']
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:740 Waiting for idle
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/34 [executing] active: 
+  mongodb/35 [executing] active: 
+  mongodb/36 [executing] active: 
+  mongodb/37 [executing] active: 
+  mongodb/38 [executing] active: 
+  mongodb/39 [executing] active: 
+  mongodb/40 [executing] active: 
+  mongodb/41 [executing] active: 
+  mongodb/42 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/34 [executing] active: 
+  mongodb/35 [executing] active: 
+  mongodb/36 [executing] active: 
+  mongodb/37 [executing] active: 
+  mongodb/38 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/39 [idle] active: 
+  mongodb/42 [idle] active: 
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:746 Validating replica set has primary
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:725 Scaling up by 6 units
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:740 Waiting for idle
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/39 [idle] active: 
+  mongodb/40 [idle] active: 
+  mongodb/41 [idle] active: 
+  mongodb/42 [idle] active: 
+  mongodb/43 [allocating] waiting: waiting for machine
+  mongodb/44 [allocating] waiting: waiting for machine
+  mongodb/45 [allocating] waiting: waiting for machine
+  mongodb/46 [allocating] waiting: waiting for machine
+  mongodb/47 [allocating] waiting: waiting for machine
+  mongodb/48 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/43 [allocating] waiting: waiting for machine
+  mongodb/44 [allocating] waiting: waiting for machine
+  mongodb/45 [allocating] waiting: waiting for machine
+  mongodb/46 [allocating] waiting: waiting for machine
+  mongodb/47 [allocating] waiting: waiting for machine
+  mongodb/48 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/43 [allocating] waiting: waiting for machine
+  mongodb/44 [allocating] waiting: waiting for machine
+  mongodb/45 [allocating] waiting: waiting for machine
+  mongodb/46 [allocating] waiting: waiting for machine
+  mongodb/47 [allocating] waiting: waiting for machine
+  mongodb/48 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/43 [allocating] waiting: waiting for machine
+  mongodb/44 [allocating] waiting: waiting for machine
+  mongodb/45 [allocating] waiting: waiting for machine
+  mongodb/46 [allocating] waiting: waiting for machine
+  mongodb/47 [allocating] waiting: waiting for machine
+  mongodb/48 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/39 [executing] active: Primary
+  mongodb/40 [executing] active: 
+  mongodb/41 [executing] active: 
+  mongodb/42 [executing] active: 
+  mongodb/43 [allocating] waiting: agent initialising
+  mongodb/44 [allocating] waiting: agent initialising
+  mongodb/45 [allocating] waiting: agent initialising
+  mongodb/46 [allocating] waiting: agent initialising
+  mongodb/47 [allocating] waiting: agent initialising
+  mongodb/48 [allocating] waiting: agent initialising
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/43 [executing] maintenance: installing MongoDB
+  mongodb/44 [executing] maintenance: installing MongoDB
+  mongodb/45 [executing] maintenance: installing MongoDB
+  mongodb/46 [executing] maintenance: installing MongoDB
+  mongodb/47 [executing] maintenance: installing MongoDB
+  mongodb/48 [executing] maintenance: installing MongoDB
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/39 [executing] active: 
+  mongodb/40 [executing] active: 
+  mongodb/41 [executing] active: 
+  mongodb/42 [executing] active: 
+  mongodb/43 [executing] active: 
+  mongodb/44 [executing] active: 
+  mongodb/45 [executing] maintenance: starting MongoDB
+  mongodb/46 [executing] maintenance: installing MongoDB
+  mongodb/47 [executing] maintenance: starting MongoDB
+  mongodb/48 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/39 [executing] active: 
+  mongodb/40 [executing] active: 
+  mongodb/41 [executing] active: 
+  mongodb/42 [executing] active: 
+  mongodb/43 [executing] active: 
+  mongodb/44 [executing] active: 
+  mongodb/45 [executing] active: 
+  mongodb/46 [executing] active: 
+  mongodb/47 [executing] active: 
+  mongodb/48 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/40 [executing] active: 
+  mongodb/43 [executing] active: 
+  mongodb/44 [executing] active: 
+  mongodb/45 [executing] active: 
+  mongodb/46 [executing] active: 
+  mongodb/47 [executing] active: 
+  mongodb/48 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/40 [idle] active: 
+  mongodb/43 [idle] active: 
+  mongodb/44 [idle] active: 
+  mongodb/45 [idle] active: 
+  mongodb/46 [executing] active: 
+  mongodb/47 [idle] active: 
+  mongodb/48 [idle] active: 
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:746 Validating replica set has primary
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:728 Scaling down by 6 units
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:738 Units to remove ['mongodb/39', 'mongodb/40', 'mongodb/41', 'mongodb/42', 'mongodb/43', 'mongodb/44']
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:740 Waiting for idle
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/39 [executing] active: 
+  mongodb/40 [executing] active: 
+  mongodb/41 [executing] active: 
+  mongodb/42 [executing] active: 
+  mongodb/43 [executing] active: 
+  mongodb/44 [executing] active: 
+  mongodb/45 [executing] active: 
+  mongodb/46 [executing] active: 
+  mongodb/47 [executing] active: 
+  mongodb/48 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/39 [executing] active: 
+  mongodb/40 [executing] active: 
+  mongodb/41 [executing] active: 
+  mongodb/42 [executing] active: 
+  mongodb/43 [executing] active: 
+  mongodb/44 [executing] active: 
+  mongodb/45 [idle] active: 
+  mongodb/46 [idle] active: 
+  mongodb/47 [idle] active: 
+  mongodb/48 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/39 [executing] active: 
+  mongodb/41 [executing] active: 
+  mongodb/42 [executing] terminated: 
+  mongodb/43 [executing] active: 
+  mongodb/44 [executing] maintenance: stopping charm software
+  mongodb/45 [idle] active: 
+  mongodb/46 [idle] active: 
+  mongodb/47 [idle] active: 
+  mongodb/48 [idle] active: 
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:746 Validating replica set has primary
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:725 Scaling up by 7 units
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:740 Waiting for idle
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/45 [idle] active: 
+  mongodb/46 [idle] active: 
+  mongodb/47 [idle] active: 
+  mongodb/48 [idle] active: 
+  mongodb/49 [allocating] waiting: waiting for machine
+  mongodb/50 [allocating] waiting: waiting for machine
+  mongodb/51 [allocating] waiting: waiting for machine
+  mongodb/52 [allocating] waiting: waiting for machine
+  mongodb/53 [allocating] waiting: waiting for machine
+  mongodb/54 [allocating] waiting: waiting for machine
+  mongodb/55 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/49 [allocating] waiting: waiting for machine
+  mongodb/50 [allocating] waiting: waiting for machine
+  mongodb/51 [allocating] waiting: waiting for machine
+  mongodb/52 [allocating] waiting: waiting for machine
+  mongodb/53 [allocating] waiting: waiting for machine
+  mongodb/54 [allocating] waiting: waiting for machine
+  mongodb/55 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/49 [allocating] waiting: waiting for machine
+  mongodb/50 [allocating] waiting: waiting for machine
+  mongodb/51 [allocating] waiting: waiting for machine
+  mongodb/52 [allocating] waiting: waiting for machine
+  mongodb/53 [allocating] waiting: waiting for machine
+  mongodb/54 [allocating] waiting: waiting for machine
+  mongodb/55 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/45 [idle] active: 
+  mongodb/46 [idle] active: 
+  mongodb/47 [idle] active: 
+  mongodb/48 [idle] active: Primary
+  mongodb/49 [allocating] waiting: waiting for machine
+  mongodb/50 [allocating] waiting: waiting for machine
+  mongodb/51 [allocating] waiting: waiting for machine
+  mongodb/52 [allocating] waiting: waiting for machine
+  mongodb/53 [allocating] waiting: waiting for machine
+  mongodb/54 [allocating] waiting: waiting for machine
+  mongodb/55 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/49 [allocating] waiting: waiting for machine
+  mongodb/50 [allocating] waiting: waiting for machine
+  mongodb/51 [allocating] waiting: waiting for machine
+  mongodb/52 [allocating] waiting: waiting for machine
+  mongodb/53 [allocating] waiting: waiting for machine
+  mongodb/54 [allocating] waiting: waiting for machine
+  mongodb/55 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/49 [allocating] waiting: agent initialising
+  mongodb/50 [allocating] waiting: agent initialising
+  mongodb/51 [allocating] waiting: agent initialising
+  mongodb/52 [allocating] waiting: agent initialising
+  mongodb/53 [allocating] waiting: agent initialising
+  mongodb/54 [allocating] waiting: agent initialising
+  mongodb/55 [allocating] waiting: agent initialising
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/45 [executing] active: 
+  mongodb/46 [executing] active: 
+  mongodb/47 [executing] active: 
+  mongodb/48 [executing] active: Primary
+  mongodb/49 [executing] maintenance: installing MongoDB
+  mongodb/50 [executing] maintenance: installing MongoDB
+  mongodb/51 [executing] maintenance: installing MongoDB
+  mongodb/52 [executing] maintenance: installing MongoDB
+  mongodb/53 [executing] maintenance: installing MongoDB
+  mongodb/54 [executing] maintenance: installing MongoDB
+  mongodb/55 [executing] maintenance: installing MongoDB
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/45 [executing] active: 
+  mongodb/46 [executing] active: 
+  mongodb/47 [executing] active: 
+  mongodb/48 [executing] active: 
+  mongodb/49 [executing] active: 
+  mongodb/50 [executing] active: 
+  mongodb/51 [executing] maintenance: installing MongoDB
+  mongodb/52 [executing] maintenance: starting MongoDB
+  mongodb/53 [executing] maintenance: installing MongoDB
+  mongodb/54 [executing] maintenance: starting MongoDB
+  mongodb/55 [executing] maintenance: installing MongoDB
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/45 [executing] active: 
+  mongodb/46 [executing] active: 
+  mongodb/47 [executing] active: 
+  mongodb/48 [executing] active: 
+  mongodb/49 [executing] active: 
+  mongodb/50 [executing] active: 
+  mongodb/51 [executing] active: 
+  mongodb/52 [executing] active: 
+  mongodb/53 [executing] active: 
+  mongodb/54 [executing] active: 
+  mongodb/55 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/45 [executing] active: 
+  mongodb/49 [executing] active: 
+  mongodb/50 [executing] active: 
+  mongodb/51 [executing] active: 
+  mongodb/52 [executing] active: 
+  mongodb/53 [executing] active: 
+  mongodb/54 [executing] active: 
+  mongodb/55 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/45 [executing] active: 
+  mongodb/49 [executing] active: 
+  mongodb/50 [executing] active: 
+  mongodb/51 [executing] active: 
+  mongodb/52 [executing] active: 
+  mongodb/53 [executing] active: 
+  mongodb/54 [executing] active: 
+  mongodb/55 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/45 [idle] active: 
+  mongodb/50 [idle] active: 
+  mongodb/51 [idle] active: 
+  mongodb/52 [idle] active: 
+  mongodb/53 [idle] active: 
+  mongodb/54 [idle] active: 
+  mongodb/55 [idle] active: 
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:746 Validating replica set has primary
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:728 Scaling down by 7 units
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:738 Units to remove ['mongodb/45', 'mongodb/46', 'mongodb/47', 'mongodb/48', 'mongodb/49', 'mongodb/50', 'mongodb/51']
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:740 Waiting for idle
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/45 [executing] active: 
+  mongodb/46 [executing] active: 
+  mongodb/47 [executing] active: 
+  mongodb/48 [executing] active: 
+  mongodb/49 [executing] active: 
+  mongodb/50 [executing] active: 
+  mongodb/51 [executing] active: 
+  mongodb/52 [executing] active: 
+  mongodb/53 [executing] active: 
+  mongodb/54 [executing] active: 
+  mongodb/55 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/45 [executing] active: 
+  mongodb/46 [executing] active: 
+  mongodb/47 [executing] active: 
+  mongodb/48 [executing] active: 
+  mongodb/49 [executing] active: 
+  mongodb/50 [executing] active: 
+  mongodb/51 [executing] active: 
+  mongodb/52 [idle] active: 
+  mongodb/53 [idle] active: 
+  mongodb/54 [idle] active: 
+  mongodb/55 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/45 [executing] terminated: 
+  mongodb/46 [executing] active: 
+  mongodb/48 [executing] active: 
+  mongodb/49 [executing] active: 
+  mongodb/50 [executing] active: 
+  mongodb/51 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  mongodb/52 [executing] active: 
+  mongodb/53 [executing] active: 
+  mongodb/54 [executing] active: 
+  mongodb/55 [executing] active: 
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:746 Validating replica set has primary
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.4.4    unsupported  03:10:35Z
+
+App                 Version  Status  Scale  Charm    Channel  Rev  Exposed  Message
+another-database-a           active      1  mongodb             1  no       
+mongodb                      active      4  mongodb             0  no       
+
+Unit                   Workload  Agent  Machine  Public address  Ports      Message
+another-database-a/0*  active    idle   5        10.15.102.15    27017/tcp  Primary
+mongodb/52             active    idle   53       10.15.102.139   27017/tcp  
+mongodb/53             active    idle   54       10.15.102.151   27017/tcp  
+mongodb/54             active    idle   55       10.15.102.224   27017/tcp  
+mongodb/55*            active    idle   56       10.15.102.30    27017/tcp  
+
+Machine  State    Address        Inst id         Base          AZ  Message
+5        started  10.15.102.15   juju-ca6d82-5   ubuntu@22.04      Running
+53       started  10.15.102.139  juju-ca6d82-53  ubuntu@22.04      Running
+54       started  10.15.102.151  juju-ca6d82-54  ubuntu@22.04      Running
+55       started  10.15.102.224  juju-ca6d82-55  ubuntu@22.04      Running
+56       started  10.15.102.30   juju-ca6d82-56  ubuntu@22.04      Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+machine-2: 01:40:59 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 01:40:59 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-2: 01:41:00 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-1: 01:41:00 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 01:41:00 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-1: 01:41:00 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-0: 01:41:00 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 01:41:00 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-0: 01:41:01 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-2: 01:42:03 ERROR unit.mongodb/2.juju-log _on_secret_remove: Secret secret:cr8i6lopbp1ib65dajig seems to have no observers, could be removed
+machine-3: 01:43:50 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 01:43:50 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-3: 01:43:50 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-4: 01:43:52 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-4: 01:43:52 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-4: 01:43:52 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-5: 01:47:52 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-5: 01:47:52 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-another-database-a-0: 01:47:52 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-another-database-a-0: 01:48:43 ERROR unit.another-database-a/0.juju-log _on_secret_remove: Secret secret:cr8i9popbp1ib65dajj0 seems to have no observers, could be removed
+machine-6: 01:50:13 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-6: 01:50:13 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-5: 01:50:13 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-3: 02:03:01 ERROR unit.mongodb/3.juju-log Deferring process_unremoved_units: error=ServerSelectionTimeoutError('No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66d12854eae5552406d9e32f, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription (\'10.15.102.116\', 27017) server_type: RSSecondary, rtt: 0.0006076099998608697>, <ServerDescription (\'10.15.102.134\', 27017) server_type: RSSecondary, rtt: 0.0016778179997345433>, <ServerDescription (\'10.15.102.244\', 27017) server_type: RSSecondary, rtt: 0.0006146129999251571>, <ServerDescription (\'10.15.102.25\', 27017) server_type: RSSecondary, rtt: 0.0005965600003037252>]>')
+unit-mongodb-3: 02:03:02 ERROR unit.mongodb/3.juju-log Deferring on updating app relation data since: error: ServerSelectionTimeoutError('No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66d12855eae5552406d9e330, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription (\'10.15.102.116\', 27017) server_type: RSSecondary, rtt: 0.0008210599999074475>, <ServerDescription (\'10.15.102.134\', 27017) server_type: RSSecondary, rtt: 0.0008151890006047324>, <ServerDescription (\'10.15.102.244\', 27017) server_type: RSSecondary, rtt: 0.0007154819995776052>, <ServerDescription (\'10.15.102.25\', 27017) server_type: RSSecondary, rtt: 0.00048671399963495787>]>')
+unit-mongodb-3: 02:03:03 ERROR unit.mongodb/3.juju-log Deferring reconfigure: error=ServerSelectionTimeoutError('No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66d12856eae5552406d9e331, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription (\'10.15.102.116\', 27017) server_type: RSSecondary, rtt: 0.0004487120004341705>, <ServerDescription (\'10.15.102.134\', 27017) server_type: RSSecondary, rtt: 0.00045305999992706347>, <ServerDescription (\'10.15.102.244\', 27017) server_type: RSSecondary, rtt: 0.000602650000473659>, <ServerDescription (\'10.15.102.25\', 27017) server_type: RSSecondary, rtt: 0.00043292200007272186>]>')
+machine-0: 02:04:30 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: api connection broken unexpectedly
+machine-0: 02:04:34 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [3bde5e] "machine-0" cannot open api: unable to connect to API: dial tcp 10.15.102.69:17070: connect: network is unreachable
+machine-0: 02:04:37 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [3bde5e] "machine-0" cannot open api: unable to connect to API: dial tcp 10.15.102.69:17070: connect: network is unreachable
+machine-0: 02:04:42 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [3bde5e] "machine-0" cannot open api: unable to connect to API: dial tcp 10.15.102.69:17070: connect: network is unreachable
+machine-0: 02:04:48 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [3bde5e] "machine-0" cannot open api: unable to connect to API: dial tcp 10.15.102.69:17070: connect: network is unreachable
+machine-8: 02:11:53 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-8: 02:11:53 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-7: 02:11:54 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-7: 02:11:54 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-7: 02:11:54 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-6: 02:11:54 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-9: 02:11:55 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-9: 02:11:55 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-8: 02:11:55 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-3: 02:14:56 ERROR juju.worker.dependency "storage-provisioner" manifold worker returned unexpected error: getting life of filesystem 13/13: permission denied
+machine-13: 02:16:35 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-13: 02:16:35 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-11: 02:16:35 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-11: 02:16:35 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-12: 02:16:35 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-10: 02:16:36 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-12: 02:16:36 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-12: 02:16:36 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-11: 02:16:37 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-3: 02:16:37 ERROR juju.worker.dependency "storage-provisioner" manifold worker returned unexpected error: getting life of filesystem 13/13: permission denied
+machine-10: 02:16:41 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-10: 02:16:41 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-9: 02:16:41 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-5: 02:19:59 ERROR juju.worker.dependency "storage-provisioner" manifold worker returned unexpected error: getting life of filesystem 15/15: permission denied
+machine-14: 02:21:54 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-14: 02:21:54 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-15: 02:21:54 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-15: 02:21:54 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-13: 02:21:54 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-14: 02:21:55 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-18: 02:21:55 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-18: 02:21:55 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-17: 02:21:55 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-17: 02:21:55 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-16: 02:21:56 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-17: 02:21:56 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-5: 02:21:57 ERROR juju.worker.dependency "storage-provisioner" manifold worker returned unexpected error: getting life of filesystem 15/15: permission denied
+machine-16: 02:21:58 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-16: 02:21:58 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-15: 02:21:58 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-11: 02:25:54 ERROR juju.api.watcher error trying to stop watcher: websocket: close sent
+machine-3: 02:26:20 ERROR juju.worker.dependency "storage-provisioner" manifold worker returned unexpected error: getting life of filesystem 23/23: permission denied
+machine-22: 02:28:35 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-22: 02:28:35 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-21: 02:28:35 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-24: 02:28:36 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-24: 02:28:36 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-20: 02:28:36 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-20: 02:28:36 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-23: 02:28:37 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-19: 02:28:37 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-19: 02:28:37 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-19: 02:28:37 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-18: 02:28:38 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-23: 02:28:39 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-23: 02:28:39 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-22: 02:28:40 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-3: 02:28:41 ERROR juju.worker.dependency "storage-provisioner" manifold worker returned unexpected error: getting life of filesystem 23/23: permission denied
+machine-21: 02:28:42 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-21: 02:28:42 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-20: 02:28:42 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-5: 02:33:33 ERROR juju.worker.dependency "storage-provisioner" manifold worker returned unexpected error: getting life of filesystem 25/25: permission denied
+machine-27: 02:36:01 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-27: 02:36:01 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-26: 02:36:02 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-25: 02:36:04 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-25: 02:36:04 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-24: 02:36:05 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-31: 02:36:06 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-31: 02:36:06 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-5: 02:36:07 ERROR juju.worker.dependency "storage-provisioner" manifold worker returned unexpected error: getting life of filesystem 25/25: permission denied
+unit-mongodb-30: 02:36:07 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-28: 02:36:08 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-28: 02:36:08 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-27: 02:36:08 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-26: 02:36:09 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-26: 02:36:09 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-25: 02:36:10 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-29: 02:36:10 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-29: 02:36:10 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-28: 02:36:11 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-30: 02:36:11 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-30: 02:36:11 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-29: 02:36:12 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-3: 02:42:00 ERROR juju.worker.dependency "storage-provisioner" manifold worker returned unexpected error: getting life of filesystem 33/33: permission denied
+machine-33: 02:43:28 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-33: 02:43:28 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-32: 02:43:28 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-34: 02:43:28 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-34: 02:43:28 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-33: 02:43:28 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-3: 02:43:30 ERROR juju.worker.dependency "storage-provisioner" manifold worker returned unexpected error: getting life of filesystem 33/33: permission denied
+machine-32: 02:43:32 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-32: 02:43:32 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-31: 02:43:32 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-5: 02:46:31 ERROR juju.worker.dependency "storage-provisioner" manifold worker returned unexpected error: getting life of filesystem 35/35: permission denied
+machine-35: 02:48:07 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-35: 02:48:07 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-36: 02:48:07 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-36: 02:48:07 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-35: 02:48:07 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-34: 02:48:07 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-38: 02:48:09 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-38: 02:48:09 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-37: 02:48:09 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-5: 02:48:09 ERROR juju.worker.dependency "storage-provisioner" manifold worker returned unexpected error: getting life of filesystem 35/35: permission denied
+machine-37: 02:48:10 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-37: 02:48:10 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-36: 02:48:11 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-42: 02:53:15 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-42: 02:53:15 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-41: 02:53:16 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-41: 02:53:16 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-41: 02:53:16 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-40: 02:53:16 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-40: 02:53:19 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-39: 02:53:19 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-39: 02:53:19 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-40: 02:53:19 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-39: 02:53:19 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-43: 02:53:20 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-43: 02:53:20 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-38: 02:53:20 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-42: 02:53:20 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-38: 02:56:37 ERROR juju.api.watcher error trying to stop watcher: websocket: close sent
+machine-5: 02:56:51 ERROR juju.worker.dependency "storage-provisioner" manifold worker returned unexpected error: getting life of filesystem 45/45: permission denied
+machine-49: 02:58:40 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-49: 02:58:40 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-48: 02:58:40 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-45: 02:58:43 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-45: 02:58:43 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-44: 02:58:43 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-44: 02:58:43 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-44: 02:58:43 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-43: 02:58:44 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-5: 02:58:45 ERROR juju.worker.dependency "storage-provisioner" manifold worker returned unexpected error: getting life of filesystem 45/45: permission denied
+machine-48: 02:58:46 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-48: 02:58:46 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-47: 02:58:46 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-47: 02:58:47 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-47: 02:58:47 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-46: 02:58:47 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-46: 02:58:47 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-46: 02:58:47 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-45: 02:58:48 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-43: 03:02:42 ERROR juju.api.watcher error trying to stop watcher: websocket: close sent
+machine-5: 03:02:58 ERROR juju.worker.dependency "storage-provisioner" manifold worker returned unexpected error: getting life of filesystem 55/55: permission denied
+machine-50: 03:05:07 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-49: 03:05:07 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-50: 03:05:07 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-51: 03:05:08 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-51: 03:05:08 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-50: 03:05:08 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-54: 03:05:11 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-54: 03:05:11 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-53: 03:05:11 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-56: 03:05:14 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-56: 03:05:14 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-55: 03:05:15 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-55: 03:05:15 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-55: 03:05:15 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-54: 03:05:16 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-5: 03:05:17 ERROR juju.worker.dependency "storage-provisioner" manifold worker returned unexpected error: getting life of filesystem 55/55: permission denied
+machine-53: 03:05:18 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-53: 03:05:18 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-52: 03:05:18 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-52: 03:05:19 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-52: 03:05:19 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-51: 03:05:19 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
