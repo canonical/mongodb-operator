@@ -147,6 +147,7 @@ class ClusterProvider(Object):
             event.defer()
             return
 
+        # TODO : This workflow is a fix until we have time for a better and complete fix (DPE-5513)
         self._on_database_requested(event)
 
     def _on_relation_broken(self, event) -> None:
