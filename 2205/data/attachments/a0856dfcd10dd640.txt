@@ -1,0 +1,36 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.4.4    unsupported  01:55:52Z
+
+App      Version  Status  Scale  Charm    Channel  Rev  Exposed  Message
+mongodb           active      3  mongodb             0  no       
+
+Unit        Workload  Agent      Machine  Public address  Ports      Message
+mongodb/0   active    idle       0        10.37.95.245    27017/tcp  Primary
+mongodb/1*  active    executing  1        10.37.95.153    27017/tcp  
+mongodb/2   active    executing  2        10.37.95.252    27017/tcp  
+
+Machine  State    Address       Inst id        Base          AZ  Message
+0        started  10.37.95.245  juju-05be56-0  ubuntu@22.04      Running
+1        started  10.37.95.153  juju-05be56-1  ubuntu@22.04      Running
+2        started  10.37.95.252  juju-05be56-2  ubuntu@22.04      Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+machine-1: 01:41:00 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 01:41:00 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-1: 01:41:00 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-0: 01:41:17 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 01:41:17 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-0: 01:41:17 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-2: 01:41:27 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 01:41:27 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-2: 01:41:27 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-1: 01:41:59 ERROR unit.mongodb/1.juju-log _on_secret_remove: Secret secret:cr979kkssn72b2bfj3jg seems to have no observers, could be removed
+unit-mongodb-1: 01:43:10 ERROR unit.mongodb/1.juju-log _on_secret_remove: Secret secret:cr979kkssn72b2bfj3jg seems to have no observers, could be removed
+unit-mongodb-1: 01:43:24 ERROR unit.mongodb/1.juju-log _on_secret_remove: Secret secret:cr979kkssn72b2bfj3jg seems to have no observers, could be removed
+unit-mongodb-1: 01:43:25 ERROR unit.mongodb/1.juju-log _on_secret_remove: Secret secret:cr979kkssn72b2bfj3jg seems to have no observers, could be removed
+unit-mongodb-1: 01:43:30 ERROR unit.mongodb/1.juju-log _on_secret_remove: Secret secret:cr979kkssn72b2bfj3jg seems to have no observers, could be removed
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
