@@ -1,0 +1,111 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.4.4    unsupported  01:44:51Z
+
+App            Version  Status       Scale  Charm    Channel  Rev  Exposed  Message
+config-server           maintenance      3  mongodb  6/edge   188  no       installing MongoDB
+shard-one               maintenance      3  mongodb  6/edge   188  no       installing MongoDB
+shard-two               error            3  mongodb  6/edge   188  no       hook failed: "install"
+
+Unit              Workload     Agent      Machine  Public address  Ports  Message
+config-server/0   maintenance  executing  0        10.143.89.52           (install) installing MongoDB
+config-server/1   maintenance  executing  1        10.143.89.29           (install) installing MongoDB
+config-server/2*  active       executing  2        10.143.89.38           (start) 
+shard-one/0       maintenance  executing  3        10.143.89.85           (install) installing MongoDB
+shard-one/1*      maintenance  executing  4        10.143.89.165          (install) installing MongoDB
+shard-one/2       maintenance  executing  5        10.143.89.249          (install) installing MongoDB
+shard-two/0       maintenance  executing  6        10.143.89.154          (install) installing MongoDB
+shard-two/1*      maintenance  executing  7        10.143.89.134          (config-changed) installing MongoDB
+shard-two/2       error        idle       8        10.143.89.160          hook failed: "install"
+
+Machine  State    Address        Inst id        Base          AZ  Message
+0        started  10.143.89.52   juju-bdd6fe-0  ubuntu@22.04      Running
+1        started  10.143.89.29   juju-bdd6fe-1  ubuntu@22.04      Running
+2        started  10.143.89.38   juju-bdd6fe-2  ubuntu@22.04      Running
+3        started  10.143.89.85   juju-bdd6fe-3  ubuntu@22.04      Running
+4        started  10.143.89.165  juju-bdd6fe-4  ubuntu@22.04      Running
+5        started  10.143.89.249  juju-bdd6fe-5  ubuntu@22.04      Running
+6        started  10.143.89.154  juju-bdd6fe-6  ubuntu@22.04      Running
+7        started  10.143.89.134  juju-bdd6fe-7  ubuntu@22.04      Running
+8        started  10.143.89.160  juju-bdd6fe-8  ubuntu@22.04      Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+machine-2: 01:43:34 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 01:43:34 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-2: 01:43:34 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-7: 01:43:39 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-7: 01:43:39 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-two-1: 01:43:40 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-8: 01:43:45 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-8: 01:43:45 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-two-2: 01:43:45 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-4: 01:43:46 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-4: 01:43:46 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-1: 01:43:46 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-0: 01:43:48 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 01:43:48 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-0: 01:43:48 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-5: 01:43:53 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-5: 01:43:53 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-2: 01:43:53 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-3: 01:43:56 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 01:43:56 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 01:43:57 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 01:43:57 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-0: 01:43:57 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-config-server-1: 01:43:57 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-6: 01:44:00 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-6: 01:44:00 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-two-0: 01:44:00 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-shard-two-2: 01:44:50 ERROR unit.shard-two/2.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/venv/ops/model.py", line 3187, in _run
+    result = subprocess.run(args, **kwargs)  # type: ignore
+  File "/usr/lib/python3.10/subprocess.py", line 526, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '('/var/lib/juju/tools/unit-shard-two-2/secret-get', '--label', 'shard-two.app', '--format=json')' returned non-zero exit status 1.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/./src/charm.py", line 1632, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/./src/charm.py", line 397, in _on_install
+    config=self.mongodb_config,
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/./src/charm.py", line 270, in mongodb_config
+    return self._get_mongodb_config_for_user(OperatorUser, set(self.app_hosts))
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/./src/charm.py", line 908, in _get_mongodb_config_for_user
+    password=self.get_secret(APP_SCOPE, user.get_password_key_name()),
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/./src/charm.py", line 1292, in get_secret
+    secret = self.secrets.get(label)
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/lib/charms/mongodb/v0/mongodb_secrets.py", line 137, in get
+    if secret.meta:
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/lib/charms/mongodb/v0/mongodb_secrets.py", line 85, in meta
+    self._secret_meta = self.charm.model.get_secret(label=self.label)
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/venv/ops/model.py", line 291, in get_secret
+    content = self._backend.secret_get(id=id, label=label)
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/venv/ops/model.py", line 3552, in secret_get
+    result = self._run('secret-get', *args, return_output=True, use_json=True)
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/venv/ops/model.py", line 3189, in _run
+    raise ModelError(e.stderr) from e
+ops.model.ModelError: ERROR permission denied
+
+unit-shard-two-2: 01:44:50 ERROR juju.worker.uniter.operation hook "install" (via hook dispatching script: dispatch) failed: exit status 1
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
