@@ -352,7 +352,7 @@ class MongodbOperatorCharm(CharmBase):
     def db_initialised(self, value):
         """Set the db_initialised flag."""
         if isinstance(value, bool):
-            self.app_peer_data["db_initialised"] = str(value)
+            self.app_peer_data["db_initialised"] = json.dumps(value)
         else:
             raise ValueError(
                 f"'db_initialised' must be a boolean value. Proivded: {value} is of type {type(value)}"
