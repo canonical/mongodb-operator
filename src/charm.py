@@ -321,7 +321,7 @@ class MongodbOperatorCharm(CharmBase):
     @property
     def db_initialised(self) -> bool:
         """Check if MongoDB is initialised."""
-        return json.loads(self.app_peer_data.get("db_initialised", "false"))
+        return json.loads(self.app_peer_data.get("db_initialised") or "false")
 
     @property
     def role(self) -> str:
