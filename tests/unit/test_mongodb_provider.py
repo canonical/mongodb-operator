@@ -4,9 +4,10 @@
 import unittest
 from unittest import mock
 from unittest.mock import patch
-from parameterized import parameterized
+
 from ops.charm import RelationEvent
 from ops.testing import Harness
+from parameterized import parameterized
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
 
 from charm import MongodbOperatorCharm
