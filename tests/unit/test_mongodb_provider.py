@@ -4,7 +4,7 @@
 import unittest
 from unittest import mock
 from unittest.mock import patch
-
+from parameterized import parameterized
 from ops.charm import RelationEvent
 from ops.testing import Harness
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
@@ -76,7 +76,7 @@ class TestMongoProvider(unittest.TestCase):
         """Tests the errors related to pymongo when overseeing users result in a defer."""
         # presets
         self.harness.set_leader(True)
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "true"
         relation_id = self.harness.add_relation("database", "consumer")
 
         for exception, expected_raise in PYMONGO_EXCEPTIONS:
@@ -114,7 +114,7 @@ class TestMongoProvider(unittest.TestCase):
         """Verifies that when users are formatted incorrectly an assertion error is raised."""
         # presets
         self.harness.set_leader(True)
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "true"
         relation_id = self.harness.add_relation("database", "consumer")
 
         # AssertionError is raised when unable to attain users from relation (due to name
@@ -339,3 +339,40 @@ class TestMongoProvider(unittest.TestCase):
                     self.harness.charm.client_relations.oversee_users(
                         dep_id, RelationEvent(mock.Mock(), mock.Mock())
                     )
+
+    @parameterized.expand(
+        [
+            ["shard", "true", True],
+            ["database", "false", True],
+            ["database", "true", False],
+        ]
+    )
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
+    @patch("charm.get_charm_revision")
+    @patch("charms.mongodb.v1.mongodb_provider.MongoDBProvider._get_relations")
+    def test_update_app_relation_data_protected(
+        self,
+        role: str,
+        db_init: str,
+        is_leader: bool,
+        _get_relations_mock,
+        charm_rev,
+        is_integrater,
+        is_local,
+    ):
+        def mock_role_call(*args):
+            return args == (role,)
+
+        self.harness.charm.is_role = mock_role_call
+        self.harness.charm.app_peer_data["db_initialised"] = db_init
+        self.harness.set_leader(is_leader)
+
+        self.harness.add_relation("database", "consumer")
+
+        # Should fail because the role is "shard"
+        assert not self.charm.client_relations.sanity_hook_cheks()
+
+        self.harness.charm.client_relations.update_app_relation_data()
+        _get_relations_mock.assert_not_called()

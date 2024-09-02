@@ -31,7 +31,7 @@ class TestConfigServerInterface(unittest.TestCase):
             assert args == ("config-server",)
             return False
 
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "true"
 
         # fails due to being run on non-config-server
         self.harness.charm.is_role = is_not_config_mock_call
@@ -96,7 +96,7 @@ class TestConfigServerInterface(unittest.TestCase):
             assert args == ("config-server",)
             return False
 
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "true"
         self.harness.add_relation("cluster", "mongos")
 
         # fails due to being run on non-config-server
@@ -155,7 +155,7 @@ class TestConfigServerInterface(unittest.TestCase):
         # unit is not the leader nor is the wrong wrole
         event = mock.Mock()
         event.params = {}
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "true"
         self.harness.charm.config_server.pass_hook_checks(event)
         event.defer.assert_not_called()
 
@@ -190,7 +190,7 @@ class TestConfigServerInterface(unittest.TestCase):
         # unit is not the leader nor is the wrong wrole
         event = mock.Mock()
         event.params = {}
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "true"
         self.harness.charm.shard.pass_hook_checks(event)
         event.defer.assert_not_called()
 
@@ -214,7 +214,7 @@ class TestConfigServerInterface(unittest.TestCase):
 
         event = mock.Mock()
         event.params = {}
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "true"
 
         self.harness.charm.config_server.pass_hook_checks(event)
         event.defer.assert_called()
@@ -249,7 +249,7 @@ class TestConfigServerInterface(unittest.TestCase):
 
         event = mock.Mock()
         event.params = {}
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "true"
 
         self.harness.charm.shard.pass_hook_checks(event)
         event.defer.assert_called()
