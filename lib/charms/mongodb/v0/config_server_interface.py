@@ -110,7 +110,10 @@ class ClusterProvider(Object):
         return True
 
     def _on_database_requested(self, event: DatabaseRequestedEvent | RelationChangedEvent) -> None:
-        """Handles the database requested event, which is the first time we can write data."""
+        """Handles the database requested event, the first time secrets are written to relations should be on this event.
+        
+        Note: If secrets are written for the first time on other events we risk the chance of writing secrets in plain sight
+        """
         if not self.pass_hook_checks(event):
             if not self.is_valid_mongos_integration():
                 self.charm.status.set_and_share_status(
