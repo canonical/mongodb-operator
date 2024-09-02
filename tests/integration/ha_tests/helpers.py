@@ -423,10 +423,6 @@ async def reused_storage(ops_test: OpsTest, unit_name: str, removal_time: float)
 
         item = json.loads(line)
 
-        # We need a msg
-        if "msg" not in item:
-            continue
-
         # "attr" is needed and stores the state information and changes of mongodb
         if "attr" not in item:
             continue
