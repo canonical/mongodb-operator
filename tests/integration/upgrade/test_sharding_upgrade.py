@@ -4,6 +4,7 @@
 
 import logging
 import time
+from pathlib import Path
 
 import pytest
 from pytest_operator.plugin import OpsTest
@@ -148,7 +149,7 @@ async def test_pre_upgrade_check_failure(ops_test: OpsTest) -> None:
     # TODO Future PR: Add more cases for failing pre-upgrade-check
 
 
-async def run_upgrade_sequence(ops_test: OpsTest, app_name: str, new_charm) -> None:
+async def run_upgrade_sequence(ops_test: OpsTest, app_name: str, new_charm: Path) -> None:
     """Runs the upgrade sequence on a given app."""
     leader_unit = await find_unit(ops_test, leader=True, app_name=app_name)
     action = await leader_unit.run_action("pre-upgrade-check")
@@ -172,6 +173,4 @@ async def run_upgrade_sequence(ops_test: OpsTest, app_name: str, new_charm) -> N
     await action.wait()
     assert action.status == "completed", "resume-upgrade failed, expected to succeed."
 
-    await ops_test.model.wait_for_idle(
-        apps=[app_name], status="active", timeout=1000, idle_period=30
-    )
+    await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, idle_period=30)
