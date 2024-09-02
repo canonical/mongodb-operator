@@ -141,7 +141,7 @@ class ClusterProvider(Object):
     def _on_relation_changed(self, event: RelationChangedEvent) -> None:
         """Handles providing mongos with KeyFile and hosts."""
         # First we need to ensure that the database requested event has run
-        # otherwise we would write secrets in plain sight.
+        # otherwise we risk the chance of writing secrets in plain sight.
         if not self.database_provides.fetch_relation_field(event.relation.id, "database"):
             logger.info("Database Requested has not run yet, skipping.")
             event.defer()
