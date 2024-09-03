@@ -15,6 +15,7 @@ from tenacity import RetryError
 from ...ha_tests.helpers import replica_set_primary
 from ...helpers import check_or_scale_app, get_app_name, is_relation_joined
 from .helpers import (
+    assert_created_user_can_connect,
     get_application_relation_data,
     get_connection_string,
     verify_application_data,
@@ -31,7 +32,12 @@ SECOND_DATABASE_RELATION_NAME = "second-database"
 MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME = "multiple-database-clusters"
 ALIASED_MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME = "aliased-multiple-database-clusters"
 ANOTHER_DATABASE_APP_NAME = "another-database"
+ANOTHER_APPLICATION_NAME = "another-application"
 APP_NAMES = [APPLICATION_APP_NAME, ANOTHER_DATABASE_APP_NAME]
+
+
+USER_CREATED_FROM_APP1 = "test_user_1"
+PW_CREATED_FROM_APP1 = "test_user_pass_1"
 
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
@@ -278,10 +284,21 @@ async def test_user_with_extra_roles(ops_test: OpsTest):
         connectTimeoutMS=2000,
     )
     client.admin.command(
-        "createUser", "newTestUser", pwd="Test123", roles=[{"role": "readWrite", "db": database}]
+        "createUser",
+        USER_CREATED_FROM_APP1,
+        pwd=PW_CREATED_FROM_APP1,
+        roles=[{"role": "readWrite", "db": database}],
     )
     client["new_database"]
     client.close()
+
+    db_app_name = (
+        await get_app_name(ops_test, test_deployments=[ANOTHER_DATABASE_APP_NAME])
+        or DATABASE_APP_NAME
+    )
+    await assert_created_user_can_connect(
+        ops_test, db_app_name, username=USER_CREATED_FROM_APP1, password=PW_CREATED_FROM_APP1
+    )
 
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
@@ -291,14 +308,13 @@ async def test_two_applications_doesnt_share_the_same_relation_data(
 ):
     """Test that two different application connect to the database with different credentials."""
     # Set some variables to use in this test.
-    another_application_app_name = "another-application"
-    all_app_names = [another_application_app_name]
+    all_app_names = [ANOTHER_APPLICATION_NAME]
     all_app_names.extend(APP_NAMES)
 
     # Deploy another application.
     await ops_test.model.deploy(
         application_charm,
-        application_name=another_application_app_name,
+        application_name=ANOTHER_APPLICATION_NAME,
     )
     await ops_test.model.wait_for_idle(apps=all_app_names, status="active")
 
@@ -309,7 +325,7 @@ async def test_two_applications_doesnt_share_the_same_relation_data(
     # Relate the new application with the database
     # and wait for them exchanging some connection data.
     await ops_test.model.integrate(
-        f"{another_application_app_name}:{FIRST_DATABASE_RELATION_NAME}", db_app_name
+        f"{ANOTHER_APPLICATION_NAME}:{FIRST_DATABASE_RELATION_NAME}", db_app_name
     )
     await ops_test.model.wait_for_idle(apps=all_app_names, status="active")
 
@@ -319,7 +335,7 @@ async def test_two_applications_doesnt_share_the_same_relation_data(
     )
 
     another_application_connection_string = await get_connection_string(
-        ops_test, another_application_app_name, FIRST_DATABASE_RELATION_NAME
+        ops_test, ANOTHER_APPLICATION_NAME, FIRST_DATABASE_RELATION_NAME
     )
     assert application_connection_string != another_application_connection_string
 
@@ -470,3 +486,12 @@ async def test_removed_relation_no_longer_has_access(ops_test: OpsTest):
     assert (
         removed_access
     ), "application: {APPLICATION_APP_NAME} still has access to mongodb after relation removal."
+
+    # mongodb should not clean up users it does not manage.
+    db_app_name = (
+        await get_app_name(ops_test, test_deployments=[ANOTHER_DATABASE_APP_NAME])
+        or DATABASE_APP_NAME
+    )
+    await assert_created_user_can_connect(
+        ops_test, db_app_name, username=USER_CREATED_FROM_APP1, password=PW_CREATED_FROM_APP1
+    )
