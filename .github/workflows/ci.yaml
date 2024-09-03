@@ -16,7 +16,7 @@ on:
 jobs:
   lint:
     name: Lint
-    uses: canonical/data-platform-workflows/.github/workflows/lint.yaml@v19.0.0
+    uses: canonical/data-platform-workflows/.github/workflows/lint.yaml@v21.0.0
 
   unit-test:
     name: Unit test charm
@@ -91,22 +91,22 @@ jobs:
           - tests/integration/sharding_tests/application
           - tests/integration/relation_tests/new_relations/application-charm
     name: Build charm
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v19.0.0
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v21.0.0
     with:
       path-to-charm-directory: ${{ matrix.path }}
       cache: true
 
   integration-test:
-    name: Integration test charm | 3.4.4
+    name: Integration test charm | 3.5.3
     needs:
       - lint
       - unit-test
       - build
-    uses: canonical/data-platform-workflows/.github/workflows/integration_test_charm.yaml@v19.0.0
+    uses: canonical/data-platform-workflows/.github/workflows/integration_test_charm.yaml@v21.0.0
     with:
       artifact-prefix: packed-charm-cache-true
       cloud: lxd
-      juju-agent-version: 3.4.4
+      juju-agent-version: 3.5.3 # renovate: juju-agent-pin-minor
       _beta_allure_report: true
     permissions:
       contents: write # Needed for Allure Report beta
