@@ -77,7 +77,7 @@ class MongoDBProvider(Object):
             self.database_provides.on.database_requested, self._on_relation_event
         )
 
-    def sanity_hook_cheks(self) -> bool:
+    def pass_sanity_hook_checks(self) -> bool:
         """Runs reusable and event agnostic checks."""
         # We shouldn't try to create or update users if the database is not
         # initialised. We will create users as part of initialisation.
@@ -97,7 +97,7 @@ class MongoDBProvider(Object):
 
     def pass_hook_checks(self, event: EventBase) -> bool:
         """Runs the pre-hooks checks for MongoDBProvider, returns True if all pass."""
-        if not self.sanity_hook_cheks():
+        if not self.pass_sanity_hook_checks():
             return False
 
         if self.charm.upgrade_in_progress:
@@ -248,7 +248,7 @@ class MongoDBProvider(Object):
 
     def update_app_relation_data(self) -> None:
         """Helper function to update application relation data."""
-        if not self.sanity_hook_cheks():
+        if not self.pass_sanity_hook_checks():
             return
 
         database_users = set()

@@ -373,7 +373,7 @@ class TestMongoProvider(unittest.TestCase):
         self.harness.add_relation("database", "consumer")
 
         # Should fail because the role is "shard"
-        assert not self.charm.client_relations.sanity_hook_cheks()
+        assert not self.charm.client_relations.pass_sanity_hook_checks()
 
         self.harness.charm.client_relations.update_app_relation_data()
         _get_relations_mock.assert_not_called()
