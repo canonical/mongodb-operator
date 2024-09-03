@@ -56,6 +56,39 @@ class TestConfigServerInterface(unittest.TestCase):
         self.harness.add_relation_unit(relation_id, "mongos/2")
         self.harness.charm.cluster.database_provides.update_relation_data.assert_not_called()
 
+    @mock.patch("charms.mongodb.v1.mongodb_provider.MongoDBProvider.oversee_users")
+    @mock.patch("data_platform_helpers.version_check.CrossAppVersionChecker.is_local_charm")
+    @mock.patch(
+        "data_platform_helpers.version_check.CrossAppVersionChecker.is_integrated_to_locally_built_charm"
+    )
+    @mock.patch("charm.get_charm_revision")
+    @mock.patch("ops.framework.EventBase.defer")
+    def test_relation_changed_fail_if_no_database_field(
+        self, defer, get_charm_rev, is_integrated, is_local, oversee
+    ):
+
+        def is_config_mock_call(*args):
+            assert args == ("config-server",)
+            return True
+
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.set_leader(True)
+        self.harness.charm.is_role = is_config_mock_call
+        self.harness.charm.cluster.database_provides.update_relation_data = mock.Mock()
+
+        relation_id = self.harness.add_relation("cluster", "mongos")
+        self.harness.add_relation_unit(relation_id, "mongos/0")
+
+        # Fails because there is no `database` field in the relation data
+        relation = self.harness.charm.model.get_relation("cluster")
+        self.harness.charm.on["cluster"].relation_changed.emit(relation=relation)
+        defer.assert_called()
+
+        # Success, we have the for the database field.
+        # Note: updating the relation data here triggers a relation_changed event.
+        self.harness.update_relation_data(relation_id, "mongos", {"database": "test-database"})
+        self.harness.charm.cluster.database_provides.update_relation_data.assert_called()
+
     def test_update_rel_data_failed_hook_checks(self):
         """Tests that no relation data is set when the cluster is not ready."""
 
