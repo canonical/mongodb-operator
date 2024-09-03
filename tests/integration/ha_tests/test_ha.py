@@ -152,21 +152,38 @@ async def test_storage_re_use_different_cluster(ops_test: OpsTest, continuous_wr
     writes_results = await stop_continous_writes(ops_test, app_name=app_name)
     unit_ids = [unit.name for unit in ops_test.model.applications[app_name].units]
     storage_ids = {}
+
+    remaining_units = len(unit_ids)
     for unit_id in unit_ids:
         storage_ids[unit_id] = storage_id(ops_test, unit_id)
         await ops_test.model.applications[app_name].destroy_unit(unit_id)
         # Give some time to remove the unit. We don't use asyncio.sleep here to
         # leave time for each unit to be removed before removing the next one.
-        time.sleep(60)
+        # time.sleep(60)
+        remaining_units -= 1
+        await ops_test.model.wait_for_idle(
+            apps=[app_name],
+            status="active",
+            timeout=1000,
+            idle_period=20,
+            wait_for_exact_units=remaining_units,
+        )
 
     # Wait until all apps are cleaned up
     await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, wait_for_exact_units=0)
 
     for unit_id in unit_ids:
+        n_units = len(ops_test.model.applications[app_name].units)
         await ops_test.model.applications[app_name].add_unit(
             count=1, attach_storage=[tag.storage(storage_ids[unit_id])]
         )
-        time.sleep(10)
+        await ops_test.model.wait_for_idle(
+            apps=[app_name],
+            status="active",
+            timeout=1000,
+            idle_period=20,
+            wait_for_exact_units=n_units + 1,
+        )
 
     await ops_test.model.wait_for_idle(
         apps=[app_name],
