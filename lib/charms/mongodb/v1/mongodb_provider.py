@@ -80,10 +80,6 @@ class MongoDBProvider(Object):
 
     def pass_hook_checks(self, event: EventBase) -> bool:
         """Runs the pre-hooks checks for MongoDBProvider, returns True if all pass."""
-        # Quirk of data platform libs we should only set credentials on the database requested
-        # event
-        # TODO
-
         # We shouldn't try to create or update users if the database is not
         # initialised. We will create users as part of initialisation.
         if not self.charm.db_initialised:
