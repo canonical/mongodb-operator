@@ -62,16 +62,17 @@ async def test_upgrade(ops_test: OpsTest, continuous_writes) -> None:
     new_charm = await ops_test.build_charm(".")
     app_name = await get_app_name(ops_test)
     await ops_test.model.applications[app_name].refresh(path=new_charm)
-    await ops_test.model.wait_for_idle(
-        apps=[app_name], status="active", timeout=1000, idle_period=120
-    )
+    await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, idle_period=120)
 
     if "resume-upgrade" in ops_test.model.applications[app_name].status_message:
+        logger.info("Calling resume upgrade")
         action = await leader_unit.run_action("resume-upgrade")
         await action.wait()
         assert action.status == "completed", "resume-upgrade failed, expected to succeed"
 
-        await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, idle_period=120)
+        await ops_test.model.wait_for_idle(
+            apps=[app_name], status="active", timeout=1000, idle_period=120
+        )
 
     # verify that the no writes were skipped
     total_expected_writes = await ha_helpers.stop_continous_writes(ops_test, app_name=app_name)

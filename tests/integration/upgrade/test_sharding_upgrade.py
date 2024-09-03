@@ -2,7 +2,9 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import logging
 import time
+from pathlib import Path
 
 import pytest
 from pytest_operator.plugin import OpsTest
@@ -20,6 +22,8 @@ from ..sharding_tests.writes_helpers import (
     count_shard_writes,
     stop_continous_writes,
 )
+
+logger = logging.getLogger(__name__)
 
 MONGOD_SERVICE = "snap.charmed-mongodb.mongod.service"
 MONGOS_SERVICE = "snap.charmed-mongodb.mongos.service"
@@ -75,7 +79,7 @@ async def test_upgrade(
 
     # We want to be sure that everything is settled down
     await ops_test.model.wait_for_idle(
-        CLUSTER_COMPONENTS, status="active", idle_period=20, timeout=TIMEOUT
+        CLUSTER_COMPONENTS, status="active", idle_period=20, timeout=20 * 60
     )
     # verify no writes were skipped during upgrade process
     shard_one_expected_writes = await stop_continous_writes(
@@ -145,7 +149,7 @@ async def test_pre_upgrade_check_failure(ops_test: OpsTest) -> None:
     # TODO Future PR: Add more cases for failing pre-upgrade-check
 
 
-async def run_upgrade_sequence(ops_test: OpsTest, app_name: str, new_charm) -> None:
+async def run_upgrade_sequence(ops_test: OpsTest, app_name: str, new_charm: Path) -> None:
     """Runs the upgrade sequence on a given app."""
     leader_unit = await find_unit(ops_test, leader=True, app_name=app_name)
     action = await leader_unit.run_action("pre-upgrade-check")
@@ -153,17 +157,18 @@ async def run_upgrade_sequence(ops_test: OpsTest, app_name: str, new_charm) -> N
     assert action.status == "completed", "pre-upgrade-check failed, expected to succeed."
 
     await ops_test.model.applications[app_name].refresh(path=new_charm)
-    await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, idle_period=30)
+    await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, idle_period=120)
 
     # resume upgrade only needs to be ran when:
     # 1. there are more than one units in the application
     # 2. AND the underlying workload was updated
-    if not len(ops_test.model.applications[app_name].units) > 1:
+    if len(ops_test.model.applications[app_name].units) < 2:
         return
 
     if "resume-upgrade" not in ops_test.model.applications[app_name].status_message:
         return
 
+    logger.info(f"Calling resume-upgrade for {app_name}")
     action = await leader_unit.run_action("resume-upgrade")
     await action.wait()
     assert action.status == "completed", "resume-upgrade failed, expected to succeed."
