@@ -7,6 +7,7 @@ import os
 import time
 
 import pytest
+from juju import tag
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
@@ -20,7 +21,6 @@ from ..helpers import (
     unit_uri,
 )
 from .helpers import (
-    add_unit_with_storage,
     all_db_processes_down,
     clear_db_writes,
     count_primaries,
@@ -77,12 +77,16 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         return
 
     my_charm = await ops_test.build_charm(".")
-    await ops_test.model.deploy(my_charm, num_units=required_units)
+
+    storage = {"mongodb": {"pool": "lxd", "size": 2048}}
+
+    await ops_test.model.deploy(my_charm, num_units=required_units, storage=storage)
     await ops_test.model.wait_for_idle()
 
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_storage_re_use(ops_test, continuous_writes):
     """Verifies that database units with attached storage correctly repurpose storage.
 
@@ -110,16 +114,87 @@ async def test_storage_re_use(ops_test, continuous_writes):
     await ops_test.model.wait_for_idle(
         apps=[app_name], status="active", timeout=1000, wait_for_exact_units=expected_units
     )
-    new_unit = await add_unit_with_storage(ops_test, app_name, unit_storage_id)
+    new_unit = (
+        await ops_test.model.applications[app_name].add_unit(
+            count=1, attach_storage=[tag.storage(unit_storage_id)]
+        )
+    )[0]
+
+    await ops_test.model.wait_for_idle(apps=[app_name], status="active", timeout=1000)
 
     assert await reused_storage(
-        ops_test, new_unit.public_address, removal_time
+        ops_test, new_unit.name, removal_time
     ), "attached storage not properly reused by MongoDB."
 
     # verify that the no writes were skipped
     total_expected_writes = await stop_continous_writes(ops_test, app_name=app_name)
     actual_writes = await count_writes(ops_test, app_name=app_name)
     assert total_expected_writes["number"] == actual_writes
+
+
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
+@pytest.mark.group(1)
+@pytest.mark.skip("This is currently unsupported on MongoDB charm.")
+@pytest.mark.abort_on_fail
+async def test_storage_re_use_different_cluster(ops_test: OpsTest, continuous_writes):
+    """Tests that we can reuse storage from a different cluster.
+
+    For that, we completely remove the application while keeping the storages,
+    and then we deploy a new application with storage reuse and check that the
+    storage has been reused.
+    """
+    app_name = await get_app_name(ops_test)
+    if storage_type(ops_test, app_name) == "rootfs":
+        pytest.skip(
+            "reuse of storage can only be used on deployments with persistent storage not on rootfs deployments"
+        )
+
+    writes_results = await stop_continous_writes(ops_test, app_name=app_name)
+    unit_ids = [unit.name for unit in ops_test.model.applications[app_name].units]
+    storage_ids = {}
+
+    remaining_units = len(unit_ids)
+    for unit_id in unit_ids:
+        storage_ids[unit_id] = storage_id(ops_test, unit_id)
+        await ops_test.model.applications[app_name].destroy_unit(unit_id)
+        # Give some time to remove the unit. We don't use asyncio.sleep here to
+        # leave time for each unit to be removed before removing the next one.
+        # time.sleep(60)
+        remaining_units -= 1
+        await ops_test.model.wait_for_idle(
+            apps=[app_name],
+            status="active",
+            timeout=1000,
+            idle_period=20,
+            wait_for_exact_units=remaining_units,
+        )
+
+    # Wait until all apps are cleaned up
+    await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, wait_for_exact_units=0)
+
+    for unit_id in unit_ids:
+        n_units = len(ops_test.model.applications[app_name].units)
+        await ops_test.model.applications[app_name].add_unit(
+            count=1, attach_storage=[tag.storage(storage_ids[unit_id])]
+        )
+        await ops_test.model.wait_for_idle(
+            apps=[app_name],
+            status="active",
+            timeout=1000,
+            idle_period=20,
+            wait_for_exact_units=n_units + 1,
+        )
+
+    await ops_test.model.wait_for_idle(
+        apps=[app_name],
+        status="active",
+        timeout=1000,
+        idle_period=20,
+        wait_for_exact_units=len(unit_ids),
+    )
+
+    actual_writes = await count_writes(ops_test, app_name=app_name)
+    assert writes_results["number"] == actual_writes
 
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
@@ -235,6 +310,7 @@ async def test_scale_down_capablities(ops_test: OpsTest, continuous_writes) -> N
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_replication_across_members(ops_test: OpsTest, continuous_writes) -> None:
     """Check consistency, ie write to primary, read data from secondaries."""
     # first find primary, write to primary, then read from each unit
@@ -263,6 +339,7 @@ async def test_replication_across_members(ops_test: OpsTest, continuous_writes) 
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_unique_cluster_dbs(ops_test: OpsTest, continuous_writes) -> None:
     """Verify unique clusters do not share DBs."""
     # first find primary, write to primary,
@@ -313,6 +390,7 @@ async def test_unique_cluster_dbs(ops_test: OpsTest, continuous_writes) -> None:
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_replication_member_scaling(ops_test: OpsTest, continuous_writes) -> None:
     """Verify newly added and newly removed members properly replica data.
 
@@ -360,6 +438,7 @@ async def test_replication_member_scaling(ops_test: OpsTest, continuous_writes) 
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_kill_db_process(ops_test, continuous_writes):
     # locate primary unit
     app_name = await get_app_name(ops_test)
@@ -398,6 +477,7 @@ async def test_kill_db_process(ops_test, continuous_writes):
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_freeze_db_process(ops_test, continuous_writes):
     # locate primary unit
     app_name = await get_app_name(ops_test)
@@ -453,6 +533,7 @@ async def test_freeze_db_process(ops_test, continuous_writes):
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_restart_db_process(ops_test, continuous_writes):
     # locate primary unit
     app_name = await get_app_name(ops_test)
@@ -501,6 +582,7 @@ async def test_restart_db_process(ops_test, continuous_writes):
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_full_cluster_crash(ops_test: OpsTest, continuous_writes, reset_restart_delay):
     app_name = await get_app_name(ops_test)
 
@@ -553,6 +635,7 @@ async def test_full_cluster_crash(ops_test: OpsTest, continuous_writes, reset_re
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_full_cluster_restart(ops_test: OpsTest, continuous_writes, reset_restart_delay):
     app_name = await get_app_name(ops_test)
 
@@ -603,6 +686,7 @@ async def test_full_cluster_restart(ops_test: OpsTest, continuous_writes, reset_
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_network_cut(ops_test, continuous_writes):
     # locate primary unit
     app_name = await get_app_name(ops_test)

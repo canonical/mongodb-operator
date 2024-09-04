@@ -31,7 +31,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 12
+LIBPATCH = 13
 
 logger = logging.getLogger(__name__)
 REL_NAME = "database"
@@ -354,9 +354,7 @@ class MongoDBProvider(Object):
         if self.charm.is_role(Config.Role.MONGOS):
             mongo_args["port"] = Config.MONGOS_PORT
             if self.substrate == Config.Substrate.K8S:
-                external = self.is_external_client(relation.id)
-                mongo_args["port"] = self.charm.get_mongos_port(external)
-                mongo_args["hosts"] = self.charm.get_mongos_hosts(external)
+                mongo_args["port"] = self.charm.get_mongos_port()
         else:
             mongo_args["replset"] = self.charm.app.name
 

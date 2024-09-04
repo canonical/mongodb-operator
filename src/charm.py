@@ -26,6 +26,7 @@ from charms.mongodb.v1.helpers import (
     generate_keyfile,
     generate_password,
     get_create_user_cmd,
+    safe_exec,
 )
 from charms.mongodb.v1.mongodb import MongoDBConnection, NotReadyError
 from charms.mongodb.v1.mongodb_backups import MongoDBBackups
@@ -46,6 +47,7 @@ from data_platform_helpers.version_check import (
     NoVersionError,
     get_charm_revision,
 )
+from ops import StorageAttachedEvent
 from ops.charm import (
     ActionEvent,
     CharmBase,
@@ -108,6 +110,7 @@ class MongodbOperatorCharm(CharmBase):
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.start, self._on_start)
         self.framework.observe(self.on.update_status, self._on_update_status)
+        self.framework.observe(self.on.mongodb_storage_attached, self._on_storage_attached)
         self.framework.observe(
             self.on[Config.Relations.PEERS].relation_joined, self._on_relation_joined
         )
@@ -148,7 +151,7 @@ class MongodbOperatorCharm(CharmBase):
             ],
         )
         self.upgrade = MongoDBUpgrade(self)
-        self.config_server = ShardingProvider(self, substrate="vm")
+        self.config_server = ShardingProvider(self, substrate=Config.SUBSTRATE)
         self.cluster = ClusterProvider(self)
         self.shard = ConfigServerRequirer(self)
         self.status = MongoDBStatusHandler(self)
@@ -587,6 +590,14 @@ class MongodbOperatorCharm(CharmBase):
             )
 
         self._update_hosts(event)
+
+    def _on_storage_attached(self, event: StorageAttachedEvent) -> None:
+        """Handler for `storage_attached` event.
+
+        This should handle fixing the permissions for the data dir.
+        """
+        safe_exec(f"chmod -R 770 {Config.MONGODB_COMMON_PATH}".split())
+        safe_exec(f"chown -R {Config.SNAP_USER}:root  {Config.MONGODB_COMMON_PATH}".split())
 
     def _on_storage_detaching(self, event: StorageDetachingEvent) -> None:
         """Before storage detaches, allow removing unit to remove itself from the set.
