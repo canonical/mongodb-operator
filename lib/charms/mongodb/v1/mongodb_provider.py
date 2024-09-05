@@ -37,7 +37,6 @@ logger = logging.getLogger(__name__)
 REL_NAME = "database"
 MONGOS_RELATIONS = "cluster"
 MONGOS_CLIENT_RELATIONS = "mongos_proxy"
-EXTERNAL_CONNECTIVITY_TAG = "external-node-connectivity"
 MANAGED_USERS_KEY = "managed-users-key"
 
 # We expect the MongoDB container to use the default ports
@@ -354,7 +353,7 @@ class MongoDBProvider(Object):
         if self.charm.is_role(Config.Role.MONGOS):
             mongo_args["port"] = Config.MONGOS_PORT
             if self.substrate == Config.Substrate.K8S:
-                mongo_args["port"] = self.charm.get_mongos_port()
+                mongo_args["hosts"] = self.charm.get_mongos_hosts_for_client()
         else:
             mongo_args["replset"] = self.charm.app.name
 
@@ -449,13 +448,6 @@ class MongoDBProvider(Object):
             return MONGOS_CLIENT_RELATIONS
         else:
             return REL_NAME
-
-    def is_external_client(self, rel_id) -> bool:
-        """Returns true if the integrated client requests external connectivity."""
-        return (
-            self.database_provides.fetch_relation_field(rel_id, EXTERNAL_CONNECTIVITY_TAG)
-            == "true"
-        )
 
     def _get_relational_users_to_manage(self) -> Set[str]:
         """Returns a set of the users to manage.
