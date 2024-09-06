@@ -1,0 +1,333 @@
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  shard-one/0 [idle] active: 
+  shard-one/1 [idle] active: 
+  shard-one/2 [idle] active: 
+  shard-two/0 [idle] active: 
+  shard-two/1 [idle] active: 
+  shard-two/2 [idle] active: 
+  config-server/0 [idle] active: Primary
+  config-server/1 [idle] active: 
+  config-server/2 [idle] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.5.3    unsupported  02:13:29Z
+
+App            Version  Status  Scale  Charm    Channel  Rev  Exposed  Message
+config-server           active      3  mongodb             0  no       
+shard-one               active      3  mongodb             1  no       
+shard-two               active      3  mongodb             2  no       
+
+Unit              Workload  Agent  Machine  Public address  Ports            Message
+config-server/0   active    idle   0        10.162.51.149   27017-27018/tcp  Primary
+config-server/1   active    idle   1        10.162.51.93    27017-27018/tcp  
+config-server/2*  active    idle   2        10.162.51.158   27017-27018/tcp  
+shard-one/0       active    idle   3        10.162.51.91    27017/tcp        
+shard-one/1       active    idle   4        10.162.51.95    27017/tcp        
+shard-one/2*      active    idle   5        10.162.51.105   27017/tcp        
+shard-two/0*      active    idle   6        10.162.51.86    27017/tcp        
+shard-two/1       active    idle   7        10.162.51.236   27017/tcp        
+shard-two/2       active    idle   8        10.162.51.227   27017/tcp        
+
+Machine  State    Address        Inst id        Base          AZ  Message
+0        started  10.162.51.149  juju-c7caa4-0  ubuntu@22.04      Running
+1        started  10.162.51.93   juju-c7caa4-1  ubuntu@22.04      Running
+2        started  10.162.51.158  juju-c7caa4-2  ubuntu@22.04      Running
+3        started  10.162.51.91   juju-c7caa4-3  ubuntu@22.04      Running
+4        started  10.162.51.95   juju-c7caa4-4  ubuntu@22.04      Running
+5        started  10.162.51.105  juju-c7caa4-5  ubuntu@22.04      Running
+6        started  10.162.51.86   juju-c7caa4-6  ubuntu@22.04      Running
+7        started  10.162.51.236  juju-c7caa4-7  ubuntu@22.04      Running
+8        started  10.162.51.227  juju-c7caa4-8  ubuntu@22.04      Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+machine-2: 01:41:55 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 01:41:55 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-2: 01:41:55 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-5: 01:41:57 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-5: 01:41:57 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-2: 01:41:58 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-0: 01:41:58 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 01:41:58 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 01:41:58 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 01:41:58 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-1: 01:41:58 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-config-server-0: 01:41:58 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-3: 01:41:58 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 01:41:58 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-0: 01:41:59 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-6: 01:42:02 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-6: 01:42:02 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-two-0: 01:42:02 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-7: 01:42:02 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-7: 01:42:02 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-8: 01:42:02 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-8: 01:42:02 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-4: 01:42:02 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-4: 01:42:02 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-two-1: 01:42:03 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-shard-one-1: 01:42:03 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-shard-two-2: 01:42:07 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-config-server-2: 01:43:57 ERROR unit.config-server/2.juju-log _on_secret_remove: Secret secret:crd5shsbm9p2d7ud4jj0 seems to have no observers, could be removed
+unit-shard-one-2: 01:43:58 ERROR unit.shard-one/2.juju-log _on_secret_remove: Secret secret:crd5si4bm9p2d7ud4jjg seems to have no observers, could be removed
+unit-shard-two-0: 01:44:00 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:crd5sikbm9p2d7ud4jk0 seems to have no observers, could be removed
+unit-config-server-2: 01:45:51 ERROR unit.config-server/2.juju-log config-server:6: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1725587151, 1), 'signature': {'hash': b'\\xa3\\xaej\\x07@;}\\x9b\\xad\\x95\\x10+\\xeb\\xf4\\x085\\xeb\\x8a\\x1a\\xcc', 'keyId': 7411339834481967122}}, 'operationTime': Timestamp(1725587151, 1)}")
+unit-config-server-2: 01:45:51 ERROR unit.config-server/2.juju-log config-server:6: shard-one shard does not have the same auth as the config server.
+unit-config-server-2: 01:46:08 ERROR unit.config-server/2.juju-log config-server:6: Failed to add shard shard-one to the config server, error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1725587167, 2), \'signature\': {\'hash\': b\'_\\xf32\\xaa\\x95\\x99sc\\xa9U%?\\xfe\\xcd\\x9f\\xbb\\xaa\\x8d\\xa6\\xf0\', \'keyId\': 7411339834481967122}}, \'operationTime\': Timestamp(1725587167, 2)}')
+unit-config-server-2: 01:46:08 ERROR unit.config-server/2.juju-log config-server:6: Failed to add shard-one to cluster
+unit-config-server-2: 01:46:08 ERROR unit.config-server/2.juju-log config-server:6: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1725587167, 2), \'signature\': {\'hash\': b\'_\\xf32\\xaa\\x95\\x99sc\\xa9U%?\\xfe\\xcd\\x9f\\xbb\\xaa\\x8d\\xa6\\xf0\', \'keyId\': 7411339834481967122}}, \'operationTime\': Timestamp(1725587167, 2)}')
+unit-config-server-2: 01:46:21 ERROR unit.config-server/2.juju-log config-server:7: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1725587181, 9), 'signature': {'hash': b'[\\x8bi\\x17\\x06\\xfa\\x1d\\xf2\\xa8.K\\xbb\\xbf8X\\xb7\\x8fc\\xe6i', 'keyId': 7411339834481967122}}, 'operationTime': Timestamp(1725587181, 9)}")
+unit-config-server-2: 01:46:21 ERROR unit.config-server/2.juju-log config-server:7: shard-two shard does not have the same auth as the config server.
+unit-config-server-2: 01:46:23 ERROR unit.config-server/2.juju-log config-server:6: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1725587182, 2), 'signature': {'hash': b'\\xa1\\xaa\\x7fr\\xc2\\xcf\\x89\\xcc#\\xe9+\\x04\\x89\\xfd\\xfb\\xf2*\\xb6A\\xaa', 'keyId': 7411339834481967122}}, 'operationTime': Timestamp(1725587182, 2)}")
+unit-config-server-2: 01:46:23 ERROR unit.config-server/2.juju-log config-server:6: shard-two shard does not have the same auth as the config server.
+unit-shard-one-2: 01:46:29 ERROR unit.shard-one/2.juju-log _on_secret_remove: Secret secret:crd5si4bm9p2d7ud4jjg seems to have no observers, could be removed
+unit-shard-one-2: 01:46:35 ERROR unit.shard-one/2.juju-log _on_secret_remove: Secret secret:crd5si4bm9p2d7ud4jjg seems to have no observers, could be removed
+unit-config-server-2: 01:46:39 ERROR unit.config-server/2.juju-log config-server:6: Failed to add shard shard-two to the config server, error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-two, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-two\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1725587198, 5), \'signature\': {\'hash\': b\'m\\x0b\\xf7F\\x07\\x1f\\x81\\x8f\\x01r\\x00%[\\xc3\\xf9\\x9e\\xdf\\x97\\x01\\x16\', \'keyId\': 7411339834481967122}}, \'operationTime\': Timestamp(1725587198, 5)}')
+unit-config-server-2: 01:46:39 ERROR unit.config-server/2.juju-log config-server:6: Failed to add shard-two to cluster
+unit-config-server-2: 01:46:39 ERROR unit.config-server/2.juju-log config-server:6: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-two, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-two\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1725587198, 5), \'signature\': {\'hash\': b\'m\\x0b\\xf7F\\x07\\x1f\\x81\\x8f\\x01r\\x00%[\\xc3\\xf9\\x9e\\xdf\\x97\\x01\\x16\', \'keyId\': 7411339834481967122}}, \'operationTime\': Timestamp(1725587198, 5)}')
+unit-shard-one-2: 01:46:42 ERROR unit.shard-one/2.juju-log _on_secret_remove: Secret secret:crd5si4bm9p2d7ud4jjg seems to have no observers, could be removed
+unit-shard-one-2: 01:46:57 ERROR unit.shard-one/2.juju-log _on_secret_remove: Secret secret:crd5si4bm9p2d7ud4jjg seems to have no observers, could be removed
+unit-shard-two-0: 01:47:02 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:crd5sikbm9p2d7ud4jk0 seems to have no observers, could be removed
+unit-shard-two-0: 01:47:03 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:crd5sikbm9p2d7ud4jk0 seems to have no observers, could be removed
+unit-shard-two-0: 01:47:10 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:crd5sikbm9p2d7ud4jk0 seems to have no observers, could be removed
+unit-shard-one-2: 01:47:25 ERROR unit.shard-one/2.juju-log _on_secret_remove: Secret secret:crd5si4bm9p2d7ud4jjg seems to have no observers, could be removed
+unit-shard-two-0: 01:47:55 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:crd5sikbm9p2d7ud4jk0 seems to have no observers, could be removed
+unit-shard-one-2: 02:00:59 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:00 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:01 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:02 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:04 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:05 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:06 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:07 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:08 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:09 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:09 ERROR unit.shard-one/2.juju-log Cluster is not healthy after upgrading unit %s.. Will retry next juju event.
+unit-shard-one-2: 02:01:11 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:13 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:14 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:15 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:16 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:17 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:18 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:20 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:21 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:22 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:22 ERROR unit.shard-one/2.juju-log Cluster is not healthy after upgrading unit %s.. Will retry next juju event.
+unit-shard-one-2: 02:01:23 ERROR unit.shard-one/2.juju-log sharding:6: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:25 ERROR unit.shard-one/2.juju-log sharding:6: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:26 ERROR unit.shard-one/2.juju-log sharding:6: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:27 ERROR unit.shard-one/2.juju-log sharding:6: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:28 ERROR unit.shard-one/2.juju-log sharding:6: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:29 ERROR unit.shard-one/2.juju-log sharding:6: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:30 ERROR unit.shard-one/2.juju-log sharding:6: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:32 ERROR unit.shard-one/2.juju-log sharding:6: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:33 ERROR unit.shard-one/2.juju-log sharding:6: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:34 ERROR unit.shard-one/2.juju-log sharding:6: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:34 ERROR unit.shard-one/2.juju-log sharding:6: Cluster is not healthy after upgrading unit %s.. Will retry next juju event.
+unit-shard-one-2: 02:01:35 ERROR unit.shard-one/2.juju-log upgrade-version-a:3: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:37 ERROR unit.shard-one/2.juju-log upgrade-version-a:3: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:38 ERROR unit.shard-one/2.juju-log upgrade-version-a:3: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:39 ERROR unit.shard-one/2.juju-log upgrade-version-a:3: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:40 ERROR unit.shard-one/2.juju-log upgrade-version-a:3: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:41 ERROR unit.shard-one/2.juju-log upgrade-version-a:3: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:42 ERROR unit.shard-one/2.juju-log upgrade-version-a:3: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:44 ERROR unit.shard-one/2.juju-log upgrade-version-a:3: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:45 ERROR unit.shard-one/2.juju-log upgrade-version-a:3: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:46 ERROR unit.shard-one/2.juju-log upgrade-version-a:3: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:01:46 ERROR unit.shard-one/2.juju-log upgrade-version-a:3: Cluster is not healthy after upgrading unit %s.. Will retry next juju event.
+unit-shard-one-2: 02:03:48 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:03:49 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:03:51 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:03:52 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:03:53 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:03:54 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:03:55 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:03:56 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:03:58 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:03:59 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:03:59 ERROR unit.shard-one/2.juju-log Cluster is not healthy after upgrading unit %s.. Will retry next juju event.
+unit-shard-one-2: 02:04:00 ERROR unit.shard-one/2.juju-log upgrade-version-a:3: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:04:02 ERROR unit.shard-one/2.juju-log upgrade-version-a:3: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:04:03 ERROR unit.shard-one/2.juju-log upgrade-version-a:3: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:04:04 ERROR unit.shard-one/2.juju-log upgrade-version-a:3: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:04:05 ERROR unit.shard-one/2.juju-log upgrade-version-a:3: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:04:06 ERROR unit.shard-one/2.juju-log upgrade-version-a:3: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:04:07 ERROR unit.shard-one/2.juju-log upgrade-version-a:3: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:04:09 ERROR unit.shard-one/2.juju-log upgrade-version-a:3: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:04:10 ERROR unit.shard-one/2.juju-log upgrade-version-a:3: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:04:11 ERROR unit.shard-one/2.juju-log upgrade-version-a:3: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:04:11 ERROR unit.shard-one/2.juju-log upgrade-version-a:3: Cluster is not healthy after upgrading unit %s.. Will retry next juju event.
+unit-shard-one-2: 02:05:14 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:05:15 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:05:16 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:05:17 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:05:19 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:05:20 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:05:21 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:05:22 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:05:23 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:05:25 ERROR unit.shard-one/2.juju-log Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:05:25 ERROR unit.shard-one/2.juju-log Cluster is not healthy after upgrading unit %s.. Will retry next juju event.
+unit-shard-one-2: 02:05:29 ERROR unit.shard-one/2.juju-log database-peers:2: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:05:30 ERROR unit.shard-one/2.juju-log database-peers:2: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:05:31 ERROR unit.shard-one/2.juju-log database-peers:2: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:05:32 ERROR unit.shard-one/2.juju-log database-peers:2: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:05:33 ERROR unit.shard-one/2.juju-log database-peers:2: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:05:35 ERROR unit.shard-one/2.juju-log database-peers:2: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:05:36 ERROR unit.shard-one/2.juju-log database-peers:2: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:05:37 ERROR unit.shard-one/2.juju-log database-peers:2: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:05:38 ERROR unit.shard-one/2.juju-log database-peers:2: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:05:39 ERROR unit.shard-one/2.juju-log database-peers:2: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-one-2: 02:05:39 ERROR unit.shard-one/2.juju-log database-peers:2: Cluster is not healthy after upgrading unit %s.. Will retry next juju event.
+unit-config-server-2: 02:05:58 ERROR unit.config-server/2.juju-log config-server:7: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-config-server-2: 02:05:59 ERROR unit.config-server/2.juju-log config-server:7: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-config-server-2: 02:06:00 ERROR unit.config-server/2.juju-log config-server:7: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-config-server-2: 02:06:01 ERROR unit.config-server/2.juju-log config-server:7: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-config-server-2: 02:06:03 ERROR unit.config-server/2.juju-log config-server:7: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-config-server-2: 02:06:04 ERROR unit.config-server/2.juju-log config-server:7: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-config-server-2: 02:06:05 ERROR unit.config-server/2.juju-log config-server:7: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-config-server-2: 02:06:06 ERROR unit.config-server/2.juju-log config-server:7: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-config-server-2: 02:06:07 ERROR unit.config-server/2.juju-log config-server:7: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-config-server-2: 02:06:08 ERROR unit.config-server/2.juju-log config-server:7: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-config-server-2: 02:06:08 ERROR unit.config-server/2.juju-log config-server:7: Cluster is not healthy after upgrading sharded cluster. Will retry next juju event.
+unit-shard-two-2: 02:06:32 ERROR unit.shard-two/2.juju-log upgrade-version-a:5: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-two-2: 02:06:34 ERROR unit.shard-two/2.juju-log upgrade-version-a:5: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-two-2: 02:06:35 ERROR unit.shard-two/2.juju-log upgrade-version-a:5: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-two-2: 02:06:36 ERROR unit.shard-two/2.juju-log upgrade-version-a:5: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-two-2: 02:06:37 ERROR unit.shard-two/2.juju-log upgrade-version-a:5: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-two-2: 02:06:38 ERROR unit.shard-two/2.juju-log upgrade-version-a:5: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-two-2: 02:06:39 ERROR unit.shard-two/2.juju-log upgrade-version-a:5: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-two-2: 02:06:40 ERROR unit.shard-two/2.juju-log upgrade-version-a:5: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-two-2: 02:06:42 ERROR unit.shard-two/2.juju-log upgrade-version-a:5: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-two-2: 02:06:43 ERROR unit.shard-two/2.juju-log upgrade-version-a:5: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-two-2: 02:06:43 ERROR unit.shard-two/2.juju-log upgrade-version-a:5: Cluster is not healthy after upgrading unit %s.. Will retry next juju event.
+unit-shard-two-2: 02:06:45 ERROR unit.shard-two/2.juju-log sharding:7: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-config-server-2: 02:06:45 ERROR unit.config-server/2.juju-log config-server:7: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-two-2: 02:06:46 ERROR unit.shard-two/2.juju-log sharding:7: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-config-server-2: 02:06:46 ERROR unit.config-server/2.juju-log config-server:7: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-two-2: 02:06:47 ERROR unit.shard-two/2.juju-log sharding:7: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-config-server-2: 02:06:47 ERROR unit.config-server/2.juju-log config-server:7: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-two-2: 02:06:48 ERROR unit.shard-two/2.juju-log sharding:7: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-config-server-2: 02:06:48 ERROR unit.config-server/2.juju-log config-server:7: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-two-2: 02:06:49 ERROR unit.shard-two/2.juju-log sharding:7: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-config-server-2: 02:06:49 ERROR unit.config-server/2.juju-log config-server:7: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-two-2: 02:06:50 ERROR unit.shard-two/2.juju-log sharding:7: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-config-server-2: 02:06:51 ERROR unit.config-server/2.juju-log config-server:7: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-two-2: 02:06:52 ERROR unit.shard-two/2.juju-log sharding:7: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-config-server-2: 02:06:52 ERROR unit.config-server/2.juju-log config-server:7: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-two-2: 02:06:53 ERROR unit.shard-two/2.juju-log sharding:7: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-config-server-2: 02:06:53 ERROR unit.config-server/2.juju-log config-server:7: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-two-2: 02:06:54 ERROR unit.shard-two/2.juju-log sharding:7: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-config-server-2: 02:06:54 ERROR unit.config-server/2.juju-log config-server:7: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-two-2: 02:06:55 ERROR unit.shard-two/2.juju-log sharding:7: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-two-2: 02:06:55 ERROR unit.shard-two/2.juju-log sharding:7: Cluster is not healthy after upgrading unit %s.. Will retry next juju event.
+unit-config-server-2: 02:06:55 ERROR unit.config-server/2.juju-log config-server:7: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-config-server-2: 02:06:55 ERROR unit.config-server/2.juju-log config-server:7: Cluster is not healthy after upgrading sharded cluster. Will retry next juju event.
+unit-config-server-2: 02:08:57 ERROR unit.config-server/2.juju-log Cannot proceed with upgrade. Status of shard units do not show active / waiting for upgrade.
+unit-shard-two-2: 02:08:58 ERROR unit.shard-two/2.juju-log upgrade-version-a:5: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-config-server-2: 02:08:58 ERROR unit.config-server/2.juju-log Cannot proceed with upgrade. Status of shard units do not show active / waiting for upgrade.
+unit-shard-two-2: 02:08:59 ERROR unit.shard-two/2.juju-log upgrade-version-a:5: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-config-server-2: 02:08:59 ERROR unit.config-server/2.juju-log Cannot proceed with upgrade. Status of shard units do not show active / waiting for upgrade.
+unit-shard-two-2: 02:09:00 ERROR unit.shard-two/2.juju-log upgrade-version-a:5: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-config-server-2: 02:09:00 ERROR unit.config-server/2.juju-log Cannot proceed with upgrade. Status of shard units do not show active / waiting for upgrade.
+unit-shard-two-2: 02:09:02 ERROR unit.shard-two/2.juju-log upgrade-version-a:5: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-config-server-2: 02:09:02 ERROR unit.config-server/2.juju-log Cannot proceed with upgrade. Status of shard units do not show active / waiting for upgrade.
+unit-shard-two-2: 02:09:03 ERROR unit.shard-two/2.juju-log upgrade-version-a:5: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-config-server-2: 02:09:03 ERROR unit.config-server/2.juju-log Cannot proceed with upgrade. Status of shard units do not show active / waiting for upgrade.
+unit-shard-two-2: 02:09:04 ERROR unit.shard-two/2.juju-log upgrade-version-a:5: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-config-server-2: 02:09:04 ERROR unit.config-server/2.juju-log Cannot proceed with upgrade. Status of shard units do not show active / waiting for upgrade.
+unit-shard-two-2: 02:09:05 ERROR unit.shard-two/2.juju-log upgrade-version-a:5: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-config-server-2: 02:09:05 ERROR unit.config-server/2.juju-log Cannot proceed with upgrade. Status of shard units do not show active / waiting for upgrade.
+unit-shard-two-2: 02:09:06 ERROR unit.shard-two/2.juju-log upgrade-version-a:5: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-config-server-2: 02:09:06 ERROR unit.config-server/2.juju-log Cannot proceed with upgrade. Status of shard units do not show active / waiting for upgrade.
+unit-shard-two-2: 02:09:07 ERROR unit.shard-two/2.juju-log upgrade-version-a:5: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-config-server-2: 02:09:07 ERROR unit.config-server/2.juju-log Cannot proceed with upgrade. Status of shard units do not show active / waiting for upgrade.
+unit-config-server-2: 02:09:07 ERROR unit.config-server/2.juju-log Cluster is not healthy after upgrading sharded cluster. Will retry next juju event.
+unit-shard-two-2: 02:09:08 ERROR unit.shard-two/2.juju-log upgrade-version-a:5: Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade.
+unit-shard-two-2: 02:09:08 ERROR unit.shard-two/2.juju-log upgrade-version-a:5: Cluster is not healthy after upgrading unit %s.. Will retry next juju event.
+unit-shard-one-2: 02:11:21 ERROR unit.shard-one/2.juju-log _on_secret_remove: Secret secret:crd5si4bm9p2d7ud4jjg seems to have no observers, could be removed
+unit-config-server-2: 02:12:43 ERROR unit.config-server/2.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-config-server-2/charm/./src/charm.py", line 1643, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-config-server-2/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-config-server-2/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-config-server-2/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-config-server-2/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-config-server-2/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-config-server-2/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-config-server-2/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-config-server-2/charm/src/upgrades/mongodb_upgrade.py", line 139, in _on_pre_upgrade_check_action
+    self._upgrade.pre_upgrade_check()
+  File "/var/lib/juju/agents/unit-config-server-2/charm/src/upgrades/upgrade.py", line 301, in pre_upgrade_check
+    if not self._charm.upgrade.is_cluster_able_to_read_write():
+  File "/var/lib/juju/agents/unit-config-server-2/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 240, in is_cluster_able_to_read_write
+    return self.is_sharded_cluster_able_to_read_write()
+  File "/var/lib/juju/agents/unit-config-server-2/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 256, in is_sharded_cluster_able_to_read_write
+    write_replicated = self.is_write_on_secondaries(
+  File "/var/lib/juju/agents/unit-config-server-2/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 368, in is_write_on_secondaries
+    self.confirm_excepted_write_on_replica(
+  File "/var/lib/juju/agents/unit-config-server-2/charm/venv/tenacity/__init__.py", line 336, in wrapped_f
+    return copy(f, *args, **kw)
+  File "/var/lib/juju/agents/unit-config-server-2/charm/venv/tenacity/__init__.py", line 475, in __call__
+    do = self.iter(retry_state=retry_state)
+  File "/var/lib/juju/agents/unit-config-server-2/charm/venv/tenacity/__init__.py", line 376, in iter
+    result = action(retry_state)
+  File "/var/lib/juju/agents/unit-config-server-2/charm/venv/tenacity/__init__.py", line 418, in exc_check
+    raise retry_exc.reraise()
+  File "/var/lib/juju/agents/unit-config-server-2/charm/venv/tenacity/__init__.py", line 185, in reraise
+    raise self.last_attempt.result()
+  File "/usr/lib/python3.10/concurrent/futures/_base.py", line 451, in result
+    return self.__get_result()
+  File "/usr/lib/python3.10/concurrent/futures/_base.py", line 403, in __get_result
+    raise self._exception
+  File "/var/lib/juju/agents/unit-config-server-2/charm/venv/tenacity/__init__.py", line 478, in __call__
+    result = fn(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-config-server-2/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 327, in confirm_excepted_write_on_replica
+    if query[0][WRITE_KEY] != expected_write_value:
+  File "/var/lib/juju/agents/unit-config-server-2/charm/venv/pymongo/cursor.py", line 755, in __getitem__
+    for doc in clone:
+  File "/var/lib/juju/agents/unit-config-server-2/charm/venv/pymongo/cursor.py", line 1243, in next
+    if len(self.__data) or self._refresh():
+  File "/var/lib/juju/agents/unit-config-server-2/charm/venv/pymongo/cursor.py", line 1160, in _refresh
+    self.__send_message(q)
+  File "/var/lib/juju/agents/unit-config-server-2/charm/venv/pymongo/cursor.py", line 1039, in __send_message
+    response = client._run_operation(
+  File "/var/lib/juju/agents/unit-config-server-2/charm/venv/pymongo/_csot.py", line 108, in csot_wrapper
+    return func(self, *args, **kwargs)
+  File "/var/lib/juju/agents/unit-config-server-2/charm/venv/pymongo/mongo_client.py", line 1431, in _run_operation
+    return self._retryable_read(
+  File "/var/lib/juju/agents/unit-config-server-2/charm/venv/pymongo/mongo_client.py", line 1540, in _retryable_read
+    return self._retry_internal(
+  File "/var/lib/juju/agents/unit-config-server-2/charm/venv/pymongo/_csot.py", line 108, in csot_wrapper
+    return func(self, *args, **kwargs)
+  File "/var/lib/juju/agents/unit-config-server-2/charm/venv/pymongo/mongo_client.py", line 1507, in _retry_internal
+    ).run()
+  File "/var/lib/juju/agents/unit-config-server-2/charm/venv/pymongo/mongo_client.py", line 2353, in run
+    return self._read() if self._is_read else self._write()
+  File "/var/lib/juju/agents/unit-config-server-2/charm/venv/pymongo/mongo_client.py", line 2483, in _read
+    self._server = self._get_server()
+  File "/var/lib/juju/agents/unit-config-server-2/charm/venv/pymongo/mongo_client.py", line 2439, in _get_server
+    return self._client._select_server(
+  File "/var/lib/juju/agents/unit-config-server-2/charm/venv/pymongo/mongo_client.py", line 1322, in _select_server
+    server = topology.select_server(
+  File "/var/lib/juju/agents/unit-config-server-2/charm/venv/pymongo/topology.py", line 368, in select_server
+    server = self._select_server(
+  File "/var/lib/juju/agents/unit-config-server-2/charm/venv/pymongo/topology.py", line 346, in _select_server
+    servers = self.select_servers(
+  File "/var/lib/juju/agents/unit-config-server-2/charm/venv/pymongo/topology.py", line 253, in select_servers
+    server_descriptions = self._select_servers_loop(
+  File "/var/lib/juju/agents/unit-config-server-2/charm/venv/pymongo/topology.py", line 303, in _select_servers_loop
+    raise ServerSelectionTimeoutError(
+pymongo.errors.ServerSelectionTimeoutError: No servers found yet, Timeout: 1.0s, Topology Description: <TopologyDescription id: 66da6519c37e8c95aab9685c, topology_type: Single, servers: [<ServerDescription ('10.162.51.91', 27017) server_type: Unknown, rtt: None>]>
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
