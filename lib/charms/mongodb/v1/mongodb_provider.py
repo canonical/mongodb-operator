@@ -466,13 +466,13 @@ class MongoDBProvider(Object):
 
         self.charm.app_peer_data[MANAGED_USERS_KEY] = json.dumps(list(new_users))
 
-    def _remove_from_relational_users_to_manage(self, user_to_remove) -> None:
+    def _remove_from_relational_users_to_manage(self, user_to_remove: str) -> None:
         """Removes the provided user from the set of the users to manage."""
         current_users = self._get_relational_users_to_manage()
         updated_users = current_users - {user_to_remove}
         self._update_relational_users_to_manage(updated_users)
 
-    def _add_to_relational_users_to_manage(self, user_to_add) -> None:
+    def _add_to_relational_users_to_manage(self, user_to_add: str) -> None:
         """Adds the provided user to the set of the users to manage."""
         current_users = self._get_relational_users_to_manage()
         current_users.add(user_to_add)
