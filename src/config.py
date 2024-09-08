@@ -116,6 +116,12 @@ class Config:
         SECRET_DELETED_LABEL = "None"
         MAX_PASSWORD_LENGTH = 4096
 
+    class Substrate:
+        """Secrets related constants."""
+
+        K8S = "k8s"
+        VM = "vm"
+
     class Status:
         """Status related constants.
 

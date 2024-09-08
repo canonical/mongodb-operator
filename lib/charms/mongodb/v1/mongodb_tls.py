@@ -348,6 +348,7 @@ class MongoDBTLS(Object):
         """Gets the current SANs for the unit cert."""
         # if unit has no certificates do not proceed.
         if not self.is_tls_enabled(internal=internal):
+            print("NOT ENABLED")
             return
 
         pem_file = Config.TLS.INT_PEM_FILE if internal else Config.TLS.EXT_PEM_FILE
@@ -362,11 +363,15 @@ class MongoDBTLS(Object):
         ]
 
         try:
-            container = self.charm.unit.get_container(Config.CONTAINER_NAME)
-            process = container.exec(command=command, working_dir=Config.MONGOD_CONF_DIR)
-
-            output, _ = process.wait_output()
-            sans_lines = output.splitlines()
+            if self.substrate == Config.Substrate.K8S:
+                container = self.charm.unit.get_container(Config.CONTAINER_NAME)
+                process = container.exec(command=command, working_dir=Config.MONGOD_CONF_DIR)
+                output, _ = process.wait_output()
+                sans_lines = output.splitlines()
+            else:
+                print(subprocess.check_output)
+                output = subprocess.check_output(command, shell=True)
+                sans_lines = output.decode("utf-8").splitlines()
         except (subprocess.CalledProcessError, ExecError) as e:
             logger.error(e.stdout)
             raise e
