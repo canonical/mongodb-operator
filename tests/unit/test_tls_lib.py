@@ -3,7 +3,7 @@
 import unittest
 from unittest import mock
 from unittest.mock import patch
-
+import subprocess
 from ops.testing import Harness
 from parameterized import parameterized
 
@@ -258,6 +258,38 @@ class TestMongoTLS(unittest.TestCase):
         self.harness.remove_relation(rel_id)
 
         defer.assert_called()
+
+    def test_get_new_sans_gives_node_port_for_mongos_k8s(self):
+        """Tests that get_new_sans only gets node port for external mongos K8s."""
+        mock_get_ext_mongos_host = mock.Mock()
+        mock_get_ext_mongos_host.return_value = "node_port"
+        self.harness.charm.get_ext_mongos_host = mock_get_ext_mongos_host
+        for substrate in ["k8s", "vm"]:
+            for role in ["mongos", "config-server", "shard"]:
+                for external in [True, False]:
+                    if external and role == "mongos" and substrate == "k8s":
+                        continue
+
+                    assert "node-port" not in self.harness.charm.tls.get_new_sans()["sans_ips"]
+
+    # def test_get_current_sans_returns_none(self):
+    #     """Tests the difference scenarios in which get_current_sans returns None."""
+    #     # case one no internal certificate
+    #     self.assertEqual(self.harness.tls.get_current_sans(), None)
+
+    #     # case two no internal certificate
+    #     self.assertEqual(self.harness.tls.get_current_sans(), None)
+
+    @patch("charm.MongoDBTLS.is_tls_enabled")
+    @patch("charms.mongodb.v1.mongodb_tls.subprocess.check_output")
+    def test_get_current_sans_failure_raises(self, check_output, is_tls_enabled):
+        """Tests the difference scenarios in which get_current_sans fails."""
+        is_tls_enabled.return_value = True
+        check_output.side_effect = subprocess.CalledProcessError(cmd="openssl", returncode=1)
+
+        for internal in [True, False]:
+            with self.assertRaises(subprocess.CalledProcessError):
+                self.assertEqual(self.harness.charm.tls.get_current_sans(internal), None)
 
     # Helper functions
     def relate_to_tls_certificates_operator(self) -> int:
