@@ -38,7 +38,7 @@ SANS_IPS_KEY = "sans_ips"
 LIBID = "e02a50f0795e4dd292f58e93b4f493dd"
 
 # Increment this major API version when introducing breaking changes
-LIBAPI = 1
+LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
@@ -105,7 +105,7 @@ class MongoDBTLS(Object):
         internal: bool,
     ):
         """Request TLS certificate."""
-        if self.charm.model.get_relation(Config.TLS.TLS_PEER_RELATION):
+        if not self.charm.model.get_relation(Config.TLS.TLS_PEER_RELATION):
             return
 
         if param is None:
@@ -128,7 +128,6 @@ class MongoDBTLS(Object):
         label = "int" if internal else "ext"
         self.charm.unit_peer_data[f"{label}_certs_subject"] = self._get_subject_name()
         self.charm.unit_peer_data[f"{label}_certs_subject"] = self._get_subject_name()
-
         self.certs.request_certificate_creation(certificate_signing_request=csr)
         self.set_waiting_for_cert_to_update(internal=internal, waiting=True)
 
@@ -229,12 +228,12 @@ class MongoDBTLS(Object):
         )
         self.set_tls_secret(internal, Config.TLS.SECRET_CERT_LABEL, event.certificate)
         self.set_tls_secret(internal, Config.TLS.SECRET_CA_LABEL, event.ca)
+        self.set_waiting_for_cert_to_update(waiting=False, internal=internal)
 
         if self.charm.is_role(Config.Role.CONFIG_SERVER) and internal:
             self.charm.cluster.update_ca_secret(new_ca=event.ca)
             self.charm.config_server.update_ca_secret(new_ca=event.ca)
 
-        self.set_waiting_for_cert_to_update(waiting=False, internal=internal)
         if self.waiting_for_both_certs():
             logger.debug(
                 "Defer till both internal and external TLS certificates available to avoid second restart."
@@ -443,20 +442,20 @@ class MongoDBTLS(Object):
     ) -> bool:
         """Returns True we are waiting for a cert to update."""
         if internal:
-            json.dumps(self.charm.app_peer_data.get(WAIT_CERT_UPDATE, "false"))
+            json.loads(self.charm.app_peer_data.get(WAIT_CERT_UPDATE, "false"))
         else:
-            json.dumps(self.charm.unit_peer_data.get(WAIT_CERT_UPDATE, "false"))
+            json.loads(self.charm.unit_peer_data.get(WAIT_CERT_UPDATE, "false"))
 
     def set_waiting_for_cert_to_update(
         self,
         waiting: bool,
-        internal=False,
+        internal: bool,
     ):
-        """Sets a boolean indicator, indicating whether or not we are waiting for a cert to update."""
-        if not self.charm.unit.is_leader():
+        """Sets a boolean indicator, for whether or not we are waiting for a cert to update."""
+        if internal and not self.charm.unit.is_leader():
             return
 
         if internal:
-            self.charm.app_peer_data[WAIT_CERT_UPDATE] = json.loads(waiting)
+            self.charm.app_peer_data[WAIT_CERT_UPDATE] = json.dumps(waiting)
         else:
-            self.charm.unit_peer_data[WAIT_CERT_UPDATE] = json.loads(waiting)
+            self.charm.unit_peer_data[WAIT_CERT_UPDATE] = json.dumps(waiting)
