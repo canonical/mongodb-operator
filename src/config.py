@@ -117,7 +117,7 @@ class Config:
         MAX_PASSWORD_LENGTH = 4096
 
     class Substrate:
-        """Secrets related constants."""
+        """Substrate related constants."""
 
         K8S = "k8s"
         VM = "vm"
@@ -132,12 +132,6 @@ class Config:
 
         # TODO Future PR add more status messages here as constants
         UNHEALTHY_UPGRADE = BlockedStatus("Unhealthy after upgrade.")
-
-    class Substrate:
-        """Substrate related constants."""
-
-        VM = "vm"
-        K8S = "k8s"
 
     class Upgrade:
         """Upgrade related constants."""

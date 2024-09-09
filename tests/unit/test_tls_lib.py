@@ -1,9 +1,10 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
+import subprocess
 import unittest
 from unittest import mock
 from unittest.mock import patch
-import subprocess
+
 from ops.testing import Harness
 from parameterized import parameterized
 
@@ -34,7 +35,6 @@ class TestMongoTLS(unittest.TestCase):
 
         Note: this implicitly tests: _request_certificate & _parse_tls_file
         """
-
         self.harness.add_relation("certificates", "certificates")
         # Tests for leader unit (ie internal certificates and external certificates)
         get_new_sans.return_value = {"sans_dns": [""], "sans_ips": ["1.1.1.1"]}
@@ -281,14 +281,14 @@ class TestMongoTLS(unittest.TestCase):
         """Tests the different scenarios that get_current_sans returns None.
 
         1. get_current_sans returns None when TLS is not enabled.
-        2. get_current_sans returns None if cert file is wrongly formated.
+        2. get_current_sans returns None if cert file is wrongly formatted.
         """
         # case 1: get_current_sans returns None when TLS is not enabled.
         is_tls_enabled.return_value = None
         for internal in [True, False]:
             self.assertEqual(self.harness.charm.tls.get_current_sans(internal), None)
 
-        # case 2: get_current_sans returns None if cert file is wrongly formated.
+        # case 2: get_current_sans returns None if cert file is wrongly formatted.
         check_output.return_value = "".encode("utf-8")
         is_tls_enabled.return_value = True
         for internal in [True, False]:

@@ -350,26 +350,8 @@ class MongoDBTLS(Object):
         if not self.is_tls_enabled(internal=internal):
             return
 
-        pem_file = Config.TLS.INT_PEM_FILE if internal else Config.TLS.EXT_PEM_FILE
-        command = [
-            "openssl",
-            "x509",
-            "-noout",
-            "-ext",
-            "subjectAltName",
-            "-in",
-            pem_file,
-        ]
-
         try:
-            if self.substrate == Config.Substrate.K8S:
-                container = self.charm.unit.get_container(Config.CONTAINER_NAME)
-                process = container.exec(command=command, working_dir=Config.MONGOD_CONF_DIR)
-                output, _ = process.wait_output()
-                sans_lines = output.splitlines()
-            else:
-                output = subprocess.check_output(command, shell=True)
-                sans_lines = output.decode("utf-8").splitlines()
+            sans_lines = self.get_sans_from_host(internal)
         except (subprocess.CalledProcessError, ExecError) as e:
             logger.error(e.stdout)
             raise e
@@ -379,7 +361,7 @@ class MongoDBTLS(Object):
             if "DNS" in line and "IP" in line:
                 break
 
-        if not "DNS" in line and "IP" not in line:
+        if "DNS" not in line and "IP" not in line:
             return None
 
         sans_ip = []
@@ -393,6 +375,34 @@ class MongoDBTLS(Object):
                 sans_ip.append(san_value)
 
         return {SANS_IPS_KEY: sorted(sans_ip), SANS_DNS_KEY: sorted(sans_dns)}
+
+    def get_sans_from_host(self, internal) -> List[str]:
+        """Returns the sans lines from the host.
+
+        Raises: subprocess.CalledProcessError, ExecError
+        """
+        pem_file = Config.TLS.INT_PEM_FILE if internal else Config.TLS.EXT_PEM_FILE
+
+        command = [
+            "openssl",
+            "x509",
+            "-noout",
+            "-ext",
+            "subjectAltName",
+            "-in",
+            pem_file,
+        ]
+
+        if self.substrate == Config.Substrate.K8S:
+            container = self.charm.unit.get_container(Config.CONTAINER_NAME)
+            process = container.exec(command=command, working_dir=Config.MONGOD_CONF_DIR)
+            output, _ = process.wait_output()
+            sans_lines = output.splitlines()
+        else:
+            output = subprocess.check_output(command, shell=True)
+            sans_lines = output.decode("utf-8").splitlines()
+
+        return sans_lines
 
     def get_tls_files(self, internal: bool) -> Tuple[Optional[str], Optional[str]]:
         """Prepare TLS files in special MongoDB way.
