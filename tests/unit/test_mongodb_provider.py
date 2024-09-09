@@ -1,6 +1,7 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import json
 import unittest
 from unittest import mock
 from unittest.mock import patch
@@ -148,6 +149,9 @@ class TestMongoProvider(unittest.TestCase):
     def test_oversee_users_drop_user_failure(self, connection, relation_users):
         """Verifies that when unable to drop users from mongod an exception is raised."""
         # presets, such that there is a need to drop users.
+        self.harness.charm.app_peer_data["managed-users-key"] = json.dumps(
+            ["relation-user1", "relation-user2"]
+        )
         relation_users.return_value = {"relation-user1"}
         connection.return_value.__enter__.return_value.get_users.return_value = {
             "relation-user1",
@@ -268,6 +272,7 @@ class TestMongoProvider(unittest.TestCase):
     def test_oversee_users_update_user_failure(self, connection, relation_users, get_config):
         """Verifies that when updating users fails an exception is raised."""
         # presets, such that the need to update user relations is triggered
+        self.harness.charm.app_peer_data["managed-users-key"] = json.dumps(["relation-user1"])
         relation_users.return_value = {"relation-user1"}
         connection.return_value.__enter__.return_value.get_users.return_value = {"relation-user1"}
 
