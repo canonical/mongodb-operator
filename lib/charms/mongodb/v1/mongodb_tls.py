@@ -331,13 +331,11 @@ class MongoDBTLS(Object):
             f"{self.charm.app.name}-{unit_id}.{self.charm.app.name}-endpoints",
         ]
 
-        sans[SANS_IPS_KEY] = []
+        sans[SANS_IPS_KEY] = [
+            str(self.charm.model.get_binding(self.peer_relation).network.bind_address)
+        ]
 
-        if self.substrate == Config.Substrate.VM:
-            sans[SANS_IPS_KEY].append(
-                str(self.charm.model.get_binding(self.peer_relation).network.bind_address)
-            )
-        elif self.charm.is_role(Config.Role.MONGOS) and self.charm.is_external_client:
+        if self.charm.is_role(Config.Role.MONGOS) and self.charm.is_external_client:
             sans[SANS_IPS_KEY].append(
                 self.charm.get_ext_mongos_host(self.charm.unit, incl_port=False)
             )
