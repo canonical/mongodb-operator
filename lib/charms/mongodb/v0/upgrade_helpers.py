@@ -3,18 +3,25 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 import abc
+import copy
+import enum
+import json
 import logging
+import pathlib
 import secrets
 import string
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
+import poetry.core.constraints.version as poetry_version
 from charms.mongodb.v0.mongo import MongoConfiguration
-from charms.mongodb.v1.mongodb import MongoDBConnection
+from charms.mongodb.v1.helpers import unit_number
+from charms.mongodb.v1.mongodb import FailedToMovePrimaryError, MongoDBConnection
 from charms.mongodb.v1.mongos import MongosConnection
+from ops import ActionEvent, BlockedStatus, MaintenanceStatus, StatusBase, Unit
 from ops.charm import CharmBase
 from ops.framework import Object
 from pymongo.errors import OperationFailure, PyMongoError, ServerSelectionTimeoutError
-from tenacity import Retrying, retry, stop_after_attempt, wait_fixed
+from tenacity import RetryError, Retrying, retry, stop_after_attempt, wait_fixed
 
 from config import Config
 
@@ -27,7 +34,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 2
 
 logger = logging.getLogger(__name__)
 
@@ -35,18 +42,32 @@ SHARD_NAME_INDEX = "_id"
 WRITE_KEY = "write_value"
 ROLLBACK_INSTRUCTIONS = "To rollback, `juju refresh` to the previous revision"
 
-
-# BEGIN: Useful classes
-class AbstractUpgrade(abc.ABC):
-    """In-place upgrades abstract class (typing)."""
-
-    pass
-
-
-# END: Useful classes
+PEER_RELATION_ENDPOINT_NAME = "upgrade-version-a"
+RESUME_ACTION_NAME = "resume-upgrade"
+PRECHECK_ACTION_NAME = "pre-upgrade-check"
 
 
 # BEGIN: Exceptions
+class StatusException(Exception):
+    """Exception with ops status."""
+
+    def __init__(self, status: StatusBase) -> None:
+        super().__init__(status.message)
+        self.status = status
+
+
+class PrecheckFailed(StatusException):
+    """App is not ready to upgrade."""
+
+    def __init__(self, message: str):
+        self.message = message
+        super().__init__(
+            BlockedStatus(
+                f"Rollback with `juju refresh`. Pre-upgrade check failed: {self.message}"
+            )
+        )
+
+
 class FailedToElectNewPrimaryError(Exception):
     """Raised when a new primary isn't elected after stepping down."""
 
@@ -59,7 +80,259 @@ class BalancerStillRunningError(Exception):
     """Raised when the balancer is still running after stopping it."""
 
 
+class PeerRelationNotReady(Exception):
+    """Upgrade peer relation not available (to this unit)."""
+
+
 # END: Exceptions
+
+
+class UnitState(str, enum.Enum):
+    """Unit upgrade state."""
+
+    HEALTHY = "healthy"
+    RESTARTING = "restarting"  # Kubernetes only
+    UPGRADING = "upgrading"  # Machines only
+    OUTDATED = "outdated"  # Machines only
+
+
+# BEGIN: Useful classes
+class AbstractUpgrade(abc.ABC):
+    """In-place upgrades abstract class (typing).
+
+    Based off specification: DA058 - In-Place Upgrades - Kubernetes v2
+    (https://docs.google.com/document/d/1tLjknwHudjcHs42nzPVBNkHs98XxAOT2BXGGpP7NyEU/)
+    """
+
+    def __init__(self, charm_: CharmBase) -> None:
+        relations = charm_.model.relations[PEER_RELATION_ENDPOINT_NAME]
+        if not relations:
+            raise PeerRelationNotReady
+        assert len(relations) == 1
+        self._peer_relation = relations[0]
+        self._charm = charm_
+        self._unit: Unit = charm_.unit
+        self._unit_databag = self._peer_relation.data[self._unit]
+        self._app_databag = self._peer_relation.data[charm_.app]
+        self._app_name = charm_.app.name
+        self._current_versions = {}  # For this unit
+        for version, file_name in {
+            "charm": "charm_version",
+            "workload": "workload_version",
+        }.items():
+            self._current_versions[version] = pathlib.Path(file_name).read_text().strip()
+
+    @property
+    def unit_state(self) -> UnitState | None:
+        """Unit upgrade state."""
+        if state := self._unit_databag.get("state"):
+            return UnitState(state)
+
+    @unit_state.setter
+    def unit_state(self, value: UnitState) -> None:
+        self._unit_databag["state"] = value.value
+
+    @property
+    def is_compatible(self) -> bool:
+        """Whether upgrade is supported from previous versions."""
+        assert self.versions_set
+        try:
+            previous_version_strs: Dict[str, str] = json.loads(self._app_databag["versions"])
+        except KeyError as exception:
+            logger.debug("`versions` missing from peer relation", exc_info=exception)
+            return False
+        # TODO charm versioning: remove `.split("+")` (which removes git hash before comparing)
+        previous_version_strs["charm"] = previous_version_strs["charm"].split("+")[0]
+        previous_versions: Dict[str, poetry_version.Version] = {
+            key: poetry_version.Version.parse(value)
+            for key, value in previous_version_strs.items()
+        }
+        current_version_strs = copy.copy(self._current_versions)
+        current_version_strs["charm"] = current_version_strs["charm"].split("+")[0]
+        current_versions = {
+            key: poetry_version.Version.parse(value) for key, value in current_version_strs.items()
+        }
+        try:
+            # TODO Future PR: change this > sign to support downgrades
+            if (
+                previous_versions["charm"] > current_versions["charm"]
+                or previous_versions["charm"].major != current_versions["charm"].major
+            ):
+                logger.debug(
+                    f'{previous_versions["charm"]=} incompatible with {current_versions["charm"]=}'
+                )
+                return False
+            if (
+                previous_versions["workload"] > current_versions["workload"]
+                or previous_versions["workload"].major != current_versions["workload"].major
+            ):
+                logger.debug(
+                    f'{previous_versions["workload"]=} incompatible with {current_versions["workload"]=}'
+                )
+                return False
+            logger.debug(
+                f"Versions before upgrade compatible with versions after upgrade {previous_version_strs=} {self._current_versions=}"
+            )
+            return True
+        except KeyError as exception:
+            logger.debug(f"Version missing from {previous_versions=}", exc_info=exception)
+            return False
+
+    @property
+    def in_progress(self) -> bool:
+        """Whether upgrade is in progress."""
+        logger.debug(
+            f"{self._app_workload_container_version=} {self._unit_workload_container_versions=}"
+        )
+        return any(
+            version != self._app_workload_container_version
+            for version in self._unit_workload_container_versions.values()
+        )
+
+    @property
+    def _sorted_units(self) -> List[Unit]:
+        """Units sorted from highest to lowest unit number."""
+        return sorted((self._unit, *self._peer_relation.units), key=unit_number, reverse=True)
+
+    @abc.abstractmethod
+    def _get_unit_healthy_status(self) -> StatusBase:
+        """Status shown during upgrade if unit is healthy."""
+        raise NotImplementedError()
+
+    def get_unit_juju_status(self) -> StatusBase | None:
+        """Unit upgrade status."""
+        if self.in_progress:
+            return self._get_unit_healthy_status()
+
+    @property
+    def app_status(self) -> StatusBase | None:
+        """App upgrade status."""
+        if not self.in_progress:
+            return
+        if not self.upgrade_resumed:
+            # User confirmation needed to resume upgrade (i.e. upgrade second unit)
+            # Statuses over 120 characters are truncated in `juju status` as of juju 3.1.6 and
+            # 2.9.45
+            resume_string = ""
+            if len(self._sorted_units) > 1:
+                resume_string = (
+                    f"Verify highest unit is healthy & run `{RESUME_ACTION_NAME}` action. "
+                )
+            return BlockedStatus(
+                f"Upgrading. {resume_string}To rollback, `juju refresh` to last revision"
+            )
+        return MaintenanceStatus("Upgrading. To rollback, `juju refresh` to the previous revision")
+
+    @property
+    def versions_set(self) -> bool:
+        """Whether versions have been saved in app databag.
+
+        Should only be `False` during first charm install.
+
+        If a user upgrades from a charm that does not set versions, this charm will get stuck.
+        """
+        return self._app_databag.get("versions") is not None
+
+    def set_versions_in_app_databag(self) -> None:
+        """Save current versions in app databag.
+
+        Used after next upgrade to check compatibility (i.e. whether that upgrade should be
+        allowed).
+        """
+        assert not self.in_progress
+        logger.debug(f"Setting {self._current_versions=} in upgrade peer relation app databag")
+        self._app_databag["versions"] = json.dumps(self._current_versions)
+        logger.debug(f"Set {self._current_versions=} in upgrade peer relation app databag")
+
+    @property
+    @abc.abstractmethod
+    def upgrade_resumed(self) -> bool:
+        """Whether user has resumed upgrade with Juju action."""
+        raise NotImplementedError()
+
+    @property
+    @abc.abstractmethod
+    def _unit_workload_container_versions(self) -> Dict[str, str]:
+        """{Unit name: unique identifier for unit's workload container version}.
+
+        If and only if this version changes, the workload will restart (during upgrade or
+        rollback).
+
+        On Kubernetes, the workload & charm are upgraded together
+        On machines, the charm is upgraded before the workload
+
+        This identifier should be comparable to `_app_workload_container_version` to determine if
+        the unit & app are the same workload container version.
+        """
+        raise NotImplementedError()
+
+    @property
+    @abc.abstractmethod
+    def _app_workload_container_version(self) -> str:
+        """Unique identifier for the app's workload container version.
+
+        This should match the workload version in the current Juju app charm version.
+
+        This identifier should be comparable to `_unit_workload_container_versions` to determine if
+        the app & unit are the same workload container version.
+        """
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def reconcile_partition(self, *, action_event: ActionEvent | None = None) -> None:
+        """If ready, allow next unit to upgrade."""
+        raise NotImplementedError()
+
+    def pre_upgrade_check(self) -> None:
+        """Check if this app is ready to upgrade.
+
+        Runs before any units are upgraded
+
+        Does *not* run during rollback
+
+        On machines, this runs before any units are upgraded (after `juju refresh`)
+        On machines & Kubernetes, this also runs during pre-upgrade-check action
+
+        Can run on leader or non-leader unit
+
+        Raises:
+            PrecheckFailed: App is not ready to upgrade
+
+        TODO Kubernetes: Run (some) checks after `juju refresh` (in case user forgets to run
+        pre-upgrade-check action). Note: 1 unit will upgrade before we can run checks (checks may
+        need to be modified).
+        See https://chat.canonical.com/canonical/pl/cmf6uhm1rp8b7k8gkjkdsj4mya
+        """
+        logger.debug("Running pre-upgrade checks")
+
+        # TODO if shard is getting upgraded but BOTH have same revision, then fail
+        try:
+            self._charm.upgrade.wait_for_cluster_healthy()
+        except RetryError:
+            logger.error("Cluster is not healthy")
+            raise PrecheckFailed("Cluster is not healthy")
+
+        # On VM charms we can choose the order to upgrade, but not on K8s. In order to keep the
+        # two charms in sync we decided to have the VM charm have the same upgrade order as the K8s
+        # charm (i.e. highest to lowest.) Hence, we move the primary to the last unit to upgrade.
+        # This prevents the primary from jumping around from unit to unit during the upgrade
+        # procedure.
+        try:
+            self._charm.upgrade.move_primary_to_last_upgrade_unit()
+        except FailedToMovePrimaryError:
+            logger.error("Cluster failed to move primary before re-election.")
+            raise PrecheckFailed("Primary switchover failed")
+
+        if not self._charm.upgrade.is_cluster_able_to_read_write():
+            logger.error("Cluster cannot read/write to replicas")
+            raise PrecheckFailed("Cluster is not healthy")
+
+        if self._charm.is_role(Config.Role.CONFIG_SERVER):
+            if not self._charm.upgrade.are_pre_upgrade_operations_config_server_successful():
+                raise PrecheckFailed("Pre-upgrade operations on config-server failed.")
+
+
+# END: Useful classes
 
 
 class GenericMongoDBUpgrade(Object, abc.ABC):

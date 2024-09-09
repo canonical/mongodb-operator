@@ -4,11 +4,16 @@
 """Manager for handling MongoDB in-place upgrades."""
 
 import logging
-from typing import Optional
 
 from charms.mongodb.v0.upgrade_helpers import (
+    PEER_RELATION_ENDPOINT_NAME,
+    PRECHECK_ACTION_NAME,
+    RESUME_ACTION_NAME,
     ROLLBACK_INSTRUCTIONS,
     GenericMongoDBUpgrade,
+    PeerRelationNotReady,
+    PrecheckFailed,
+    UnitState,
 )
 from charms.mongodb.v1.mongos import BalancerNotEnabledError, MongosConnection
 from ops.charm import ActionEvent, CharmBase
@@ -18,7 +23,7 @@ from overrides import override
 from tenacity import RetryError
 
 from config import Config
-from upgrades import machine_upgrade, upgrade
+from upgrades import machine_upgrade
 
 logger = logging.getLogger(__name__)
 
@@ -38,25 +43,23 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
 
     def __init__(self, charm: CharmBase):
         self.charm = charm
-        super().__init__(charm, upgrade.PEER_RELATION_ENDPOINT_NAME)
+        super().__init__(charm, PEER_RELATION_ENDPOINT_NAME)
 
     @override
     def _observe_events(self, charm: CharmBase) -> None:
         self.framework.observe(
-            charm.on[upgrade.PRECHECK_ACTION_NAME].action, self._on_pre_upgrade_check_action
+            charm.on[PRECHECK_ACTION_NAME].action, self._on_pre_upgrade_check_action
         )
 
         self.framework.observe(
-            charm.on[upgrade.PEER_RELATION_ENDPOINT_NAME].relation_created,
+            charm.on[PEER_RELATION_ENDPOINT_NAME].relation_created,
             self._on_upgrade_peer_relation_created,
         )
         self.framework.observe(
-            charm.on[upgrade.PEER_RELATION_ENDPOINT_NAME].relation_changed, self._reconcile_upgrade
+            charm.on[PEER_RELATION_ENDPOINT_NAME].relation_changed, self._reconcile_upgrade
         )
         self.framework.observe(charm.on.upgrade_charm, self._on_upgrade_charm)
-        self.framework.observe(
-            charm.on[upgrade.RESUME_ACTION_NAME].action, self._on_resume_upgrade_action
-        )
+        self.framework.observe(charm.on[RESUME_ACTION_NAME].action, self._on_resume_upgrade_action)
         self.framework.observe(charm.on["force-upgrade"].action, self._on_force_upgrade_action)
         self.framework.observe(self.post_app_upgrade_event, self.run_post_app_upgrade_task)
         self.framework.observe(self.post_cluster_upgrade_event, self.run_post_cluster_upgrade_task)
@@ -64,10 +67,10 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
     # BEGIN: properties
     @property
     @override
-    def _upgrade(self) -> Optional[machine_upgrade.Upgrade]:
+    def _upgrade(self) -> machine_upgrade.Upgrade | None:
         try:
             return machine_upgrade.Upgrade(self.charm)
-        except upgrade.PeerRelationNotReady:
+        except PeerRelationNotReady:
             return None
 
     # END: properties
@@ -95,10 +98,10 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
         if not self._upgrade.is_compatible:
             self._set_upgrade_status()
             return
-        if self._upgrade.unit_state is upgrade.UnitState.OUTDATED:
+        if self._upgrade.unit_state is UnitState.OUTDATED:
             try:
                 authorized = self._upgrade.authorized
-            except upgrade.PrecheckFailed as exception:
+            except PrecheckFailed as exception:
                 self._set_upgrade_status()
                 self.charm.status.set_and_share_status(exception.status)
                 logger.debug(f"Set unit status to {self.unit.status}")
@@ -126,7 +129,7 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
 
     def _on_pre_upgrade_check_action(self, event: ActionEvent) -> None:
         if not self.charm.unit.is_leader():
-            message = f"Must run action on leader unit. (e.g. `juju run {self.charm.app.name}/leader {upgrade.PRECHECK_ACTION_NAME}`)"
+            message = f"Must run action on leader unit. (e.g. `juju run {self.charm.app.name}/leader {PRECHECK_ACTION_NAME}`)"
             logger.debug(f"Pre-upgrade check event failed: {message}")
             event.fail(message)
             return
@@ -137,7 +140,7 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
             return
         try:
             self._upgrade.pre_upgrade_check()
-        except upgrade.PrecheckFailed as exception:
+        except PrecheckFailed as exception:
             message = (
                 f"Charm is *not* ready for upgrade. Pre-upgrade check failed: {exception.message}"
             )
@@ -150,7 +153,7 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
 
     def _on_resume_upgrade_action(self, event: ActionEvent) -> None:
         if not self.charm.unit.is_leader():
-            message = f"Must run action on leader unit. (e.g. `juju run {self.charm.app.name}/leader {upgrade.RESUME_ACTION_NAME}`)"
+            message = f"Must run action on leader unit. (e.g. `juju run {self.charm.app.name}/leader {RESUME_ACTION_NAME}`)"
             logger.debug(f"Resume upgrade event failed: {message}")
             event.fail(message)
             return
@@ -193,7 +196,7 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
         logger.debug("Running post upgrade checks to verify cluster is not broken after upgrade")
         self.run_post_upgrade_checks(event, finished_whole_cluster=False)
 
-        if self._upgrade.unit_state != upgrade.UnitState.HEALTHY:
+        if self._upgrade.unit_state != UnitState.HEALTHY:
             return
 
         logger.debug("Cluster is healthy after upgrading unit %s", self.charm.unit.name)
@@ -265,7 +268,7 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
         if self.charm.unit.status == Config.Status.UNHEALTHY_UPGRADE:
             self.charm.status.set_and_share_status(ActiveStatus())
 
-        self._upgrade.unit_state = upgrade.UnitState.HEALTHY
+        self._upgrade.unit_state = UnitState.HEALTHY
 
     def _set_upgrade_status(self):
         # In the future if we decide to support app statuses, we will need to handle this

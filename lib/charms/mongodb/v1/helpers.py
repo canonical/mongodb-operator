@@ -11,6 +11,7 @@ import subprocess
 from typing import List, Mapping
 
 from charms.mongodb.v1.mongodb import MongoConfiguration
+from ops import Unit
 from ops.model import ActiveStatus, MaintenanceStatus, StatusBase, WaitingStatus
 
 from config import Config
@@ -23,7 +24,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 9
+LIBPATCH = 10
 
 # path to store mongodb ketFile
 KEY_FILE = "keyFile"
@@ -342,3 +343,8 @@ def safe_exec(
     except subprocess.CalledProcessError as err:
         logger.error(f"cmd failed - {err.cmd}, {err.stdout}, {err.stderr}")
         raise
+
+
+def unit_number(unit_: Unit) -> int:
+    """Get unit number."""
+    return int(unit_.name.split("/")[-1])
