@@ -361,9 +361,6 @@ class MongoDBTLS(Object):
             if "DNS" in line or "IP" in line:
                 break
 
-        if "DNS" not in line or "IP" not in line:
-            return None
-
         sans_ip = []
         sans_dns = []
         for item in line.split(", "):
