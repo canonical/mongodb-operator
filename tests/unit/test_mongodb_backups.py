@@ -269,7 +269,7 @@ class TestMongoBackups(unittest.TestCase):
         service.return_value = True
 
         _set_config_options.side_effect = SetPBMConfigError
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "true"
 
         # triggering s3 event with correct fields
         mock_s3_info = mock.Mock()
@@ -295,7 +295,7 @@ class TestMongoBackups(unittest.TestCase):
         self, pbm_status, service, defer, resync, _set_config_options
     ):
         """Test charm defers when more time is needed to sync pbm."""
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "true"
         service.return_value = True
         pbm_status.return_value = ActiveStatus()
         resync.side_effect = SetPBMConfigError
@@ -321,7 +321,7 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.MongoDBBackups.get_pbm_status")
     def test_s3_credentials_syncing(self, pbm_status, service, defer, resync, _set_config_options):
         """Test charm defers when more time is needed to sync pbm credentials."""
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "true"
         service.return_value = True
         resync.side_effect = ResyncError
 
@@ -350,7 +350,7 @@ class TestMongoBackups(unittest.TestCase):
         self, pbm_status, service, defer, resync, _set_config_options
     ):
         """Test charm defers when more time is needed to sync pbm."""
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "true"
         service.return_value = True
 
         resync.side_effect = PBMBusyError
@@ -381,7 +381,7 @@ class TestMongoBackups(unittest.TestCase):
     ):
         """Test charm defers when more time is needed to sync pbm."""
         service.return_value = True
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "true"
         resync.side_effect = ExecError(
             command=["/usr/bin/pbm status"], exit_code=1, stdout="status code: 403", stderr=""
         )

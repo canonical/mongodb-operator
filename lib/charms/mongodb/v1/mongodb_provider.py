@@ -76,8 +76,8 @@ class MongoDBProvider(Object):
             self.database_provides.on.database_requested, self._on_relation_event
         )
 
-    def pass_hook_checks(self, event: EventBase) -> bool:
-        """Runs the pre-hooks checks for MongoDBProvider, returns True if all pass."""
+    def pass_sanity_hook_checks(self) -> bool:
+        """Runs reusable and event agnostic checks."""
         # We shouldn't try to create or update users if the database is not
         # initialised. We will create users as part of initialisation.
         if not self.charm.db_initialised:
@@ -90,6 +90,13 @@ class MongoDBProvider(Object):
             return False
 
         if not self.charm.unit.is_leader():
+            return False
+
+        return True
+
+    def pass_hook_checks(self, event: EventBase) -> bool:
+        """Runs the pre-hooks checks for MongoDBProvider, returns True if all pass."""
+        if not self.pass_sanity_hook_checks():
             return False
 
         if self.charm.upgrade_in_progress:
@@ -173,7 +180,7 @@ class MongoDBProvider(Object):
                 mongo.drop_user(username)
 
             for username in relation_users - database_users:
-                config = self._get_config(username, None)
+                config = self._get_config(username, None, event)
                 if config.database is None:
                     # We need to wait for the moment when the provider library
                     # set the database name into the relation.
@@ -240,7 +247,7 @@ class MongoDBProvider(Object):
 
     def update_app_relation_data(self) -> None:
         """Helper function to update application relation data."""
-        if not self.charm.db_initialised:
+        if not self.pass_sanity_hook_checks():
             return
 
         database_users = set()
@@ -282,7 +289,9 @@ class MongoDBProvider(Object):
         self.database_provides.update_relation_data(relation.id, {"password": password})
         return password
 
-    def _get_config(self, username: str, password: Optional[str]) -> MongoConfiguration:
+    def _get_config(
+        self, username: str, password: Optional[str], event=None
+    ) -> MongoConfiguration:
         """Construct the config object for future user creation."""
         relation = self._get_relation_from_username(username)
         if not password:
@@ -299,6 +308,7 @@ class MongoDBProvider(Object):
             "tls_external": False,
             "tls_internal": False,
         }
+
         if self.charm.is_role(Config.Role.MONGOS):
             mongo_args["port"] = Config.MONGOS_PORT
             if self.substrate == Config.Substrate.K8S:

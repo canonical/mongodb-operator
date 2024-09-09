@@ -55,7 +55,6 @@ async def test_build_and_deploy(
     await ops_test.model.deploy(
         MONGOS_APP_NAME,
         channel="6/edge",
-        revision=3,
     )
     await ops_test.model.deploy(S3_APP_NAME, channel="edge")
 

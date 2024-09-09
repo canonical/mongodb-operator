@@ -208,8 +208,13 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBConnection")
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
+    @patch("charm.get_charm_revision")
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
-    def test_mongodb_relation_joined_all_replicas_not_ready(self, _, connection):
+    def test_mongodb_relation_joined_all_replicas_not_ready(
+        self, _, rev, local, is_local, connection
+    ):
         """Tests that we go into waiting when current ReplicaSet hosts are not ready.
 
         Tests the scenario that if current replica set hosts are not ready, the leader goes into
@@ -217,7 +222,7 @@ class TestCharm(unittest.TestCase):
         """
         # preset values
         self.harness.set_leader(True)
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "true"
         connection.return_value.__enter__.return_value.is_ready = False
         connection.return_value.__enter__.return_value.get_replset_members.return_value = {
             "1.1.1.1"
@@ -236,8 +241,13 @@ class TestCharm(unittest.TestCase):
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBConnection")
     @patch("charms.mongodb.v0.mongo.MongoClient")
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
+    @patch("charm.get_charm_revision")
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
-    def test_relation_joined_get_members_failure(self, _, client, connection, defer):
+    def test_relation_joined_get_members_failure(
+        self, _, rev, local, is_local, client, connection, defer
+    ):
         """Tests reconfigure does not execute when unable to get the replica set members.
 
         Verifies in case of relation_joined and relation departed, that when the the database
@@ -246,7 +256,7 @@ class TestCharm(unittest.TestCase):
         """
         # presets
         self.harness.set_leader(True)
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "true"
         rel = self.harness.charm.model.get_relation("database-peers")
 
         for exception in PYMONGO_EXCEPTIONS:
@@ -271,8 +281,11 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBConnection")
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
+    @patch("charm.get_charm_revision")
     @patch("charm.MongodbOperatorCharm._connect_mongodb_exporter")
-    def test_reconfigure_add_member_failure(self, _, connection, defer):
+    def test_reconfigure_add_member_failure(self, _, rev, local, is_local, connection, defer):
         """Tests reconfigure does not proceed when unable to add a member.
 
         Verifies in relation joined events, that when the database cannot add a member that the
@@ -280,7 +293,7 @@ class TestCharm(unittest.TestCase):
         """
         # presets
         self.harness.set_leader(True)
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "true"
         connection.return_value.__enter__.return_value.get_replset_members.return_value = {
             "1.1.1.1"
         }
@@ -357,7 +370,7 @@ class TestCharm(unittest.TestCase):
         """Tests that when MongoDB is not active, that is reported instead of pbm."""
         # assume leader has already initialised the replica set
         self.harness.set_leader(True)
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "true"
         connection.return_value.__enter__.return_value.is_ready = True
 
         pbm_statuses = [
@@ -403,7 +416,7 @@ class TestCharm(unittest.TestCase):
         """Tests when MongoDB is active and pbm is in the error state, pbm status is reported."""
         # assume leader has already initialised the replica set
         self.harness.set_leader(True)
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "true"
         connection.return_value.__enter__.return_value.is_ready = True
 
         pbm_statuses = [
@@ -444,7 +457,7 @@ class TestCharm(unittest.TestCase):
         """Tests when both Mongodb and pbm are ready that MongoDB status is reported."""
         # assume leader has already initialised the replica set
         self.harness.set_leader(True)
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "true"
         connection.return_value.__enter__.return_value.is_ready = True
 
         self.harness.add_relation(S3_RELATION_NAME, "s3-integrator")
@@ -477,7 +490,7 @@ class TestCharm(unittest.TestCase):
         """Tests when the s3 relation isn't present that the MongoDB status is reported."""
         # assume leader has already initialised the replica set
         self.harness.set_leader(True)
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "true"
         connection.return_value.__enter__.return_value.is_ready = True
         has_backup_service.return_value = True
 
@@ -506,7 +519,7 @@ class TestCharm(unittest.TestCase):
         """Tests that update status identifies the primary unit and updates status."""
         # assume leader has already initialised the replica set
         self.harness.set_leader(True)
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "true"
         pbm_status.return_value = ActiveStatus("")
 
         self.harness.set_leader(False)
@@ -538,7 +551,7 @@ class TestCharm(unittest.TestCase):
         """Tests that update status identifies secondary units and doesn't update status."""
         # assume leader has already initialised the replica set
         self.harness.set_leader(True)
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "true"
         pbm_status.return_value = ActiveStatus("")
 
         self.harness.set_leader(False)
@@ -570,7 +583,7 @@ class TestCharm(unittest.TestCase):
         """Tests status updates are correct for non-primary and non-secondary cases."""
         # assume leader has already initialised the replica set
         self.harness.set_leader(True)
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "true"
         pbm_status.return_value = ActiveStatus("")
 
         # Case 1: Unit has not been added to replica set yet
@@ -614,7 +627,7 @@ class TestCharm(unittest.TestCase):
         """Tests that if mongod is not running on this unit it restarts it."""
         get_secret.return_value = "pass123"
         connection.return_value.__enter__.return_value.is_ready = False
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "true"
 
         self.harness.charm.on.update_status.emit()
         self.assertEqual(
