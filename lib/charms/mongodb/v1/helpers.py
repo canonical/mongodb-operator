@@ -23,7 +23,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 10
+LIBPATCH = 9
 
 # path to store mongodb ketFile
 KEY_FILE = "keyFile"
@@ -340,5 +340,5 @@ def safe_exec(
         logger.debug(f"{output=}")
         return output
     except subprocess.CalledProcessError as err:
-        logger.error(f"cmd failed - {err.cmd}, {err.stdout}, {err.stderr}")
+        logger.error(f"cmd failed - {err.cmd = }, {err.stdout = }, {err.stderr = }")
         raise

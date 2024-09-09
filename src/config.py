@@ -130,8 +130,8 @@ class Config:
     class Substrate:
         """Substrate related constants."""
 
-        K8S = "k8s"
         VM = "vm"
+        K8S = "k8s"
 
     class Upgrade:
         """Upgrade related constants."""

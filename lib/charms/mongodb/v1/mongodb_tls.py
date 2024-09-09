@@ -342,7 +342,7 @@ class MongoDBTLS(Object):
 
         return sans
 
-    def get_current_sans(self, internal: bool) -> List | None:
+    def get_current_sans(self, internal: bool) -> List[str] | None:
         """Gets the current SANs for the unit cert."""
         # if unit has no certificates do not proceed.
         if not self.is_tls_enabled(internal=internal):
@@ -351,7 +351,7 @@ class MongoDBTLS(Object):
         try:
             sans_lines = self.get_sans_from_host(internal)
         except (subprocess.CalledProcessError, ExecError) as e:
-            logger.error(e.stdout)
+            logger.error("failed to get sans from host, error: %s", e.stderr)
             raise e
 
         line = ""
