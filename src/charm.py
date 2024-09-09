@@ -321,7 +321,8 @@ class MongodbOperatorCharm(CharmBase):
     @property
     def db_initialised(self) -> bool:
         """Check if MongoDB is initialised."""
-        return "db_initialised" in self.app_peer_data
+        # Needs to lowercase it so it also work with older versions
+        return json.loads(self.app_peer_data.get("db_initialised", "false").lower())
 
     @property
     def role(self) -> str:
@@ -352,7 +353,7 @@ class MongodbOperatorCharm(CharmBase):
     def db_initialised(self, value):
         """Set the db_initialised flag."""
         if isinstance(value, bool):
-            self.app_peer_data["db_initialised"] = str(value)
+            self.app_peer_data["db_initialised"] = json.dumps(value)
         else:
             raise ValueError(
                 f"'db_initialised' must be a boolean value. Proivded: {value} is of type {type(value)}"
