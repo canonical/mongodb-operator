@@ -44,7 +44,7 @@ class TestMongoTLS(unittest.TestCase):
 
         # generated rsa key test - leader
         self.harness.charm.tls._on_set_tls_private_key(action_event)
-        self.verify_internal_rsa_csr()  # this one
+        self.verify_internal_rsa_csr()
         self.verify_external_rsa_csr()
 
         with open("tests/unit/data/key.pem") as f:

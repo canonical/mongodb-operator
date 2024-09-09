@@ -38,7 +38,7 @@ SANS_IPS_KEY = "sans_ips"
 LIBID = "e02a50f0795e4dd292f58e93b4f493dd"
 
 # Increment this major API version when introducing breaking changes
-LIBAPI = 0
+LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
@@ -358,10 +358,10 @@ class MongoDBTLS(Object):
 
         line = ""
         for line in sans_lines:
-            if "DNS" in line and "IP" in line:
+            if "DNS" in line or "IP" in line:
                 break
 
-        if "DNS" not in line and "IP" not in line:
+        if "DNS" not in line or "IP" not in line:
             return None
 
         sans_ip = []
