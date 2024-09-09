@@ -17,20 +17,26 @@ RELATION_NAME = "certificates"
 
 class TestMongoTLS(unittest.TestCase):
     @patch("charm.get_charm_revision")
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
+    @patch("charm.get_charm_revision")
     @patch_network_get(private_address="1.1.1.1")
     def setUp(self, *unused):
         self.harness = Harness(MongodbOperatorCharm)
         self.harness.begin()
         self.harness.add_relation("database-peers", "database-peers")
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "true"
         self.harness.set_leader(True)
         self.charm = self.harness.charm
         self.addCleanup(self.harness.cleanup)
 
     @parameterized.expand([True, False])
-    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
     @patch("charm.MongoDBTLS.get_new_sans")
-    def test_set_tls_private_keys(self, leader, get_new_sans):
+    @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
+    @patch("charm.get_charm_revision")
+    @patch_network_get(private_address="1.1.1.1")
+    def test_set_tls_private_keys(self, leader, get_new_sans, *unused):
         """Tests setting of TLS private key via the leader, ie both internal and external.
 
         Note: this implicitly tests: _request_certificate & _parse_tls_file
@@ -61,7 +67,10 @@ class TestMongoTLS(unittest.TestCase):
 
     @parameterized.expand([True, False])
     @patch_network_get(private_address="1.1.1.1")
-    def test_tls_relation_joined(self, leader):
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
+    @patch("charm.get_charm_revision")
+    def test_tls_relation_joined(self, leader, *unused):
         """Test that leader units set both external and internal certificates."""
         self.harness.set_leader(leader)
         self.relate_to_tls_certificates_operator()
@@ -69,9 +78,12 @@ class TestMongoTLS(unittest.TestCase):
         self.verify_external_rsa_csr()
 
     @parameterized.expand([True, False])
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
+    @patch("charm.get_charm_revision")
     @patch("charm.MongodbOperatorCharm.restart_charm_services")
     @patch_network_get(private_address="1.1.1.1")
-    def test_tls_relation_broken(self, leader, restart_charm_services):
+    def test_tls_relation_broken(self, leader, restart_charm_services, *unused):
         """Test removes both external and internal certificates."""
         self.harness.set_leader(leader)
         # set initial certificate values
@@ -92,7 +104,10 @@ class TestMongoTLS(unittest.TestCase):
         restart_charm_services.assert_called()
 
     @patch_network_get(private_address="1.1.1.1")
-    def test_external_certificate_expiring(self):
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
+    @patch("charm.get_charm_revision")
+    def test_external_certificate_expiring(self, *unused):
         """Verifies that when an external certificate expires a csr is made."""
         # assume relation exists with a current certificate
         self.relate_to_tls_certificates_operator()
@@ -110,7 +125,10 @@ class TestMongoTLS(unittest.TestCase):
         self.assertNotEqual(old_csr, new_csr)
 
     @patch_network_get(private_address="1.1.1.1")
-    def test_internal_certificate_expiring(self):
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
+    @patch("charm.get_charm_revision")
+    def test_internal_certificate_expiring(self, *unused):
         """Verifies that when an internal certificate expires a csr is made."""
         # assume relation exists with a current certificate
         self.relate_to_tls_certificates_operator()
@@ -124,7 +142,10 @@ class TestMongoTLS(unittest.TestCase):
         self.assertNotEqual(old_csr, new_csr)
 
     @patch_network_get(private_address="1.1.1.1")
-    def test_unknown_certificate_expiring(self):
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
+    @patch("charm.get_charm_revision")
+    def test_unknown_certificate_expiring(self, *unused):
         """Verifies that when an unknown certificate expires nothing happens."""
         # assume relation exists with a current certificate
         self.relate_to_tls_certificates_operator()
@@ -144,9 +165,12 @@ class TestMongoTLS(unittest.TestCase):
         self.assertEqual(old_unit_csr, new_unit_csr)
 
     @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
+    @patch("charm.get_charm_revision")
     @patch("charm.MongodbOperatorCharm.push_tls_certificate_to_workload")
     @patch("charm.MongodbOperatorCharm.restart_charm_services")
-    def test_external_certificate_available(self, restart_charm_services, _):
+    def test_external_certificate_available(self, restart_charm_services, *unused):
         """Tests behavior when external certificate is made available."""
         # assume relation exists with a current certificate
         self.relate_to_tls_certificates_operator()
@@ -172,9 +196,12 @@ class TestMongoTLS(unittest.TestCase):
         restart_charm_services.assert_called()
 
     @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
+    @patch("charm.get_charm_revision")
     @patch("charm.MongodbOperatorCharm.push_tls_certificate_to_workload")
     @patch("charm.MongodbOperatorCharm.restart_charm_services")
-    def test_internal_certificate_available(self, restart_charm_services, _):
+    def test_internal_certificate_available(self, restart_charm_services, *unused):
         """Tests behavior when internal certificate is made available."""
         # assume relation exists with a current certificate
         self.relate_to_tls_certificates_operator()
@@ -200,9 +227,12 @@ class TestMongoTLS(unittest.TestCase):
         restart_charm_services.assert_called()
 
     @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
+    @patch("charm.get_charm_revision")
     @patch("charm.MongodbOperatorCharm.push_tls_certificate_to_workload")
     @patch("charm.MongodbOperatorCharm.restart_charm_services")
-    def test_unknown_certificate_available(self, restart_charm_services, _):
+    def test_unknown_certificate_available(self, restart_charm_services, *unused):
         """Tests that when an unknown certificate is available, nothing is updated."""
         # assume relation exists with a current certificate
         self.relate_to_tls_certificates_operator()
@@ -231,8 +261,11 @@ class TestMongoTLS(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongodbOperatorCharm.push_tls_certificate_to_workload")
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
+    @patch("charm.get_charm_revision")
     @patch("ops.framework.EventBase.defer")
-    def test_external_certificate_available_deferred(self, defer, _):
+    def test_external_certificate_available_deferred(self, defer, *unused):
         """Tests behavior when external certificate is made available."""
         del self.harness.charm.app_peer_data["db_initialised"]
 
@@ -252,8 +285,11 @@ class TestMongoTLS(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongodbOperatorCharm.push_tls_certificate_to_workload")
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
+    @patch("charm.get_charm_revision")
     @patch("ops.framework.EventBase.defer")
-    def test_external_certificate_broken_deferred(self, defer, _):
+    def test_external_certificate_broken_deferred(self, defer, *unused):
         """Tests behavior when external certificate is made available."""
         del self.harness.charm.app_peer_data["db_initialised"]
 
@@ -292,7 +328,9 @@ class TestMongoTLS(unittest.TestCase):
         check_output.return_value = "".encode("utf-8")
         is_tls_enabled.return_value = True
         for internal in [True, False]:
-            self.assertEqual(self.harness.charm.tls.get_current_sans(internal), None)
+            self.assertEqual(
+                self.harness.charm.tls.get_current_sans(internal), {"sans_ips": [], "sans_dns": []}
+            )
 
     @patch("charm.MongoDBTLS.is_tls_enabled")
     @patch("charms.mongodb.v1.mongodb_tls.subprocess.check_output")

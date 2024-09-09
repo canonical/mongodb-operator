@@ -364,6 +364,9 @@ class MongoDBTLS(Object):
         sans_ip = []
         sans_dns = []
         for item in line.split(", "):
+            if ":" not in item:
+                continue
+
             san_type, san_value = item.split(":")
 
             if san_type == "DNS":
