@@ -34,8 +34,10 @@ class TestMongoTLS(unittest.TestCase):
 
         Note: this implicitly tests: _request_certificate & _parse_tls_file
         """
+
+        self.harness.add_relation("certificates", "certificates")
         # Tests for leader unit (ie internal certificates and external certificates)
-        get_new_sans.return_value = {"sans_dns": "", "sans_ips": "1.1.1.1"}
+        get_new_sans.return_value = {"sans_dns": [""], "sans_ips": ["1.1.1.1"]}
         self.harness.set_leader(leader)
         action_event = mock.Mock()
         action_event.params = {}
@@ -339,9 +341,6 @@ class TestMongoTLS(unittest.TestCase):
         """
         int_rsa_key = self.harness.charm.get_secret("unit", "int-key-secret")
         int_csr = self.harness.charm.get_secret("unit", "int-csr-secret")
-
-        print(int_csr)
-        print(int_rsa_key)
 
         if specific_rsa:
             self.assertEqual(int_rsa_key, expected_rsa)
