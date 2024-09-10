@@ -15,6 +15,7 @@ RELATION_NAME = "s3-credentials"
 
 class TestConfigServerInterface(unittest.TestCase):
     @mock.patch("charm.get_charm_revision")
+    @mock.patch("charms.mongodb.v0.set_status.get_charm_revision")
     @patch_network_get(private_address="1.1.1.1")
     def setUp(self, *unused):
         self.harness = Harness(MongodbOperatorCharm)
@@ -61,12 +62,11 @@ class TestConfigServerInterface(unittest.TestCase):
     @mock.patch(
         "data_platform_helpers.version_check.CrossAppVersionChecker.is_integrated_to_locally_built_charm"
     )
-    @mock.patch("charm.get_charm_revision")
+    @mock.patch("charms.mongodb.v0.set_status.get_charm_revision")
     @mock.patch("ops.framework.EventBase.defer")
     def test_relation_changed_fail_if_no_database_field(
         self, defer, get_charm_rev, is_integrated, is_local, oversee
     ):
-
         def is_config_mock_call(*args):
             assert args == ("config-server",)
             return True
@@ -125,7 +125,7 @@ class TestConfigServerInterface(unittest.TestCase):
     @mock.patch(
         "data_platform_helpers.version_check.CrossAppVersionChecker.is_integrated_to_locally_built_charm"
     )
-    @mock.patch("charm.get_charm_revision")
+    @mock.patch("charms.mongodb.v0.set_status.get_charm_revision")
     def test_pass_hooks_check_waits_for_start_config_server(
         self,
         get_rev,
@@ -163,7 +163,7 @@ class TestConfigServerInterface(unittest.TestCase):
     @mock.patch(
         "data_platform_helpers.version_check.CrossAppVersionChecker.is_integrated_to_locally_built_charm"
     )
-    @mock.patch("charm.get_charm_revision")
+    @mock.patch("charms.mongodb.v0.set_status.get_charm_revision")
     def test_pass_hooks_check_waits_for_start_shard(
         self, get_rev, is_local, is_integrated_to_local
     ):
@@ -208,7 +208,7 @@ class TestConfigServerInterface(unittest.TestCase):
 
         self.harness.charm.is_role = is_config_mock_call
 
-        self.harness.charm.get_cluster_mismatched_revision_status = (
+        self.harness.charm.status.get_cluster_mismatched_revision_status = (
             get_cluster_mismatched_revision_status_mock_fail
         )
 
@@ -220,7 +220,7 @@ class TestConfigServerInterface(unittest.TestCase):
         event.defer.assert_called()
 
         # If we return a matching revision status, then we won't defer anymore.
-        self.harness.charm.get_cluster_mismatched_revision_status = (
+        self.harness.charm.status.get_cluster_mismatched_revision_status = (
             get_cluster_mismatched_revision_status_mock_success
         )
         event = mock.Mock()
@@ -243,7 +243,7 @@ class TestConfigServerInterface(unittest.TestCase):
         self.harness.charm.is_role = is_config_mock_call
 
         # First, we'll return a blocked status because it should defer.
-        self.harness.charm.get_cluster_mismatched_revision_status = (
+        self.harness.charm.status.get_cluster_mismatched_revision_status = (
             get_cluster_mismatched_revision_status_mock_fail
         )
 
@@ -255,7 +255,7 @@ class TestConfigServerInterface(unittest.TestCase):
         event.defer.assert_called()
 
         # Then, if we return a matching revision status, then we won't defer anymore.
-        self.harness.charm.get_cluster_mismatched_revision_status = (
+        self.harness.charm.status.get_cluster_mismatched_revision_status = (
             get_cluster_mismatched_revision_status_mock_success
         )
         event = mock.MagicMock()
