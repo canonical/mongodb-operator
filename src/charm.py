@@ -44,7 +44,6 @@ from charms.operator_libs_linux.v1.systemd import service_running
 from charms.operator_libs_linux.v2 import snap
 from data_platform_helpers.version_check import (
     CrossAppVersionChecker,
-    NoVersionError,
     get_charm_revision,
 )
 from ops import StorageAttachedEvent
@@ -70,7 +69,6 @@ from ops.model import (
     BlockedStatus,
     MaintenanceStatus,
     Relation,
-    StatusBase,
     Unit,
     WaitingStatus,
 )
@@ -139,11 +137,8 @@ class MongodbOperatorCharm(CharmBase):
         self.tls = MongoDBTLS(self, Config.Relations.PEERS, substrate=Config.SUBSTRATE)
         self.backups = MongoDBBackups(self)
 
-        # TODO future PR - support pinning mongos version
         self.version_checker = CrossAppVersionChecker(
             self,
-            # TODO future PR add ops model revision variable:
-            # https://github.com/canonical/operator/issues/1255
             version=get_charm_revision(self.unit, local_version=self.get_charm_internal_revision),
             relations_to_check=[
                 Config.Relations.SHARDING_RELATIONS_NAME,
@@ -1541,7 +1536,7 @@ class MongodbOperatorCharm(CharmBase):
             )
             return False
 
-        if revision_mismatch_status := self.get_cluster_mismatched_revision_status():
+        if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
             self.status.set_and_share_status(revision_mismatch_status)
             return False
 
@@ -1561,48 +1556,6 @@ class MongodbOperatorCharm(CharmBase):
             raise NotConfigServerError("This check can only be ran by the config-server.")
 
         return self.version_checker.are_related_apps_valid()
-
-    def get_cluster_mismatched_revision_status(self) -> Optional[StatusBase]:
-        """Returns a Status if the cluster has mismatched revisions."""
-        # check for invalid versions in sharding integrations, i.e. a shard running on
-        # revision  88 and a config-server running on revision 110
-        current_charms_version = get_charm_revision(
-            self.unit, local_version=self.get_charm_internal_revision
-        )
-        local_identifier = (
-            "-locally built" if self.version_checker.is_local_charm(self.app.name) else ""
-        )
-        try:
-            if self.version_checker.are_related_apps_valid():
-                return
-        except NoVersionError as e:
-            # relations to shards/config-server are expected to provide a version number. If they
-            # do not, it is because they are from an earlier charm revision, i.e. pre-revison X.
-            # TODO once charm is published, determine which revision X is.
-            logger.debug(e)
-            if self.is_role(Config.Role.SHARD):
-                return BlockedStatus(
-                    f"Charm revision ({current_charms_version}{local_identifier}) is not up-to date with config-server."
-                )
-
-        if self.is_role(Config.Role.SHARD):
-            config_server_revision = self.version_checker.get_version_of_related_app(
-                self.get_config_server_name()
-            )
-            remote_local_identifier = (
-                "-locally built"
-                if self.version_checker.is_local_charm(self.get_config_server_name())
-                else ""
-            )
-            return BlockedStatus(
-                f"Charm revision ({current_charms_version}{local_identifier}) is not up-to date with config-server ({config_server_revision}{remote_local_identifier})."
-            )
-
-        if self.is_role(Config.Role.CONFIG_SERVER):
-            # TODO Future PR add handling for integrated mongos charms
-            return WaitingStatus(
-                f"Waiting for shards to upgrade/downgrade to revision {current_charms_version}{local_identifier}."
-            )
 
     def get_config_server_name(self) -> Optional[str]:
         """Returns the name of the Juju Application that the shard is using as a config server."""
