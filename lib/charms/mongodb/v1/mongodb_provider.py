@@ -22,6 +22,7 @@ from ops.model import Relation
 from pymongo.errors import PyMongoError
 
 from config import Config
+from exceptions import FailedToGetHostsError
 
 # The unique Charmhub library identifier, never change it
 LIBID = "4067879ef7dd4261bf6c164bc29d94b1"
@@ -31,7 +32,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 12
+LIBPATCH = 13
 
 logger = logging.getLogger(__name__)
 REL_NAME = "database"
@@ -145,7 +146,11 @@ class MongoDBProvider(Object):
 
         try:
             self.oversee_users(departed_relation_id, event)
-        except PyMongoError as e:
+        except (PyMongoError, FailedToGetHostsError) as e:
+            # Failed to get hosts error is unique to mongos-k8s charm. In other charms we do not
+            # foresee issues to retrieve hosts. However in external mongos-k8s, the leader can
+            # attempt to retrieve hosts while non-leader units are still enabling node port
+            # resulting in an exception.
             logger.error("Deferring _on_relation_event since: error=%r", e)
             event.defer()
             return
