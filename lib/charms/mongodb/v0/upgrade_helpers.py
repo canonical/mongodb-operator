@@ -14,7 +14,6 @@ from typing import Dict, List, Tuple
 
 import poetry.core.constraints.version as poetry_version
 from charms.mongodb.v0.mongo import MongoConfiguration
-from charms.mongodb.v1.helpers import unit_number
 from charms.mongodb.v1.mongodb import FailedToMovePrimaryError, MongoDBConnection
 from charms.mongodb.v1.mongos import MongosConnection
 from ops import ActionEvent, BlockedStatus, MaintenanceStatus, StatusBase, Unit
@@ -45,6 +44,15 @@ ROLLBACK_INSTRUCTIONS = "To rollback, `juju refresh` to the previous revision"
 PEER_RELATION_ENDPOINT_NAME = "upgrade-version-a"
 RESUME_ACTION_NAME = "resume-upgrade"
 PRECHECK_ACTION_NAME = "pre-upgrade-check"
+
+
+# BEGIN: Helper functions
+def unit_number(unit_: Unit) -> int:
+    """Get unit number."""
+    return int(unit_.name.split("/")[-1])
+
+
+# END: Helper functions
 
 
 # BEGIN: Exceptions
