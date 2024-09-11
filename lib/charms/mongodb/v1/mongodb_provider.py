@@ -22,7 +22,6 @@ from ops.model import Relation
 from pymongo.errors import PyMongoError
 
 from config import Config
-from exceptions import FailedToGetHostsError
 
 # The unique Charmhub library identifier, never change it
 LIBID = "4067879ef7dd4261bf6c164bc29d94b1"
@@ -48,6 +47,10 @@ A tuple for storing the diff between two data mappings.
 added — keys that were added
 changed — keys that still exist but have new values
 deleted — key that were deleted."""
+
+
+class FailedToGetHostsError(Exception):
+    """Raised when charm fails to retrieve hosts."""
 
 
 class MongoDBProvider(Object):

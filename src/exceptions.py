@@ -34,7 +34,3 @@ class SecretAlreadyExistsError(MongoSecretError):
 
 class NotConfigServerError(Exception):
     """Raised when an operation is performed on a component that is not a config server."""
-
-
-class FailedToGetHostsError(Exception):
-    """Raised when charm fails to retrieve hosts."""
