@@ -33,7 +33,7 @@ class TestCharm(unittest.TestCase):
         run_mock = mock.Mock()
         run_mock._run.return_value = goal_state
         self.harness.charm.model._backend = run_mock
-        self.harness.charm.get_cluster_mismatched_revision_status = get_mismatched_revsion
+        self.harness.charm.status.get_cluster_mismatched_revision_status = get_mismatched_revsion
 
         assert self.harness.charm.status.are_all_units_ready_for_upgrade()
 
@@ -134,7 +134,9 @@ class TestCharm(unittest.TestCase):
         valid_s3_integration_mock = mock.Mock()
         valid_s3_integration_mock.return_value = valid_s3_integration
 
-        self.harness.charm.get_cluster_mismatched_revision_status = get_mismatched_revision_mock
+        self.harness.charm.status.get_cluster_mismatched_revision_status = (
+            get_mismatched_revision_mock
+        )
         self.harness.charm.cluster.is_valid_mongos_integration = mongos_integration_mock
         self.harness.charm.backups.is_valid_s3_integration = valid_s3_integration_mock
 

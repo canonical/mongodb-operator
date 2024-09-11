@@ -62,7 +62,7 @@ class TestMongoProvider(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.CrossAppVersionChecker.is_local_charm")
     @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
-    @patch("charm.get_charm_revision")
+    @patch("charms.mongodb.v0.set_status.get_charm_revision")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider.oversee_users")
     @patch("charm.MongodbOperatorCharm.auth_enabled", return_value=True)
@@ -100,7 +100,7 @@ class TestMongoProvider(unittest.TestCase):
     @patch(
         "data_platform_helpers.version_check.CrossAppVersionChecker.is_integrated_to_locally_built_charm"
     )
-    @patch("charm.get_charm_revision")
+    @patch("charms.mongodb.v0.set_status.get_charm_revision")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider.oversee_users")
     @patch("charm.MongodbOperatorCharm.auth_enabled", return_value=True)
@@ -356,7 +356,7 @@ class TestMongoProvider(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.CrossAppVersionChecker.is_local_charm")
     @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
-    @patch("charm.get_charm_revision")
+    @patch("charms.mongodb.v0.set_status.get_charm_revision")
     @patch("charms.mongodb.v1.mongodb_provider.MongoDBProvider._get_relations")
     def test_update_app_relation_data_protected(
         self,
