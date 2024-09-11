@@ -1,0 +1,224 @@
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-one/0 [allocating] waiting: agent initialising
+  config-server-one/1 [allocating] waiting: agent initialising
+  shard-one/0 [allocating] waiting: agent initialising
+  shard-one/1 [allocating] waiting: agent initialising
+  shard-two/0 [allocating] waiting: waiting for machine
+  shard-two/1 [allocating] waiting: waiting for machine
+  shard-three/0 [allocating] waiting: waiting for machine
+  shard-three/1 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-one/0 [executing] maintenance: installing MongoDB
+  config-server-one/1 [executing] maintenance: installing MongoDB
+  shard-one/0 [allocating] waiting: agent initialising
+  shard-one/1 [allocating] waiting: agent initialising
+  shard-two/0 [allocating] waiting: waiting for machine
+  shard-two/1 [allocating] waiting: waiting for machine
+  shard-three/0 [allocating] waiting: waiting for machine
+  shard-three/1 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-one/0 [executing] waiting: Waiting for shards to upgrade/downgrade to revision fd27078-locally built.
+  config-server-one/1 [executing] active: 
+  shard-one/0 [executing] active: 
+  shard-one/1 [executing] active: 
+  shard-two/0 [allocating] waiting: agent initialising
+  shard-two/1 [allocating] waiting: agent initialising
+  shard-three/0 [allocating] waiting: waiting for machine
+  shard-three/1 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-one/0 [executing] waiting: Waiting for shards to upgrade/downgrade to revision fd27078-locally built.
+  config-server-one/1 [executing] waiting: Waiting for shards to upgrade/downgrade to revision fd27078-locally built.
+  shard-one/0 [executing] waiting: Waiting for secrets from config-server
+  shard-one/1 [executing] maintenance: Adding shard to config-server
+  shard-two/0 [executing] active: 
+  shard-two/1 [executing] active: 
+  shard-three/0 [allocating] waiting: agent initialising
+  shard-three/1 [allocating] waiting: agent initialising
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-one/0 [executing] waiting: Waiting for shards to upgrade/downgrade to revision fd27078-locally built.
+  config-server-one/1 [executing] waiting: Waiting for shards to upgrade/downgrade to revision fd27078-locally built.
+  shard-one/0 [idle] waiting: Waiting for secrets from config-server
+  shard-one/1 [idle] waiting: Waiting for secrets from config-server
+  shard-two/0 [idle] waiting: Waiting for secrets from config-server
+  shard-two/1 [executing] waiting: Waiting for secrets from config-server
+  shard-three/0 [executing] maintenance: installing MongoDB
+  shard-three/1 [executing] maintenance: installing MongoDB
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-one/0 [idle] waiting: Waiting for shards to upgrade/downgrade to revision fd27078-locally built.
+  config-server-one/1 [executing] maintenance: Adding shard shard-two to config-server
+  shard-one/0 [executing] waiting: Waiting for secrets from config-server
+  shard-one/1 [executing] waiting: Waiting for secrets from config-server
+  shard-two/0 [executing] waiting: Waiting for secrets from config-server
+  shard-two/1 [executing] waiting: Waiting for secrets from config-server
+  shard-three/0 [executing] active: 
+  shard-three/1 [executing] maintenance: Adding shard to config-server
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-one/0 [idle] waiting: Waiting for shards to upgrade/downgrade to revision fd27078-locally built.
+  config-server-one/1 [executing] active: 
+  shard-one/0 [idle] waiting: Waiting for secrets from config-server
+  shard-one/1 [executing] waiting: Waiting for secrets from config-server
+  shard-two/0 [idle] waiting: Waiting for secrets from config-server
+  shard-two/1 [executing] waiting: Waiting for secrets from config-server
+  shard-three/0 [idle] maintenance: Adding shard to config-server
+  shard-three/1 [executing] maintenance: Adding shard to config-server
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-one/0 [idle] active: 
+  config-server-one/1 [idle] active: Primary
+  shard-one/1 [idle] waiting: Waiting for secrets from config-server
+  shard-two/0 [idle] waiting: Waiting for secrets from config-server
+  shard-two/1 [idle] waiting: Waiting for secrets from config-server
+  shard-three/0 [idle] maintenance: Adding shard to config-server
+  shard-three/1 [executing] maintenance: Adding shard to config-server
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-one/0 [idle] active: 
+  config-server-one/1 [executing] active: 
+  shard-one/0 [idle] active: Primary
+  shard-one/1 [idle] active: 
+  shard-two/0 [idle] active: Primary
+  shard-two/1 [idle] active: 
+  shard-three/0 [idle] maintenance: Adding shard to config-server
+  shard-three/1 [idle] maintenance: Adding shard to config-server
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  shard-three/0 [idle] maintenance: Adding shard to config-server
+  shard-three/1 [idle] maintenance: Adding shard to config-server
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-one/0 [idle] active: 
+  config-server-one/1 [idle] active: 
+  shard-three/1 [idle] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.5.3    unsupported  03:20:05Z
+
+App                Version  Status  Scale  Charm    Channel  Rev  Exposed  Message
+config-server-one           active      2  mongodb             0  no       
+shard-one                   active      2  mongodb             1  no       
+shard-three                 active      2  mongodb             3  no       
+shard-two                   active      2  mongodb             2  no       
+
+Unit                  Workload  Agent  Machine  Public address  Ports            Message
+config-server-one/0   active    idle   0        10.0.87.150     27017-27018/tcp  
+config-server-one/1*  active    idle   1        10.0.87.80      27017-27018/tcp  
+shard-one/0           active    idle   2        10.0.87.55      27017/tcp        Primary
+shard-one/1*          active    idle   3        10.0.87.195     27017/tcp        
+shard-three/0*        active    idle   6        10.0.87.50      27017/tcp        Primary
+shard-three/1         active    idle   7        10.0.87.253     27017/tcp        
+shard-two/0           active    idle   4        10.0.87.77      27017/tcp        Primary
+shard-two/1*          active    idle   5        10.0.87.3       27017/tcp        
+
+Machine  State    Address      Inst id        Base          AZ  Message
+0        started  10.0.87.150  juju-5c5b8a-0  ubuntu@22.04      Running
+1        started  10.0.87.80   juju-5c5b8a-1  ubuntu@22.04      Running
+2        started  10.0.87.55   juju-5c5b8a-2  ubuntu@22.04      Running
+3        started  10.0.87.195  juju-5c5b8a-3  ubuntu@22.04      Running
+4        started  10.0.87.77   juju-5c5b8a-4  ubuntu@22.04      Running
+5        started  10.0.87.3    juju-5c5b8a-5  ubuntu@22.04      Running
+6        started  10.0.87.50   juju-5c5b8a-6  ubuntu@22.04      Running
+7        started  10.0.87.253  juju-5c5b8a-7  ubuntu@22.04      Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+machine-1: 03:14:10 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 03:14:10 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-one-1: 03:14:10 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-0: 03:14:12 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 03:14:13 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-one-0: 03:14:13 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-3: 03:14:36 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 03:14:36 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-1: 03:14:36 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-2: 03:14:38 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 03:14:38 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-0: 03:14:38 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-4: 03:15:29 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-4: 03:15:29 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-5: 03:15:29 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-5: 03:15:29 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-two-1: 03:15:29 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-shard-two-0: 03:15:29 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-config-server-one-1: 03:15:52 ERROR unit.config-server-one/1.juju-log _on_secret_remove: Secret secret:crggmke3u0e2d0lf90u0 seems to have no observers, could be removed
+unit-shard-one-1: 03:16:09 ERROR unit.shard-one/1.juju-log _on_secret_remove: Secret secret:crggmou3u0e2d0lf90ug seems to have no observers, could be removed
+machine-6: 03:16:19 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-6: 03:16:19 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-1: 03:16:19 ERROR unit.shard-one/1.juju-log database-peers:2: Charm is in sharding role: database. Does not support shard interface.
+unit-shard-three-0: 03:16:19 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-7: 03:16:24 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-7: 03:16:24 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-three-1: 03:16:24 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-shard-two-1: 03:16:43 ERROR unit.shard-two/1.juju-log _on_secret_remove: Secret secret:crggn1e3u0e2d0lf90v0 seems to have no observers, could be removed
+unit-shard-two-1: 03:16:52 ERROR unit.shard-two/1.juju-log database-peers:4: Charm is in sharding role: database. Does not support shard interface.
+unit-config-server-one-1: 03:17:08 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-three to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024627, 3), 'signature': {'hash': b'Pw\\xd1\\xb6b\\xec\\xb8\\xf7\\x0c[s\\xe0m\\xe2\\xcc\\x822\\xa7q\\xb0', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024627, 3)}")
+unit-config-server-one-1: 03:17:08 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024627, 3), 'signature': {'hash': b'Pw\\xd1\\xb6b\\xec\\xb8\\xf7\\x0c[s\\xe0m\\xe2\\xcc\\x822\\xa7q\\xb0', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024627, 3)}")
+unit-config-server-one-1: 03:17:08 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024627, 3), 'signature': {'hash': b'Pw\\xd1\\xb6b\\xec\\xb8\\xf7\\x0c[s\\xe0m\\xe2\\xcc\\x822\\xa7q\\xb0', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024627, 3)}")
+unit-config-server-one-1: 03:17:08 ERROR unit.config-server-one/1.juju-log config-server:10: shard-two shard does not have the same auth as the config server.
+unit-config-server-one-1: 03:17:09 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-three to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024627, 3), 'signature': {'hash': b'Pw\\xd1\\xb6b\\xec\\xb8\\xf7\\x0c[s\\xe0m\\xe2\\xcc\\x822\\xa7q\\xb0', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024627, 3)}")
+unit-config-server-one-1: 03:17:09 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024627, 3), 'signature': {'hash': b'Pw\\xd1\\xb6b\\xec\\xb8\\xf7\\x0c[s\\xe0m\\xe2\\xcc\\x822\\xa7q\\xb0', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024627, 3)}")
+unit-config-server-one-1: 03:17:09 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024627, 3), 'signature': {'hash': b'Pw\\xd1\\xb6b\\xec\\xb8\\xf7\\x0c[s\\xe0m\\xe2\\xcc\\x822\\xa7q\\xb0', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024627, 3)}")
+unit-config-server-one-1: 03:17:09 ERROR unit.config-server-one/1.juju-log config-server:10: shard-two shard does not have the same auth as the config server.
+unit-config-server-one-1: 03:17:09 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-three to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024629, 1), 'signature': {'hash': b'g.\\x88y\\xcaL\\x96\\xe0/m\\x85\\x8e\\xb10\\xd9\\xbb:\\r\\xd5\\x87', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024629, 1)}")
+unit-config-server-one-1: 03:17:09 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024629, 1), 'signature': {'hash': b'g.\\x88y\\xcaL\\x96\\xe0/m\\x85\\x8e\\xb10\\xd9\\xbb:\\r\\xd5\\x87', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024629, 1)}")
+unit-config-server-one-1: 03:17:09 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024629, 1), 'signature': {'hash': b'g.\\x88y\\xcaL\\x96\\xe0/m\\x85\\x8e\\xb10\\xd9\\xbb:\\r\\xd5\\x87', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024629, 1)}")
+unit-config-server-one-1: 03:17:10 ERROR unit.config-server-one/1.juju-log config-server:10: shard-two shard does not have the same auth as the config server.
+unit-config-server-one-1: 03:17:10 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-three to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024630, 1), 'signature': {'hash': b'J\\t\\xb6\\xdbhs\\xbeC\\x84#\\x1f\\x0b$G\\x8c9\\x80S\\x8a@', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024630, 1)}")
+unit-config-server-one-1: 03:17:10 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024630, 1), 'signature': {'hash': b'J\\t\\xb6\\xdbhs\\xbeC\\x84#\\x1f\\x0b$G\\x8c9\\x80S\\x8a@', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024630, 1)}")
+unit-config-server-one-1: 03:17:10 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024630, 1), 'signature': {'hash': b'J\\t\\xb6\\xdbhs\\xbeC\\x84#\\x1f\\x0b$G\\x8c9\\x80S\\x8a@', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024630, 1)}")
+unit-config-server-one-1: 03:17:10 ERROR unit.config-server-one/1.juju-log config-server:10: shard-two shard does not have the same auth as the config server.
+unit-config-server-one-1: 03:17:11 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-three to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024630, 2), 'signature': {'hash': b'J\\t\\xb6\\xdbhs\\xbeC\\x84#\\x1f\\x0b$G\\x8c9\\x80S\\x8a@', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024630, 2)}")
+unit-config-server-one-1: 03:17:11 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024630, 2), 'signature': {'hash': b'J\\t\\xb6\\xdbhs\\xbeC\\x84#\\x1f\\x0b$G\\x8c9\\x80S\\x8a@', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024630, 2)}")
+unit-config-server-one-1: 03:17:11 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024630, 2), 'signature': {'hash': b'J\\t\\xb6\\xdbhs\\xbeC\\x84#\\x1f\\x0b$G\\x8c9\\x80S\\x8a@', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024630, 2)}")
+unit-config-server-one-1: 03:17:11 ERROR unit.config-server-one/1.juju-log config-server:10: shard-two shard does not have the same auth as the config server.
+unit-config-server-one-1: 03:17:11 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-three to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024630, 2), 'signature': {'hash': b'J\\t\\xb6\\xdbhs\\xbeC\\x84#\\x1f\\x0b$G\\x8c9\\x80S\\x8a@', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024630, 2)}")
+unit-config-server-one-1: 03:17:11 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024630, 2), 'signature': {'hash': b'J\\t\\xb6\\xdbhs\\xbeC\\x84#\\x1f\\x0b$G\\x8c9\\x80S\\x8a@', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024630, 2)}")
+unit-config-server-one-1: 03:17:11 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024630, 2), 'signature': {'hash': b'J\\t\\xb6\\xdbhs\\xbeC\\x84#\\x1f\\x0b$G\\x8c9\\x80S\\x8a@', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024630, 2)}")
+unit-config-server-one-1: 03:17:11 ERROR unit.config-server-one/1.juju-log config-server:10: shard-two shard does not have the same auth as the config server.
+unit-config-server-one-1: 03:17:12 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-three to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024630, 2), 'signature': {'hash': b'J\\t\\xb6\\xdbhs\\xbeC\\x84#\\x1f\\x0b$G\\x8c9\\x80S\\x8a@', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024630, 2)}")
+unit-config-server-one-1: 03:17:12 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024630, 2), 'signature': {'hash': b'J\\t\\xb6\\xdbhs\\xbeC\\x84#\\x1f\\x0b$G\\x8c9\\x80S\\x8a@', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024630, 2)}")
+unit-config-server-one-1: 03:17:12 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024632, 1), 'signature': {'hash': b'=0c\\x1a\\x82\\xe3\\x83\\x1fw\\x0f\\x91\\xa2\\xa5\\xa0\\xfe\\xb4\\t$B\\xe2', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024632, 1)}")
+unit-config-server-one-1: 03:17:12 ERROR unit.config-server-one/1.juju-log config-server:10: shard-two shard does not have the same auth as the config server.
+unit-config-server-one-1: 03:17:12 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-three to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024632, 3), 'signature': {'hash': b'=0c\\x1a\\x82\\xe3\\x83\\x1fw\\x0f\\x91\\xa2\\xa5\\xa0\\xfe\\xb4\\t$B\\xe2', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024632, 3)}")
+unit-config-server-one-1: 03:17:12 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024632, 3), 'signature': {'hash': b'=0c\\x1a\\x82\\xe3\\x83\\x1fw\\x0f\\x91\\xa2\\xa5\\xa0\\xfe\\xb4\\t$B\\xe2', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024632, 3)}")
+unit-config-server-one-1: 03:17:13 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024632, 3), 'signature': {'hash': b'=0c\\x1a\\x82\\xe3\\x83\\x1fw\\x0f\\x91\\xa2\\xa5\\xa0\\xfe\\xb4\\t$B\\xe2', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024632, 3)}")
+unit-config-server-one-1: 03:17:13 ERROR unit.config-server-one/1.juju-log config-server:10: shard-two shard does not have the same auth as the config server.
+unit-config-server-one-1: 03:17:13 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-three to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024632, 3), 'signature': {'hash': b'=0c\\x1a\\x82\\xe3\\x83\\x1fw\\x0f\\x91\\xa2\\xa5\\xa0\\xfe\\xb4\\t$B\\xe2', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024632, 3)}")
+unit-config-server-one-1: 03:17:13 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024632, 3), 'signature': {'hash': b'=0c\\x1a\\x82\\xe3\\x83\\x1fw\\x0f\\x91\\xa2\\xa5\\xa0\\xfe\\xb4\\t$B\\xe2', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024632, 3)}")
+unit-config-server-one-1: 03:17:13 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024632, 3), 'signature': {'hash': b'=0c\\x1a\\x82\\xe3\\x83\\x1fw\\x0f\\x91\\xa2\\xa5\\xa0\\xfe\\xb4\\t$B\\xe2', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024632, 3)}")
+unit-config-server-one-1: 03:17:13 ERROR unit.config-server-one/1.juju-log config-server:10: shard-two shard does not have the same auth as the config server.
+unit-config-server-one-1: 03:17:14 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-three to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024632, 3), 'signature': {'hash': b'=0c\\x1a\\x82\\xe3\\x83\\x1fw\\x0f\\x91\\xa2\\xa5\\xa0\\xfe\\xb4\\t$B\\xe2', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024632, 3)}")
+unit-config-server-one-1: 03:17:14 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024632, 3), 'signature': {'hash': b'=0c\\x1a\\x82\\xe3\\x83\\x1fw\\x0f\\x91\\xa2\\xa5\\xa0\\xfe\\xb4\\t$B\\xe2', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024632, 3)}")
+unit-config-server-one-1: 03:17:14 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024632, 3), 'signature': {'hash': b'=0c\\x1a\\x82\\xe3\\x83\\x1fw\\x0f\\x91\\xa2\\xa5\\xa0\\xfe\\xb4\\t$B\\xe2', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024632, 3)}")
+unit-config-server-one-1: 03:17:14 ERROR unit.config-server-one/1.juju-log config-server:10: shard-two shard does not have the same auth as the config server.
+unit-config-server-one-1: 03:17:14 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-three to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024634, 1), 'signature': {'hash': b'\\x10\\xd2)\\x9d\\x14qD\\x83\\xb0\\xb89^>\\x94\\x17y\\xfe\\xf4\\xe4=', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024634, 1)}")
+unit-config-server-one-1: 03:17:14 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024634, 1), 'signature': {'hash': b'\\x10\\xd2)\\x9d\\x14qD\\x83\\xb0\\xb89^>\\x94\\x17y\\xfe\\xf4\\xe4=', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024634, 1)}")
+unit-config-server-one-1: 03:17:14 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024634, 1), 'signature': {'hash': b'\\x10\\xd2)\\x9d\\x14qD\\x83\\xb0\\xb89^>\\x94\\x17y\\xfe\\xf4\\xe4=', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024634, 1)}")
+unit-config-server-one-1: 03:17:14 ERROR unit.config-server-one/1.juju-log config-server:10: shard-two shard does not have the same auth as the config server.
+unit-config-server-one-1: 03:17:15 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-three to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024634, 1), 'signature': {'hash': b'\\x10\\xd2)\\x9d\\x14qD\\x83\\xb0\\xb89^>\\x94\\x17y\\xfe\\xf4\\xe4=', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024634, 1)}")
+unit-config-server-one-1: 03:17:15 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024634, 1), 'signature': {'hash': b'\\x10\\xd2)\\x9d\\x14qD\\x83\\xb0\\xb89^>\\x94\\x17y\\xfe\\xf4\\xe4=', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024634, 1)}")
+unit-config-server-one-1: 03:17:15 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024634, 1), 'signature': {'hash': b'\\x10\\xd2)\\x9d\\x14qD\\x83\\xb0\\xb89^>\\x94\\x17y\\xfe\\xf4\\xe4=', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024634, 1)}")
+unit-config-server-one-1: 03:17:15 ERROR unit.config-server-one/1.juju-log config-server:10: shard-two shard does not have the same auth as the config server.
+unit-config-server-one-1: 03:17:15 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-three to the config server, error=OperationFailure('Authentication failed., full error: {\'ok\': 0.0, \'errmsg\': \'Authentication failed.\', \'code\': 18, \'codeName\': \'AuthenticationFailed\', \'$clusterTime\': {\'clusterTime\': Timestamp(1726024635, 1), \'signature\': {\'hash\': b"m>O\\xf4.\\xf5\\xd0\\x9e\'\\x05Am\\xd2\\x8e|f\\x00\\x90\\x90\\xfc", \'keyId\': 7413218942803509272}}, \'operationTime\': Timestamp(1726024635, 1)}')
+unit-config-server-one-1: 03:17:15 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-one to the config server, error=OperationFailure('Authentication failed., full error: {\'ok\': 0.0, \'errmsg\': \'Authentication failed.\', \'code\': 18, \'codeName\': \'AuthenticationFailed\', \'$clusterTime\': {\'clusterTime\': Timestamp(1726024635, 1), \'signature\': {\'hash\': b"m>O\\xf4.\\xf5\\xd0\\x9e\'\\x05Am\\xd2\\x8e|f\\x00\\x90\\x90\\xfc", \'keyId\': 7413218942803509272}}, \'operationTime\': Timestamp(1726024635, 1)}')
+unit-config-server-one-1: 03:17:15 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-two to the config server, error=OperationFailure('Authentication failed., full error: {\'ok\': 0.0, \'errmsg\': \'Authentication failed.\', \'code\': 18, \'codeName\': \'AuthenticationFailed\', \'$clusterTime\': {\'clusterTime\': Timestamp(1726024635, 1), \'signature\': {\'hash\': b"m>O\\xf4.\\xf5\\xd0\\x9e\'\\x05Am\\xd2\\x8e|f\\x00\\x90\\x90\\xfc", \'keyId\': 7413218942803509272}}, \'operationTime\': Timestamp(1726024635, 1)}')
+unit-config-server-one-1: 03:17:16 ERROR unit.config-server-one/1.juju-log config-server:10: shard-two shard does not have the same auth as the config server.
+unit-config-server-one-1: 03:17:16 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-three to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024636, 1), 'signature': {'hash': b'\\x0c\\xec\\xea\\x01\\x13O\\xc0L(\\xed,\\xb3\\xb0\\xf0\\xdb\\x87aJ\\x05|', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024636, 1)}")
+unit-config-server-one-1: 03:17:16 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024636, 1), 'signature': {'hash': b'\\x0c\\xec\\xea\\x01\\x13O\\xc0L(\\xed,\\xb3\\xb0\\xf0\\xdb\\x87aJ\\x05|', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024636, 1)}")
+unit-config-server-one-1: 03:17:16 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024636, 1), 'signature': {'hash': b'\\x0c\\xec\\xea\\x01\\x13O\\xc0L(\\xed,\\xb3\\xb0\\xf0\\xdb\\x87aJ\\x05|', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024636, 1)}")
+unit-config-server-one-1: 03:17:16 ERROR unit.config-server-one/1.juju-log config-server:10: shard-two shard does not have the same auth as the config server.
+unit-config-server-one-1: 03:17:18 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024637, 3), 'signature': {'hash': b'\\xcc\\xf5[!\\x15|\\\\.J(\\xc6\\xbag4y\\xee\\xd6\\xa7\\xa0C', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024637, 3)}")
+unit-config-server-one-1: 03:17:18 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-three to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726024637, 3), 'signature': {'hash': b'\\xcc\\xf5[!\\x15|\\\\.J(\\xc6\\xbag4y\\xee\\xd6\\xa7\\xa0C', 'keyId': 7413218942803509272}}, 'operationTime': Timestamp(1726024637, 3)}")
+unit-shard-three-0: 03:17:21 ERROR unit.shard-three/0.juju-log _on_secret_remove: Secret secret:crggnb63u0e2d0lf90vg seems to have no observers, could be removed
+unit-config-server-one-1: 03:17:33 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard shard-two to the config server, error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-two, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-two\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1726024652, 3), \'signature\': {\'hash\': b\' eLb14mM\\xfb\\xbeJ\\x9e\\x96wf\\xd8\\xc3\\xd6\\x0f=\', \'keyId\': 7413218942803509272}}, \'operationTime\': Timestamp(1726024652, 3)}')
+unit-config-server-one-1: 03:17:33 ERROR unit.config-server-one/1.juju-log config-server:10: Failed to add shard-two to cluster
+unit-config-server-one-1: 03:17:33 ERROR unit.config-server-one/1.juju-log config-server:10: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-two, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-two\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1726024652, 3), \'signature\': {\'hash\': b\' eLb14mM\\xfb\\xbeJ\\x9e\\x96wf\\xd8\\xc3\\xd6\\x0f=\', \'keyId\': 7413218942803509272}}, \'operationTime\': Timestamp(1726024652, 3)}')
+unit-shard-three-0: 03:17:41 ERROR unit.shard-three/0.juju-log database-peers:6: Charm is in sharding role: database. Does not support shard interface.
+unit-shard-three-0: 03:17:50 ERROR unit.shard-three/0.juju-log _on_secret_remove: Secret secret:crggnb63u0e2d0lf90vg seems to have no observers, could be removed
+unit-shard-three-0: 03:17:57 ERROR unit.shard-three/0.juju-log _on_secret_remove: Secret secret:crggnb63u0e2d0lf90vg seems to have no observers, could be removed
+unit-shard-one-1: 03:17:57 ERROR unit.shard-one/1.juju-log _on_secret_remove: Secret secret:crggmou3u0e2d0lf90ug seems to have no observers, could be removed
+unit-shard-two-1: 03:17:57 ERROR unit.shard-two/1.juju-log _on_secret_remove: Secret secret:crggn1e3u0e2d0lf90v0 seems to have no observers, could be removed
+unit-shard-one-1: 03:17:59 ERROR unit.shard-one/1.juju-log _on_secret_remove: Secret secret:crggmou3u0e2d0lf90ug seems to have no observers, could be removed
+unit-shard-two-1: 03:17:59 ERROR unit.shard-two/1.juju-log _on_secret_remove: Secret secret:crggn1e3u0e2d0lf90v0 seems to have no observers, could be removed
+unit-shard-three-0: 03:18:33 ERROR unit.shard-three/0.juju-log _on_secret_remove: Secret secret:crggnb63u0e2d0lf90vg seems to have no observers, could be removed
+unit-shard-one-1: 03:18:53 ERROR unit.shard-one/1.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-two-1: 03:18:56 ERROR unit.shard-two/1.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-three-0: 03:19:29 ERROR unit.shard-three/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
