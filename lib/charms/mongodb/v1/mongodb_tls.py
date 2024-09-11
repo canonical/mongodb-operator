@@ -12,7 +12,6 @@ import json
 import logging
 import re
 import socket
-import subprocess
 from typing import Dict, List, Optional, Tuple
 
 from charms.tls_certificates_interface.v3.tls_certificates import (
@@ -22,10 +21,11 @@ from charms.tls_certificates_interface.v3.tls_certificates import (
     generate_csr,
     generate_private_key,
 )
+from cryptography import x509
+from cryptography.hazmat.backends import default_backend
 from ops.charm import ActionEvent, RelationBrokenEvent, RelationJoinedEvent
 from ops.framework import Object
 from ops.model import ActiveStatus, MaintenanceStatus, WaitingStatus
-from ops.pebble import ExecError
 
 from config import Config
 
@@ -228,7 +228,7 @@ class MongoDBTLS(Object):
         )
         self.set_tls_secret(internal, Config.TLS.SECRET_CERT_LABEL, event.certificate)
         self.set_tls_secret(internal, Config.TLS.SECRET_CA_LABEL, event.ca)
-        self.set_waiting_for_cert_to_update(waiting=False, internal=internal)
+        self.set_waiting_for_cert_to_update(internal=internal, waiting=False)
 
         if self.charm.is_role(Config.Role.CONFIG_SERVER) and internal:
             self.charm.cluster.update_ca_secret(new_ca=event.ca)
@@ -289,7 +289,6 @@ class MongoDBTLS(Object):
             == self.get_tls_secret(internal=True, label_name=Config.TLS.SECRET_CERT_LABEL).rstrip()
         ):
             logger.debug("The internal TLS certificate expiring.")
-
             internal = True
         else:
             logger.error("An unknown certificate expiring.")
@@ -348,59 +347,18 @@ class MongoDBTLS(Object):
         if not self.is_tls_enabled(internal=internal):
             return
 
+        pem_file = self.get_tls_secret(internal, Config.TLS.SECRET_CERT_LABEL)
+
         try:
-            sans_lines = self.get_sans_from_host(internal)
-        except (subprocess.CalledProcessError, ExecError) as e:
-            logger.error("failed to get sans from host, error: %s", e.stderr)
-            raise e
-
-        line = ""
-        for line in sans_lines:
-            if "DNS" in line or "IP" in line:
-                break
-
-        sans_ip = []
-        sans_dns = []
-        for item in line.split(", "):
-            if ":" not in item:
-                continue
-
-            san_type, san_value = item.split(":")
-
-            if san_type == "DNS":
-                sans_dns.append(san_value)
-            if san_type == "IP Address":
-                sans_ip.append(san_value)
+            cert = x509.load_pem_x509_certificate(pem_file.encode(), default_backend())
+            sans = cert.extensions.get_extension_for_class(x509.SubjectAlternativeName).value
+            sans_ip = [str(san) for san in sans.get_values_for_type(x509.IPAddress)]
+            sans_dns = [str(san) for san in sans.get_values_for_type(x509.DNSName)]
+        except x509.ExtensionNotFound:
+            sans_ip = []
+            sans_dns = []
 
         return {SANS_IPS_KEY: sorted(sans_ip), SANS_DNS_KEY: sorted(sans_dns)}
-
-    def get_sans_from_host(self, internal) -> List[str]:
-        """Returns the sans lines from the host.
-
-        Raises: subprocess.CalledProcessError, ExecError
-        """
-        pem_file = Config.TLS.INT_PEM_FILE if internal else Config.TLS.EXT_PEM_FILE
-
-        command = [
-            "openssl",
-            "x509",
-            "-noout",
-            "-ext",
-            "subjectAltName",
-            "-in",
-            pem_file,
-        ]
-
-        if self.substrate == Config.Substrate.K8S:
-            container = self.charm.unit.get_container(Config.CONTAINER_NAME)
-            process = container.exec(command=command, working_dir=Config.MONGOD_CONF_DIR)
-            output, _ = process.wait_output()
-            sans_lines = output.splitlines()
-        else:
-            output = subprocess.check_output(command, shell=True)
-            sans_lines = output.decode("utf-8").splitlines()
-
-        return sans_lines
 
     def get_tls_files(self, internal: bool) -> Tuple[Optional[str], Optional[str]]:
         """Prepare TLS files in special MongoDB way.
@@ -456,21 +414,17 @@ class MongoDBTLS(Object):
         internal=False,
     ) -> bool:
         """Returns True we are waiting for a cert to update."""
-        if internal:
-            json.loads(self.charm.app_peer_data.get(WAIT_CERT_UPDATE, "false"))
-        else:
-            json.loads(self.charm.unit_peer_data.get(WAIT_CERT_UPDATE, "false"))
+        scope = "int" if internal else "ext"
+        label_name = f"{scope}-{WAIT_CERT_UPDATE}"
+
+        return json.loads(self.charm.unit_peer_data.get(label_name, "false"))
 
     def set_waiting_for_cert_to_update(
         self,
         waiting: bool,
         internal: bool,
-    ):
+    ) -> None:
         """Sets a boolean indicator, for whether or not we are waiting for a cert to update."""
-        if internal and not self.charm.unit.is_leader():
-            return
-
-        if internal:
-            self.charm.app_peer_data[WAIT_CERT_UPDATE] = json.dumps(waiting)
-        else:
-            self.charm.unit_peer_data[WAIT_CERT_UPDATE] = json.dumps(waiting)
+        scope = "int" if internal else "ext"
+        label_name = f"{scope}-{WAIT_CERT_UPDATE}"
+        self.charm.unit_peer_data[label_name] = json.dumps(waiting)

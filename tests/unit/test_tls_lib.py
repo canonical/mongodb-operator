@@ -1,10 +1,10 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
-import subprocess
 import unittest
 from unittest import mock
 from unittest.mock import patch
 
+from cryptography import x509
 from ops.testing import Harness
 from parameterized import parameterized
 
@@ -312,8 +312,8 @@ class TestMongoTLS(unittest.TestCase):
                 assert "node-port" not in self.harness.charm.tls.get_new_sans()["sans_ips"]
 
     @patch("charm.MongoDBTLS.is_tls_enabled")
-    @patch("charms.mongodb.v1.mongodb_tls.subprocess.check_output")
-    def test_get_current_sans_returns_none(self, check_output, is_tls_enabled):
+    @patch("charms.mongodb.v1.mongodb_tls.x509.load_pem_x509_certificate")
+    def test_get_current_sans_returns_none(self, cert, is_tls_enabled):
         """Tests the different scenarios that get_current_sans returns None.
 
         1. get_current_sans returns None when TLS is not enabled.
@@ -324,24 +324,16 @@ class TestMongoTLS(unittest.TestCase):
         for internal in [True, False]:
             self.assertEqual(self.harness.charm.tls.get_current_sans(internal), None)
 
-        # case 2: get_current_sans returns None if cert file is wrongly formatted.
-        check_output.return_value = "".encode("utf-8")
+        # case 2: error getting extension
         is_tls_enabled.return_value = True
+        cert.side_effect = x509.ExtensionNotFound(msg="error-message", oid=1)
+        self.harness.charm.set_secret("unit", "ext-cert-secret", "unit-cert")
+        self.harness.charm.set_secret("unit", "int-cert-secret", "app-cert")
+
         for internal in [True, False]:
             self.assertEqual(
                 self.harness.charm.tls.get_current_sans(internal), {"sans_ips": [], "sans_dns": []}
             )
-
-    @patch("charm.MongoDBTLS.is_tls_enabled")
-    @patch("charms.mongodb.v1.mongodb_tls.subprocess.check_output")
-    def test_get_current_sans_failure_raises(self, check_output, is_tls_enabled):
-        """Tests the difference scenarios in which get_current_sans fails."""
-        is_tls_enabled.return_value = True
-        check_output.side_effect = subprocess.CalledProcessError(cmd="openssl", returncode=1)
-
-        for internal in [True, False]:
-            with self.assertRaises(subprocess.CalledProcessError):
-                self.assertEqual(self.harness.charm.tls.get_current_sans(internal), None)
 
     # Helper functions
     def relate_to_tls_certificates_operator(self) -> int:
