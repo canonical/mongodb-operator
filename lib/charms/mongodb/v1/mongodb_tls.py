@@ -320,19 +320,19 @@ class MongoDBTLS(Object):
         Returns:
             A list representing the hostnames of the MongoDB unit.
         """
-        sans = {}
-
         unit_id = self.charm.unit.name.split("/")[1]
-        sans[SANS_DNS_KEY] = [
-            f"{self.charm.app.name}-{unit_id}",
-            socket.getfqdn(),
-            "localhost",
-            f"{self.charm.app.name}-{unit_id}.{self.charm.app.name}-endpoints",
-        ]
 
-        sans[SANS_IPS_KEY] = [
-            str(self.charm.model.get_binding(self.peer_relation).network.bind_address)
-        ]
+        sans = {
+            SANS_DNS_KEY: [
+                f"{self.charm.app.name}-{unit_id}",
+                socket.getfqdn(),
+                "localhost",
+                f"{self.charm.app.name}-{unit_id}.{self.charm.app.name}-endpoints",
+            ],
+            SANS_IPS_KEY: [
+                str(self.charm.model.get_binding(self.peer_relation).network.bind_address)
+            ],
+        }
 
         if self.charm.is_role(Config.Role.MONGOS) and self.charm.is_external_client:
             sans[SANS_IPS_KEY].append(
