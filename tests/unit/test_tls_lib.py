@@ -4,6 +4,7 @@ import unittest
 from unittest import mock
 from unittest.mock import patch
 
+from cryptography import x509
 from ops.testing import Harness
 from parameterized import parameterized
 
@@ -31,15 +32,18 @@ class TestMongoTLS(unittest.TestCase):
 
     @parameterized.expand([True, False])
     @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch("charm.MongoDBTLS.get_new_sans")
     @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
     @patch("charms.mongodb.v0.set_status.get_charm_revision")
     @patch_network_get(private_address="1.1.1.1")
-    def test_set_tls_private_keys(self, leader, *unused):
+    def test_set_tls_private_keys(self, leader, get_new_sans, *unused):
         """Tests setting of TLS private key via the leader, ie both internal and external.
 
         Note: this implicitly tests: _request_certificate & _parse_tls_file
         """
+        self.harness.add_relation("certificates", "certificates")
         # Tests for leader unit (ie internal certificates and external certificates)
+        get_new_sans.return_value = {"sans_dns": [""], "sans_ips": ["1.1.1.1"]}
         self.harness.set_leader(leader)
         action_event = mock.Mock()
         action_event.params = {}
@@ -295,6 +299,42 @@ class TestMongoTLS(unittest.TestCase):
 
         defer.assert_called()
 
+    def test_get_new_sans_gives_node_port_for_mongos_k8s(self):
+        """Tests that get_new_sans only gets node port for external mongos K8s."""
+        mock_get_ext_mongos_host = mock.Mock()
+        mock_get_ext_mongos_host.return_value = "node_port"
+        self.harness.charm.get_ext_mongos_host = mock_get_ext_mongos_host
+        for substrate in ["k8s", "vm"]:
+            for role in ["mongos", "config-server", "shard"]:
+                if role == "mongos" and substrate == "k8s":
+                    continue
+
+                assert "node-port" not in self.harness.charm.tls.get_new_sans()["sans_ips"]
+
+    @patch("charm.MongoDBTLS.is_tls_enabled")
+    @patch("charms.mongodb.v1.mongodb_tls.x509.load_pem_x509_certificate")
+    def test_get_current_sans_returns_none(self, cert, is_tls_enabled):
+        """Tests the different scenarios that get_current_sans returns None.
+
+        1. get_current_sans returns None when TLS is not enabled.
+        2. get_current_sans returns None if cert file is wrongly formatted.
+        """
+        # case 1: get_current_sans returns None when TLS is not enabled.
+        is_tls_enabled.return_value = None
+        for internal in [True, False]:
+            self.assertEqual(self.harness.charm.tls.get_current_sans(internal), None)
+
+        # case 2: error getting extension
+        is_tls_enabled.return_value = True
+        cert.side_effect = x509.ExtensionNotFound(msg="error-message", oid=1)
+        self.harness.charm.set_secret("unit", "ext-cert-secret", "unit-cert")
+        self.harness.charm.set_secret("unit", "int-cert-secret", "app-cert")
+
+        for internal in [True, False]:
+            self.assertEqual(
+                self.harness.charm.tls.get_current_sans(internal), {"sans_ips": [], "sans_dns": []}
+            )
+
     # Helper functions
     def relate_to_tls_certificates_operator(self) -> int:
         """Relates the charm to the TLS certificates operator."""
@@ -331,6 +371,7 @@ class TestMongoTLS(unittest.TestCase):
         """
         int_rsa_key = self.harness.charm.get_secret("unit", "int-key-secret")
         int_csr = self.harness.charm.get_secret("unit", "int-csr-secret")
+
         if specific_rsa:
             self.assertEqual(int_rsa_key, expected_rsa)
         else:
