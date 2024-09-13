@@ -1,0 +1,745 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.5.3    unsupported  01:56:05Z
+
+App            Version  Status  Scale  Charm    Channel  Rev  Exposed  Message
+config-server           active      3  mongodb  6/edge   191  no       
+shard-one               active      3  mongodb  6/edge   191  no       
+shard-two               active      1  mongodb  6/edge   191  no       
+
+Unit              Workload  Agent  Machine  Public address  Ports            Message
+config-server/0   active    idle   0        10.190.152.123  27017-27018/tcp  
+config-server/1   active    idle   1        10.190.152.182  27017-27018/tcp  
+config-server/2*  active    idle   2        10.190.152.4    27017-27018/tcp  
+shard-one/0       error     idle   3        10.190.152.131  27017/tcp        hook failed: "sharding-relation-changed"
+shard-one/1*      active    idle   4        10.190.152.196  27017/tcp        
+shard-one/2       active    idle   5        10.190.152.60   27017/tcp        
+shard-two/0*      error     idle   6        10.190.152.246  27017/tcp        hook failed: "sharding-relation-changed"
+
+Machine  State    Address         Inst id        Base          AZ  Message
+0        started  10.190.152.123  juju-e2e80d-0  ubuntu@22.04      Running
+1        started  10.190.152.182  juju-e2e80d-1  ubuntu@22.04      Running
+2        started  10.190.152.4    juju-e2e80d-2  ubuntu@22.04      Running
+3        started  10.190.152.131  juju-e2e80d-3  ubuntu@22.04      Running
+4        started  10.190.152.196  juju-e2e80d-4  ubuntu@22.04      Running
+5        started  10.190.152.60   juju-e2e80d-5  ubuntu@22.04      Running
+6        started  10.190.152.246  juju-e2e80d-6  ubuntu@22.04      Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+machine-6: 01:41:53 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-6: 01:41:53 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-two-0: 01:41:53 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-2: 01:41:54 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 01:41:54 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-2: 01:41:54 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-4: 01:41:55 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-4: 01:41:55 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-1: 01:41:55 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-5: 01:41:55 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-5: 01:41:55 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-2: 01:41:55 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-1: 01:41:56 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 01:41:56 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 01:41:56 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 01:41:56 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-1: 01:41:56 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-config-server-0: 01:41:56 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-3: 01:41:57 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 01:41:57 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-0: 01:41:57 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-shard-two-0: 01:43:18 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:crhph7udo8jiclq5i040 seems to have no observers, could be removed
+unit-config-server-2: 01:43:18 ERROR unit.config-server/2.juju-log _on_secret_remove: Secret secret:crhph7udo8jiclq5i03g seems to have no observers, could be removed
+unit-shard-one-1: 01:43:20 ERROR unit.shard-one/1.juju-log _on_secret_remove: Secret secret:crhph8edo8jiclq5i04g seems to have no observers, could be removed
+unit-shard-one-1: 01:43:29 ERROR unit.shard-one/1.juju-log database-peers:2: Charm is in sharding role: database. Does not support shard interface.
+unit-shard-one-1: 01:43:40 ERROR unit.shard-one/1.juju-log database-peers:2: Charm is in sharding role: database. Does not support shard interface.
+unit-config-server-2: 01:44:33 ERROR unit.config-server/2.juju-log config-server:7: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726191872, 1), 'signature': {'hash': b'\\tw\\x92|\\x81\\xb5\\xb39;\\xaa}1#\\x94\\xfe\\xd6+\\xeePC', 'keyId': 7413937258903896089}}, 'operationTime': Timestamp(1726191872, 1)}")
+unit-config-server-2: 01:44:33 ERROR unit.config-server/2.juju-log config-server:7: shard-one shard does not have the same auth as the config server.
+unit-config-server-2: 01:44:34 ERROR unit.config-server/2.juju-log config-server:6: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726191874, 2), 'signature': {'hash': b'a\\xe3\\xbe^\\xb1\\n\\xe5\\xe99\\xac\\x17\\x84\\x9a\\xaa\\xdd\\xc7\\x94\\xd9y\\xa9', 'keyId': 7413937258903896089}}, 'operationTime': Timestamp(1726191874, 2)}")
+unit-config-server-2: 01:44:34 ERROR unit.config-server/2.juju-log config-server:6: shard-one shard does not have the same auth as the config server.
+unit-config-server-2: 01:44:35 ERROR unit.config-server/2.juju-log config-server:6: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726191874, 5), 'signature': {'hash': b'a\\xe3\\xbe^\\xb1\\n\\xe5\\xe99\\xac\\x17\\x84\\x9a\\xaa\\xdd\\xc7\\x94\\xd9y\\xa9', 'keyId': 7413937258903896089}}, 'operationTime': Timestamp(1726191874, 5)}")
+unit-config-server-2: 01:44:35 ERROR unit.config-server/2.juju-log config-server:6: shard-one shard does not have the same auth as the config server.
+unit-config-server-2: 01:44:36 ERROR unit.config-server/2.juju-log config-server:6: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726191875, 1), 'signature': {'hash': b'Rj\\xe2\\xb1\\x88\\x05\\x11\\xe64\\x18\\xcf6\\x87\\x1f\\xba\\xf2_\\x98\\x1a\\xa6', 'keyId': 7413937258903896089}}, 'operationTime': Timestamp(1726191875, 1)}")
+unit-config-server-2: 01:44:36 ERROR unit.config-server/2.juju-log config-server:6: shard-one shard does not have the same auth as the config server.
+unit-config-server-2: 01:44:37 ERROR unit.config-server/2.juju-log config-server:6: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726191875, 1), 'signature': {'hash': b'Rj\\xe2\\xb1\\x88\\x05\\x11\\xe64\\x18\\xcf6\\x87\\x1f\\xba\\xf2_\\x98\\x1a\\xa6', 'keyId': 7413937258903896089}}, 'operationTime': Timestamp(1726191875, 1)}")
+unit-config-server-2: 01:44:37 ERROR unit.config-server/2.juju-log config-server:6: shard-one shard does not have the same auth as the config server.
+unit-config-server-2: 01:44:53 ERROR unit.config-server/2.juju-log config-server:6: Failed to add shard shard-one to the config server, error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1726191892, 1), \'signature\': {\'hash\': b\'\\xa3\\xeb\\x0f\\xc2\\xd5s\\x86\\xf0\\x03+H\\xfd\\xaa4\\xddvU\\x08\\xb0\\xbe\', \'keyId\': 7413937258903896089}}, \'operationTime\': Timestamp(1726191892, 1)}')
+unit-config-server-2: 01:44:53 ERROR unit.config-server/2.juju-log config-server:6: Failed to add shard-one to cluster
+unit-config-server-2: 01:44:53 ERROR unit.config-server/2.juju-log config-server:6: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1726191892, 1), \'signature\': {\'hash\': b\'\\xa3\\xeb\\x0f\\xc2\\xd5s\\x86\\xf0\\x03+H\\xfd\\xaa4\\xddvU\\x08\\xb0\\xbe\', \'keyId\': 7413937258903896089}}, \'operationTime\': Timestamp(1726191892, 1)}')
+unit-config-server-2: 01:45:10 ERROR unit.config-server/2.juju-log config-server:6: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726191909, 4), 'signature': {'hash': b'\\xee\\x11\\xa2\\xcbfVMl\\x07)fI\\x9b\\xa4\\xb0\\xd1\\xcf\\x80\\xa7j', 'keyId': 7413937258903896089}}, 'operationTime': Timestamp(1726191909, 4)}")
+unit-config-server-2: 01:45:10 ERROR unit.config-server/2.juju-log config-server:6: shard-two shard does not have the same auth as the config server.
+unit-shard-one-1: 01:45:14 ERROR unit.shard-one/1.juju-log _on_secret_remove: Secret secret:crhph8edo8jiclq5i04g seems to have no observers, could be removed
+unit-shard-one-1: 01:45:19 ERROR unit.shard-one/1.juju-log _on_secret_remove: Secret secret:crhph8edo8jiclq5i04g seems to have no observers, could be removed
+unit-shard-two-0: 01:45:21 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:crhph7udo8jiclq5i040 seems to have no observers, could be removed
+unit-shard-two-0: 01:45:23 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:crhph7udo8jiclq5i040 seems to have no observers, could be removed
+unit-shard-one-1: 01:45:23 ERROR unit.shard-one/1.juju-log _on_secret_remove: Secret secret:crhph8edo8jiclq5i04g seems to have no observers, could be removed
+unit-shard-one-1: 01:45:28 ERROR unit.shard-one/1.juju-log _on_secret_remove: Secret secret:crhph8edo8jiclq5i04g seems to have no observers, could be removed
+unit-shard-one-1: 01:45:33 ERROR unit.shard-one/1.juju-log _on_secret_remove: Secret secret:crhph8edo8jiclq5i04g seems to have no observers, could be removed
+unit-shard-one-1: 01:46:45 ERROR unit.shard-one/1.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-two-0: 01:47:44 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:crhph7udo8jiclq5i040 seems to have no observers, could be removed
+unit-shard-one-1: 01:48:10 ERROR unit.shard-one/1.juju-log _on_secret_remove: Secret secret:crhph8edo8jiclq5i04g seems to have no observers, could be removed
+unit-shard-two-0: 01:48:21 ERROR unit.shard-two/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-one-1: 01:51:36 ERROR unit.shard-one/1.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-two-0: 01:53:17 ERROR unit.shard-two/0.juju-log sharding:7: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/./src/charm.py", line 1597, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 698, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 746, in pass_hook_checks
+    if not self.pass_sanity_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 785, in pass_sanity_hook_checks
+    if not self.charm.is_relation_feasible(self.relation_name):
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/./src/charm.py", line 1539, in is_relation_feasible
+    if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-shard-one-1: 01:53:17 ERROR unit.shard-one/1.juju-log sharding:6: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1597, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/mongodb/v1/shards_interface.py", line 698, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/mongodb/v1/shards_interface.py", line 746, in pass_hook_checks
+    if not self.pass_sanity_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/mongodb/v1/shards_interface.py", line 785, in pass_sanity_hook_checks
+    if not self.charm.is_relation_feasible(self.relation_name):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1539, in is_relation_feasible
+    if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-shard-one-2: 01:53:17 ERROR unit.shard-one/2.juju-log sharding:6: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/./src/charm.py", line 1597, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v1/shards_interface.py", line 698, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v1/shards_interface.py", line 746, in pass_hook_checks
+    if not self.pass_sanity_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v1/shards_interface.py", line 785, in pass_sanity_hook_checks
+    if not self.charm.is_relation_feasible(self.relation_name):
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/./src/charm.py", line 1539, in is_relation_feasible
+    if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-shard-one-0: 01:53:17 ERROR unit.shard-one/0.juju-log sharding:6: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/./src/charm.py", line 1597, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 698, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 746, in pass_hook_checks
+    if not self.pass_sanity_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 785, in pass_sanity_hook_checks
+    if not self.charm.is_relation_feasible(self.relation_name):
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/./src/charm.py", line 1539, in is_relation_feasible
+    if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-shard-two-0: 01:53:18 ERROR juju.worker.uniter.operation hook "sharding-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-one-1: 01:53:18 ERROR juju.worker.uniter.operation hook "sharding-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-one-2: 01:53:18 ERROR juju.worker.uniter.operation hook "sharding-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-one-0: 01:53:18 ERROR juju.worker.uniter.operation hook "sharding-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-two-0: 01:53:23 ERROR unit.shard-two/0.juju-log sharding:7: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/./src/charm.py", line 1597, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 698, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 746, in pass_hook_checks
+    if not self.pass_sanity_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 785, in pass_sanity_hook_checks
+    if not self.charm.is_relation_feasible(self.relation_name):
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/./src/charm.py", line 1539, in is_relation_feasible
+    if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-shard-one-1: 01:53:23 ERROR unit.shard-one/1.juju-log sharding:6: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1597, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/mongodb/v1/shards_interface.py", line 698, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/mongodb/v1/shards_interface.py", line 746, in pass_hook_checks
+    if not self.pass_sanity_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/mongodb/v1/shards_interface.py", line 785, in pass_sanity_hook_checks
+    if not self.charm.is_relation_feasible(self.relation_name):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1539, in is_relation_feasible
+    if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-shard-one-2: 01:53:23 ERROR unit.shard-one/2.juju-log sharding:6: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/./src/charm.py", line 1597, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v1/shards_interface.py", line 698, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v1/shards_interface.py", line 746, in pass_hook_checks
+    if not self.pass_sanity_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v1/shards_interface.py", line 785, in pass_sanity_hook_checks
+    if not self.charm.is_relation_feasible(self.relation_name):
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/./src/charm.py", line 1539, in is_relation_feasible
+    if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-shard-one-0: 01:53:23 ERROR unit.shard-one/0.juju-log sharding:6: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/./src/charm.py", line 1597, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 698, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 746, in pass_hook_checks
+    if not self.pass_sanity_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 785, in pass_sanity_hook_checks
+    if not self.charm.is_relation_feasible(self.relation_name):
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/./src/charm.py", line 1539, in is_relation_feasible
+    if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-shard-two-0: 01:53:23 ERROR juju.worker.uniter.operation hook "sharding-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-one-1: 01:53:24 ERROR juju.worker.uniter.operation hook "sharding-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-one-0: 01:53:24 ERROR juju.worker.uniter.operation hook "sharding-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-one-2: 01:53:24 ERROR juju.worker.uniter.operation hook "sharding-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-two-0: 01:53:34 ERROR unit.shard-two/0.juju-log sharding:7: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/./src/charm.py", line 1597, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 698, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 746, in pass_hook_checks
+    if not self.pass_sanity_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 785, in pass_sanity_hook_checks
+    if not self.charm.is_relation_feasible(self.relation_name):
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/./src/charm.py", line 1539, in is_relation_feasible
+    if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-shard-one-2: 01:53:34 ERROR unit.shard-one/2.juju-log sharding:6: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/./src/charm.py", line 1597, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v1/shards_interface.py", line 698, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v1/shards_interface.py", line 746, in pass_hook_checks
+    if not self.pass_sanity_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v1/shards_interface.py", line 785, in pass_sanity_hook_checks
+    if not self.charm.is_relation_feasible(self.relation_name):
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/./src/charm.py", line 1539, in is_relation_feasible
+    if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-shard-one-0: 01:53:34 ERROR unit.shard-one/0.juju-log sharding:6: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/./src/charm.py", line 1597, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 698, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 746, in pass_hook_checks
+    if not self.pass_sanity_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 785, in pass_sanity_hook_checks
+    if not self.charm.is_relation_feasible(self.relation_name):
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/./src/charm.py", line 1539, in is_relation_feasible
+    if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-shard-two-0: 01:53:34 ERROR juju.worker.uniter.operation hook "sharding-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-one-2: 01:53:34 ERROR juju.worker.uniter.operation hook "sharding-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-one-1: 01:53:34 ERROR unit.shard-one/1.juju-log sharding:6: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1597, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/mongodb/v1/shards_interface.py", line 698, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/mongodb/v1/shards_interface.py", line 746, in pass_hook_checks
+    if not self.pass_sanity_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/mongodb/v1/shards_interface.py", line 785, in pass_sanity_hook_checks
+    if not self.charm.is_relation_feasible(self.relation_name):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1539, in is_relation_feasible
+    if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-shard-one-0: 01:53:34 ERROR juju.worker.uniter.operation hook "sharding-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-one-1: 01:53:35 ERROR juju.worker.uniter.operation hook "sharding-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-two-0: 01:53:54 ERROR unit.shard-two/0.juju-log sharding:7: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/./src/charm.py", line 1597, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 698, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 746, in pass_hook_checks
+    if not self.pass_sanity_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 785, in pass_sanity_hook_checks
+    if not self.charm.is_relation_feasible(self.relation_name):
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/./src/charm.py", line 1539, in is_relation_feasible
+    if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-shard-one-0: 01:53:54 ERROR unit.shard-one/0.juju-log sharding:6: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/./src/charm.py", line 1597, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 698, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 746, in pass_hook_checks
+    if not self.pass_sanity_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 785, in pass_sanity_hook_checks
+    if not self.charm.is_relation_feasible(self.relation_name):
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/./src/charm.py", line 1539, in is_relation_feasible
+    if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-shard-two-0: 01:53:54 ERROR juju.worker.uniter.operation hook "sharding-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-one-0: 01:53:54 ERROR juju.worker.uniter.operation hook "sharding-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-one-2: 01:53:54 ERROR unit.shard-one/2.juju-log sharding:6: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/./src/charm.py", line 1597, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v1/shards_interface.py", line 698, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v1/shards_interface.py", line 746, in pass_hook_checks
+    if not self.pass_sanity_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v1/shards_interface.py", line 785, in pass_sanity_hook_checks
+    if not self.charm.is_relation_feasible(self.relation_name):
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/./src/charm.py", line 1539, in is_relation_feasible
+    if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-shard-one-2: 01:53:55 ERROR juju.worker.uniter.operation hook "sharding-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-one-1: 01:53:55 ERROR unit.shard-one/1.juju-log sharding:6: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1597, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/mongodb/v1/shards_interface.py", line 698, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/mongodb/v1/shards_interface.py", line 746, in pass_hook_checks
+    if not self.pass_sanity_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/mongodb/v1/shards_interface.py", line 785, in pass_sanity_hook_checks
+    if not self.charm.is_relation_feasible(self.relation_name):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1539, in is_relation_feasible
+    if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-shard-one-1: 01:53:56 ERROR juju.worker.uniter.operation hook "sharding-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-one-0: 01:54:33 ERROR unit.shard-one/0.juju-log sharding:6: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/./src/charm.py", line 1597, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 698, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 746, in pass_hook_checks
+    if not self.pass_sanity_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 785, in pass_sanity_hook_checks
+    if not self.charm.is_relation_feasible(self.relation_name):
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/./src/charm.py", line 1539, in is_relation_feasible
+    if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-shard-two-0: 01:54:33 ERROR unit.shard-two/0.juju-log sharding:7: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/./src/charm.py", line 1597, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 698, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 746, in pass_hook_checks
+    if not self.pass_sanity_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 785, in pass_sanity_hook_checks
+    if not self.charm.is_relation_feasible(self.relation_name):
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/./src/charm.py", line 1539, in is_relation_feasible
+    if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-shard-one-0: 01:54:33 ERROR juju.worker.uniter.operation hook "sharding-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-two-0: 01:54:33 ERROR juju.worker.uniter.operation hook "sharding-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-one-2: 01:54:35 ERROR unit.shard-one/2.juju-log sharding:6: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/./src/charm.py", line 1597, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v1/shards_interface.py", line 698, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v1/shards_interface.py", line 746, in pass_hook_checks
+    if not self.pass_sanity_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v1/shards_interface.py", line 785, in pass_sanity_hook_checks
+    if not self.charm.is_relation_feasible(self.relation_name):
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/./src/charm.py", line 1539, in is_relation_feasible
+    if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-shard-one-1: 01:54:35 ERROR unit.shard-one/1.juju-log sharding:6: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1597, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/mongodb/v1/shards_interface.py", line 698, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/mongodb/v1/shards_interface.py", line 746, in pass_hook_checks
+    if not self.pass_sanity_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/mongodb/v1/shards_interface.py", line 785, in pass_sanity_hook_checks
+    if not self.charm.is_relation_feasible(self.relation_name):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1539, in is_relation_feasible
+    if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-shard-one-2: 01:54:35 ERROR juju.worker.uniter.operation hook "sharding-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-one-1: 01:54:36 ERROR juju.worker.uniter.operation hook "sharding-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-one-0: 01:55:50 ERROR unit.shard-one/0.juju-log sharding:6: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/./src/charm.py", line 1597, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 698, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 746, in pass_hook_checks
+    if not self.pass_sanity_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 785, in pass_sanity_hook_checks
+    if not self.charm.is_relation_feasible(self.relation_name):
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/./src/charm.py", line 1539, in is_relation_feasible
+    if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-shard-one-0: 01:55:50 ERROR juju.worker.uniter.operation hook "sharding-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-two-0: 01:55:51 ERROR unit.shard-two/0.juju-log sharding:7: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/./src/charm.py", line 1597, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 698, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 746, in pass_hook_checks
+    if not self.pass_sanity_hook_checks(event):
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 785, in pass_sanity_hook_checks
+    if not self.charm.is_relation_feasible(self.relation_name):
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/./src/charm.py", line 1539, in is_relation_feasible
+    if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-shard-two-0: 01:55:51 ERROR juju.worker.uniter.operation hook "sharding-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
