@@ -1,0 +1,243 @@
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  shard-one/0 [executing] active: Primary
+  shard-one/1 [executing] active: 
+  shard-two/0 [executing] active: Primary
+  config-server/0 [executing] active: Primary
+  config-server/1 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server/0 [idle] active: 
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server/0 [idle] maintenance: backup started/running, backup id:'2024-09-15T02:05:00Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server/0 [idle] maintenance: backup started/running, backup id:'2024-09-15T02:05:00Z'
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server/0 [idle] maintenance: backup started/running, backup id:'2024-09-15T02:05:00Z'
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server/0 [idle] maintenance: backup started/running, backup id:'2024-09-15T02:05:00Z'
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server/0 [idle] maintenance: backup started/running, backup id:'2024-09-15T02:05:00Z'
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server/0 [idle] maintenance: backup started/running, backup id:'2024-09-15T02:05:00Z'
+[32mINFO    [0m juju.model:model.py:2097 Deploying local:jammy/mongodb-3
+[32mINFO    [0m juju.model:model.py:2097 Deploying local:jammy/mongodb-4
+[32mINFO    [0m juju.model:model.py:2097 Deploying local:jammy/mongodb-5
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  s3-integrator/0 [idle] active: 
+  config-server-new/0 [allocating] waiting: waiting for machine
+  config-server-new/1 [allocating] waiting: waiting for machine
+  shard-one-new/0 [allocating] waiting: waiting for machine
+  shard-one-new/1 [allocating] waiting: waiting for machine
+  shard-two-new/0 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-new/0 [allocating] waiting: agent initialising
+  config-server-new/1 [allocating] waiting: agent initialising
+  shard-one-new/0 [allocating] waiting: waiting for machine
+  shard-one-new/1 [allocating] waiting: waiting for machine
+  shard-two-new/0 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-new/0 [executing] maintenance: installing MongoDB
+  config-server-new/1 [executing] maintenance: installing MongoDB
+  shard-one-new/0 [allocating] waiting: agent initialising
+  shard-one-new/1 [allocating] waiting: agent initialising
+  shard-two-new/0 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-new/0 [idle] active: 
+  config-server-new/1 [executing] active: 
+  shard-one-new/0 [executing] active: 
+  shard-one-new/1 [executing] active: 
+  shard-two-new/0 [allocating] waiting: agent initialising
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  shard-one-new/0 [idle] active: 
+  shard-one-new/1 [idle] blocked: Sharding roles do not support database interface.
+  shard-two-new/0 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-new/0 [executing] active: 
+  config-server-new/1 [executing] active: 
+  shard-one-new/0 [executing] active: 
+  shard-one-new/1 [executing] blocked: Sharding roles do not support database interface.
+  shard-two-new/0 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-new/0 [executing] waiting: waiting to sync s3 configurations.
+  config-server-new/1 [executing] waiting: waiting to sync s3 configurations.
+  shard-one-new/0 [idle] waiting: Waiting for secrets from config-server
+  shard-one-new/1 [idle] waiting: Waiting for secrets from config-server
+  shard-two-new/0 [idle] waiting: Waiting for secrets from config-server
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-new/0 [idle] waiting: waiting to sync s3 configurations.
+  config-server-new/1 [executing] maintenance: Adding shard shard-one-new to config-server
+  shard-one-new/0 [executing] waiting: Waiting for secrets from config-server
+  shard-one-new/1 [executing] waiting: Waiting for secrets from config-server
+  shard-two-new/0 [executing] waiting: Waiting for secrets from config-server
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-new/0 [idle] waiting: waiting to sync s3 configurations.
+  config-server-new/1 [idle] active: 
+  shard-one-new/0 [idle] waiting: Waiting for secrets from config-server
+  shard-one-new/1 [executing] waiting: Waiting for secrets from config-server
+  shard-two-new/0 [idle] waiting: Waiting for secrets from config-server
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-new/0 [idle] waiting: waiting to sync s3 configurations.
+  shard-one-new/0 [idle] waiting: Waiting for secrets from config-server
+  shard-one-new/1 [idle] waiting: Waiting for secrets from config-server
+  shard-two-new/0 [idle] waiting: Waiting for secrets from config-server
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-new/0 [idle] waiting: waiting to sync s3 configurations.
+  shard-one-new/0 [idle] waiting: Waiting for secrets from config-server
+  shard-one-new/1 [idle] waiting: Waiting for secrets from config-server
+  shard-two-new/0 [idle] waiting: Waiting for secrets from config-server
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-new/0 [idle] waiting: waiting to sync s3 configurations.
+  shard-one-new/0 [idle] waiting: Waiting for secrets from config-server
+  shard-one-new/1 [idle] waiting: Waiting for secrets from config-server
+  shard-two-new/0 [idle] waiting: Waiting for secrets from config-server
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-new/0 [idle] active: 
+  config-server-new/1 [idle] active: Primary
+  shard-one-new/1 [idle] waiting: Waiting for secrets from config-server
+  shard-two-new/0 [idle] waiting: Waiting for secrets from config-server
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-new/0 [idle] active: 
+  config-server-new/1 [idle] active: 
+  shard-two-new/0 [idle] active: Primary
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  shard-one-new/0 [executing] active: Primary
+  shard-one-new/1 [executing] active: 
+  shard-two-new/0 [executing] active: Primary
+  config-server-new/0 [executing] active: 
+  config-server-new/1 [executing] active: 
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-new/0 [idle] active: 
+  config-server-new/1 [idle] maintenance: restore started/running, backup id:'2024-09-15T02:05:00Z'
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-new/1 [idle] maintenance: restore started/running, backup id:'2024-09-15T02:05:00Z'
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-new/1 [idle] maintenance: restore started/running, backup id:'2024-09-15T02:05:00Z'
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-new/1 [idle] maintenance: restore started/running, backup id:'2024-09-15T02:05:00Z'
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-new/1 [idle] maintenance: restore started/running, backup id:'2024-09-15T02:05:00Z'
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-new/1 [idle] maintenance: restore started/running, backup id:'2024-09-15T02:05:00Z'
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-new/1 [idle] active: Primary
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.5.3    unsupported  02:22:36Z
+
+App                Version  Status  Scale  Charm          Channel      Rev  Exposed  Message
+config-server-new           active      2  mongodb                       3  no       
+s3-integrator               active      1  s3-integrator  latest/edge   41  no       
+shard-one-new               active      2  mongodb                       4  no       
+shard-two-new               active      1  mongodb                       5  no       
+
+Unit                  Workload  Agent  Machine  Public address  Ports            Message
+config-server-new/0   active    idle   6        10.1.83.37      27017-27018/tcp  
+config-server-new/1*  active    idle   7        10.1.83.166     27017-27018/tcp  Primary
+s3-integrator/0*      active    idle   5        10.1.83.55                       
+shard-one-new/0       active    idle   8        10.1.83.223     27017/tcp        Primary
+shard-one-new/1*      active    idle   9        10.1.83.100     27017/tcp        
+shard-two-new/0*      active    idle   10       10.1.83.112     27017/tcp        Primary
+
+Machine  State    Address      Inst id         Base          AZ  Message
+5        started  10.1.83.55   juju-a29937-5   ubuntu@22.04      Running
+6        started  10.1.83.37   juju-a29937-6   ubuntu@22.04      Running
+7        started  10.1.83.166  juju-a29937-7   ubuntu@22.04      Running
+8        started  10.1.83.223  juju-a29937-8   ubuntu@22.04      Running
+9        started  10.1.83.100  juju-a29937-9   ubuntu@22.04      Running
+10       started  10.1.83.112  juju-a29937-10  ubuntu@22.04      Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+machine-0: 01:43:27 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 01:43:27 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-0: 01:43:27 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-1: 01:43:28 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 01:43:28 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-1: 01:43:28 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-2: 01:43:49 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 01:43:49 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-0: 01:43:49 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-3: 01:43:50 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 01:43:50 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-1: 01:43:50 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-5: 01:44:33 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-5: 01:44:33 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-s3-integrator-0: 01:44:33 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-4: 01:44:35 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-4: 01:44:35 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-two-0: 01:44:35 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-config-server-0: 01:44:36 ERROR unit.config-server/0.juju-log _on_secret_remove: Secret secret:crj3nrbr3tfi2mr9o510 seems to have no observers, could be removed
+unit-shard-one-0: 01:44:52 ERROR unit.shard-one/0.juju-log _on_secret_remove: Secret secret:crj3o03r3tfi2mr9o51g seems to have no observers, could be removed
+unit-shard-one-0: 01:44:59 ERROR unit.shard-one/0.juju-log database-peers:2: Charm is in sharding role: database. Does not support shard interface.
+unit-shard-two-0: 01:45:32 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:crj3oabr3tfi2mr9o520 seems to have no observers, could be removed
+unit-config-server-0: 01:46:19 ERROR unit.config-server/0.juju-log config-server:8: Failed to get pbm status: Command 'charmed-mongodb.pbm status -o json' returned non-zero exit status 1.
+unit-config-server-0: 01:46:21 ERROR unit.config-server/0.juju-log config-server:9: Failed to get pbm status: Command 'charmed-mongodb.pbm status -o json' returned non-zero exit status 1.
+unit-config-server-0: 01:46:23 ERROR unit.config-server/0.juju-log config-server:8: Failed to get pbm status: Command 'charmed-mongodb.pbm status -o json' returned non-zero exit status 1.
+unit-config-server-0: 01:46:31 ERROR unit.config-server/0.juju-log config-server:9: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1726364790, 2), 'signature': {'hash': b'[\\xe2\\x1b\\xbf/c\\x9ao\\xc1\\xd3\\xcb\\xd0\\xd0Dk\\x03\\xdbV\\xad*', 'keyId': 7414679759965126681}}, 'operationTime': Timestamp(1726364790, 2)}")
+unit-config-server-0: 01:46:46 ERROR unit.config-server/0.juju-log config-server:9: Failed to add shard shard-one to the config server, error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1726364805, 2), \'signature\': {\'hash\': b\'#x\\x80\\x8a\\x9f\\x04\\xf5\\xfb\\xb9c\\x91\\xb3\\xc3G1t`N:\\xa1\', \'keyId\': 7414679759965126681}}, \'operationTime\': Timestamp(1726364805, 2)}')
+unit-config-server-0: 01:46:46 ERROR unit.config-server/0.juju-log config-server:9: Failed to add shard-one to cluster
+unit-config-server-0: 01:46:46 ERROR unit.config-server/0.juju-log config-server:9: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1726364805, 2), \'signature\': {\'hash\': b\'#x\\x80\\x8a\\x9f\\x04\\xf5\\xfb\\xb9c\\x91\\xb3\\xc3G1t`N:\\xa1\', \'keyId\': 7414679759965126681}}, \'operationTime\': Timestamp(1726364805, 2)}')
+unit-shard-two-0: 01:46:48 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:crj3oabr3tfi2mr9o520 seems to have no observers, could be removed
+unit-shard-two-0: 01:46:49 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:crj3oabr3tfi2mr9o520 seems to have no observers, could be removed
+unit-shard-one-0: 01:46:59 ERROR unit.shard-one/0.juju-log _on_secret_remove: Secret secret:crj3o03r3tfi2mr9o51g seems to have no observers, could be removed
+unit-shard-one-0: 01:47:01 ERROR unit.shard-one/0.juju-log _on_secret_remove: Secret secret:crj3o03r3tfi2mr9o51g seems to have no observers, could be removed
+unit-shard-one-0: 01:49:23 ERROR unit.shard-one/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-two-0: 01:50:46 ERROR unit.shard-two/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-one-0: 01:51:22 ERROR unit.shard-one/0.juju-log Backup failed: Relation with s3-integrator charm missing, cannot restore from a backup.
+unit-shard-one-0: 01:51:23 ERROR unit.shard-one/0.juju-log List-backups failed: Relation with s3-integrator charm missing, cannot restore from a backup.
+unit-shard-one-0: 01:51:24 ERROR unit.shard-one/0.juju-log Restore failed: Relation with s3-integrator charm missing, cannot restore from a backup.
+unit-shard-one-0: 01:54:11 ERROR unit.shard-one/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-config-server-0: 01:54:42 ERROR unit.config-server/0.juju-log _on_secret_remove: Secret secret:crj3nrbr3tfi2mr9o510 seems to have no observers, could be removed
+unit-shard-one-0: 01:54:44 ERROR unit.shard-one/0.juju-log _on_secret_remove: Secret secret:crj3o03r3tfi2mr9o51g seems to have no observers, could be removed
+unit-shard-two-0: 01:54:44 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:crj3oabr3tfi2mr9o520 seems to have no observers, could be removed
+unit-shard-two-0: 01:55:58 ERROR unit.shard-two/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-one-0: 01:58:14 ERROR unit.shard-one/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-two-0: 02:00:54 ERROR unit.shard-two/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-one-0: 02:04:00 ERROR unit.shard-one/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-config-server-0: 02:04:10 ERROR unit.config-server/0.juju-log _on_secret_remove: Secret secret:crj3orrr3tfi2mr9o52g seems to have no observers, could be removed
+unit-shard-two-0: 02:04:10 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:crj3oabr3tfi2mr9o520 seems to have no observers, could be removed
+unit-shard-one-0: 02:04:10 ERROR unit.shard-one/0.juju-log _on_secret_remove: Secret secret:crj3o03r3tfi2mr9o51g seems to have no observers, could be removed
+unit-config-server-0: 02:04:10 ERROR unit.config-server/0.juju-log _on_secret_remove: Secret secret:crj3otbr3tfi2mr9o530 seems to have no observers, could be removed
+unit-shard-one-0: 02:04:11 ERROR unit.shard-one/0.juju-log _on_secret_remove: Secret secret:crj3o03r3tfi2mr9o51g seems to have no observers, could be removed
+unit-config-server-0: 02:04:11 ERROR unit.config-server/0.juju-log _on_secret_remove: Secret secret:crj3nrbr3tfi2mr9o510 seems to have no observers, could be removed
+unit-shard-two-0: 02:04:56 ERROR unit.shard-two/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+machine-1: 02:09:31 ERROR juju.api.watcher error trying to stop watcher: websocket: close sent
+machine-7: 02:12:27 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-7: 02:12:27 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-new-1: 02:12:27 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-6: 02:12:27 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-6: 02:12:27 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-new-0: 02:12:27 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-9: 02:12:50 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-9: 02:12:50 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-new-1: 02:12:50 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-8: 02:12:51 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-8: 02:12:51 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-new-0: 02:12:51 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-10: 02:13:18 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-10: 02:13:18 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-two-new-0: 02:13:18 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-config-server-new-1: 02:13:31 ERROR unit.config-server-new/1.juju-log _on_secret_remove: Secret secret:crj45djr3tfi2mr9o53g seems to have no observers, could be removed
+unit-shard-one-new-1: 02:13:45 ERROR unit.shard-one-new/1.juju-log _on_secret_remove: Secret secret:crj45h3r3tfi2mr9o540 seems to have no observers, could be removed
+unit-shard-one-new-1: 02:13:51 ERROR unit.shard-one-new/1.juju-log database-peers:13: Charm is in sharding role: database. Does not support shard interface.
+unit-shard-two-new-0: 02:14:09 ERROR unit.shard-two-new/0.juju-log _on_secret_remove: Secret secret:crj45nbr3tfi2mr9o54g seems to have no observers, could be removed
+unit-config-server-new-1: 02:14:39 ERROR unit.config-server-new/1.juju-log config-server:18: Failed to get pbm status: Command 'charmed-mongodb.pbm status -o json' returned non-zero exit status 1.
+unit-config-server-new-1: 02:15:42 ERROR unit.config-server-new/1.juju-log config-server:17: Failed to add shard shard-one-new to the config server, error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one-new, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one-new\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1726366541, 1), \'signature\': {\'hash\': b\'Cw\\xfc57\\x91t\\xf4\\xc1\\x99\\xd9\\xb5\\xe3)\\xfc\\xf6p{_\\xea\', \'keyId\': 7414687220323319834}}, \'operationTime\': Timestamp(1726366541, 1)}')
+unit-config-server-new-1: 02:15:42 ERROR unit.config-server-new/1.juju-log config-server:17: Failed to add shard-one-new to cluster
+unit-config-server-new-1: 02:15:42 ERROR unit.config-server-new/1.juju-log config-server:17: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one-new, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one-new\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1726366541, 1), \'signature\': {\'hash\': b\'Cw\\xfc57\\x91t\\xf4\\xc1\\x99\\xd9\\xb5\\xe3)\\xfc\\xf6p{_\\xea\', \'keyId\': 7414687220323319834}}, \'operationTime\': Timestamp(1726366541, 1)}')
+unit-shard-two-new-0: 02:15:43 ERROR unit.shard-two-new/0.juju-log _on_secret_remove: Secret secret:crj45nbr3tfi2mr9o54g seems to have no observers, could be removed
+unit-shard-two-new-0: 02:15:44 ERROR unit.shard-two-new/0.juju-log _on_secret_remove: Secret secret:crj45nbr3tfi2mr9o54g seems to have no observers, could be removed
+unit-config-server-new-1: 02:15:53 ERROR unit.config-server-new/1.juju-log config-server:17: Failed to get pbm status: Command 'charmed-mongodb.pbm status -o json' returned non-zero exit status 1.
+unit-config-server-new-1: 02:15:54 ERROR unit.config-server-new/1.juju-log config-server:18: Failed to get pbm status: Command 'charmed-mongodb.pbm status -o json' returned non-zero exit status 1.
+unit-shard-one-new-1: 02:16:03 ERROR unit.shard-one-new/1.juju-log _on_secret_remove: Secret secret:crj45h3r3tfi2mr9o540 seems to have no observers, could be removed
+unit-shard-one-new-1: 02:16:04 ERROR unit.shard-one-new/1.juju-log _on_secret_remove: Secret secret:crj45h3r3tfi2mr9o540 seems to have no observers, could be removed
+unit-shard-one-new-1: 02:18:09 ERROR unit.shard-one-new/1.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-two-new-0: 02:18:25 ERROR unit.shard-two-new/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-config-server-new-1: 02:18:55 ERROR unit.config-server-new/1.juju-log _on_secret_remove: Secret secret:crj45djr3tfi2mr9o53g seems to have no observers, could be removed
+unit-shard-two-new-0: 02:18:55 ERROR unit.shard-two-new/0.juju-log _on_secret_remove: Secret secret:crj45nbr3tfi2mr9o54g seems to have no observers, could be removed
+unit-shard-one-new-1: 02:18:55 ERROR unit.shard-one-new/1.juju-log _on_secret_remove: Secret secret:crj45h3r3tfi2mr9o540 seems to have no observers, could be removed
+unit-config-server-new-1: 02:19:19 ERROR unit.config-server-new/1.juju-log Restore failed: Cannot restore backup, 'remap-pattern' must be set.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
