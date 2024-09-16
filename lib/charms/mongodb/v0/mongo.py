@@ -31,7 +31,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 2
 
 ADMIN_AUTH_SOURCE = "authSource=admin"
 SYSTEM_DBS = ("admin", "local", "config")
@@ -270,6 +270,11 @@ class MongoConnection:
             ]
         )
 
+    def get_all_users(self) -> Set[str]:
+        """Get all users, including the three charmed managed users."""
+        users_info = self.client.admin.command("usersInfo")
+        return {user_obj["user"] for user_obj in users_info["users"]}
+
     def get_databases(self) -> Set[str]:
         """Return list of all non-default databases."""
         databases = self.client.list_database_names()
@@ -280,3 +285,7 @@ class MongoConnection:
         if database in SYSTEM_DBS:
             return
         self.client.drop_database(database)
+
+    def drop_local_database(self):
+        """DANGEROUS: Drops the local database."""
+        self.client.drop_database("local")

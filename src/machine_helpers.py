@@ -24,12 +24,18 @@ MONGO_USER = "snap_daemon"
 
 
 def update_mongod_service(
-    machine_ip: str, config: MongoConfiguration, role: str = "replication"
+    machine_ip: str, config: MongoConfiguration, role: str = "replication", degraded: bool = False
 ) -> None:
-    """Updates the mongod service file with the new options for starting."""
+    """Updates the mongod service file with the new options for starting.
+
+    `degraded` argument should be used only for maintenance situation, it
+    induces a downtime and a disconnection from the replicaset.
+    """
     # write our arguments and write them to /etc/environment - the environment variable here is
     # read in in the charmed-mongob.mongod.service file.
-    mongod_start_args = get_mongod_args(config, auth=True, role=role, snap_install=True)
+    mongod_start_args = get_mongod_args(
+        config, auth=True, role=role, snap_install=True, machine_ip=machine_ip, degraded=degraded
+    )
     add_args_to_env("MONGOD_ARGS", mongod_start_args)
 
     if role == Config.Role.CONFIG_SERVER:

@@ -4,7 +4,7 @@
 # See LICENSE file for licensing details.
 
 import logging
-from typing import Dict, Set
+from typing import Dict, Set, Tuple
 
 from bson.json_util import dumps
 from charms.mongodb.v0.mongo import MongoConfiguration, MongoConnection, NotReadyError
@@ -27,7 +27,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 3
+LIBPATCH = 4
 
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
@@ -95,6 +95,35 @@ class MongoDBConnection(MongoConnection):
                 #     finished.
                 logger.error("Cannot initialize replica set. error=%r", e)
                 raise e
+            else:
+                logger.error("Error in init %s", e)
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(5),
+        reraise=True,
+        before=before_log(logger, logging.DEBUG),
+    )
+    def reconfigure_replset(self, hosts: set[str], version: int, force: bool = False) -> None:
+        """Create replica set config the first time.
+
+        Raises:
+            ConfigurationError, ConfigurationError, OperationFailure
+        """
+        config = {
+            "_id": self.config.replset,
+            "members": [{"_id": i, "host": h} for i, h in enumerate(hosts)],
+            "version": version,
+        }
+        try:
+            self.client.admin.command("replSetReconfig", config, force=force)
+        except OperationFailure as e:
+            # Unauthorized error can be raised only if initial user were
+            #     created the step after this.
+            # AlreadyInitialized error can be raised only if this step
+            #     finished.
+            logger.error("Cannot reconfigure replica set. error=%r", e)
+            raise e
 
     def get_replset_status(self) -> Dict:
         """Get a replica set status as a dict.
@@ -127,6 +156,17 @@ class MongoDBConnection(MongoConnection):
             self._hostname_from_hostport(member["name"]) for member in rs_status["members"]
         ]
         return set(curr_members)
+
+    def get_replset_members_and_version(self) -> Tuple[Set[str], int]:
+        """Get replica set members through config."""
+        rs_config = self.client.admin.command("replSetGetConfig")
+        curr_members = [
+            self._hostname_from_hostport(member["host"])
+            for member in rs_config["config"]["members"]
+        ]
+        version = rs_config["config"]["version"]
+
+        return set(curr_members), version
 
     def add_replset_member(self, hostname: str) -> None:
         """Add a new member to replica set config inside MongoDB.

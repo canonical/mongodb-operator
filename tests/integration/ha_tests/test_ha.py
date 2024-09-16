@@ -7,7 +7,6 @@ import os
 import time
 
 import pytest
-from juju import tag
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
@@ -22,7 +21,6 @@ from ..helpers import (
 )
 from .helpers import (
     all_db_processes_down,
-    clear_db_writes,
     count_primaries,
     count_writes,
     cut_network_from_unit,
@@ -39,13 +37,9 @@ from .helpers import (
     replica_set_primary,
     restore_network_for_unit,
     retrieve_entries,
-    reused_storage,
     scale_and_verify,
     secondary_up_to_date,
-    start_continous_writes,
     stop_continous_writes,
-    storage_id,
-    storage_type,
     update_restart_delay,
     verify_replica_set_configuration,
     verify_writes,
@@ -55,7 +49,6 @@ from .helpers import (
 ANOTHER_DATABASE_APP_NAME = "another-database-a"
 MEDIAN_REELECTION_TIME = 12
 RESTART_DELAY = 60 * 3
-ORIGINAL_RESTART_DELAY = 5
 logger = logging.getLogger(__name__)
 
 
@@ -82,119 +75,6 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 
     await ops_test.model.deploy(my_charm, num_units=required_units, storage=storage)
     await ops_test.model.wait_for_idle()
-
-
-@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
-@pytest.mark.group(1)
-@pytest.mark.abort_on_fail
-async def test_storage_re_use(ops_test, continuous_writes):
-    """Verifies that database units with attached storage correctly repurpose storage.
-
-    It is not enough to verify that Juju attaches the storage. Hence test checks that the mongod
-    properly uses the storage that was provided. (ie. doesn't just re-sync everything from
-    primary, but instead computes a diff between current storage and primary storage.)
-    """
-    app_name = await get_app_name(ops_test)
-    if storage_type(ops_test, app_name) == "rootfs":
-        pytest.skip(
-            "reuse of storage can only be used on deployments with persistent storage not on rootfs deployments"
-        )
-
-    # removing the only replica can be disastrous
-    if len(ops_test.model.applications[app_name].units) < 2:
-        await ops_test.model.applications[app_name].add_unit(count=1)
-        await ops_test.model.wait_for_idle(apps=[app_name], status="active", timeout=1000)
-
-    # remove a unit and attach it's storage to a new unit
-    unit = ops_test.model.applications[app_name].units[0]
-    unit_storage_id = storage_id(ops_test, unit.name)
-    expected_units = len(ops_test.model.applications[app_name].units) - 1
-    removal_time = time.time()
-    await ops_test.model.destroy_unit(unit.name)
-    await ops_test.model.wait_for_idle(
-        apps=[app_name], status="active", timeout=1000, wait_for_exact_units=expected_units
-    )
-    new_unit = (
-        await ops_test.model.applications[app_name].add_unit(
-            count=1, attach_storage=[tag.storage(unit_storage_id)]
-        )
-    )[0]
-
-    await ops_test.model.wait_for_idle(apps=[app_name], status="active", timeout=1000)
-
-    assert await reused_storage(
-        ops_test, new_unit.name, removal_time
-    ), "attached storage not properly reused by MongoDB."
-
-    # verify that the no writes were skipped
-    total_expected_writes = await stop_continous_writes(ops_test, app_name=app_name)
-    actual_writes = await count_writes(ops_test, app_name=app_name)
-    assert total_expected_writes["number"] == actual_writes
-
-
-@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
-@pytest.mark.group(1)
-@pytest.mark.skip("This is currently unsupported on MongoDB charm.")
-@pytest.mark.abort_on_fail
-async def test_storage_re_use_different_cluster(ops_test: OpsTest, continuous_writes):
-    """Tests that we can reuse storage from a different cluster.
-
-    For that, we completely remove the application while keeping the storages,
-    and then we deploy a new application with storage reuse and check that the
-    storage has been reused.
-    """
-    app_name = await get_app_name(ops_test)
-    if storage_type(ops_test, app_name) == "rootfs":
-        pytest.skip(
-            "reuse of storage can only be used on deployments with persistent storage not on rootfs deployments"
-        )
-
-    writes_results = await stop_continous_writes(ops_test, app_name=app_name)
-    unit_ids = [unit.name for unit in ops_test.model.applications[app_name].units]
-    storage_ids = {}
-
-    remaining_units = len(unit_ids)
-    for unit_id in unit_ids:
-        storage_ids[unit_id] = storage_id(ops_test, unit_id)
-        await ops_test.model.applications[app_name].destroy_unit(unit_id)
-        # Give some time to remove the unit. We don't use asyncio.sleep here to
-        # leave time for each unit to be removed before removing the next one.
-        # time.sleep(60)
-        remaining_units -= 1
-        await ops_test.model.wait_for_idle(
-            apps=[app_name],
-            status="active",
-            timeout=1000,
-            idle_period=20,
-            wait_for_exact_units=remaining_units,
-        )
-
-    # Wait until all apps are cleaned up
-    await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, wait_for_exact_units=0)
-
-    for unit_id in unit_ids:
-        n_units = len(ops_test.model.applications[app_name].units)
-        await ops_test.model.applications[app_name].add_unit(
-            count=1, attach_storage=[tag.storage(storage_ids[unit_id])]
-        )
-        await ops_test.model.wait_for_idle(
-            apps=[app_name],
-            status="active",
-            timeout=1000,
-            idle_period=20,
-            wait_for_exact_units=n_units + 1,
-        )
-
-    await ops_test.model.wait_for_idle(
-        apps=[app_name],
-        status="active",
-        timeout=1000,
-        idle_period=20,
-        wait_for_exact_units=len(unit_ids),
-    )
-
-    actual_writes = await count_writes(ops_test, app_name=app_name)
-    assert writes_results["number"] == actual_writes
 
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
@@ -788,27 +668,3 @@ async def test_scale_up_down_removing_leader(ops_test: OpsTest, continuous_write
     for count in scales:
         await scale_and_verify(ops_test, count=count, remove_leader=True)
     await verify_writes(ops_test)
-
-
-# TODO put this into a separate file
-# Fixtures start
-
-
-@pytest.fixture()
-async def continuous_writes(ops_test: OpsTest):
-    """Starts continuous write operations to MongoDB for test and clears writes at end of test."""
-    await start_continous_writes(ops_test, 1)
-    yield
-    await clear_db_writes(ops_test)
-
-
-@pytest.fixture()
-async def reset_restart_delay(ops_test: OpsTest):
-    """Resets service file delay on all units."""
-    yield
-    app_name = await get_app_name(ops_test)
-    for unit in ops_test.model.applications[app_name].units:
-        await update_restart_delay(ops_test, unit, ORIGINAL_RESTART_DELAY)
-
-
-# Fixtures end

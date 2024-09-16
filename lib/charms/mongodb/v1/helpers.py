@@ -23,7 +23,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 10
+LIBPATCH = 11
 
 # path to store mongodb ketFile
 KEY_FILE = "keyFile"
@@ -176,6 +176,8 @@ def get_mongod_args(
     auth: bool = True,
     snap_install: bool = False,
     role: str = "replication",
+    machine_ip: str = "127.0.0.1",
+    degraded: bool = False,
 ) -> str:
     """Construct the MongoDB startup command line.
 
@@ -186,6 +188,24 @@ def get_mongod_args(
     full_conf_dir = f"{MONGODB_SNAP_DATA_DIR}{CONF_DIR}" if snap_install else CONF_DIR
     logging_options = _get_logging_options(snap_install)
     audit_log_settings = _get_audit_log_settings(snap_install)
+    if degraded:
+        cmd = [
+            # Only bind to local IP
+            f"--bind_ip {machine_ip}",
+            # db must be located within the snap common directory since the
+            # snap is strictly confined
+            f"--dbpath={full_data_dir}",
+            # for simplicity we run the mongod daemon on shards, configsvrs,
+            # and replicas on the same port
+            f"--port={Config.MONGODB_PORT}",
+            "--setParameter processUmask=037",  # required for log files perminission (g+r)
+            "--logRotate reopen",
+            "--logappend",
+            logging_options,
+            "--setParameter enableLocalhostAuthBypass=0",
+            "\n",
+        ]
+        return " ".join(cmd)
     cmd = [
         # bind to localhost and external interfaces
         "--bind_ip_all",
@@ -264,6 +284,15 @@ def generate_keyfile() -> str:
     """
     choices = string.ascii_letters + string.digits
     return "".join([secrets.choice(choices) for _ in range(1024)])
+
+
+def generate_lock_hash() -> str:
+    """Lock hash used to check if we are reusing storage in a different context or not.
+
+    Returns:
+       An 8 character random hexadecimal string.
+    """
+    return secrets.token_hex(8)
 
 
 def copy_licenses_to_unit():

@@ -24,6 +24,7 @@ from charms.mongodb.v1.helpers import (
     TLS_INT_PEM_FILE,
     copy_licenses_to_unit,
     generate_keyfile,
+    generate_lock_hash,
     generate_password,
     get_create_user_cmd,
     safe_exec,
@@ -81,6 +82,7 @@ from exceptions import (
     ApplicationHostNotFoundError,
     NotConfigServerError,
 )
+from lock_hash import HASH_KEY, UNDEFINED, LockHashHandler
 from machine_helpers import (
     MONGO_USER,
     ROOT_USER_GID,
@@ -98,6 +100,9 @@ Scopes = Config.Relations.Scopes
 
 class MongodbOperatorCharm(CharmBase):
     """Charm the service."""
+
+    # Lock Hash descriptor
+    lock_hash = LockHashHandler()
 
     def __init__(self, *args):
         super().__init__(*args)
@@ -258,14 +263,34 @@ class MongodbOperatorCharm(CharmBase):
         )
 
     @property
+    def _is_storage_from_different_cluster(self) -> bool:
+        """Checks if we are reusing storage from a different cluster."""
+        lock_hash = self.lock_hash  # Avoid duplicate read of the file
+        return lock_hash != UNDEFINED and lock_hash != self.databag_lock_hash
+
+    @property
     def mongo_config(self) -> MongoConfiguration:
         """Returns a MongoConfiguration object for shared libs with agnostic mongo commands."""
         return self.mongodb_config
 
     @property
+    def standalone_config(self) -> MongoConfiguration:
+        """Generates a MongoConfiguration object for local authenticated standalone connection."""
+        return self._get_mongodb_config_for_user(
+            OperatorUser, {self.unit_host(self.unit)}, standalone=True
+        )
+
+    @property
     def mongodb_config(self) -> MongoConfiguration:
         """Generates a MongoConfiguration object for this deployment of MongoDB."""
         return self._get_mongodb_config_for_user(OperatorUser, set(self.app_hosts))
+
+    @property
+    def single_host_config(self) -> MongoConfiguration:
+        """Generates a MongoConfiguration object for operator user on a single host."""
+        return self._get_mongodb_config_for_user(
+            OperatorUser, standalone=True, hosts={self.unit_host(self.unit)}
+        )
 
     @property
     def monitor_config(self) -> MongoConfiguration:
@@ -390,6 +415,10 @@ class MongodbOperatorCharm(CharmBase):
             self.status.set_and_share_status(BlockedStatus("Could not install MongoDB"))
             return
 
+        # If we are a replica and the lock hash doesn't match
+        if self.is_role(Config.Role.REPLICATION) and self._is_storage_from_different_cluster:
+            self._fix_mongodb_for_reuse()
+
         # Construct the mongod startup commandline args for systemd and reload the daemon.
         update_mongod_service(
             machine_ip=self.unit_host(self.unit),
@@ -423,6 +452,83 @@ class MongodbOperatorCharm(CharmBase):
             raise ShardingMigrationError(
                 f"Migration of sharding components not permitted, revert config role to {self.role}"
             )
+
+    def __fix_users_for_reuse(self, direct_mongo: MongoDBConnection) -> None:
+        """Fix the users in the DB for storage reuse."""
+        users = direct_mongo.get_all_users()
+        breakpoint()
+        # Update operator password since operator is present.
+        if self.unit.is_leader() and OperatorUser.get_username() in users:
+            logger.info("[Recovery] Update operator password (leader).")
+            direct_mongo.set_user_password(
+                OperatorUser.get_username(), direct_mongo.config.password
+            )
+        # Operator user not present in users, need to create it.
+        elif self.unit.is_leader():
+            logger.info("[Recovery] Create missing operator user (leader).")
+            direct_mongo.create_user(self.mongodb_config)
+        # Not leader and operator present, drop it.
+        elif OperatorUser.get_username() in users:
+            logger.info("[Recovering] Dropping operator user (not leader).")
+            direct_mongo.drop_user(OperatorUser.get_username())
+        # Drop backup and monitor user if present.
+        logger.info("[Recovering] Dropping users backup and monitor.")
+        if BackupUser.get_username() in users:
+            direct_mongo.drop_user(BackupUser.get_username())
+        if MonitorUser.get_username() in users:
+            direct_mongo.drop_user(MonitorUser.get_username())
+        pass
+
+    def _fix_mongodb_for_reuse(self) -> None:
+        """If we are reusing storage, we need to fix multiple things in the mongodb data.
+
+        This is done before starting (so with a downtime).
+        We need to:
+         * Start mongod in degraded mode (no auth validation, no replicaset
+         specified, bind only to local IP).
+         * Update operator password (on leader) and delete it on other units.
+         * Remove backup and monitor users on all units.
+         * Delete the local database (contains the replica set local information) on all units.
+        """
+        logger.debug("Fixing MongoDB for reuse.")
+        self.status.set_and_share_status(MaintenanceStatus("Updating MongoDB for storage reuse."))
+        try:
+            # Update with degraded configuration.
+            # Dangerous, this is only allowed here because we need to fix the DB configuration.
+            update_mongod_service(
+                machine_ip="127.0.0.1",
+                config=self.mongodb_config,
+                role=self.role,
+                degraded=True,
+            )
+            # Start the charm services in degraded mode.
+            self.start_charm_services()
+            # Perform data modification
+            if self.unit.is_leader():
+                # We can create only if we are the leader.
+                self._check_or_set_user_password(OperatorUser)
+            with MongoDBConnection(
+                self.mongodb_config, uri="localhost", direct=True
+            ) as direct_mongo:
+                for attempt in Retrying(
+                    stop=stop_after_attempt(10),
+                    wait=wait_fixed(5),
+                    reraise=True,
+                    before=before_log(logger, logging.DEBUG),
+                ):
+                    with attempt:
+                        if not direct_mongo.is_ready:
+                            raise NotReadyError
+                self.__fix_users_for_reuse(direct_mongo)
+                # Drop local database
+                logger.info("Dropping local database.")
+                direct_mongo.drop_local_database()
+        except Exception as err:
+            logger.error(f"Error encountered while updating database config: {err}")
+            raise
+        finally:
+            # Whatever happens here, we stop the charm services.
+            self.stop_charm_services()
 
     def _on_start(self, event: StartEvent) -> None:
         """Enables MongoDB service and initialises replica set.
@@ -519,46 +625,53 @@ class MongodbOperatorCharm(CharmBase):
         self._connect_mongodb_exporter()
         self._connect_pbm_agent()
 
+        if (
+            self.db_initialised
+            and self.is_role(Config.Role.REPLICATION)
+            and self.lock_hash != self.databag_lock_hash
+        ):
+            # We write the lock file if it wasn't written yet.
+            self.lock_hash = self.databag_lock_hash
+
         # only leader should configure replica set and app-changed-events can trigger the relation
         # changed hook resulting in no JUJU_REMOTE_UNIT if this is the case we should return
         # further reconfiguration can be successful only if a replica set is initialised.
         if not (self.unit.is_leader() and event.unit) or not self.db_initialised:
             return
 
-        with MongoDBConnection(self.mongodb_config) as mongo:
-            try:
-                replset_members = mongo.get_replset_members()
-                # compare set of mongod replica set members and juju hosts to avoid the unnecessary
-                # reconfiguration.
-                if replset_members == self.mongodb_config.hosts:
-                    return
+        # If needed, reconfigure replicaset (eg : network cut)
+        try:
+            self._reconfigure_replica_set()
+            self.__add_members_to_replicaset(event)
+        except NotReadyError:
+            self.status.set_and_share_status(WaitingStatus("waiting to reconfigure replica set"))
+            logger.error("Deferring reconfigure: another member doing sync right now")
+            event.defer()
+        except PyMongoError as e:
+            self.status.set_and_share_status(WaitingStatus("waiting to reconfigure replica set"))
+            logger.error("Deferring reconfigure: error=%r", e)
+            event.defer()
 
-                for member in self.mongodb_config.hosts - replset_members:
-                    logger.debug("Adding %s to replica set", member)
-                    with MongoDBConnection(
-                        self.mongodb_config, member, direct=True
-                    ) as direct_mongo:
-                        if not direct_mongo.is_ready:
-                            self.status.set_and_share_status(
-                                WaitingStatus("waiting to reconfigure replica set")
-                            )
-                            logger.debug("Deferring reconfigure: %s is not ready yet.", member)
-                            event.defer()
-                            return
-                    mongo.add_replset_member(member)
-                    self.status.set_and_share_status(ActiveStatus())
-            except NotReadyError:
-                self.status.set_and_share_status(
-                    WaitingStatus("waiting to reconfigure replica set")
-                )
-                logger.error("Deferring reconfigure: another member doing sync right now")
-                event.defer()
-            except PyMongoError as e:
-                self.status.set_and_share_status(
-                    WaitingStatus("waiting to reconfigure replica set")
-                )
-                logger.error("Deferring reconfigure: error=%r", e)
-                event.defer()
+    def __add_members_to_replicaset(self, event: RelationEvent):
+        with MongoDBConnection(self.mongodb_config) as mongo:
+            replset_members = mongo.get_replset_members()
+            # compare set of mongod replica set members and juju hosts to avoid the unnecessary
+            # reconfiguration.
+            if replset_members == self.mongodb_config.hosts:
+                return
+
+            for member in self.mongodb_config.hosts - replset_members:
+                logger.debug("Adding %s to replica set", member)
+                with MongoDBConnection(self.mongodb_config, member, direct=True) as direct_mongo:
+                    if not direct_mongo.is_ready:
+                        self.status.set_and_share_status(
+                            WaitingStatus("waiting to reconfigure replica set")
+                        )
+                        logger.debug("Deferring reconfigure: %s is not ready yet.", member)
+                        event.defer()
+                        return
+                mongo.add_replset_member(member)
+                self.status.set_and_share_status(ActiveStatus())
 
     def _on_leader_elected(self, event: LeaderElectedEvent) -> None:
         """Generates necessary keyfile and updates replica hosts."""
@@ -1234,6 +1347,25 @@ class MongodbOperatorCharm(CharmBase):
         except subprocess.CalledProcessError as e:
             logger.error(f"Exception occurred running '{cmd}'\n {e}")
 
+    def _reconfigure_replica_set(self) -> None:
+        """Optionally reconfigure replicaset if needed.
+
+        This should happen only when we are reusing storage from one cluster to another cluster,
+        because all IPs have changed and all configurations are broken.
+        """
+        if not self.db_initialised:
+            return
+
+        with MongoDBConnection(self.single_host_config, direct=True) as direct_mongo:
+
+            replset_members, version = direct_mongo.get_replset_members_and_version()
+            related_hosts = set(self.app_hosts)
+            if replset_members and all(member not in related_hosts for member in replset_members):
+                logger.info(f"Reconfiguring replica set to {related_hosts}")
+                direct_mongo.reconfigure_replset(
+                    hosts=related_hosts, version=version + 1, force=True
+                )
+
     def _initialise_replica_set(self, event: StartEvent) -> None:
         if self.db_initialised:
             # The replica set should be initialised only once. Check should be
@@ -1242,7 +1374,16 @@ class MongodbOperatorCharm(CharmBase):
             # can be corrupted.
             return
 
-        with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
+        # If we are reusing storage, the user operator already exists
+        # hence the need to authenticate.
+        if self.is_role(Config.Role.REPLICATION) and self._is_storage_from_different_cluster:
+            config = self.standalone_config
+            uri = None
+        else:
+            config = self.mongodb_config
+            uri = "localhost"
+
+        with MongoDBConnection(config, uri, direct=True) as direct_mongo:
             try:
                 logger.info("Replica Set initialization")
                 direct_mongo.init_replset()
@@ -1266,20 +1407,26 @@ class MongodbOperatorCharm(CharmBase):
                 )
                 event.defer()
                 self.status.set_and_share_status(
-                    WaitingStatus("waiting to initialise replica set")
+                    WaitingStatus("[ERR1] waiting to initialise replica set")
                 )
                 return
             except PyMongoError as e:
                 logger.error("Deferring on_start since: error=%r", e)
                 event.defer()
                 self.status.set_and_share_status(
-                    WaitingStatus("waiting to initialise replica set")
+                    WaitingStatus("[ERR2] waiting to initialise replica set")
                 )
                 return
 
             # replica set initialised properly and ready to go
             self.db_initialised = True
+            self.lock_hash = generate_lock_hash()
             self.status.set_and_share_status(ActiveStatus())
+
+    @property
+    def databag_lock_hash(self) -> str:
+        """The data from the databag."""
+        return self.get_secret(APP_SCOPE, HASH_KEY) or UNDEFINED
 
     def unit_host(self, unit: Unit) -> str:
         """Returns the ip address of a given unit."""
@@ -1507,6 +1654,7 @@ class MongodbOperatorCharm(CharmBase):
     @property
     def _is_removing_last_replica(self) -> bool:
         """Returns True if the last replica (juju unit) is getting removed."""
+        logger.error(f"{self.app.planned_units() = } | {len(self.peers_units) = }")
         return self.app.planned_units() == 0 and len(self.peers_units) == 0
 
     def is_relation_feasible(self, rel_interface) -> bool:
