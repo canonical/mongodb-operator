@@ -788,6 +788,12 @@ class MongodbOperatorCharm(CharmBase):
                     return
 
         try:
+            self._reconfigure_replica_set()
+        except PyMongoError as e:
+            logger.info(f"Could not reconfigure replica set due to {e}")
+            return
+
+        try:
             self.perform_self_healing(event)
         except ServerSelectionTimeoutError:
             # health checks that are performed too early will fail if the hasn't elected a primary
