@@ -1,0 +1,114 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.5.3    unsupported  02:45:40Z
+
+App                 Version  Status  Scale  Charm    Channel  Rev  Exposed  Message
+another-database-a           active      1  mongodb             1  no       
+mongodb                      active    8/9  mongodb             0  no       
+
+Unit                   Workload  Agent       Machine  Public address  Ports      Message
+another-database-a/0*  active    idle        6        10.37.163.74    27017/tcp  Primary
+mongodb/3*             active    idle        3        10.37.163.173   27017/tcp  Primary
+mongodb/11             active    idle        12       10.37.163.249   27017/tcp  
+mongodb/12             active    idle        13       10.37.163.13    27017/tcp  
+mongodb/13             active    idle        14       10.37.163.36    27017/tcp  
+mongodb/14             active    idle        15       10.37.163.79    27017/tcp  
+mongodb/15             active    idle        16       10.37.163.41    27017/tcp  
+mongodb/16             active    idle        17       10.37.163.120   27017/tcp  
+mongodb/17             waiting   allocating  18       10.37.163.9                agent initialising
+mongodb/18             active    idle        19       10.37.163.20    27017/tcp  
+
+Machine  State    Address        Inst id         Base          AZ  Message
+3        started  10.37.163.173  juju-e9df31-3   ubuntu@22.04      Running
+6        started  10.37.163.74   juju-e9df31-6   ubuntu@22.04      Running
+12       started  10.37.163.249  juju-e9df31-12  ubuntu@22.04      Running
+13       started  10.37.163.13   juju-e9df31-13  ubuntu@22.04      Running
+14       started  10.37.163.36   juju-e9df31-14  ubuntu@22.04      Running
+15       started  10.37.163.79   juju-e9df31-15  ubuntu@22.04      Running
+16       started  10.37.163.41   juju-e9df31-16  ubuntu@22.04      Running
+17       started  10.37.163.120  juju-e9df31-17  ubuntu@22.04      Running
+18       started  10.37.163.9    juju-e9df31-18  ubuntu@22.04      Running
+19       started  10.37.163.20   juju-e9df31-19  ubuntu@22.04      Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+machine-2: 01:52:12 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 01:52:12 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 01:52:12 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 01:52:12 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 01:52:12 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 01:52:12 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-2: 01:52:12 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-1: 01:52:16 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-0: 01:52:16 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-2: 01:53:19 ERROR unit.mongodb/2.juju-log _on_secret_remove: Secret secret:crn2duq6bkvicq9g825g seems to have no observers, could be removed
+machine-3: 01:55:28 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 01:55:28 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-3: 01:55:28 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-5: 01:58:01 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-5: 01:58:01 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-5: 01:58:01 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-4: 01:58:11 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-4: 01:58:11 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-4: 01:58:11 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-6: 02:02:12 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-6: 02:02:12 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-another-database-a-0: 02:02:12 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-another-database-a-0: 02:03:07 ERROR unit.another-database-a/0.juju-log _on_secret_remove: Secret secret:crn2ihq6bkvicq9g8260 seems to have no observers, could be removed
+machine-7: 02:04:48 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-7: 02:04:48 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-6: 02:04:48 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-3: 02:06:20 ERROR unit.mongodb/3.juju-log Deferring process_unremoved_units: error=ServerSelectionTimeoutError('No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66ee2a1b65e381c82d8f286b, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription (\'10.37.163.111\', 27017) server_type: RSSecondary, rtt: 0.0005875560000276892>, <ServerDescription (\'10.37.163.173\', 27017) server_type: RSSecondary, rtt: 0.00048610499993628764>, <ServerDescription (\'10.37.163.224\', 27017) server_type: RSSecondary, rtt: 0.0006653020000157994>, <ServerDescription (\'10.37.163.38\', 27017) server_type: Unknown, rtt: None, error=AutoReconnect(\'10.37.163.38:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)\')>]>')
+unit-mongodb-3: 02:06:21 ERROR unit.mongodb/3.juju-log Deferring on updating app relation data since: error: ServerSelectionTimeoutError('No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66ee2a1c65e381c82d8f286c, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription (\'10.37.163.111\', 27017) server_type: RSSecondary, rtt: 0.0005729480001264164>, <ServerDescription (\'10.37.163.173\', 27017) server_type: RSSecondary, rtt: 0.000614867999956914>, <ServerDescription (\'10.37.163.224\', 27017) server_type: RSSecondary, rtt: 0.0005383540001275833>, <ServerDescription (\'10.37.163.38\', 27017) server_type: Unknown, rtt: None, error=AutoReconnect(\'10.37.163.38:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)\')>]>')
+unit-mongodb-3: 02:06:23 ERROR unit.mongodb/3.juju-log Deferring reconfigure: error=ServerSelectionTimeoutError('No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66ee2a1d65e381c82d8f286d, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription (\'10.37.163.111\', 27017) server_type: RSSecondary, rtt: 0.000546027999916987>, <ServerDescription (\'10.37.163.173\', 27017) server_type: RSSecondary, rtt: 0.0010804140001710039>, <ServerDescription (\'10.37.163.224\', 27017) server_type: RSSecondary, rtt: 0.0005976049999389943>, <ServerDescription (\'10.37.163.38\', 27017) server_type: Unknown, rtt: None, error=AutoReconnect(\'10.37.163.38:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)\')>]>')
+unit-mongodb-3: 02:06:28 ERROR unit.mongodb/3.juju-log database-peers:0: Deferring process_unremoved_units: error=ServerSelectionTimeoutError('No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66ee2a220066f3f8dca435da, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription (\'10.37.163.111\', 27017) server_type: RSSecondary, rtt: 0.0004974969999693712>, <ServerDescription (\'10.37.163.173\', 27017) server_type: RSSecondary, rtt: 0.0009909240000069985>, <ServerDescription (\'10.37.163.224\', 27017) server_type: RSSecondary, rtt: 0.0014227970000320056>, <ServerDescription (\'10.37.163.38\', 27017) server_type: Unknown, rtt: None, error=AutoReconnect(\'10.37.163.38:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)\')>]>')
+unit-mongodb-3: 02:12:36 ERROR unit.mongodb/3.juju-log Deferring process_unremoved_units: error=ServerSelectionTimeoutError('No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66ee2b93416a356e3acfb6a6, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription (\'10.37.163.111\', 27017) server_type: RSSecondary, rtt: 0.0011511469999732071>, <ServerDescription (\'10.37.163.173\', 27017) server_type: RSSecondary, rtt: 0.00040560999991612334>, <ServerDescription (\'10.37.163.224\', 27017) server_type: RSSecondary, rtt: 0.0004810309999356832>, <ServerDescription (\'10.37.163.38\', 27017) server_type: RSSecondary, rtt: 0.0004411459999573708>]>')
+unit-mongodb-3: 02:12:37 ERROR unit.mongodb/3.juju-log Deferring on updating app relation data since: error: ServerSelectionTimeoutError('No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66ee2b94416a356e3acfb6a7, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription (\'10.37.163.111\', 27017) server_type: RSSecondary, rtt: 0.0007046300002002681>, <ServerDescription (\'10.37.163.173\', 27017) server_type: RSSecondary, rtt: 0.00046574199996030075>, <ServerDescription (\'10.37.163.224\', 27017) server_type: RSSecondary, rtt: 0.0005840250000801461>, <ServerDescription (\'10.37.163.38\', 27017) server_type: RSSecondary, rtt: 0.0005116499999076041>]>')
+unit-mongodb-3: 02:12:39 ERROR unit.mongodb/3.juju-log Deferring reconfigure: error=ServerSelectionTimeoutError('No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66ee2b96416a356e3acfb6a8, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription (\'10.37.163.111\', 27017) server_type: RSSecondary, rtt: 0.0004844580000735732>, <ServerDescription (\'10.37.163.173\', 27017) server_type: RSSecondary, rtt: 0.0006683920000796206>, <ServerDescription (\'10.37.163.224\', 27017) server_type: RSSecondary, rtt: 0.0005678329998772824>, <ServerDescription (\'10.37.163.38\', 27017) server_type: RSSecondary, rtt: 0.0005625940000300034>]>')
+unit-mongodb-3: 02:12:44 ERROR unit.mongodb/3.juju-log database-peers:0: Deferring process_unremoved_units: error=ServerSelectionTimeoutError('No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66ee2b9b7221115a6df93ee5, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription (\'10.37.163.111\', 27017) server_type: RSSecondary, rtt: 0.0004712529998869286>, <ServerDescription (\'10.37.163.173\', 27017) server_type: RSSecondary, rtt: 0.0008161789999121538>, <ServerDescription (\'10.37.163.224\', 27017) server_type: RSSecondary, rtt: 0.0018485630000668607>, <ServerDescription (\'10.37.163.38\', 27017) server_type: RSSecondary, rtt: 0.0006113049998930364>]>')
+unit-mongodb-3: 02:12:45 ERROR unit.mongodb/3.juju-log database-peers:0: Deferring on updating app relation data since: error: ServerSelectionTimeoutError('No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66ee2b9c7221115a6df93ee6, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription (\'10.37.163.111\', 27017) server_type: RSSecondary, rtt: 0.0009649479998188326>, <ServerDescription (\'10.37.163.173\', 27017) server_type: RSSecondary, rtt: 0.0007453759999407339>, <ServerDescription (\'10.37.163.224\', 27017) server_type: RSSecondary, rtt: 0.0007054820000576001>, <ServerDescription (\'10.37.163.38\', 27017) server_type: RSSecondary, rtt: 0.0005963070000234438>]>')
+unit-mongodb-3: 02:17:21 ERROR unit.mongodb/3.juju-log Deferring process_unremoved_units: error=ServerSelectionTimeoutError('No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66ee2cb05e7f81fb5399b7c5, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription (\'10.37.163.111\', 27017) server_type: RSSecondary, rtt: 0.0009514519999811455>, <ServerDescription (\'10.37.163.173\', 27017) server_type: RSSecondary, rtt: 0.000452878000032797>, <ServerDescription (\'10.37.163.224\', 27017) server_type: RSSecondary, rtt: 0.0008377369999834627>, <ServerDescription (\'10.37.163.38\', 27017) server_type: RSSecondary, rtt: 0.001587200999892957>]>')
+unit-mongodb-3: 02:17:22 ERROR unit.mongodb/3.juju-log Deferring on updating app relation data since: error: ServerSelectionTimeoutError('No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66ee2cb15e7f81fb5399b7c6, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription (\'10.37.163.111\', 27017) server_type: RSSecondary, rtt: 0.0013023379999594908>, <ServerDescription (\'10.37.163.173\', 27017) server_type: RSSecondary, rtt: 0.0006015160001879849>, <ServerDescription (\'10.37.163.224\', 27017) server_type: RSSecondary, rtt: 0.0009311930000421853>, <ServerDescription (\'10.37.163.38\', 27017) server_type: RSSecondary, rtt: 0.000593341000012515>]>')
+unit-mongodb-3: 02:17:24 ERROR unit.mongodb/3.juju-log Deferring reconfigure: error=ServerSelectionTimeoutError('No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66ee2cb35e7f81fb5399b7c7, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription (\'10.37.163.111\', 27017) server_type: RSSecondary, rtt: 0.0006371729998591036>, <ServerDescription (\'10.37.163.173\', 27017) server_type: RSSecondary, rtt: 0.0005960459998277656>, <ServerDescription (\'10.37.163.224\', 27017) server_type: RSSecondary, rtt: 0.0003972939998675429>, <ServerDescription (\'10.37.163.38\', 27017) server_type: RSSecondary, rtt: 0.0005722920000152953>]>')
+unit-mongodb-3: 02:17:28 ERROR unit.mongodb/3.juju-log database-peers:0: Deferring process_unremoved_units: error=ServerSelectionTimeoutError('No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66ee2cb748410eff726cedc9, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription (\'10.37.163.111\', 27017) server_type: RSSecondary, rtt: 0.0005986490000395861>, <ServerDescription (\'10.37.163.173\', 27017) server_type: RSSecondary, rtt: 0.0013370120000217867>, <ServerDescription (\'10.37.163.224\', 27017) server_type: RSSecondary, rtt: 0.0009329659999366413>, <ServerDescription (\'10.37.163.38\', 27017) server_type: RSSecondary, rtt: 0.0006520510000882496>]>')
+machine-4: 02:19:40 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: api connection broken unexpectedly
+machine-4: 02:19:40 ERROR juju.worker.uniter.metrics failed to close the collect-metrics listener: close unix /var/lib/juju/agents/unit-mongodb-4/4232835018/s: use of closed network connection
+machine-8: 02:22:13 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-8: 02:22:13 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-7: 02:22:13 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-9: 02:22:17 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-9: 02:22:17 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-8: 02:22:17 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-10: 02:22:18 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-10: 02:22:18 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-9: 02:22:18 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-11: 02:26:09 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-13: 02:26:09 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-11: 02:26:09 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-13: 02:26:09 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-10: 02:26:09 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-12: 02:26:09 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-14: 02:26:13 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-14: 02:26:13 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-13: 02:26:13 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-12: 02:26:14 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-12: 02:26:14 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-11: 02:26:14 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-15: 02:30:24 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-15: 02:30:24 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-14: 02:30:24 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-19: 02:30:25 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-19: 02:30:25 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-18: 02:30:25 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-18: 02:30:31 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-18: 02:30:31 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-17: 02:30:31 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-17: 02:30:34 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-17: 02:30:34 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-16: 02:30:34 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-16: 02:30:34 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-16: 02:30:34 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-15: 02:30:35 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
