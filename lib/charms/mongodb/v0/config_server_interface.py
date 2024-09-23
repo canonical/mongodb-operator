@@ -318,7 +318,8 @@ class ClusterRequirer(Object):
             return
 
         self.charm.status.set_and_share_status(ActiveStatus())
-        self.charm.mongos_initialised = True
+        if self.charm.unit.is_leader():
+            self.charm.mongos_initialised = True
 
     def _on_relation_broken(self, event: RelationBrokenEvent) -> None:
         # Only relation_deparated events can check if scaling down
