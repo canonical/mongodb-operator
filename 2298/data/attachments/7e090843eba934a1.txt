@@ -1,0 +1,167 @@
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  shard-two/0 [idle] active: 
+  shard-two/1 [idle] active: Primary
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  shard-two/0 [idle] maintenance: Adding shard to config-server
+  shard-two/1 [idle] maintenance: Adding shard to config-server
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  shard-two/0 [idle] maintenance: Adding shard to config-server
+  shard-two/1 [idle] maintenance: Adding shard to config-server
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  shard-two/0 [idle] maintenance: Adding shard to config-server
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  shard-two/0 [idle] maintenance: Adding shard to config-server
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  shard-two/0 [idle] maintenance: Adding shard to config-server
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  shard-two/0 [executing] active: 
+  shard-two/1 [idle] active: Primary
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  shard-two/1 [idle] blocked: Sharding roles do not support database interface.
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  shard-two/1 [idle] blocked: Sharding roles do not support database interface.
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  shard-two/1 [idle] blocked: Sharding roles do not support database interface.
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  shard-two/1 [idle] blocked: Sharding roles do not support database interface.
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  shard-two/1 [idle] blocked: Sharding roles do not support database interface.
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  shard-two/1 [idle] blocked: Sharding roles do not support database interface.
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  shard-two/1 [idle] active: Primary
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-one/0 [idle] maintenance: Draining shard shard-two
+  config-server-one/1 [idle] active: Primary
+  shard-one/0 [idle] active: Primary
+  shard-one/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-one/0 [idle] maintenance: Draining shard shard-two
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-one/0 [idle] maintenance: Draining shard shard-two
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-one/0 [idle] maintenance: Draining shard shard-two
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-one/0 [idle] maintenance: Draining shard shard-two
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  config-server-one/0 [idle] maintenance: Draining shard shard-two
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.5.3    unsupported  03:27:36Z
+
+App                Version  Status  Scale  Charm    Channel  Rev  Exposed  Message
+config-server-one           active      2  mongodb             0  no       
+shard-one                   active      2  mongodb             1  no       
+shard-three                 active      2  mongodb             3  no       
+
+Unit                  Workload  Agent  Machine  Public address  Ports            Message
+config-server-one/0   active    idle   0        10.46.242.45    27017-27018/tcp  
+config-server-one/1*  active    idle   1        10.46.242.196   27017-27018/tcp  Primary
+shard-one/0           active    idle   2        10.46.242.72    27017/tcp        Primary
+shard-one/1*          active    idle   3        10.46.242.3     27017/tcp        
+shard-three/0*        active    idle   6        10.46.242.244   27017/tcp        
+shard-three/1         active    idle   7        10.46.242.224   27017/tcp        Primary
+
+Machine  State    Address        Inst id        Base          AZ  Message
+0        started  10.46.242.45   juju-a78a39-0  ubuntu@22.04      Running
+1        started  10.46.242.196  juju-a78a39-1  ubuntu@22.04      Running
+2        started  10.46.242.72   juju-a78a39-2  ubuntu@22.04      Running
+3        started  10.46.242.3    juju-a78a39-3  ubuntu@22.04      Running
+6        started  10.46.242.244  juju-a78a39-6  ubuntu@22.04      Running
+7        started  10.46.242.224  juju-a78a39-7  ubuntu@22.04      Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+machine-1: 02:29:01 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 02:29:01 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-one-1: 02:29:01 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-0: 02:29:07 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 02:29:07 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-one-0: 02:29:07 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-3: 02:29:30 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 02:29:30 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-1: 02:29:30 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-2: 02:29:35 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 02:29:35 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-0: 02:29:35 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-4: 02:30:00 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-4: 02:30:00 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-two-0: 02:30:00 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-5: 02:30:16 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-5: 02:30:16 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-two-1: 02:30:16 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-config-server-one-1: 02:30:30 ERROR unit.config-server-one/1.juju-log _on_secret_remove: Secret secret:crpnbb7bqhmi1oj0vpvg seems to have no observers, could be removed
+machine-6: 02:30:46 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-6: 02:30:46 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-three-0: 02:30:46 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-shard-two-0: 02:31:21 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:crpnbonbqhmi1oj0vq00 seems to have no observers, could be removed
+unit-shard-two-0: 02:31:29 ERROR unit.shard-two/0.juju-log database-peers:4: Charm is in sharding role: database. Does not support shard interface.
+machine-7: 02:31:38 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-7: 02:31:38 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-three-1: 02:31:38 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-shard-three-0: 02:31:53 ERROR unit.shard-three/0.juju-log _on_secret_remove: Secret secret:crpnc0vbqhmi1oj0vq0g seems to have no observers, could be removed
+unit-shard-three-0: 02:32:34 ERROR unit.shard-three/0.juju-log database-peers:6: Charm is in sharding role: database. Does not support shard interface.
+unit-shard-two-0: 02:35:23 ERROR unit.shard-two/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-three-0: 02:36:26 ERROR unit.shard-three/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-one-1: 02:37:56 ERROR unit.shard-one/1.juju-log database-peers:2: Charm is in sharding role: database. Does not support shard interface.
+unit-shard-one-1: 02:37:58 ERROR unit.shard-one/1.juju-log _on_secret_remove: Secret secret:crpnebnbqhmi1oj0vq10 seems to have no observers, could be removed
+unit-shard-one-1: 02:39:23 ERROR unit.shard-one/1.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-three-0: 02:39:31 ERROR unit.shard-three/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-two-0: 02:39:33 ERROR unit.shard-two/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-config-server-one-1: 02:40:21 ERROR unit.config-server-one/1.juju-log config-server:8: Failed to add shard shard-three to the config server, error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-three, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-three\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1727232021, 2), \'signature\': {\'hash\': b\'\\xa6\\xdey2\\n\\xf8LL\\x12W\\xc3w\\xd0\\xf8iDoq\\x02\\x0c\', \'keyId\': 7418402431458869273}}, \'operationTime\': Timestamp(1727232021, 2)}')
+unit-config-server-one-1: 02:40:37 ERROR unit.config-server-one/1.juju-log config-server:8: Failed to add shard-three to cluster
+unit-config-server-one-1: 02:40:37 ERROR unit.config-server-one/1.juju-log config-server:8: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-three, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-three\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1727232021, 2), \'signature\': {\'hash\': b\'\\xa6\\xdey2\\n\\xf8LL\\x12W\\xc3w\\xd0\\xf8iDoq\\x02\\x0c\', \'keyId\': 7418402431458869273}}, \'operationTime\': Timestamp(1727232021, 2)}')
+unit-shard-one-1: 02:40:48 ERROR unit.shard-one/1.juju-log _on_secret_remove: Secret secret:crpnebnbqhmi1oj0vq10 seems to have no observers, could be removed
+unit-shard-three-0: 02:40:50 ERROR unit.shard-three/0.juju-log _on_secret_remove: Secret secret:crpnc0vbqhmi1oj0vq0g seems to have no observers, could be removed
+unit-shard-three-0: 02:40:51 ERROR unit.shard-three/0.juju-log _on_secret_remove: Secret secret:crpnc0vbqhmi1oj0vq0g seems to have no observers, could be removed
+unit-config-server-one-1: 02:40:51 ERROR unit.config-server-one/1.juju-log config-server:9: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1727232051, 2), 'signature': {'hash': b'\\xa0<V\\xd5\\xc0\\x83N\\xa8\\xd1e\\xfeZ\\xa7+\\xf4\\xac\\x198\\xa3\\xf3', 'keyId': 7418402431458869273}}, 'operationTime': Timestamp(1727232051, 2)}")
+unit-config-server-one-1: 02:40:51 ERROR unit.config-server-one/1.juju-log config-server:9: shard-two shard does not have the same auth as the config server.
+unit-shard-one-1: 02:40:53 ERROR unit.shard-one/1.juju-log _on_secret_remove: Secret secret:crpnebnbqhmi1oj0vq10 seems to have no observers, could be removed
+unit-config-server-one-1: 02:41:08 ERROR unit.config-server-one/1.juju-log config-server:9: Failed to add shard shard-two to the config server, error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-two, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-two\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1727232067, 4), \'signature\': {\'hash\': b"\\xb5\\x06q\\xb2\\xc4\\x93\\xbac1\\x86\\xee\'\\xf7p\\x80\\xaa\\xc8\\xa8X\\xd1", \'keyId\': 7418402431458869273}}, \'operationTime\': Timestamp(1727232067, 4)}')
+unit-config-server-one-1: 02:41:08 ERROR unit.config-server-one/1.juju-log config-server:9: Failed to add shard-two to cluster
+unit-config-server-one-1: 02:41:08 ERROR unit.config-server-one/1.juju-log config-server:9: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-two, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-two\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1727232067, 4), \'signature\': {\'hash\': b"\\xb5\\x06q\\xb2\\xc4\\x93\\xbac1\\x86\\xee\'\\xf7p\\x80\\xaa\\xc8\\xa8X\\xd1", \'keyId\': 7418402431458869273}}, \'operationTime\': Timestamp(1727232067, 4)}')
+unit-shard-two-0: 02:41:31 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:crpnbonbqhmi1oj0vq00 seems to have no observers, could be removed
+unit-shard-two-0: 02:41:32 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:crpnbonbqhmi1oj0vq00 seems to have no observers, could be removed
+unit-shard-three-0: 02:43:43 ERROR unit.shard-three/0.juju-log _on_secret_remove: Secret secret:crpnc0vbqhmi1oj0vq0g seems to have no observers, could be removed
+unit-shard-two-0: 02:44:04 ERROR unit.shard-two/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-one-1: 02:44:41 ERROR unit.shard-one/1.juju-log _on_secret_remove: Secret secret:crpnebnbqhmi1oj0vq10 seems to have no observers, could be removed
+unit-shard-three-0: 02:44:42 ERROR unit.shard-three/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-one-1: 02:45:16 ERROR unit.shard-one/1.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-three-0: 02:49:03 ERROR unit.shard-three/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-two-0: 02:49:08 ERROR unit.shard-two/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-one-1: 02:49:39 ERROR unit.shard-one/1.juju-log _on_secret_remove: Secret secret:crpnebnbqhmi1oj0vq10 seems to have no observers, could be removed
+unit-shard-three-0: 02:49:39 ERROR unit.shard-three/0.juju-log _on_secret_remove: Secret secret:crpnc0vbqhmi1oj0vq0g seems to have no observers, could be removed
+unit-shard-two-0: 02:49:39 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:crpnbonbqhmi1oj0vq00 seems to have no observers, could be removed
+unit-config-server-one-1: 02:49:40 ERROR unit.config-server-one/1.juju-log _on_secret_remove: Secret secret:crpnbb7bqhmi1oj0vpvg seems to have no observers, could be removed
+unit-config-server-one-1: 02:50:20 ERROR unit.config-server-one/1.juju-log config-server:10: Deferring _on_relation_event for shards interface since: error=AutoReconnect('10.46.242.196:27018: connection closed (configured timeouts: connectTimeoutMS: 2000.0ms)')
+unit-shard-one-1: 02:50:21 ERROR unit.shard-one/1.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-two-0: 02:53:35 ERROR unit.shard-two/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-three-0: 02:54:39 ERROR unit.shard-three/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-one-1: 02:56:14 ERROR unit.shard-one/1.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-two-0: 02:58:21 ERROR unit.shard-two/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-two-0: 02:59:03 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:crpnbonbqhmi1oj0vq00 seems to have no observers, could be removed
+unit-shard-two-0: 02:59:04 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:crpnbonbqhmi1oj0vq00 seems to have no observers, could be removed
+unit-shard-three-0: 02:59:09 ERROR unit.shard-three/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-two-0: 02:59:11 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:crpnbonbqhmi1oj0vq00 seems to have no observers, could be removed
+unit-shard-two-0: 02:59:16 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:crpnbonbqhmi1oj0vq00 seems to have no observers, could be removed
+unit-shard-one-1: 03:00:31 ERROR unit.shard-one/1.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-three-0: 03:03:58 ERROR unit.shard-three/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-two-0: 03:03:58 ERROR unit.shard-two/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-one-1: 03:04:55 ERROR unit.shard-one/1.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-three-0: 03:08:16 ERROR unit.shard-three/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-one-1: 03:08:59 ERROR unit.shard-one/1.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-two-0: 03:09:33 ERROR unit.shard-two/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-two-0: 03:13:03 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:crpnbonbqhmi1oj0vq00 seems to have no observers, could be removed
+unit-shard-two-0: 03:13:05 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:crpnbonbqhmi1oj0vq00 seems to have no observers, could be removed
+unit-shard-three-0: 03:13:58 ERROR unit.shard-three/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-one-1: 03:14:32 ERROR unit.shard-one/1.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-two-0: 03:15:25 ERROR unit.shard-two/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-two-1: 03:15:52 ERROR unit.shard-two/1.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-three-0: 03:18:38 ERROR unit.shard-three/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-one-1: 03:18:57 ERROR unit.shard-one/1.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-two-1: 03:19:11 ERROR unit.shard-two/1.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-three-0: 03:23:02 ERROR unit.shard-three/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-shard-one-1: 03:23:05 ERROR unit.shard-one/1.juju-log Charm is in sharding role: database. Does not support shard interface.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
