@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Charm code for MongoDB service."""
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
+"""A Data descriptor that is in charge of handling the filesystem lock hash value."""
 
 
 import os
@@ -20,7 +20,16 @@ UNDEFINED = "UNDEFINED"
 
 
 class LockHashHandler:
-    """Descriptor class for the lock hash stored in the file."""
+    """Descriptor class for the lock hash stored in the file.
+
+    In order to safely reuse storage, we need to be able to detect if we are reusing storage.
+    This is done by maintaining two things: A file in the filesystem of the
+    unit which stores a string, shared in the cluster, and the exact same
+    string in the application secrets.
+    If they have the same value, we're reusing storage in the same application/replicaset.
+    If there's no file but a value in the secret, we're adding a new unit.
+    If there's a file but no value in the secret, we're reusing in a new application context.
+    """
 
     def __set__(self, obj: ops.CharmBase, value: str):
         """Sets the key in the dedicated file and in the storage."""

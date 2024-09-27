@@ -41,6 +41,9 @@ DATA_DIR = "/var/lib/mongodb"
 LOG_DIR = "/var/log/mongodb"
 CONF_DIR = "/etc/mongod"
 MONGODB_LOG_FILENAME = "mongodb.log"
+
+LOCALHOST = "127.0.0.1"
+
 logger = logging.getLogger(__name__)
 
 
@@ -171,13 +174,39 @@ def get_mongos_args(
     return " ".join(cmd)
 
 
+def get_degraded_mongod_args(snap_install: bool = False):
+    """Builds a degraded MongoDB startup command line.
+
+    This degraded command line starts MongoDB with minimal configuration,
+    only binds to localhost, without replica set configuration and has no
+    auth validation in order to be able to update the users and local database.
+    """
+    full_data_dir = f"{MONGODB_COMMON_DIR}{DATA_DIR}" if snap_install else DATA_DIR
+    logging_options = _get_logging_options(snap_install)
+    cmd = [
+        # Only bind to local IP
+        f"--bind_ip {LOCALHOST}",
+        # db must be located within the snap common directory since the
+        # snap is strictly confined
+        f"--dbpath={full_data_dir}",
+        # for simplicity we run the mongod daemon on shards, configsvrs,
+        # and replicas on the same port
+        f"--port={Config.MONGODB_PORT}",
+        "--setParameter processUmask=037",  # required for log files perminission (g+r)
+        "--logRotate reopen",
+        "--logappend",
+        logging_options,
+        "--setParameter enableLocalhostAuthBypass=0",
+        "\n",
+    ]
+    return " ".join(cmd)
+
+
 def get_mongod_args(
     config: MongoConfiguration,
     auth: bool = True,
     snap_install: bool = False,
     role: str = "replication",
-    machine_ip: str = "127.0.0.1",
-    degraded: bool = False,
 ) -> str:
     """Construct the MongoDB startup command line.
 
@@ -188,24 +217,6 @@ def get_mongod_args(
     full_conf_dir = f"{MONGODB_SNAP_DATA_DIR}{CONF_DIR}" if snap_install else CONF_DIR
     logging_options = _get_logging_options(snap_install)
     audit_log_settings = _get_audit_log_settings(snap_install)
-    if degraded:
-        cmd = [
-            # Only bind to local IP
-            f"--bind_ip {machine_ip}",
-            # db must be located within the snap common directory since the
-            # snap is strictly confined
-            f"--dbpath={full_data_dir}",
-            # for simplicity we run the mongod daemon on shards, configsvrs,
-            # and replicas on the same port
-            f"--port={Config.MONGODB_PORT}",
-            "--setParameter processUmask=037",  # required for log files perminission (g+r)
-            "--logRotate reopen",
-            "--logappend",
-            logging_options,
-            "--setParameter enableLocalhostAuthBypass=0",
-            "\n",
-        ]
-        return " ".join(cmd)
     cmd = [
         # bind to localhost and external interfaces
         "--bind_ip_all",
@@ -288,6 +299,12 @@ def generate_keyfile() -> str:
 
 def generate_lock_hash() -> str:
     """Lock hash used to check if we are reusing storage in a different context or not.
+
+    This string is written in the storage of all members of the replica set in
+    a file, and also as a secret.
+    Upon starting a new unit, it will check in the storage and in the secret to
+    compare and decide if we're reusing storage and if yes, in which case we
+    are.
 
     Returns:
        An 8 character random hexadecimal string.

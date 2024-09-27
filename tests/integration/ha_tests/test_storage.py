@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
-import os
 import time
 
 import pytest
@@ -18,16 +17,12 @@ from .helpers import (
     storage_type,
 )
 
-OTHER_APP_NAME = "mongodb-new"
+OTHER_MONGODB_APP_NAME = "mongodb-new"
 TIMEOUT = 1000
 
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
-@pytest.mark.skipif(
-    os.environ.get("PYTEST_SKIP_DEPLOY", False),
-    reason="skipping deploy, model expected to be provided.",
-)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest, database_charm) -> None:
     """Build and deploy one unit of MongoDB."""
@@ -62,11 +57,6 @@ async def test_storage_re_use(ops_test, continuous_writes):
         pytest.skip(
             "reuse of storage can only be used on deployments with persistent storage not on rootfs deployments"
         )
-
-    # removing the only replica can be disastrous
-    if len(ops_test.model.applications[app_name].units) < 2:
-        await ops_test.model.applications[app_name].add_unit(count=1)
-        await ops_test.model.wait_for_idle(apps=[app_name], status="active", timeout=TIMEOUT)
 
     # remove a unit and attach it's storage to a new unit
     unit = ops_test.model.applications[app_name].units[0]
@@ -300,7 +290,7 @@ async def test_storage_reuse_new_app_different_name(
 
     await ops_test.model.remove_application(app_name, block_until_done=True, destroy_storage=False)
 
-    new_app_name = OTHER_APP_NAME
+    new_app_name = OTHER_MONGODB_APP_NAME
 
     await ops_test.model.deploy(
         database_charm,

@@ -9,6 +9,7 @@ from charms.mongodb.v1.helpers import (
     LOG_DIR,
     MONGODB_COMMON_DIR,
     add_args_to_env,
+    get_degraded_mongod_args,
     get_mongod_args,
     get_mongos_args,
 )
@@ -33,9 +34,15 @@ def update_mongod_service(
     """
     # write our arguments and write them to /etc/environment - the environment variable here is
     # read in in the charmed-mongob.mongod.service file.
-    mongod_start_args = get_mongod_args(
-        config, auth=True, role=role, snap_install=True, machine_ip=machine_ip, degraded=degraded
-    )
+    if degraded:
+        mongod_start_args = get_degraded_mongod_args(snap_install=True)
+    else:
+        mongod_start_args = get_mongod_args(
+            config,
+            auth=True,
+            role=role,
+            snap_install=True,
+        )
     add_args_to_env("MONGOD_ARGS", mongod_start_args)
 
     if role == Config.Role.CONFIG_SERVER:
