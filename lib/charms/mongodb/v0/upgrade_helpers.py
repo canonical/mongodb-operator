@@ -33,7 +33,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 2
+LIBPATCH = 3
 
 logger = logging.getLogger(__name__)
 
@@ -692,7 +692,7 @@ class GenericMongoDBUpgrade(Object, abc.ABC):
         # again automatically on refresh (just in case the user forgot to). Disabling the balancer
         # can negatively impact the cluster, so we only disable it once the upgrade sequence has
         # begun.
-        if self._upgrade.in_progress:
+        if self._upgrade and self._upgrade.in_progress:
             try:
                 self.turn_off_and_wait_for_balancer()
             except BalancerStillRunningError:
