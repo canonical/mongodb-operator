@@ -49,11 +49,16 @@ async def test_upgrade(ops_test: OpsTest, continuous_writes) -> None:
     """Verifies that the upgrade can run successfully."""
     app_name = await get_app_name(ops_test)
     leader_unit = await find_unit(ops_test, leader=True, app_name=app_name)
-    logger.info("Calling pre-upgrade-check")
-    action = await leader_unit.run_action("pre-upgrade-check")
-    await action.wait()
+    logger.info("Calling pre-refresh-check")
+    try:
+        action = await leader_unit.run_action("pre-refresh-check")
+        await action.wait()
+    # Catch renaming of pre-upgrade-check to pre-refresh-check
+    except Exception:
+        action = await leader_unit.run_action("pre-upgrade-check")
+        await action.wait()
 
-    assert action.status == "completed", "pre-upgrade-check-failed, expected to succeed"
+    assert action.status == "completed", "pre-refresh-check-failed, expected to succeed"
 
     await ops_test.model.wait_for_idle(
         apps=[app_name], status="active", timeout=1000, idle_period=120
@@ -64,11 +69,19 @@ async def test_upgrade(ops_test: OpsTest, continuous_writes) -> None:
     await ops_test.model.applications[app_name].refresh(path=new_charm)
     await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, idle_period=120)
 
-    if "resume-upgrade" in ops_test.model.applications[app_name].status_message:
-        logger.info("Calling resume upgrade")
-        action = await leader_unit.run_action("resume-upgrade")
-        await action.wait()
-        assert action.status == "completed", "resume-upgrade failed, expected to succeed"
+    if (
+        "resume-refresh" in ops_test.model.applications[app_name].status_message
+        or "resume-upgrade" in ops_test.model.applications[app_name].status_message
+    ):
+        logger.info("Calling resume refresh")
+        try:
+            action = await leader_unit.run_action("resume-refresh")
+            await action.wait()
+        # Catch renaming of resume-upgrade to resume-refresh
+        except Exception:
+            action = await leader_unit.run_action("resume-upgrade")
+            await action.wait()
+        assert action.status == "completed", "resume-refresh failed, expected to succeed"
 
         await ops_test.model.wait_for_idle(
             apps=[app_name], status="active", timeout=1000, idle_period=120
@@ -86,10 +99,15 @@ async def test_preflight_check(ops_test: OpsTest) -> None:
     """Verifies that the preflight check can run successfully."""
     app_name = await get_app_name(ops_test)
     leader_unit = await find_unit(ops_test, leader=True, app_name=app_name)
-    logger.info("Calling pre-upgrade-check")
-    action = await leader_unit.run_action("pre-upgrade-check")
-    await action.wait()
-    assert action.status == "completed", "pre-upgrade-check failed, expected to succeed."
+    logger.info("Calling pre-refresh-check")
+    try:
+        action = await leader_unit.run_action("pre-refresh-check")
+        await action.wait()
+    # Catch renaming of pre-upgrade-check to pre-refresh-check
+    except Exception:
+        action = await leader_unit.run_action("pre-upgrade-check")
+        await action.wait()
+    assert action.status == "completed", "pre-refresh-check failed, expected to succeed."
 
     await ops_test.model.wait_for_idle(
         apps=[app_name], status="active", timeout=1000, idle_period=120
@@ -105,10 +123,15 @@ async def test_preflight_check_failure(ops_test: OpsTest) -> None:
     leader_unit = await find_unit(ops_test, leader=True, app_name=app_name)
     ha_helpers.cut_network_from_unit(await unit_hostname(ops_test, unit.name))
 
-    logger.info("Calling pre-upgrade-check")
-    action = await leader_unit.run_action("pre-upgrade-check")
-    await action.wait()
-    assert action.status == "failed", "pre-upgrade-check succeeded, expected to fail."
+    logger.info("Calling pre-refresh-check")
+    try:
+        action = await leader_unit.run_action("pre-refresh-check")
+        await action.wait()
+    # Catch renaming of pre-upgrade-check to pre-refresh-check
+    except Exception:
+        action = await leader_unit.run_action("pre-upgrade-check")
+        await action.wait()
+    assert action.status == "failed", "pre-refresh-check succeeded, expected to fail."
 
     await ops_test.model.wait_for_idle(
         apps=[app_name], status="active", timeout=1000, idle_period=120

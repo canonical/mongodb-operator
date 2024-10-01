@@ -12,10 +12,13 @@ import time
 import typing
 
 import ops
-from charms.mongodb.v0.upgrade_helpers import AbstractUpgrade, UnitState
+from charms.mongodb.v0.upgrade_helpers import (
+    AbstractUpgrade,
+    FailedToElectNewPrimaryError,
+    UnitState,
+)
 
 from config import Config
-from upgrades import mongodb_upgrade
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +35,7 @@ class Upgrade(AbstractUpgrade):
             self._unit_workload_container_version is not None
             and self._unit_workload_container_version != self._app_workload_container_version
         ):
-            logger.debug("Unit upgrade state: outdated")
+            logger.debug("Unit refresh state: outdated")
             return UnitState.OUTDATED
         return super().unit_state
 
@@ -44,10 +47,10 @@ class Upgrade(AbstractUpgrade):
     def _get_unit_healthy_status(self) -> ops.StatusBase:
         if self._unit_workload_container_version == self._app_workload_container_version:
             return ops.ActiveStatus(
-                f'MongoDB {self._unit_workload_version} running; Snap rev {self._unit_workload_container_version}; Charmed operator {self._current_versions["charm"]}'
+                f'MongoDB {self._unit_workload_version} running; Snap revision {self._unit_workload_container_version}; Charm revision {self._current_versions["charm"]}'
             )
         return ops.ActiveStatus(
-            f'MongoDB {self._unit_workload_version} running; Snap rev {self._unit_workload_container_version} (outdated); Charmed operator {self._current_versions["charm"]}'
+            f'MongoDB {self._unit_workload_version} running; Snap revision {self._unit_workload_container_version} (outdated); Charm revision {self._current_versions["charm"]}'
         )
 
     @property
@@ -55,10 +58,10 @@ class Upgrade(AbstractUpgrade):
         """App upgrade status."""
         if not self.is_compatible:
             logger.info(
-                "Upgrade incompatible. If you accept potential *data loss* and *downtime*, you can continue by running `force-upgrade` action on each remaining unit"
+                "Refresh incompatible. Rollback with `juju refresh`. If you accept potential *data loss* and *downtime*, you can continue by running `force-upgrade` action on each remaining unit"
             )
             return ops.BlockedStatus(
-                "Upgrade incompatible. Rollback to previous revision with `juju refresh`"
+                "Refresh incompatible. Rollback to previous revision with `juju refresh`"
             )
         return super().app_status
 
@@ -98,9 +101,9 @@ class Upgrade(AbstractUpgrade):
         """Handle Juju action to confirm first upgraded unit is healthy and resume upgrade."""
         if action_event:
             self.upgrade_resumed = True
-            message = "Upgrade resumed."
+            message = "Refresh resumed."
             action_event.set_results({"result": message})
-            logger.debug(f"Resume upgrade event succeeded: {message}")
+            logger.debug(f"Resume refresh succeeded: {message}")
 
     @property
     def upgrade_resumed(self) -> bool:
@@ -139,15 +142,15 @@ class Upgrade(AbstractUpgrade):
                         == self._current_versions["charm"]
                     ):
                         # Assumes charm version uniquely identifies charm revision
-                        logger.debug("Rollback detected. Skipping pre-upgrade check")
+                        logger.debug("Rollback detected. Skipping pre-refresh check")
                     else:
                         # Run pre-upgrade check
                         # (in case user forgot to run pre-upgrade-check action)
                         self.pre_upgrade_check()
-                        logger.debug("Pre-upgrade check after `juju refresh` successful")
+                        logger.debug("Pre-refresh check after `juju refresh` successful")
                 elif index == 1:
                     # User confirmation needed to resume upgrade (i.e. upgrade second unit)
-                    logger.debug(f"Second unit authorized to upgrade if {self.upgrade_resumed=}")
+                    logger.debug(f"Second unit authorized to refresh if {self.upgrade_resumed=}")
                     return self.upgrade_resumed
                 return True
             state = self._peer_relation.data[unit].get("state")
@@ -173,7 +176,7 @@ class Upgrade(AbstractUpgrade):
             if self._unit.name == charm.primary:
                 logger.debug("Stepping down current primary, before upgrading service...")
                 charm.upgrade.step_down_primary_and_wait_reelection()
-        except mongodb_upgrade.FailedToElectNewPrimaryError:
+        except FailedToElectNewPrimaryError:
             # by not setting the snap revision and immediately returning, this function will be
             # called again, and an empty re-elect a primary will occur again.
             logger.error("Failed to reelect primary before upgrading unit.")
@@ -184,7 +187,7 @@ class Upgrade(AbstractUpgrade):
         charm.install_snap_packages(packages=Config.SNAP_PACKAGES)
         self._unit_databag["snap_revision"] = _SNAP_REVISION
         self._unit_workload_version = self._current_versions["workload"]
-        logger.debug(f"Saved {_SNAP_REVISION} in unit databag after upgrade")
+        logger.debug(f"Saved {_SNAP_REVISION} in unit databag after refresh")
 
         # post upgrade check should be retried in case of failure, for this it is necessary to
         # emit a separate event.
