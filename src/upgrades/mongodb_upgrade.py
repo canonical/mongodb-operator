@@ -4,6 +4,7 @@
 """Manager for handling MongoDB in-place upgrades."""
 
 import logging
+from typing import TYPE_CHECKING
 
 from charms.mongodb.v0.upgrade_helpers import (
     PEER_RELATION_ENDPOINT_NAME,
@@ -16,7 +17,7 @@ from charms.mongodb.v0.upgrade_helpers import (
     UnitState,
 )
 from charms.mongodb.v1.mongos import BalancerNotEnabledError, MongosConnection
-from ops.charm import ActionEvent, CharmBase
+from ops.charm import ActionEvent
 from ops.framework import EventBase, EventSource
 from ops.model import ActiveStatus, BlockedStatus
 from overrides import override
@@ -24,6 +25,9 @@ from tenacity import RetryError
 
 from config import Config
 from upgrades import machine_upgrade
+
+if TYPE_CHECKING:
+    from charm import MongodbOperatorCharm
 
 logger = logging.getLogger(__name__)
 
@@ -41,12 +45,12 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
     post_app_upgrade_event = EventSource(_PostUpgradeCheckMongoDB)
     post_cluster_upgrade_event = EventSource(_PostUpgradeCheckMongoDB)
 
-    def __init__(self, charm: CharmBase):
+    def __init__(self, charm: "MongodbOperatorCharm"):
         self.charm = charm
         super().__init__(charm, PEER_RELATION_ENDPOINT_NAME)
 
     @override
-    def _observe_events(self, charm: CharmBase) -> None:
+    def _observe_events(self, charm: "MongodbOperatorCharm") -> None:
         self.framework.observe(
             charm.on[PRECHECK_ACTION_NAME].action, self._on_pre_upgrade_check_action
         )
@@ -60,7 +64,7 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
         )
         self.framework.observe(charm.on.upgrade_charm, self._on_upgrade_charm)
         self.framework.observe(charm.on[RESUME_ACTION_NAME].action, self._on_resume_upgrade_action)
-        self.framework.observe(charm.on["force-upgrade"].action, self._on_force_upgrade_action)
+        self.framework.observe(charm.on["force-refresh"].action, self._on_force_upgrade_action)
         self.framework.observe(self.post_app_upgrade_event, self.run_post_app_upgrade_task)
         self.framework.observe(self.post_cluster_upgrade_event, self.run_post_cluster_upgrade_task)
 
@@ -191,7 +195,7 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
 
         By deferring before setting unit state to HEALTHY, the user will either:
             1. have to wait for the unit to resolve itself.
-            2. have to run the force-upgrade action (to upgrade the next unit).
+            2. have to run the force-refresh action (to upgrade the next unit).
         """
         logger.debug("Running post refresh checks to verify cluster is not broken after refresh")
         self.run_post_upgrade_checks(event, finished_whole_cluster=False)
