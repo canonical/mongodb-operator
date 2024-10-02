@@ -58,7 +58,7 @@ class Upgrade(AbstractUpgrade):
         """App upgrade status."""
         if not self.is_compatible:
             logger.info(
-                "Refresh incompatible. Rollback with `juju refresh`. If you accept potential *data loss* and *downtime*, you can continue by running `force-refresh` action on each remaining unit"
+                "Refresh incompatible. Rollback with `juju refresh`. If you accept potential *data loss* and *downtime*, you can continue by running `force-refresh-start` action on each remaining unit"
             )
             return ops.BlockedStatus(
                 "Refresh incompatible. Rollback to previous revision with `juju refresh`"

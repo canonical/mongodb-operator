@@ -64,7 +64,9 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
         )
         self.framework.observe(charm.on.upgrade_charm, self._on_upgrade_charm)
         self.framework.observe(charm.on[RESUME_ACTION_NAME].action, self._on_resume_upgrade_action)
-        self.framework.observe(charm.on["force-refresh"].action, self._on_force_upgrade_action)
+        self.framework.observe(
+            charm.on["force-refresh-start"].action, self._on_force_upgrade_action
+        )
         self.framework.observe(self.post_app_upgrade_event, self.run_post_app_upgrade_task)
         self.framework.observe(self.post_cluster_upgrade_event, self.run_post_cluster_upgrade_task)
 
@@ -195,7 +197,7 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
 
         By deferring before setting unit state to HEALTHY, the user will either:
             1. have to wait for the unit to resolve itself.
-            2. have to run the force-refresh action (to upgrade the next unit).
+            2. have to run the force-refresh-start action (to upgrade the next unit).
         """
         logger.debug("Running post refresh checks to verify cluster is not broken after refresh")
         self.run_post_upgrade_checks(event, finished_whole_cluster=False)
