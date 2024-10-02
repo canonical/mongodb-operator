@@ -11,14 +11,12 @@ bases:
         channel: "22.04"
 parts:
   charm:
+    charm-strict-dependencies: true
     override-build: |
       rustup default stable
       craftctl default
     build-snaps:
       - rustup
-    charm-binary-python-packages:
-      - setuptools
-      - cryptography
     build-packages:
       - build-essential
       - libffi-dev
