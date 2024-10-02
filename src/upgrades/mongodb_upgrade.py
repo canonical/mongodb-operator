@@ -134,7 +134,7 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
     def _on_pre_upgrade_check_action(self, event: ActionEvent) -> None:
         if not self.charm.unit.is_leader():
             message = f"Must run action on leader unit. (e.g. `juju run {self.charm.app.name}/leader {PRECHECK_ACTION_NAME}`)"
-            logger.debug(f"Pre-refresh check event failed: {message}")
+            logger.debug(f"Pre-refresh check failed: {message}")
             event.fail(message)
             return
         if not self._upgrade or self._upgrade.in_progress:
@@ -158,12 +158,12 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
     def _on_resume_upgrade_action(self, event: ActionEvent) -> None:
         if not self.charm.unit.is_leader():
             message = f"Must run action on leader unit. (e.g. `juju run {self.charm.app.name}/leader {RESUME_ACTION_NAME}`)"
-            logger.debug(f"Resume refresh event failed: {message}")
+            logger.debug(f"Resume refresh failed: {message}")
             event.fail(message)
             return
         if not self._upgrade or not self._upgrade.in_progress:
             message = "No refresh in progress"
-            logger.debug(f"Resume refresh event failed: {message}")
+            logger.debug(f"Resume refresh failed: {message}")
             event.fail(message)
             return
         self._upgrade.reconcile_partition(action_event=event)
@@ -176,12 +176,12 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
             return
         if not self._upgrade.upgrade_resumed:
             message = f"Run `juju run {self.charm.app.name}/leader {RESUME_ACTION_NAME}` before trying to force refresh"
-            logger.debug(f"Force refresh event failed: {message}")
+            logger.debug(f"Force refresh failed: {message}")
             event.fail(message)
             return
         if self._upgrade.unit_state != "outdated":
             message = "Unit already refreshed"
-            logger.debug(f"Force refresh event failed: {message}")
+            logger.debug(f"Force refresh failed: {message}")
             event.fail(message)
             return
         logger.debug("Forcing refresh")
