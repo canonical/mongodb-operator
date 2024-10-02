@@ -1,0 +1,59 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.5.3    unsupported  02:52:57Z
+
+App            Version  Status   Scale  Charm          Channel      Rev  Exposed  Message
+config-server           blocked      2  mongodb                       0  no       couldn't start MongoDB
+s3-integrator           blocked      1  s3-integrator  latest/edge   59  no       Missing parameters: ['access-key', 'secret-key']
+shard-one               active       2  mongodb                       1  no       
+shard-two               active       1  mongodb                       2  no       
+
+Unit              Workload     Agent      Machine  Public address  Ports      Message
+config-server/0   blocked      idle       0        10.37.103.236              couldn't start MongoDB
+config-server/1*  maintenance  executing  1        10.37.103.77               (install) installing MongoDB
+s3-integrator/0*  blocked      idle       5        10.37.103.34               Missing parameters: ['access-key', 'secret-key']
+shard-one/0       blocked      idle       2        10.37.103.164   27017/tcp  missing relation to config server
+shard-one/1*      blocked      idle       3        10.37.103.200   27017/tcp  missing relation to config server
+shard-two/0*      blocked      idle       4        10.37.103.29    27017/tcp  missing relation to config server
+
+Machine  State    Address        Inst id        Base          AZ  Message
+0        started  10.37.103.236  juju-d76ced-0  ubuntu@22.04      Running
+1        started  10.37.103.77   juju-d76ced-1  ubuntu@22.04      Running
+2        started  10.37.103.164  juju-d76ced-2  ubuntu@22.04      Running
+3        started  10.37.103.200  juju-d76ced-3  ubuntu@22.04      Running
+4        started  10.37.103.29   juju-d76ced-4  ubuntu@22.04      Running
+5        started  10.37.103.34   juju-d76ced-5  ubuntu@22.04      Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+machine-1: 02:44:38 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 02:44:38 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-1: 02:44:38 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-3: 02:45:00 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 02:45:00 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-1: 02:45:00 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-0: 02:45:24 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 02:45:24 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-0: 02:45:25 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-2: 02:45:25 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 02:45:25 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-0: 02:45:25 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-4: 02:45:50 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-4: 02:45:50 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-two-0: 02:45:50 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-shard-one-1: 02:46:18 ERROR unit.shard-one/1.juju-log _on_secret_remove: Secret secret:crub7p58a40hs4jjbtgg seems to have no observers, could be removed
+machine-5: 02:46:36 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-5: 02:46:36 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-s3-integrator-0: 02:46:36 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-shard-two-0: 02:47:03 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:crub84l8a40hs4jjbth0 seems to have no observers, could be removed
+unit-shard-one-1: 02:48:46 ERROR unit.shard-one/1.juju-log database-peers:2: Charm is in sharding role: database. Does not support shard interface.
+unit-shard-one-1: 02:49:32 ERROR unit.shard-one/1.juju-log Charm is in sharding role: database. Does not support shard interface.
+unit-config-server-0: 02:51:06 ERROR unit.config-server/0.juju-log An exception occurred when installing charmed-mongodb. Reason: Snap: 'charmed-mongodb'; command ['snap', 'install', 'charmed-mongodb', '--channel="6/edge"', '--revision="121"'] failed with output = ''
+unit-config-server-0: 02:51:13 ERROR unit.config-server/0.juju-log An exception occurred when starting mongod agent, error: Could not ['snap', 'start', '--enable', 'charmed-mongodb.mongod'] for snap [charmed-mongodb]: error: snap "charmed-mongodb" has no service "mongod"
+.
+unit-config-server-0: 02:51:14 ERROR unit.config-server/0.juju-log An exception occurred when starting mongod agent, error: Could not ['snap', 'start', '--enable', 'charmed-mongodb.mongod'] for snap [charmed-mongodb]: error: snap "charmed-mongodb" has no service "mongod"
+.
+unit-shard-two-0: 02:52:04 ERROR unit.shard-two/0.juju-log Charm is in sharding role: database. Does not support shard interface.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
