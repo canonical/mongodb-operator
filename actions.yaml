@@ -56,11 +56,14 @@ set-tls-private-key:
       type: string
       description: The content of private key for internal communications with clients. Content will be auto-generated if this option is not specified.
 
-pre-upgrade-check:
-  description: Check if charm is ready to upgrade
+pre-refresh-check:
+  description: Check if charm is ready to refresh
 
-resume-upgrade:
-  description: Upgrade remaining units (after you manually verified that upgraded units are healthy).
+resume-refresh:
+  description: |
+    Refresh next unit(s) (after you have manually verified that refreshed units are healthy)
 
-force-upgrade:
-  description: Force upgrade of this unit.
+force-refresh-start:
+  description: |
+    Force refresh of this unit.
+    Potential of data loss and downtime.
