@@ -89,7 +89,7 @@ def get_create_user_cmd(config: MongoConfiguration, mongo_path=MONGO_SHELL) -> L
         "mongodb://localhost/admin",
         "--quiet",
         "--eval",
-        "db.createUser({"
+        '"db.createUser({'
         f"  user: '{config.username}',"
         "  pwd: passwordPrompt(),"
         "  roles:["
@@ -99,7 +99,7 @@ def get_create_user_cmd(config: MongoConfiguration, mongo_path=MONGO_SHELL) -> L
         "  ],"
         "  mechanisms: ['SCRAM-SHA-256'],"
         "  passwordDigestor: 'server',"
-        "})",
+        '})"',
     ]
 
 
