@@ -3,7 +3,9 @@
 
 import logging
 import re
+import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 from unittest.mock import MagicMock, call, patch
 
@@ -39,6 +41,8 @@ class TestCharm(unittest.TestCase):
     @patch("charm.get_charm_revision")
     def setUp(self, *unused):
         self.harness = Harness(MongodbOperatorCharm)
+        self.test_dir = tempfile.NamedTemporaryFile()
+
         self.addCleanup(self.harness.cleanup)
         self.harness.begin()
         self.peer_rel_id = self.harness.add_relation("database-peers", "database-peers")
@@ -189,6 +193,51 @@ class TestCharm(unittest.TestCase):
         self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
 
     @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.update_mongod_service")
+    @patch("charm.Config")
+    @patch("charm.LockHashHandler")
+    def test_install_fix_db(self, mock_lock, mock_config, update_mongod_service):
+        """Test verifies that if we come from a different cluster, we call mongodb fix method."""
+        mock_config.MONGOD_CONF_FILE_PATH = Path(self.test_dir.name)
+
+        def is_replication_mock_call(*args):
+            return args == ("replication",)
+
+        update_mongod_service.return_value = None
+        self.harness.charm.is_role = is_replication_mock_call
+        self.harness.charm.install_snap_packages = mock.Mock()
+        self.harness.charm._fix_mongodb_for_reuse = mock.Mock(side_effect=Exception)
+        mock_lock.__get__ = mock.Mock(return_value="deadbeef")
+        # We need to patch the type and not the object because of how mocks are stored.
+        # (see https://docs.python.org/3/library/unittest.mock.html#unittest.mock.PropertyMock)
+        type(self.harness.charm).lock_hash = mock_lock
+        self.harness.charm.get_secret = mock.Mock(return_value="feeddead")
+
+        with self.assertRaises(Exception):
+            self.harness.charm.on.install.emit()
+            self.harness.charm._fix_mongodb_for_reuse.assert_called()
+
+    @parameterized.expand(
+        [
+            ["deadbeef", "deadbeef", False],
+            ["deadbeef", "feeddead", True],
+            ["UNDEFINED", "deadbeef", False],
+            ["UNDEFINED", "UNDEFINED", False],
+        ]
+    )
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.LockHashHandler")
+    def test_is_storage_from_different_cluster(self, lock_hash, db_lock_hash, expected, mock_lock):
+        """Test verifies that the `_is_storage_from_different_cluster` property works."""
+        mock_lock.__get__ = mock.Mock(return_value=lock_hash)
+        # We need to patch the type and not the object because of how mocks are stored.
+        # (see https://docs.python.org/3/library/unittest.mock.html#unittest.mock.PropertyMock)
+        type(self.harness.charm).lock_hash = mock_lock
+        self.harness.charm.get_secret = mock.Mock(return_value=db_lock_hash)
+        assert self.harness.charm.lock_hash == lock_hash
+        assert self.harness.charm._is_storage_from_different_cluster == expected
+
+    @patch_network_get(private_address="1.1.1.1")
     def test_app_hosts(self):
         rel_id = self.harness.charm.model.get_relation("database-peers").id
         self.harness.add_relation_unit(rel_id, "mongodb/1")
@@ -224,6 +273,10 @@ class TestCharm(unittest.TestCase):
         self.harness.set_leader(True)
         self.harness.charm.app_peer_data["db_initialised"] = "true"
         connection.return_value.__enter__.return_value.is_ready = False
+        connection.return_value.__enter__.return_value.get_replset_members_and_version.return_value = (
+            {"1.1.1.1:27017"},
+            1,
+        )
         connection.return_value.__enter__.return_value.get_replset_members.return_value = {
             "1.1.1.1"
         }
@@ -258,6 +311,10 @@ class TestCharm(unittest.TestCase):
         self.harness.set_leader(True)
         self.harness.charm.app_peer_data["db_initialised"] = "true"
         rel = self.harness.charm.model.get_relation("database-peers")
+        connection.return_value.__enter__.return_value.get_replset_members_and_version.return_value = (
+            {"1.1.1.1:27017"},
+            1,
+        )
 
         for exception in PYMONGO_EXCEPTIONS:
             connection.return_value.__enter__.return_value.get_replset_members.side_effect = (
@@ -294,6 +351,10 @@ class TestCharm(unittest.TestCase):
         # presets
         self.harness.set_leader(True)
         self.harness.charm.app_peer_data["db_initialised"] = "true"
+        connection.return_value.__enter__.return_value.get_replset_members_and_version.return_value = (
+            {"1.1.1.1:27017"},
+            1,
+        )
         connection.return_value.__enter__.return_value.get_replset_members.return_value = {
             "1.1.1.1"
         }
@@ -372,6 +433,10 @@ class TestCharm(unittest.TestCase):
         self.harness.set_leader(True)
         self.harness.charm.app_peer_data["db_initialised"] = "true"
         connection.return_value.__enter__.return_value.is_ready = True
+        connection.return_value.__enter__.return_value.get_replset_members_and_version.return_value = (
+            {"1.1.1.1:27017"},
+            1,
+        )
 
         pbm_statuses = [
             ActiveStatus("pbm"),
@@ -418,6 +483,10 @@ class TestCharm(unittest.TestCase):
         self.harness.set_leader(True)
         self.harness.charm.app_peer_data["db_initialised"] = "true"
         connection.return_value.__enter__.return_value.is_ready = True
+        connection.return_value.__enter__.return_value.get_replset_members_and_version.return_value = (
+            {"1.1.1.1:27017"},
+            1,
+        )
 
         pbm_statuses = [
             BlockedStatus("pbm"),
@@ -459,6 +528,10 @@ class TestCharm(unittest.TestCase):
         self.harness.set_leader(True)
         self.harness.charm.app_peer_data["db_initialised"] = "true"
         connection.return_value.__enter__.return_value.is_ready = True
+        connection.return_value.__enter__.return_value.get_replset_members_and_version.return_value = (
+            {"1.1.1.1:27017"},
+            1,
+        )
 
         self.harness.add_relation(S3_RELATION_NAME, "s3-integrator")
 
@@ -492,6 +565,10 @@ class TestCharm(unittest.TestCase):
         self.harness.set_leader(True)
         self.harness.charm.app_peer_data["db_initialised"] = "true"
         connection.return_value.__enter__.return_value.is_ready = True
+        connection.return_value.__enter__.return_value.get_replset_members_and_version.return_value = (
+            {"1.1.1.1:27017"},
+            1,
+        )
         has_backup_service.return_value = True
 
         get_mongodb_status.return_value = ActiveStatus("mongodb")
@@ -524,6 +601,10 @@ class TestCharm(unittest.TestCase):
 
         self.harness.set_leader(False)
         connection.return_value.__enter__.return_value.is_ready = True
+        connection.return_value.__enter__.return_value.get_replset_members_and_version.return_value = (
+            {"1.1.1.1:27017"},
+            1,
+        )
         status_connection.return_value.__enter__.return_value.get_replset_status.return_value = {
             "1.1.1.1": "PRIMARY"
         }
@@ -556,6 +637,10 @@ class TestCharm(unittest.TestCase):
 
         self.harness.set_leader(False)
         connection.return_value.__enter__.return_value.is_ready = True
+        connection.return_value.__enter__.return_value.get_replset_members_and_version.return_value = (
+            {"1.1.1.1:27017"},
+            1,
+        )
         status_connection.return_value.__enter__.return_value.get_replset_status.return_value = {
             "1.1.1.1": "SECONDARY"
         }
@@ -589,6 +674,10 @@ class TestCharm(unittest.TestCase):
         # Case 1: Unit has not been added to replica set yet
         self.harness.set_leader(False)
         connection.return_value.__enter__.return_value.is_ready = True
+        connection.return_value.__enter__.return_value.get_replset_members_and_version.return_value = (
+            {"1.1.1.1:27017"},
+            1,
+        )
         status_connection.return_value.__enter__.return_value.get_replset_status.return_value = {}
         self.harness.charm.on.update_status.emit()
         self.assertEqual(self.harness.charm.unit.status, WaitingStatus("Member being added.."))
@@ -627,6 +716,10 @@ class TestCharm(unittest.TestCase):
         """Tests that if mongod is not running on this unit it restarts it."""
         get_secret.return_value = "pass123"
         connection.return_value.__enter__.return_value.is_ready = False
+        connection.return_value.__enter__.return_value.get_replset_members_and_version.return_value = (
+            {"1.1.1.1:27017"},
+            1,
+        )
         self.harness.charm.app_peer_data["db_initialised"] = "true"
 
         self.harness.charm.on.update_status.emit()
