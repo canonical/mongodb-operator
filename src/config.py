@@ -125,7 +125,7 @@ class Config:
         STATUS_READY_FOR_UPGRADE = "status-shows-ready-for-upgrade"
 
         # TODO Future PR add more status messages here as constants
-        UNHEALTHY_UPGRADE = BlockedStatus("Unhealthy after upgrade.")
+        UNHEALTHY_UPGRADE = BlockedStatus("Unhealthy after refresh.")
 
     class Substrate:
         """Substrate related constants."""

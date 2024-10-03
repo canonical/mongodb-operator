@@ -60,9 +60,14 @@ async def test_rollback_on_config_server(
     """Verify that the config-server can safely rollback without losing writes."""
     new_charm = await ops_test.build_charm(".")
     config_server_unit = await find_unit(ops_test, leader=True, app_name=CONFIG_SERVER_APP_NAME)
-    action = await config_server_unit.run_action("pre-upgrade-check")
-    await action.wait()
-    assert action.status == "completed", "pre-upgrade-check failed, expected to succeed."
+    try:
+        action = await config_server_unit.run_action("pre-refresh-check")
+        await action.wait()
+    # Catch renaming of pre-upgrade-check to pre-refresh-check
+    except Exception:
+        action = await config_server_unit.run_action("pre-upgrade-check")
+        await action.wait()
+    assert action.status == "completed", "pre-refresh-check failed, expected to succeed."
 
     await ops_test.model.applications[CONFIG_SERVER_APP_NAME].refresh(path=new_charm)
     await ops_test.model.wait_for_idle(
@@ -189,9 +194,14 @@ async def run_upgrade_sequence(
 ) -> None:
     """Runs the upgrade sequence on a given app."""
     leader_unit = await find_unit(ops_test, leader=True, app_name=app_name)
-    action = await leader_unit.run_action("pre-upgrade-check")
-    await action.wait()
-    assert action.status == "completed", "pre-upgrade-check failed, expected to succeed."
+    try:
+        action = await leader_unit.run_action("pre-refresh-check")
+        await action.wait()
+    # Catch renaming of pre-upgrade-check to pre-refresh-check
+    except Exception:
+        action = await leader_unit.run_action("pre-upgrade-check")
+        await action.wait()
+    assert action.status == "completed", "pre-refresh-check failed, expected to succeed."
 
     if new_charm is not None:
         await ops_test.model.applications[app_name].refresh(path=new_charm)
@@ -212,11 +222,19 @@ async def run_upgrade_sequence(
     if not len(ops_test.model.applications[app_name].units) > 1:
         return
 
-    if "resume-upgrade" not in ops_test.model.applications[app_name].status_message:
+    if (
+        "resume-refresh" not in ops_test.model.applications[app_name].status_message
+        and "resume-upgrade" not in ops_test.model.applications[app_name].status_message
+    ):
         return
 
-    action = await leader_unit.run_action("resume-upgrade")
-    await action.wait()
-    assert action.status == "completed", "resume-upgrade failed, expected to succeed."
+    try:
+        action = await leader_unit.run_action("resume-refresh")
+        await action.wait()
+    # Catch renaming of resume-upgrade to resume-refresh
+    except Exception:
+        action = await leader_unit.run_action("resume-upgrade")
+        await action.wait()
+    assert action.status == "completed", "resume-refresh failed, expected to succeed."
 
     await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, idle_period=120)

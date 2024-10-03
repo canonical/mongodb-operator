@@ -67,9 +67,14 @@ async def test_upgrade(
 ) -> None:
     """Verify that the sharded cluster can be safely upgraded without losing writes."""
     config_server_unit = await find_unit(ops_test, leader=True, app_name=CONFIG_SERVER_APP_NAME)
-    action = await config_server_unit.run_action("pre-upgrade-check")
-    await action.wait()
-    assert action.status == "completed", "pre-upgrade-check failed, expected to succeed."
+    try:
+        action = await config_server_unit.run_action("pre-refresh-check")
+        await action.wait()
+    # Catch renaming of pre-upgrade-check to pre-refresh-check
+    except Exception:
+        action = await config_server_unit.run_action("pre-upgrade-check")
+        await action.wait()
+    assert action.status == "completed", "pre-refresh-check failed, expected to succeed."
 
     new_charm = await ops_test.build_charm(".")
     await run_upgrade_sequence(ops_test, CONFIG_SERVER_APP_NAME, new_charm=new_charm)
@@ -127,9 +132,14 @@ async def test_pre_upgrade_check_failure(ops_test: OpsTest) -> None:
     ha_helpers.cut_network_from_unit(shard_one_host_name)
 
     config_server_unit = await find_unit(ops_test, leader=True, app_name=CONFIG_SERVER_APP_NAME)
-    action = await config_server_unit.run_action("pre-upgrade-check")
-    await action.wait()
-    assert action.status == "failed", "pre-upgrade-check succeeded, expected to fail."
+    try:
+        action = await config_server_unit.run_action("pre-refresh-check")
+        await action.wait()
+    # Catch renaming of pre-upgrade-check to pre-refresh-check
+    except Exception:
+        action = await config_server_unit.run_action("pre-upgrade-check")
+        await action.wait()
+    assert action.status == "failed", "pre-refresh-check succeeded, expected to fail."
 
     # re-enable network on sharded cluster and wait for idle active
     ha_helpers.restore_network_for_unit(shard_one_host_name)
@@ -146,15 +156,20 @@ async def test_pre_upgrade_check_failure(ops_test: OpsTest) -> None:
             raise_on_blocked=False,
         )
 
-    # TODO Future PR: Add more cases for failing pre-upgrade-check
+    # TODO Future PR: Add more cases for failing pre-refresh-check
 
 
 async def run_upgrade_sequence(ops_test: OpsTest, app_name: str, new_charm: Path) -> None:
     """Runs the upgrade sequence on a given app."""
     leader_unit = await find_unit(ops_test, leader=True, app_name=app_name)
-    action = await leader_unit.run_action("pre-upgrade-check")
-    await action.wait()
-    assert action.status == "completed", "pre-upgrade-check failed, expected to succeed."
+    try:
+        action = await leader_unit.run_action("pre-refresh-check")
+        await action.wait()
+    # Catch renaming of pre-upgrade-check to pre-refresh-check
+    except Exception:
+        action = await leader_unit.run_action("pre-upgrade-check")
+        await action.wait()
+    assert action.status == "completed", "pre-refresh-check failed, expected to succeed."
 
     await ops_test.model.applications[app_name].refresh(path=new_charm)
     await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, idle_period=120)
@@ -165,12 +180,20 @@ async def run_upgrade_sequence(ops_test: OpsTest, app_name: str, new_charm: Path
     if len(ops_test.model.applications[app_name].units) < 2:
         return
 
-    if "resume-upgrade" not in ops_test.model.applications[app_name].status_message:
+    if (
+        "resume-refresh" not in ops_test.model.applications[app_name].status_message
+        and "resume-upgrade" not in ops_test.model.applications[app_name].status_message
+    ):
         return
 
-    logger.info(f"Calling resume-upgrade for {app_name}")
-    action = await leader_unit.run_action("resume-upgrade")
-    await action.wait()
-    assert action.status == "completed", "resume-upgrade failed, expected to succeed."
+    logger.info(f"Calling resume-refresh for {app_name}")
+    try:
+        action = await leader_unit.run_action("resume-refresh")
+        await action.wait()
+    # Catch renaming of resume-upgrade to resume-refresh
+    except Exception:
+        action = await leader_unit.run_action("resume-upgrade")
+        await action.wait()
+    assert action.status == "completed", "resume-refresh failed, expected to succeed."
 
     await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, idle_period=30)

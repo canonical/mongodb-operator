@@ -4,6 +4,7 @@
 """Manager for handling MongoDB in-place upgrades."""
 
 import logging
+from typing import TYPE_CHECKING
 
 from charms.mongodb.v0.upgrade_helpers import (
     PEER_RELATION_ENDPOINT_NAME,
@@ -16,7 +17,7 @@ from charms.mongodb.v0.upgrade_helpers import (
     UnitState,
 )
 from charms.mongodb.v1.mongos import BalancerNotEnabledError, MongosConnection
-from ops.charm import ActionEvent, CharmBase
+from ops.charm import ActionEvent
 from ops.framework import EventBase, EventSource
 from ops.model import ActiveStatus, BlockedStatus
 from overrides import override
@@ -24,6 +25,9 @@ from tenacity import RetryError
 
 from config import Config
 from upgrades import machine_upgrade
+
+if TYPE_CHECKING:
+    from charm import MongodbOperatorCharm
 
 logger = logging.getLogger(__name__)
 
@@ -41,12 +45,12 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
     post_app_upgrade_event = EventSource(_PostUpgradeCheckMongoDB)
     post_cluster_upgrade_event = EventSource(_PostUpgradeCheckMongoDB)
 
-    def __init__(self, charm: CharmBase):
+    def __init__(self, charm: "MongodbOperatorCharm"):
         self.charm = charm
         super().__init__(charm, PEER_RELATION_ENDPOINT_NAME)
 
     @override
-    def _observe_events(self, charm: CharmBase) -> None:
+    def _observe_events(self, charm: "MongodbOperatorCharm") -> None:
         self.framework.observe(
             charm.on[PRECHECK_ACTION_NAME].action, self._on_pre_upgrade_check_action
         )
@@ -60,7 +64,9 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
         )
         self.framework.observe(charm.on.upgrade_charm, self._on_upgrade_charm)
         self.framework.observe(charm.on[RESUME_ACTION_NAME].action, self._on_resume_upgrade_action)
-        self.framework.observe(charm.on["force-upgrade"].action, self._on_force_upgrade_action)
+        self.framework.observe(
+            charm.on["force-refresh-start"].action, self._on_force_upgrade_action
+        )
         self.framework.observe(self.post_app_upgrade_event, self.run_post_app_upgrade_task)
         self.framework.observe(self.post_cluster_upgrade_event, self.run_post_cluster_upgrade_task)
 
@@ -119,7 +125,7 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
     def _on_upgrade_charm(self, _):
         if self.charm.unit.is_leader():
             if not self._upgrade.in_progress:
-                logger.info("Charm upgraded. MongoDB version unchanged")
+                logger.info("Charm refreshed. MongoDB version unchanged")
 
             self._upgrade.upgrade_resumed = False
             self.charm.version_checker.set_version_across_all_relations()
@@ -130,76 +136,76 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
     def _on_pre_upgrade_check_action(self, event: ActionEvent) -> None:
         if not self.charm.unit.is_leader():
             message = f"Must run action on leader unit. (e.g. `juju run {self.charm.app.name}/leader {PRECHECK_ACTION_NAME}`)"
-            logger.debug(f"Pre-upgrade check event failed: {message}")
+            logger.debug(f"Pre-refresh check failed: {message}")
             event.fail(message)
             return
         if not self._upgrade or self._upgrade.in_progress:
-            message = "Upgrade already in progress"
-            logger.debug(f"Pre-upgrade check event failed: {message}")
+            message = "Refresh already in progress"
+            logger.debug(f"Pre-refresh check failed: {message}")
             event.fail(message)
             return
         try:
             self._upgrade.pre_upgrade_check()
         except PrecheckFailed as exception:
             message = (
-                f"Charm is *not* ready for upgrade. Pre-upgrade check failed: {exception.message}"
+                f"Charm is not ready for refresh. Pre-refresh check failed: {exception.message}"
             )
-            logger.debug(f"Pre-upgrade check event failed: {message}")
+            logger.debug(f"Pre-refresh check failed: {message}")
             event.fail(message)
             return
-        message = "Charm is ready for upgrade"
+        message = "Charm is ready for refresh."
         event.set_results({"result": message})
-        logger.debug(f"Pre-upgrade check event succeeded: {message}")
+        logger.debug(f"Pre-refresh check succeeded: {message}")
 
     def _on_resume_upgrade_action(self, event: ActionEvent) -> None:
         if not self.charm.unit.is_leader():
             message = f"Must run action on leader unit. (e.g. `juju run {self.charm.app.name}/leader {RESUME_ACTION_NAME}`)"
-            logger.debug(f"Resume upgrade event failed: {message}")
+            logger.debug(f"Resume refresh failed: {message}")
             event.fail(message)
             return
         if not self._upgrade or not self._upgrade.in_progress:
-            message = "No upgrade in progress"
-            logger.debug(f"Resume upgrade event failed: {message}")
+            message = "No refresh in progress"
+            logger.debug(f"Resume refresh failed: {message}")
             event.fail(message)
             return
         self._upgrade.reconcile_partition(action_event=event)
 
     def _on_force_upgrade_action(self, event: ActionEvent) -> None:
         if not self._upgrade or not self._upgrade.in_progress:
-            message = "No upgrade in progress"
-            logger.debug(f"Force upgrade event failed: {message}")
+            message = "No refresh in progress"
+            logger.debug(f"Force refresh failed: {message}")
             event.fail(message)
             return
         if not self._upgrade.upgrade_resumed:
-            message = f"Run `juju run {self.charm.app.name}/leader resume-upgrade` before trying to force upgrade"
-            logger.debug(f"Force upgrade event failed: {message}")
+            message = f"Run `juju run {self.charm.app.name}/leader {RESUME_ACTION_NAME}` before trying to force refresh"
+            logger.debug(f"Force refresh failed: {message}")
             event.fail(message)
             return
         if self._upgrade.unit_state != "outdated":
-            message = "Unit already upgraded"
-            logger.debug(f"Force upgrade event failed: {message}")
+            message = "Unit already refreshed"
+            logger.debug(f"Force refresh failed: {message}")
             event.fail(message)
             return
-        logger.debug("Forcing upgrade")
-        event.log(f"Forcefully upgrading {self.charm.unit.name}")
+        logger.debug("Forcing refresh")
+        event.log(f"Forcefully refreshing {self.charm.unit.name}")
         self._upgrade.upgrade_unit(charm=self.charm)
-        event.set_results({"result": f"Forcefully upgraded {self.charm.unit.name}"})
-        logger.debug("Forced upgrade")
+        event.set_results({"result": f"Forcefully refreshed {self.charm.unit.name}"})
+        logger.debug("Forced refresh")
 
     def run_post_app_upgrade_task(self, event: EventBase):
         """Runs the post upgrade check to verify that the cluster is healthy.
 
         By deferring before setting unit state to HEALTHY, the user will either:
             1. have to wait for the unit to resolve itself.
-            2. have to run the force-upgrade action (to upgrade the next unit).
+            2. have to run the force-refresh-start action (to upgrade the next unit).
         """
-        logger.debug("Running post upgrade checks to verify cluster is not broken after upgrade")
+        logger.debug("Running post refresh checks to verify cluster is not broken after refresh")
         self.run_post_upgrade_checks(event, finished_whole_cluster=False)
 
         if self._upgrade.unit_state != UnitState.HEALTHY:
             return
 
-        logger.debug("Cluster is healthy after upgrading unit %s", self.charm.unit.name)
+        logger.debug("Cluster is healthy after refreshing unit %s", self.charm.unit.name)
 
         # Leader of config-server must wait for all shards to be upgraded before finalising the
         # upgrade.
@@ -216,12 +222,12 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
             return
 
         if not self.charm.is_cluster_on_same_revision():
-            logger.debug("Waiting to finalise upgrade, one or more shards need upgrade.")
+            logger.debug("Waiting to finalise refresh, one or more shards need refresh.")
             event.defer()
             return
 
         logger.debug(
-            "Entire cluster has been upgraded, checking health of the cluster and enabling balancer."
+            "Entire cluster has been refreshed, checking health of the cluster and enabling balancer."
         )
         self.run_post_upgrade_checks(event, finished_whole_cluster=True)
 
@@ -230,7 +236,7 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
                 mongos.start_and_wait_for_balancer()
         except BalancerNotEnabledError:
             logger.debug(
-                "Need more time to enable the balancer after finishing the upgrade. Deferring event."
+                "Need more time to enable the balancer after finishing the refresh. Deferring event."
             )
             event.defer()
             return
@@ -242,12 +248,12 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
     # BEGIN: Helpers
     def run_post_upgrade_checks(self, event, finished_whole_cluster: bool) -> None:
         """Runs post-upgrade checks for after a shard/config-server/replset/cluster upgrade."""
-        upgrade_type = "unit %s." if not finished_whole_cluster else "sharded cluster"
+        upgrade_type = "unit." if not finished_whole_cluster else "sharded cluster"
         try:
             self.wait_for_cluster_healthy()
         except RetryError:
             logger.error(
-                "Cluster is not healthy after upgrading %s. Will retry next juju event.",
+                "Cluster is not healthy after refreshing %s. Will retry next juju event.",
                 upgrade_type,
             )
             logger.info(ROLLBACK_INSTRUCTIONS)
@@ -257,7 +263,7 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
 
         if not self.is_cluster_able_to_read_write():
             logger.error(
-                "Cluster is not healthy after upgrading %s, writes not propagated throughout cluster. Deferring post upgrade check.",
+                "Cluster is not healthy after refreshing %s, writes not propagated throughout cluster. Deferring post refresh check.",
                 upgrade_type,
             )
             logger.info(ROLLBACK_INSTRUCTIONS)
@@ -282,7 +288,7 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
         if isinstance(self.charm.unit.status, ActiveStatus) or (
             isinstance(self.charm.unit.status, BlockedStatus)
             and self.charm.unit.status.message.startswith(
-                "Rollback with `juju refresh`. Pre-upgrade check failed:"
+                "Rollback with `juju refresh`. Pre-refresh check failed:"
             )
         ):
             self.charm.status.set_and_share_status(
