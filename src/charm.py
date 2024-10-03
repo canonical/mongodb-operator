@@ -985,7 +985,8 @@ class MongodbOperatorCharm(CharmBase):
     def _update_related_hosts(self, event) -> None:
         # app relations should be made aware of the new set of hosts
         try:
-            self.client_relations.update_app_relation_data()
+            if not self.is_role(Config.Role.SHARD):
+                self.client_relations.update_app_relation_data()
             self.config_server.update_mongos_hosts()
             self.cluster.update_config_server_db(event)
         except PyMongoError as e:
@@ -1517,8 +1518,8 @@ class MongodbOperatorCharm(CharmBase):
             )
             logger.error(
                 "Charm is in sharding role: %s. Does not support %s interface.",
-                rel_interface,
                 self.role,
+                rel_interface,
             )
             return False
 
