@@ -23,7 +23,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 11
+LIBPATCH = 12
 
 # path to store mongodb ketFile
 KEY_FILE = "keyFile"
@@ -89,7 +89,7 @@ def get_create_user_cmd(config: MongoConfiguration, mongo_path=MONGO_SHELL) -> L
         "mongodb://localhost/admin",
         "--quiet",
         "--eval",
-        "db.createUser({"
+        '"db.createUser({'
         f"  user: '{config.username}',"
         "  pwd: passwordPrompt(),"
         "  roles:["
@@ -99,7 +99,7 @@ def get_create_user_cmd(config: MongoConfiguration, mongo_path=MONGO_SHELL) -> L
         "  ],"
         "  mechanisms: ['SCRAM-SHA-256'],"
         "  passwordDigestor: 'server',"
-        "})",
+        '})"',
     ]
 
 
@@ -118,7 +118,7 @@ def get_mongos_args(
     binding_ips = (
         "--bind_ip_all"
         if external_connectivity
-        else f"--bind_ip {MONGODB_COMMON_DIR}/var/mongodb-27018.sock  --filePermissions 755"
+        else f"--bind_ip {MONGODB_COMMON_DIR}/var/mongodb-27018.sock  --filePermissions 0766"
     )
 
     # mongos running on the config server communicates through localhost
