@@ -31,7 +31,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 14
+LIBPATCH = 13
 
 logger = logging.getLogger(__name__)
 REL_NAME = "database"
@@ -506,7 +506,6 @@ class MongoDBProvider(Object):
     def _get_roles_from_relation(relation: Relation) -> Set[str]:
         """Return additional user roles from relation if specified or return None."""
         roles = relation.data[relation.app].get("extra-user-roles", None)
-        logger.error(f"ROLES = {roles}")
         if roles is not None:
             return set(roles.split(","))
         return {"default"}
