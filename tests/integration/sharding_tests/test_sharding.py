@@ -145,7 +145,7 @@ async def test_set_operator_password(ops_test: OpsTest):
         apps=CLUSTER_APPS,
         status="active",
         idle_period=15,
-    ),
+    )
 
     for cluster_app_name in CLUSTER_APPS:
         operator_password = await get_password(
@@ -161,6 +161,8 @@ async def test_set_operator_password(ops_test: OpsTest):
 @pytest.mark.abort_on_fail
 async def test_sharding(ops_test: OpsTest) -> None:
     """Tests writing data to mongos gets propagated to shards."""
+    await ops_test.model.wait_for_idle(apps=CLUSTER_APPS, idle_period=30)
+
     # write data to mongos on both shards.
     mongos_client = await generate_mongodb_client(
         ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True
