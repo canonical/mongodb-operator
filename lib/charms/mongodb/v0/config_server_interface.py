@@ -15,7 +15,13 @@ from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseRequires,
 )
 from charms.mongodb.v1.mongos import MongosConnection
-from ops.charm import CharmBase, EventBase, RelationBrokenEvent, RelationChangedEvent
+from ops.charm import (
+    CharmBase,
+    EventBase,
+    RelationBrokenEvent,
+    RelationChangedEvent,
+    RelationCreatedEvent,
+)
 from ops.framework import Object
 from ops.model import (
     ActiveStatus,
@@ -43,7 +49,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 13
+LIBPATCH = 14
 
 
 class ClusterProvider(Object):
@@ -244,7 +250,7 @@ class ClusterRequirer(Object):
         super().__init__(charm, self.relation_name)
         self.framework.observe(
             charm.on[self.relation_name].relation_created,
-            self.database_requires._on_relation_created_event,
+            self._on_relation_created_handler,
         )
 
         self.framework.observe(
@@ -260,6 +266,11 @@ class ClusterRequirer(Object):
         self.framework.observe(
             charm.on[self.relation_name].relation_broken, self._on_relation_broken
         )
+
+    def _on_relation_created_handler(self, event: RelationCreatedEvent) -> None:
+        logger.info("Integrating to config-server")
+        self.charm.status.set_and_share_status(WaitingStatus("Connecting to config-server"))
+        self.database_requires._on_relation_created_event(event)
 
     def _on_database_created(self, event) -> None:
         if self.charm.upgrade_in_progress:
