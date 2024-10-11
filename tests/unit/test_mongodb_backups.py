@@ -8,6 +8,7 @@ from unittest.mock import patch
 import tenacity
 from charms.mongodb.v1.helpers import current_pbm_op
 from charms.mongodb.v1.mongodb_backups import (
+    INVALID_INTEGRATION_STATUS,
     PBMBusyError,
     ResyncError,
     SetPBMConfigError,
@@ -41,6 +42,30 @@ class TestMongoBackups(unittest.TestCase):
         self.harness.set_leader(True)
         self.charm = self.harness.charm
         self.addCleanup(self.harness.cleanup)
+
+    def test_relation_joined_to_blocked_if_shard(
+        self,
+    ):
+        def is_shard_mock_call(role_name: str):
+            return role_name == "shard"
+
+        self.harness.charm.is_role = is_shard_mock_call
+        relation_id = self.harness.add_relation(RELATION_NAME, "s3-integrator")
+        self.harness.add_relation_unit(relation_id, "s3-integrator/0")
+        relation = self.harness.charm.model.get_relation(RELATION_NAME)
+        self.harness.charm.on[RELATION_NAME].relation_joined.emit(relation=relation)
+        assert self.harness.charm.unit.status == INVALID_INTEGRATION_STATUS
+
+    def test_credentials_changed_to_blocked_if_shard(self):
+        def is_shard_mock_call(role_name: str):
+            return role_name == "shard"
+
+        self.harness.charm.is_role = is_shard_mock_call
+        relation_id = self.harness.add_relation(RELATION_NAME, "s3-integrator")
+        self.harness.add_relation_unit(relation_id, "s3-integrator/0")
+        relation = self.harness.charm.model.get_relation(RELATION_NAME)
+        self.harness.charm.backups.s3_client.on.credentials_changed.emit(relation=relation)
+        assert self.harness.charm.unit.status == INVALID_INTEGRATION_STATUS
 
     @patch("charm.MongodbOperatorCharm.has_backup_service")
     @patch("charm.MongodbOperatorCharm.run_pbm_command")
