@@ -1,0 +1,378 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.5.3    unsupported  03:02:40Z
+
+App                Version  Status  Scale  Charm    Channel  Rev  Exposed  Message
+config-server-one           active      2  mongodb             0  no       
+shard-one                   active      2  mongodb             1  no       
+shard-three                 active      2  mongodb             3  no       
+shard-two                   active      2  mongodb             2  no       
+
+Unit                  Workload  Agent      Machine  Public address  Ports            Message
+config-server-one/0   blocked   idle       0        10.168.129.116  27017-27018/tcp  missing relation to shard(s)
+config-server-one/1*  blocked   idle       1        10.168.129.150  27017-27018/tcp  missing relation to shard(s)
+shard-one/0*          blocked   executing  2        10.168.129.246  27017/tcp        missing relation to config server
+shard-one/1           error     idle       3        10.168.129.6                     hook failed: "secret-changed"
+shard-three/0*        blocked   idle       6        10.168.129.161  27017/tcp        missing relation to config server
+shard-three/1         blocked   idle       7        10.168.129.153  27017/tcp        missing relation to config server
+shard-two/0*          blocked   idle       4        10.168.129.39   27017/tcp        missing relation to config server
+shard-two/1           blocked   idle       5        10.168.129.94   27017/tcp        missing relation to config server
+
+Machine  State    Address         Inst id        Base          AZ  Message
+0        started  10.168.129.116  juju-ce7e07-0  ubuntu@22.04      Running
+1        started  10.168.129.150  juju-ce7e07-1  ubuntu@22.04      Running
+2        started  10.168.129.246  juju-ce7e07-2  ubuntu@22.04      Running
+3        started  10.168.129.6    juju-ce7e07-3  ubuntu@22.04      Running
+4        started  10.168.129.39   juju-ce7e07-4  ubuntu@22.04      Running
+5        started  10.168.129.94   juju-ce7e07-5  ubuntu@22.04      Running
+6        started  10.168.129.161  juju-ce7e07-6  ubuntu@22.04      Running
+7        started  10.168.129.153  juju-ce7e07-7  ubuntu@22.04      Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+machine-1: 02:43:39 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 02:43:39 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-one-1: 02:43:39 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-0: 02:43:57 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 02:43:57 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-one-0: 02:43:57 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-2: 02:44:12 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 02:44:12 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-0: 02:44:13 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-3: 02:44:18 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 02:44:18 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-1: 02:44:18 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-4: 02:44:45 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-4: 02:44:45 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-two-0: 02:44:45 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-5: 02:44:57 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-5: 02:44:57 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-two-1: 02:44:57 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-config-server-one-1: 02:45:06 ERROR unit.config-server-one/1.juju-log _on_secret_remove: Secret secret:cs5j84keruvhsrr9fm60 seems to have no observers, could be removed
+machine-6: 02:45:31 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-6: 02:45:31 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-three-0: 02:45:31 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-shard-one-0: 02:45:34 ERROR unit.shard-one/0.juju-log _on_secret_remove: Secret secret:cs5j8e4eruvhsrr9fm6g seems to have no observers, could be removed
+unit-shard-two-0: 02:46:03 ERROR unit.shard-two/0.juju-log _on_secret_remove: Secret secret:cs5j8lceruvhsrr9fm70 seems to have no observers, could be removed
+machine-7: 02:46:29 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-7: 02:46:29 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-three-1: 02:46:29 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-shard-three-0: 02:46:51 ERROR unit.shard-three/0.juju-log _on_secret_remove: Secret secret:cs5j91ceruvhsrr9fm7g seems to have no observers, could be removed
+unit-shard-one-1: 02:49:42 ERROR unit.shard-one/1.juju-log An exception occurred when installing charmed-mongodb. Reason: Snap: 'charmed-mongodb'; command ['snap', 'install', 'charmed-mongodb', '--channel="6/edge"', '--revision="123"'] failed with output = ''
+unit-shard-one-1: 02:49:48 ERROR unit.shard-one/1.juju-log An exception occurred when starting mongod agent, error: Could not ['snap', 'start', '--enable', 'charmed-mongodb.mongod'] for snap [charmed-mongodb]: error: snap "charmed-mongodb" has no service "mongod"
+.
+unit-shard-one-1: 02:49:49 ERROR unit.shard-one/1.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/operator_libs_linux/v2/snap.py", line 278, in _snap
+    return subprocess.check_output(args, universal_newlines=True)
+  File "/usr/lib/python3.10/subprocess.py", line 421, in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+  File "/usr/lib/python3.10/subprocess.py", line 526, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['snap', 'set', 'charmed-mongodb', 'monitor-uri=mongodb://monitor:ysRj3yNXeVfqKIR9lULmxALVmt5iWP4J@127.0.0.1:27017/admin?replicaSet=shard-one']' returned non-zero exit status 1.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1598, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 796, in _on_secret_changed
+    self._connect_mongodb_exporter()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1181, in _connect_mongodb_exporter
+    mongodb_snap.set({Config.Monitoring.URI_PARAM_NAME: self.monitor_config.uri})
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/operator_libs_linux/v2/snap.py", line 347, in set
+    return self._snap("set", [f"{key}={val}" for key, val in config.items()])
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/operator_libs_linux/v2/snap.py", line 280, in _snap
+    raise SnapError(
+charms.operator_libs_linux.v2.snap.SnapError: Snap: 'charmed-mongodb'; command ['snap', 'set', 'charmed-mongodb', 'monitor-uri=mongodb://monitor:ysRj3yNXeVfqKIR9lULmxALVmt5iWP4J@127.0.0.1:27017/admin?replicaSet=shard-one'] failed with output = ''
+unit-shard-one-1: 02:49:49 ERROR juju.worker.uniter.operation hook "secret-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-one-1: 02:49:56 ERROR unit.shard-one/1.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/operator_libs_linux/v2/snap.py", line 278, in _snap
+    return subprocess.check_output(args, universal_newlines=True)
+  File "/usr/lib/python3.10/subprocess.py", line 421, in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+  File "/usr/lib/python3.10/subprocess.py", line 526, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['snap', 'set', 'charmed-mongodb', 'monitor-uri=mongodb://monitor:ysRj3yNXeVfqKIR9lULmxALVmt5iWP4J@127.0.0.1:27017/admin?replicaSet=shard-one']' returned non-zero exit status 1.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1598, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 796, in _on_secret_changed
+    self._connect_mongodb_exporter()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1181, in _connect_mongodb_exporter
+    mongodb_snap.set({Config.Monitoring.URI_PARAM_NAME: self.monitor_config.uri})
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/operator_libs_linux/v2/snap.py", line 347, in set
+    return self._snap("set", [f"{key}={val}" for key, val in config.items()])
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/operator_libs_linux/v2/snap.py", line 280, in _snap
+    raise SnapError(
+charms.operator_libs_linux.v2.snap.SnapError: Snap: 'charmed-mongodb'; command ['snap', 'set', 'charmed-mongodb', 'monitor-uri=mongodb://monitor:ysRj3yNXeVfqKIR9lULmxALVmt5iWP4J@127.0.0.1:27017/admin?replicaSet=shard-one'] failed with output = ''
+unit-shard-one-1: 02:49:56 ERROR juju.worker.uniter.operation hook "secret-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-one-1: 02:50:08 ERROR unit.shard-one/1.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/operator_libs_linux/v2/snap.py", line 278, in _snap
+    return subprocess.check_output(args, universal_newlines=True)
+  File "/usr/lib/python3.10/subprocess.py", line 421, in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+  File "/usr/lib/python3.10/subprocess.py", line 526, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['snap', 'set', 'charmed-mongodb', 'monitor-uri=mongodb://monitor:ysRj3yNXeVfqKIR9lULmxALVmt5iWP4J@127.0.0.1:27017/admin?replicaSet=shard-one']' returned non-zero exit status 1.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1598, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 796, in _on_secret_changed
+    self._connect_mongodb_exporter()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1181, in _connect_mongodb_exporter
+    mongodb_snap.set({Config.Monitoring.URI_PARAM_NAME: self.monitor_config.uri})
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/operator_libs_linux/v2/snap.py", line 347, in set
+    return self._snap("set", [f"{key}={val}" for key, val in config.items()])
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/operator_libs_linux/v2/snap.py", line 280, in _snap
+    raise SnapError(
+charms.operator_libs_linux.v2.snap.SnapError: Snap: 'charmed-mongodb'; command ['snap', 'set', 'charmed-mongodb', 'monitor-uri=mongodb://monitor:ysRj3yNXeVfqKIR9lULmxALVmt5iWP4J@127.0.0.1:27017/admin?replicaSet=shard-one'] failed with output = ''
+unit-shard-one-1: 02:50:08 ERROR juju.worker.uniter.operation hook "secret-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-one-1: 02:50:29 ERROR unit.shard-one/1.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/operator_libs_linux/v2/snap.py", line 278, in _snap
+    return subprocess.check_output(args, universal_newlines=True)
+  File "/usr/lib/python3.10/subprocess.py", line 421, in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+  File "/usr/lib/python3.10/subprocess.py", line 526, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['snap', 'set', 'charmed-mongodb', 'monitor-uri=mongodb://monitor:ysRj3yNXeVfqKIR9lULmxALVmt5iWP4J@127.0.0.1:27017/admin?replicaSet=shard-one']' returned non-zero exit status 1.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1598, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 796, in _on_secret_changed
+    self._connect_mongodb_exporter()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1181, in _connect_mongodb_exporter
+    mongodb_snap.set({Config.Monitoring.URI_PARAM_NAME: self.monitor_config.uri})
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/operator_libs_linux/v2/snap.py", line 347, in set
+    return self._snap("set", [f"{key}={val}" for key, val in config.items()])
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/operator_libs_linux/v2/snap.py", line 280, in _snap
+    raise SnapError(
+charms.operator_libs_linux.v2.snap.SnapError: Snap: 'charmed-mongodb'; command ['snap', 'set', 'charmed-mongodb', 'monitor-uri=mongodb://monitor:ysRj3yNXeVfqKIR9lULmxALVmt5iWP4J@127.0.0.1:27017/admin?replicaSet=shard-one'] failed with output = ''
+unit-shard-one-1: 02:50:29 ERROR juju.worker.uniter.operation hook "secret-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-one-1: 02:51:11 ERROR unit.shard-one/1.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/operator_libs_linux/v2/snap.py", line 278, in _snap
+    return subprocess.check_output(args, universal_newlines=True)
+  File "/usr/lib/python3.10/subprocess.py", line 421, in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+  File "/usr/lib/python3.10/subprocess.py", line 526, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['snap', 'set', 'charmed-mongodb', 'monitor-uri=mongodb://monitor:ysRj3yNXeVfqKIR9lULmxALVmt5iWP4J@127.0.0.1:27017/admin?replicaSet=shard-one']' returned non-zero exit status 1.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1598, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 796, in _on_secret_changed
+    self._connect_mongodb_exporter()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1181, in _connect_mongodb_exporter
+    mongodb_snap.set({Config.Monitoring.URI_PARAM_NAME: self.monitor_config.uri})
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/operator_libs_linux/v2/snap.py", line 347, in set
+    return self._snap("set", [f"{key}={val}" for key, val in config.items()])
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/operator_libs_linux/v2/snap.py", line 280, in _snap
+    raise SnapError(
+charms.operator_libs_linux.v2.snap.SnapError: Snap: 'charmed-mongodb'; command ['snap', 'set', 'charmed-mongodb', 'monitor-uri=mongodb://monitor:ysRj3yNXeVfqKIR9lULmxALVmt5iWP4J@127.0.0.1:27017/admin?replicaSet=shard-one'] failed with output = ''
+unit-shard-one-1: 02:51:11 ERROR juju.worker.uniter.operation hook "secret-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-one-1: 02:52:32 ERROR unit.shard-one/1.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/operator_libs_linux/v2/snap.py", line 278, in _snap
+    return subprocess.check_output(args, universal_newlines=True)
+  File "/usr/lib/python3.10/subprocess.py", line 421, in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+  File "/usr/lib/python3.10/subprocess.py", line 526, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['snap', 'set', 'charmed-mongodb', 'monitor-uri=mongodb://monitor:ysRj3yNXeVfqKIR9lULmxALVmt5iWP4J@127.0.0.1:27017/admin?replicaSet=shard-one']' returned non-zero exit status 1.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1598, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 796, in _on_secret_changed
+    self._connect_mongodb_exporter()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1181, in _connect_mongodb_exporter
+    mongodb_snap.set({Config.Monitoring.URI_PARAM_NAME: self.monitor_config.uri})
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/operator_libs_linux/v2/snap.py", line 347, in set
+    return self._snap("set", [f"{key}={val}" for key, val in config.items()])
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/operator_libs_linux/v2/snap.py", line 280, in _snap
+    raise SnapError(
+charms.operator_libs_linux.v2.snap.SnapError: Snap: 'charmed-mongodb'; command ['snap', 'set', 'charmed-mongodb', 'monitor-uri=mongodb://monitor:ysRj3yNXeVfqKIR9lULmxALVmt5iWP4J@127.0.0.1:27017/admin?replicaSet=shard-one'] failed with output = ''
+unit-shard-one-1: 02:52:32 ERROR juju.worker.uniter.operation hook "secret-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-one-1: 02:55:07 ERROR unit.shard-one/1.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/operator_libs_linux/v2/snap.py", line 278, in _snap
+    return subprocess.check_output(args, universal_newlines=True)
+  File "/usr/lib/python3.10/subprocess.py", line 421, in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+  File "/usr/lib/python3.10/subprocess.py", line 526, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['snap', 'set', 'charmed-mongodb', 'monitor-uri=mongodb://monitor:ysRj3yNXeVfqKIR9lULmxALVmt5iWP4J@127.0.0.1:27017/admin?replicaSet=shard-one']' returned non-zero exit status 1.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1598, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 796, in _on_secret_changed
+    self._connect_mongodb_exporter()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1181, in _connect_mongodb_exporter
+    mongodb_snap.set({Config.Monitoring.URI_PARAM_NAME: self.monitor_config.uri})
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/operator_libs_linux/v2/snap.py", line 347, in set
+    return self._snap("set", [f"{key}={val}" for key, val in config.items()])
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/operator_libs_linux/v2/snap.py", line 280, in _snap
+    raise SnapError(
+charms.operator_libs_linux.v2.snap.SnapError: Snap: 'charmed-mongodb'; command ['snap', 'set', 'charmed-mongodb', 'monitor-uri=mongodb://monitor:ysRj3yNXeVfqKIR9lULmxALVmt5iWP4J@127.0.0.1:27017/admin?replicaSet=shard-one'] failed with output = ''
+unit-shard-one-1: 02:55:08 ERROR juju.worker.uniter.operation hook "secret-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-one-1: 03:00:09 ERROR unit.shard-one/1.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/operator_libs_linux/v2/snap.py", line 278, in _snap
+    return subprocess.check_output(args, universal_newlines=True)
+  File "/usr/lib/python3.10/subprocess.py", line 421, in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+  File "/usr/lib/python3.10/subprocess.py", line 526, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['snap', 'set', 'charmed-mongodb', 'monitor-uri=mongodb://monitor:ysRj3yNXeVfqKIR9lULmxALVmt5iWP4J@127.0.0.1:27017/admin?replicaSet=shard-one']' returned non-zero exit status 1.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1598, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 796, in _on_secret_changed
+    self._connect_mongodb_exporter()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1181, in _connect_mongodb_exporter
+    mongodb_snap.set({Config.Monitoring.URI_PARAM_NAME: self.monitor_config.uri})
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/operator_libs_linux/v2/snap.py", line 347, in set
+    return self._snap("set", [f"{key}={val}" for key, val in config.items()])
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/operator_libs_linux/v2/snap.py", line 280, in _snap
+    raise SnapError(
+charms.operator_libs_linux.v2.snap.SnapError: Snap: 'charmed-mongodb'; command ['snap', 'set', 'charmed-mongodb', 'monitor-uri=mongodb://monitor:ysRj3yNXeVfqKIR9lULmxALVmt5iWP4J@127.0.0.1:27017/admin?replicaSet=shard-one'] failed with output = ''
+unit-shard-one-1: 03:00:10 ERROR juju.worker.uniter.operation hook "secret-changed" (via hook dispatching script: dispatch) failed: exit status 1
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
