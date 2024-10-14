@@ -31,7 +31,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 14
+LIBPATCH = 15
 
 logger = logging.getLogger(__name__)
 REL_NAME = "database"
@@ -88,6 +88,10 @@ class MongoDBProvider(Object):
         if not self.charm.db_initialised:
             return False
 
+        # This is tricky: the sanity hook checks can pass when the call is
+        # issued by a config-sever because the config-server is allowed to manage the users
+        # in MongoDB. This is not well named and does not protect integration of a config-server
+        # to a client application
         if not self.charm.is_role(Config.Role.MONGOS) and not self.charm.is_relation_feasible(
             self.get_relation_name()
         ):
@@ -99,8 +103,12 @@ class MongoDBProvider(Object):
 
         return True
 
-    def pass_hook_checks(self, event: EventBase) -> bool:
+    def pass_hook_checks(self, event: RelationChangedEvent) -> bool:
         """Runs the pre-hooks checks for MongoDBProvider, returns True if all pass."""
+        # First, ensure that the relation is valid, useless to do anything else otherwise
+        if not self.charm.is_relation_feasible(event.relation.name):
+            return False
+
         if not self.pass_sanity_hook_checks():
             return False
 
