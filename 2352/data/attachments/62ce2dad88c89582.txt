@@ -1,0 +1,208 @@
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  shard-one/0 [idle] active: Primary
+  shard-one/1 [idle] waiting: Waiting for primary re-election..
+  shard-one/2 [idle] active: 
+  shard-two/0 [idle] active: Primary
+  shard-two/1 [idle] active: 
+  shard-two/2 [idle] active: 
+  config-server/0 [idle] active: 
+  config-server/1 [idle] active: 
+  config-server/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  shard-one/0 [idle] active: Primary
+  shard-one/1 [idle] waiting: Waiting for primary re-election..
+  shard-one/2 [executing] active: 
+  config-server/0 [idle] active: 
+  config-server/1 [idle] active: 
+  config-server/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2971 Waiting for model:
+  shard-one/0 [idle] active: Primary
+  shard-one/1 [idle] active: 
+  shard-one/2 [idle] active: 
+  shard-two/0 [idle] active: Primary
+  shard-two/1 [idle] active: 
+  shard-two/2 [idle] active: 
+  config-server/0 [idle] active: 
+  config-server/1 [idle] active: 
+  config-server/2 [idle] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.5.3    unsupported  02:57:01Z
+
+App            Version  Status  Scale  Charm    Channel  Rev  Exposed  Message
+config-server           active      3  mongodb             0  no       
+shard-one               active      3  mongodb             1  no       
+shard-two               active      3  mongodb             2  no       
+
+Unit              Workload  Agent  Machine  Public address  Ports            Message
+config-server/0*  active    idle   0        10.114.37.176   27017-27018/tcp  
+config-server/1   active    idle   1        10.114.37.167   27017-27018/tcp  
+config-server/2   active    idle   2        10.114.37.75    27017-27018/tcp  
+shard-one/0       active    idle   3        10.114.37.194   27017/tcp        Primary
+shard-one/1       active    idle   4        10.114.37.40    27017/tcp        
+shard-one/2*      active    idle   5        10.114.37.58    27017/tcp        
+shard-two/0       active    idle   6        10.114.37.10    27017/tcp        Primary
+shard-two/1*      active    idle   7        10.114.37.13    27017/tcp        
+shard-two/2       active    idle   8        10.114.37.94    27017/tcp        
+
+Machine  State    Address        Inst id        Base          AZ  Message
+0        started  10.114.37.176  juju-e5e92d-0  ubuntu@22.04      Running
+1        started  10.114.37.167  juju-e5e92d-1  ubuntu@22.04      Running
+2        started  10.114.37.75   juju-e5e92d-2  ubuntu@22.04      Running
+3        started  10.114.37.194  juju-e5e92d-3  ubuntu@22.04      Running
+4        started  10.114.37.40   juju-e5e92d-4  ubuntu@22.04      Running
+5        started  10.114.37.58   juju-e5e92d-5  ubuntu@22.04      Running
+6        started  10.114.37.10   juju-e5e92d-6  ubuntu@22.04      Running
+7        started  10.114.37.13   juju-e5e92d-7  ubuntu@22.04      Running
+8        started  10.114.37.94   juju-e5e92d-8  ubuntu@22.04      Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+machine-0: 02:28:29 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 02:28:29 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-0: 02:28:29 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-1: 02:28:30 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 02:28:30 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-1: 02:28:30 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-5: 02:28:32 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-5: 02:28:32 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 02:28:32 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 02:28:32 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-2: 02:28:32 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-config-server-2: 02:28:33 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-3: 02:28:35 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 02:28:35 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-0: 02:28:35 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-7: 02:28:35 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-7: 02:28:35 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-two-1: 02:28:35 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-6: 02:28:36 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-6: 02:28:36 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-two-0: 02:28:36 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-4: 02:28:36 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-4: 02:28:36 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-1: 02:28:36 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-8: 02:28:37 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-8: 02:28:37 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-two-2: 02:28:37 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-shard-one-2: 02:29:57 ERROR unit.shard-one/2.juju-log _on_secret_remove: Secret secret:cs6t72kvsfe1s45s3lcg seems to have no observers, could be removed
+unit-config-server-0: 02:30:56 ERROR unit.config-server/0.juju-log _on_secret_remove: Secret secret:cs6t7isvsfe1s45s3ld0 seems to have no observers, could be removed
+unit-shard-two-1: 02:32:27 ERROR unit.shard-two/1.juju-log _on_secret_remove: Secret secret:cs6t7ncvsfe1s45s3ldg seems to have no observers, could be removed
+unit-config-server-0: 02:33:33 ERROR unit.config-server/0.juju-log config-server:6: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1728959612, 3), 'signature': {'hash': b'\\x1c`@\\xf5\\xfb\\xe9\\xbfK\\xe2\\x0b\\x04\\x8b\\xa3\\x13&\\xdf\\xd1\\x13\\xef\\xd6', 'keyId': 7425824263795376153}}, 'operationTime': Timestamp(1728959612, 3)}")
+unit-config-server-0: 02:33:33 ERROR unit.config-server/0.juju-log config-server:6: shard-one shard does not have the same auth as the config server.
+unit-config-server-0: 02:33:34 ERROR unit.config-server/0.juju-log config-server:6: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1728959614, 1), 'signature': {'hash': b'n\\x82\\xdf\\xe5\\xdd\\x91=\\xc9\\xdb\\xbd\\x82\\xa9\\x0f\\xb8W\\xd1\\x91\\x98\\x1eC', 'keyId': 7425824263795376153}}, 'operationTime': Timestamp(1728959614, 1)}")
+unit-config-server-0: 02:33:35 ERROR unit.config-server/0.juju-log config-server:6: shard-one shard does not have the same auth as the config server.
+unit-config-server-0: 02:33:51 ERROR unit.config-server/0.juju-log config-server:6: Failed to add shard shard-one to the config server, error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1728959631, 2), \'signature\': {\'hash\': b\'\\xe7Q\\xc5Y\\x97D\\xf0\\x84i\\xe3\\x93N\\x07\\xab\\xecJ\\x11\\xd5e\\x06\', \'keyId\': 7425824263795376153}}, \'operationTime\': Timestamp(1728959631, 2)}')
+unit-config-server-0: 02:33:51 ERROR unit.config-server/0.juju-log config-server:6: Failed to add shard-one to cluster
+unit-config-server-0: 02:33:51 ERROR unit.config-server/0.juju-log config-server:6: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1728959631, 2), \'signature\': {\'hash\': b\'\\xe7Q\\xc5Y\\x97D\\xf0\\x84i\\xe3\\x93N\\x07\\xab\\xecJ\\x11\\xd5e\\x06\', \'keyId\': 7425824263795376153}}, \'operationTime\': Timestamp(1728959631, 2)}')
+unit-shard-one-2: 02:34:14 ERROR unit.shard-one/2.juju-log _on_secret_remove: Secret secret:cs6t72kvsfe1s45s3lcg seems to have no observers, could be removed
+unit-config-server-0: 02:34:17 ERROR unit.config-server/0.juju-log config-server:7: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1728959657, 2), 'signature': {'hash': b'\\x1akd\\xe6\\xb9p\\xc3\\xf3\\xbeU\\x02\\xf0?`N\\xbdS\\x0e7\\xaa', 'keyId': 7425824263795376153}}, 'operationTime': Timestamp(1728959657, 2)}")
+unit-config-server-0: 02:34:17 ERROR unit.config-server/0.juju-log config-server:7: shard-two shard does not have the same auth as the config server.
+unit-shard-one-2: 02:34:19 ERROR unit.shard-one/2.juju-log _on_secret_remove: Secret secret:cs6t72kvsfe1s45s3lcg seems to have no observers, could be removed
+unit-shard-one-2: 02:34:26 ERROR unit.shard-one/2.juju-log _on_secret_remove: Secret secret:cs6t72kvsfe1s45s3lcg seems to have no observers, could be removed
+unit-config-server-0: 02:34:34 ERROR unit.config-server/0.juju-log config-server:7: Failed to add shard shard-two to the config server, error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-two, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-two\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1728959674, 1), \'signature\': {\'hash\': b\'\\x05P{\\xa72f\\x95\\xed\\xf4\\xb9HfnY\\x81\\xa4\\x0cQ\\xbc\\x04\', \'keyId\': 7425824263795376153}}, \'operationTime\': Timestamp(1728959674, 1)}')
+unit-config-server-0: 02:34:34 ERROR unit.config-server/0.juju-log config-server:7: Failed to add shard-two to cluster
+unit-config-server-0: 02:34:34 ERROR unit.config-server/0.juju-log config-server:7: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-two, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-two\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1728959674, 1), \'signature\': {\'hash\': b\'\\x05P{\\xa72f\\x95\\xed\\xf4\\xb9HfnY\\x81\\xa4\\x0cQ\\xbc\\x04\', \'keyId\': 7425824263795376153}}, \'operationTime\': Timestamp(1728959674, 1)}')
+unit-shard-two-1: 02:34:59 ERROR unit.shard-two/1.juju-log _on_secret_remove: Secret secret:cs6t7ncvsfe1s45s3ldg seems to have no observers, could be removed
+unit-shard-two-1: 02:34:59 ERROR unit.shard-two/1.juju-log _on_secret_remove: Secret secret:cs6t7ncvsfe1s45s3ldg seems to have no observers, could be removed
+unit-shard-two-1: 02:35:06 ERROR unit.shard-two/1.juju-log _on_secret_remove: Secret secret:cs6t7ncvsfe1s45s3ldg seems to have no observers, could be removed
+unit-shard-one-2: 02:35:09 ERROR unit.shard-one/2.juju-log _on_secret_remove: Secret secret:cs6t72kvsfe1s45s3lcg seems to have no observers, could be removed
+unit-shard-one-2: 02:45:59 ERROR unit.shard-one/2.juju-log _on_secret_remove: Secret secret:cs6t72kvsfe1s45s3lcg seems to have no observers, could be removed
+unit-shard-one-2: 02:46:00 ERROR unit.shard-one/2.juju-log _on_secret_remove: Secret secret:cs6t72kvsfe1s45s3lcg seems to have no observers, could be removed
+unit-shard-two-1: 02:49:24 ERROR unit.shard-two/1.juju-log _on_secret_remove: Secret secret:cs6t7ncvsfe1s45s3ldg seems to have no observers, could be removed
+unit-shard-two-1: 02:49:33 ERROR unit.shard-two/1.juju-log _on_secret_remove: Secret secret:cs6t7ncvsfe1s45s3ldg seems to have no observers, could be removed
+unit-shard-two-1: 02:52:55 ERROR unit.shard-two/1.juju-log _on_secret_remove: Secret secret:cs6t7ncvsfe1s45s3ldg seems to have no observers, could be removed
+unit-shard-one-2: 02:52:56 ERROR unit.shard-one/2.juju-log _on_secret_remove: Secret secret:cs6t72kvsfe1s45s3lcg seems to have no observers, could be removed
+unit-config-server-0: 02:54:47 ERROR unit.config-server/0.juju-log Cannot proceed with refresh. Failed to check cluster health, error: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 670dd9769a64ad3062da35b0, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.114.37.194', 27017) server_type: Unknown, rtt: None>, <ServerDescription ('10.114.37.40', 27017) server_type: RSSecondary, rtt: 0.0005436939995888679>, <ServerDescription ('10.114.37.58', 27017) server_type: RSSecondary, rtt: 0.000654563999887614>]>
+unit-config-server-0: 02:54:50 ERROR unit.config-server/0.juju-log Cannot proceed with refresh. Failed to check cluster health, error: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 670dd9799a64ad3062da35b5, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.114.37.194', 27017) server_type: Unknown, rtt: None>, <ServerDescription ('10.114.37.40', 27017) server_type: RSSecondary, rtt: 0.0007849819999137253>, <ServerDescription ('10.114.37.58', 27017) server_type: RSSecondary, rtt: 0.0005987170002299536>]>
+unit-config-server-0: 02:54:53 ERROR unit.config-server/0.juju-log Cannot proceed with refresh. Failed to check cluster health, error: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 670dd97c9a64ad3062da35ba, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.114.37.194', 27017) server_type: Unknown, rtt: None>, <ServerDescription ('10.114.37.40', 27017) server_type: RSSecondary, rtt: 0.0007678699998905358>, <ServerDescription ('10.114.37.58', 27017) server_type: RSSecondary, rtt: 0.0008330229998136929>]>
+unit-config-server-0: 02:55:16 ERROR unit.config-server/0.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-config-server-0/charm/./src/charm.py", line 1598, in <module>
+    main(MongodbOperatorCharm)
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-config-server-0/charm/src/upgrades/mongodb_upgrade.py", line 148, in _on_pre_upgrade_check_action
+    self._upgrade.pre_upgrade_check()
+  File "/var/lib/juju/agents/unit-config-server-0/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 336, in pre_upgrade_check
+    if not self._charm.upgrade.is_cluster_able_to_read_write():
+  File "/var/lib/juju/agents/unit-config-server-0/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 523, in is_cluster_able_to_read_write
+    return self.is_sharded_cluster_able_to_read_write()
+  File "/var/lib/juju/agents/unit-config-server-0/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 539, in is_sharded_cluster_able_to_read_write
+    write_replicated = self.is_write_on_secondaries(
+  File "/var/lib/juju/agents/unit-config-server-0/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 651, in is_write_on_secondaries
+    self.confirm_excepted_write_on_replica(
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/tenacity/__init__.py", line 336, in wrapped_f
+    return copy(f, *args, **kw)
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/tenacity/__init__.py", line 475, in __call__
+    do = self.iter(retry_state=retry_state)
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/tenacity/__init__.py", line 376, in iter
+    result = action(retry_state)
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/tenacity/__init__.py", line 418, in exc_check
+    raise retry_exc.reraise()
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/tenacity/__init__.py", line 185, in reraise
+    raise self.last_attempt.result()
+  File "/usr/lib/python3.10/concurrent/futures/_base.py", line 451, in result
+    return self.__get_result()
+  File "/usr/lib/python3.10/concurrent/futures/_base.py", line 403, in __get_result
+    raise self._exception
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/tenacity/__init__.py", line 478, in __call__
+    result = fn(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-config-server-0/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 610, in confirm_excepted_write_on_replica
+    if query[0][WRITE_KEY] != expected_write_value:
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/cursor.py", line 638, in __getitem__
+    for doc in clone:  # type: ignore[attr-defined]
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/cursor.py", line 1281, in __next__
+    return self.next()
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/cursor.py", line 1257, in next
+    if len(self._data) or self._refresh():
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/cursor.py", line 1205, in _refresh
+    self._send_message(q)
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/cursor.py", line 1100, in _send_message
+    response = client._run_operation(
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/_csot.py", line 119, in csot_wrapper
+    return func(self, *args, **kwargs)
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/mongo_client.py", line 1754, in _run_operation
+    return self._retryable_read(
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/mongo_client.py", line 1863, in _retryable_read
+    return self._retry_internal(
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/_csot.py", line 119, in csot_wrapper
+    return func(self, *args, **kwargs)
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/mongo_client.py", line 1830, in _retry_internal
+    ).run()
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/mongo_client.py", line 2554, in run
+    return self._read() if self._is_read else self._write()
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/mongo_client.py", line 2689, in _read
+    self._server = self._get_server()
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/mongo_client.py", line 2645, in _get_server
+    return self._client._select_server(
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/mongo_client.py", line 1649, in _select_server
+    server = topology.select_server(
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/topology.py", line 398, in select_server
+    server = self._select_server(
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/topology.py", line 376, in _select_server
+    servers = self.select_servers(
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/topology.py", line 283, in select_servers
+    server_descriptions = self._select_servers_loop(
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/topology.py", line 333, in _select_servers_loop
+    raise ServerSelectionTimeoutError(
+pymongo.errors.ServerSelectionTimeoutError: No servers found yet, Timeout: 1.0s, Topology Description: <TopologyDescription id: 670dd9929a64ad3062da35ce, topology_type: Single, servers: [<ServerDescription ('10.114.37.194', 27017) server_type: Unknown, rtt: None>]>
+machine-3: 02:56:04 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: api connection broken unexpectedly
+machine-3: 02:56:04 ERROR juju.worker.uniter.metrics failed to close the collect-metrics listener: close unix /var/lib/juju/agents/unit-shard-one-0/4205885155/s: use of closed network connection
+unit-shard-two-1: 02:56:33 ERROR unit.shard-two/1.juju-log _on_secret_remove: Secret secret:cs6t7ncvsfe1s45s3ldg seems to have no observers, could be removed
+unit-shard-one-2: 02:56:35 ERROR unit.shard-one/2.juju-log _on_secret_remove: Secret secret:cs6t72kvsfe1s45s3lcg seems to have no observers, could be removed
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
