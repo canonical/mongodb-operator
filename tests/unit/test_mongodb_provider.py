@@ -6,6 +6,7 @@ import unittest
 from unittest import mock
 from unittest.mock import patch
 
+from ops import BlockedStatus
 from ops.charm import RelationEvent
 from ops.testing import Harness
 from parameterized import parameterized
@@ -36,9 +37,32 @@ class TestMongoProvider(unittest.TestCase):
         self.charm = self.harness.charm
         self.addCleanup(self.harness.cleanup)
 
+    @parameterized.expand([["config-server"], ["shard"]])
+    @patch("charms.mongodb.v0.set_status.get_charm_revision")
+    @patch("charm.MongoDBProvider.oversee_users")
+    def test_relation_event_relation_not_feasible(self, role: str, oversee_users, *unused):
+        """Tests that relating with a wrong role sets a blocked status."""
+
+        def is_config_server_role(role_name: str):
+            return role_name == role
+
+        self.harness.charm.is_role = is_config_server_role
+
+        relation_id = self.harness.add_relation("database", "consumer")
+        self.harness.add_relation_unit(relation_id, "consumer/0")
+        self.harness.update_relation_data(relation_id, "consumer/0", PEER_ADDR)
+
+        assert self.harness.charm.unit.status == BlockedStatus(
+            "Sharding roles do not support database interface."
+        )
+        oversee_users.assert_not_called()
+
+    @patch("charms.mongodb.v0.set_status.get_charm_revision")
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider.oversee_users")
-    def test_relation_event_db_not_initialised(self, oversee_users, defer):
+    def test_relation_event_db_not_initialised(self, oversee_users, defer, *unused):
         """Tests no database relations are handled until the database is initialised.
 
         Users should not be "overseen" until the database has been initialised, no matter the
