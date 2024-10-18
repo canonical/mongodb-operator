@@ -201,7 +201,6 @@ class MongoDBProvider(Object):
         Raises:
             PyMongoError
         """
-
         with MongoConnection(self.charm.mongo_config) as mongo:
             for username in users_being_managed - expected_current_users:
                 logger.info("Remove relation user: %s", username)
@@ -523,7 +522,16 @@ class MongoDBProvider(Object):
             fields = self.database_provides.fetch_my_relation_data([relation.id])[relation.id]
             self.database_provides.delete_relation_data(relation.id, fields=list(fields))
 
-            # unforatunately the above doesn't work to remove secrets, so we forcibly remove the rest
+            # unforatunately the above doesn't work to remove secrets, so we forcibly remove the
+            # rest manually remove the secret before clearing the databag
+            for unit in relation.units:
+                secret_id = json.loads(relation.data[unit]["data"])["secret-user"]
+                # secret id is the same on all units for `secret-user`
+                break
+
+            user_secrets = self.charm.model.get_secret(id=secret_id)
+            user_secrets.remove_all_revisions()
+            user_secrets.get_content(refresh=True)
             relation.data[self.charm.app].clear()
 
     @staticmethod

@@ -8,14 +8,13 @@ shards.
 """
 import logging
 from typing import Optional
-from charms.mongodb.v0.mongo import MongoConnection
 
-from pymongo.errors import PyMongoError
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseProvides,
     DatabaseRequestedEvent,
     DatabaseRequires,
 )
+from charms.mongodb.v0.mongo import MongoConnection
 from charms.mongodb.v1.mongos import MongosConnection
 from ops.charm import (
     CharmBase,
@@ -32,6 +31,7 @@ from ops.model import (
     StatusBase,
     WaitingStatus,
 )
+from pymongo.errors import PyMongoError
 
 from config import Config
 
