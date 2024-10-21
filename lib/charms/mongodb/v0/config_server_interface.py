@@ -187,6 +187,10 @@ class ClusterProvider(Object):
             logger.info("Skipping relation broken event, broken event due to scale down")
             return
 
+        # mongos-k8s router is in charge of removing its own users.
+        if self.substrate == Config.Substrate.VM:
+            self.charm.client_relations.oversee_users(departed_relation_id, event)
+
     def update_config_server_db(self, event):
         """Provides related mongos applications with new config server db."""
         if not self.pass_hook_checks(event):
