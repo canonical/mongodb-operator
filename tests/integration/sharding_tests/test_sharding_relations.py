@@ -58,7 +58,7 @@ async def test_build_and_deploy(
         MONGOS_APP_NAME,
         channel="6/edge",
     )
-    await ops_test.model.deploy(CERTS_APP_NAME, channel="stable")
+    await ops_test.model.deploy(CERTS_APP_NAME, channel="latest/stable", base="ubuntu@22.04")
     await ops_test.model.deploy(S3_APP_NAME, channel="edge")
 
     # TODO: Future PR, once data integrator works with mongos charm deploy that charm instead of
