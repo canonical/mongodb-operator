@@ -42,6 +42,10 @@ peers:
     # https://docs.google.com/document/d/1H7qy5SAwLiCOKO9xMQJbbQP5_-jGV6Lhi-mJOk4gZ08/edit
     interface: upgrade
 
+  ldap-peers:
+    # Stores the data for the ldap relation.
+    interface: ldap-peers
+
 requires:
   certificates:
     interface: tls-certificates
@@ -53,3 +57,11 @@ requires:
     interface: shards
     # shards can only relate to one config-server
     limit: 1
+  ldap:
+    interface: ldap
+    limit: 1
+    optional: true
+  ldap-certificate-transfer:
+    interface: certificate_transfer
+    limit: 1
+    optional: true
