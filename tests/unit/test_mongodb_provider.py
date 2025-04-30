@@ -30,6 +30,7 @@ class TestMongoProvider(unittest.TestCase):
         self.harness = Harness(MongoDBVMCharm)
         self.harness.begin()
         self.harness.add_relation("database-peers", "mongodb-peers")
+        self.harness.add_relation("status-peers", "mongodb-peers")
         self.harness.set_leader(True)
         self.charm = self.harness.charm
         self.addCleanup(self.harness.cleanup)
@@ -49,9 +50,9 @@ class TestMongoProvider(unittest.TestCase):
         self.harness.add_relation_unit(relation_id, "consumer/0")
         self.harness.update_relation_data(relation_id, "consumer/0", PEER_ADDR)
 
-        assert self.harness.charm.unit.status == BlockedStatus(
-            "Sharding roles do not support database interface."
-        )
+        statuses = self.harness.charm.operator.component_statuses.get(scope="unit")
+        status = next(iter(statuses), None)
+        assert status.status == BlockedStatus("Sharding roles do not support database interface.")
         oversee_users.assert_not_called()
 
     @patch("single_kernel_mongo.managers.mongodb_operator.get_charm_revision")

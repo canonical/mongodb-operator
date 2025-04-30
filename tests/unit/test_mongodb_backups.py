@@ -6,9 +6,11 @@ from unittest.mock import patch
 
 import pytest
 import tenacity
+from data_platform_helpers.advanced_statuses.models import StatusObject
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from ops.testing import ActionFailed, Harness
-from single_kernel_mongo.events.backups import INVALID_S3_INTEGRATION_STATUS
+from single_kernel_mongo.config.literals import Scope
+from single_kernel_mongo.config.statuses import BackupStatuses, MongoDBStatuses
 from single_kernel_mongo.exceptions import (
     PBMBusyError,
     ResyncError,
@@ -30,6 +32,7 @@ class TestMongoBackups(unittest.TestCase):
         self.harness = Harness(MongoDBVMCharm)
         self.harness.begin()
         self.harness.add_relation("database-peers", "database-peers")
+        self.harness.add_relation("status-peers", "status-peers")
         self.harness.set_leader(True)
         self.charm = self.harness.charm
         self.addCleanup(self.harness.cleanup)
@@ -45,7 +48,12 @@ class TestMongoBackups(unittest.TestCase):
         self.harness.add_relation_unit(relation_id, "s3-integrator/0")
         relation = self.harness.charm.model.get_relation(RELATION_NAME)
         self.harness.charm.on[RELATION_NAME].relation_joined.emit(relation=relation)
-        assert self.harness.charm.unit.status == BlockedStatus(INVALID_S3_INTEGRATION_STATUS)
+
+        statuses = self.harness.charm.operator.backup_manager.component_statuses.get(
+            scope=Scope.UNIT
+        ).root
+
+        assert MongoDBStatuses.INVALID_S3_INTEGRATION_STATUS.value in statuses
 
     def test_credentials_changed_to_blocked_if_shard(self):
         def is_shard_mock_call(role_name: str):
@@ -58,12 +66,21 @@ class TestMongoBackups(unittest.TestCase):
         self.harness.charm.operator.backup_events.s3_client.on.credentials_changed.emit(
             relation=relation
         )
-        assert self.harness.charm.unit.status == BlockedStatus(INVALID_S3_INTEGRATION_STATUS)
+        statuses = self.harness.charm.operator.backup_manager.component_statuses.get(
+            scope=Scope.UNIT
+        ).root
 
+        assert MongoDBStatuses.INVALID_S3_INTEGRATION_STATUS.value in statuses
+
+    @patch(
+        "single_kernel_mongo.managers.backups.BackupManager.validate_s3_config",
+        return_value=True,
+    )
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.active", return_value=True)
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.run_bin_command")
     def test_get_pbm_status_snap_not_present(self, pbm_command, *unused):
         """Tests that when the snap is not present pbm is in blocked state."""
+        self.harness.charm.operator.state.db_initialised = True
         relation_id = self.harness.add_relation(RELATION_NAME, "s3-integrator")
         self.harness.add_relation_unit(relation_id, "s3-integrator/0")
 
@@ -73,9 +90,10 @@ class TestMongoBackups(unittest.TestCase):
             stdout="",
             stderr="service pbm-agent not found",
         )
-        self.assertTrue(
-            isinstance(self.harness.charm.operator.backup_manager.get_status(), BlockedStatus)
-        )
+        statuses = self.harness.charm.operator.backup_manager.compute_statuses(scope=Scope.UNIT)
+        status = next(iter(statuses), None)
+
+        assert isinstance(status.status, BlockedStatus)
 
     @patch(
         "single_kernel_mongo.managers.backups.BackupManager.validate_s3_config",
@@ -85,6 +103,7 @@ class TestMongoBackups(unittest.TestCase):
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.run_bin_command")
     def test_get_pbm_status_resync(self, pbm_command, service, *unused):
         """Tests that when pbm is resyncing that pbm is in waiting state."""
+        self.harness.charm.operator.state.db_initialised = True
         relation_id = self.harness.add_relation(RELATION_NAME, "s3-integrator")
         self.harness.add_relation_unit(relation_id, "s3-integrator/0")
 
@@ -92,9 +111,9 @@ class TestMongoBackups(unittest.TestCase):
         pbm_command.return_value = (
             '{"running":{"type":"resync","opID":"64f5cc22a73b330c3880e3b2"}}'
         )
-        self.assertTrue(
-            isinstance(self.harness.charm.operator.backup_manager.get_status(), WaitingStatus)
-        )
+        statuses = self.harness.charm.operator.backup_manager.compute_statuses(scope=Scope.UNIT)
+        status = next(iter(statuses), None)
+        assert status == BackupStatuses.PBM_WAITING_TO_SYNC.value
 
     @patch(
         "single_kernel_mongo.managers.backups.BackupManager.validate_s3_config",
@@ -104,56 +123,69 @@ class TestMongoBackups(unittest.TestCase):
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.run_bin_command")
     def test_get_pbm_status_running(self, pbm_command, service, *unused):
         """Tests that when pbm not running an op that pbm is in active state."""
+        self.harness.charm.operator.state.db_initialised = True
         relation_id = self.harness.add_relation(RELATION_NAME, "s3-integrator")
         self.harness.add_relation_unit(relation_id, "s3-integrator/0")
 
         service.return_value = True
         pbm_command.return_value = '{"running":{}}'
-        self.assertTrue(
-            isinstance(self.harness.charm.operator.backup_manager.get_status(), ActiveStatus)
-        )
 
+        statuses = self.harness.charm.operator.backup_manager.compute_statuses(scope=Scope.UNIT)
+        status = next(iter(statuses), None)
+        assert status.status == ActiveStatus("")
+
+    @patch(
+        "single_kernel_mongo.managers.backups.BackupManager.validate_s3_config",
+        return_value=True,
+    )
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.active", return_value=True)
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.run_bin_command")
-    def test_get_pbm_status_incorrect_cred(self, pbm_command, service):
+    def test_get_pbm_status_incorrect_cred(self, pbm_command, *unused):
         """Tests that when pbm has incorrect credentials that pbm is in blocked state."""
+        self.harness.charm.operator.state.db_initialised = True
         relation_id = self.harness.add_relation(RELATION_NAME, "s3-integrator")
         self.harness.add_relation_unit(relation_id, "s3-integrator/0")
 
-        service.return_value = True
         pbm_command.side_effect = WorkloadExecError(
             cmd=["/usr/bin/pbm", "status"],
             return_code=1,
             stdout="status code: 403",
             stderr="",
         )
-        self.assertTrue(
-            isinstance(self.harness.charm.operator.backup_manager.get_status(), BlockedStatus)
-        )
+        statuses = self.harness.charm.operator.backup_manager.compute_statuses(scope=Scope.UNIT)
+        status = next(iter(statuses), None)
+        assert status.status == BlockedStatus("s3 credentials are incorrect.")
 
+    @patch(
+        "single_kernel_mongo.managers.backups.BackupManager.validate_s3_config",
+        return_value=True,
+    )
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.active", return_value=True)
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.run_bin_command")
-    def test_get_pbm_status_incorrect_conf(self, pbm_command, service):
+    def test_get_pbm_status_incorrect_conf(self, pbm_command, *unused):
         """Tests that when pbm has incorrect configs that pbm is in blocked state."""
+        self.harness.charm.operator.state.db_initialised = True
         relation_id = self.harness.add_relation(RELATION_NAME, "s3-integrator")
         self.harness.add_relation_unit(relation_id, "s3-integrator/0")
 
-        service.return_value = True
         pbm_command.side_effect = WorkloadExecError(
             cmd="/usr/bin/pbm status",
             return_code=1,
             stdout="status code: 404",
             stderr="",
         )
-        self.assertTrue(
-            isinstance(self.harness.charm.operator.backup_manager.get_status(), BlockedStatus)
-        )
+        statuses = self.harness.charm.operator.backup_manager.compute_statuses(scope=Scope.UNIT)
+        status = next(iter(statuses), None)
+        assert status.status == BlockedStatus("s3 configurations are incompatible.")
 
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.active", return_value=True)
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.run_bin_command")
     def test_get_pbm_status_no_config(self, pbm_command, service):
         """Tests when configurations for pbm are not given through S3 there is no status."""
-        self.assertTrue(self.harness.charm.operator.backup_manager.get_status() is None)
+        self.harness.charm.operator.state.db_initialised = True
+        self.assertTrue(
+            self.harness.charm.operator.backup_manager.compute_statuses(scope=Scope.UNIT) == []
+        )
 
     @patch("single_kernel_mongo.managers.backups.wait_fixed")
     @patch("single_kernel_mongo.managers.backups.stop_after_attempt")
@@ -193,13 +225,13 @@ class TestMongoBackups(unittest.TestCase):
     @patch("single_kernel_mongo.managers.backups.stop_after_attempt")
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.active", return_value=True)
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.run_bin_command")
-    @patch("single_kernel_mongo.managers.backups.BackupManager.get_status")
+    @patch("single_kernel_mongo.managers.backups.BackupManager.compute_statuses")
     @pytest.mark.usefixtures("mock_fs_interactions")
     def test_verify_resync_syncing(
         self, pbm_status, run_pbm_command, service, retry_stop, retry_wait
     ):
         """Tests that when pbm is syncing that it raises an error."""
-        pbm_status.return_value = MaintenanceStatus()
+        pbm_status.return_value = [StatusObject(status=MaintenanceStatus())]
         run_pbm_command.return_value = (
             '{"running":{"type":"resync","opID":"64f5cc22a73b330c3880e3b2"}}'
         )
@@ -212,11 +244,11 @@ class TestMongoBackups(unittest.TestCase):
     @patch("single_kernel_mongo.managers.backups.wait_fixed")
     @patch("single_kernel_mongo.managers.backups.stop_after_attempt")
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.active", return_value=True)
-    @patch("single_kernel_mongo.managers.backups.BackupManager.get_status")
+    @patch("single_kernel_mongo.managers.backups.BackupManager.compute_statuses")
     @pytest.mark.usefixtures("mock_fs_interactions")
     def test_resync_config_options_failure(self, pbm_status, service, retry_stop, retry_wait):
         """Verifies _resync_config_options raises an error when a resync cannot be performed."""
-        pbm_status.return_value = MaintenanceStatus()
+        pbm_status.return_value = [StatusObject(status=MaintenanceStatus())]
 
         with self.assertRaises(PBMBusyError):
             self.harness.charm.operator.backup_manager.resync_config_options()
@@ -225,13 +257,13 @@ class TestMongoBackups(unittest.TestCase):
     @patch("single_kernel_mongo.managers.backups.stop_after_attempt")
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.active", return_value=True)
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.restart")
-    @patch("single_kernel_mongo.managers.backups.BackupManager.get_status")
+    @patch("single_kernel_mongo.managers.backups.BackupManager.compute_statuses")
     @pytest.mark.usefixtures("mock_fs_interactions")
     def test_resync_config_restart(self, pbm_status, mock_restart, active, retry_stop, retry_wait):
         """Verifies _resync_config_options restarts that snap if alreaady resyncing."""
         retry_stop.return_value = tenacity.stop_after_attempt(1)
         retry_stop.return_value = tenacity.wait_fixed(1)
-        pbm_status.return_value = WaitingStatus()
+        pbm_status.return_value = [StatusObject(status=WaitingStatus())]
 
         with self.assertRaises(PBMBusyError):
             self.harness.charm.operator.backup_manager.resync_config_options()
@@ -298,13 +330,17 @@ class TestMongoBackups(unittest.TestCase):
             {"bucket": "hat"},
         )
 
-        self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
+        statuses = self.harness.charm.operator.backup_manager.component_statuses.get(
+            scope=Scope.UNIT
+        )
+        status = next(iter(statuses), None)
+        assert isinstance(status.status, BlockedStatus)
 
     @patch("single_kernel_mongo.managers.backups.BackupManager.set_config_options")
     @patch("single_kernel_mongo.managers.backups.BackupManager.resync_config_options")
     @patch("ops.framework.EventBase.defer")
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.active", return_value=True)
-    @patch("single_kernel_mongo.managers.backups.BackupManager.get_status")
+    @patch("single_kernel_mongo.managers.backups.BackupManager.compute_statuses")
     def test_s3_credentials_config_error(
         self, pbm_status, service, defer, resync, _set_config_options
     ):
@@ -312,7 +348,7 @@ class TestMongoBackups(unittest.TestCase):
         self.harness.charm.operator.state.db_initialised = True
 
         service.return_value = True
-        pbm_status.return_value = ActiveStatus()
+        pbm_status.return_value = [StatusObject(status=ActiveStatus())]
         resync.side_effect = SetPBMConfigError
 
         # triggering s3 event with correct fields
@@ -326,13 +362,17 @@ class TestMongoBackups(unittest.TestCase):
             "s3-integrator/0",
             {"bucket": "hat"},
         )
-        self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
+        statuses = self.harness.charm.operator.backup_manager.component_statuses.get(
+            scope=Scope.UNIT
+        )
+        status = next(iter(statuses), None)
+        assert isinstance(status.status, BlockedStatus)
 
     @patch("single_kernel_mongo.managers.backups.BackupManager.set_config_options")
     @patch("single_kernel_mongo.managers.backups.BackupManager.resync_config_options")
     @patch("ops.framework.EventBase.defer")
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.active", return_value=True)
-    @patch("single_kernel_mongo.managers.backups.BackupManager.get_status")
+    @patch("single_kernel_mongo.managers.backups.BackupManager.compute_statuses")
     def test_s3_credentials_syncing(self, pbm_status, service, defer, resync, _set_config_options):
         """Test charm defers when more time is needed to sync pbm credentials."""
         self.harness.charm.operator.state.db_initialised = True
@@ -352,13 +392,17 @@ class TestMongoBackups(unittest.TestCase):
         )
 
         defer.assert_called()
-        self.assertTrue(isinstance(self.harness.charm.unit.status, WaitingStatus))
+        statuses = self.harness.charm.operator.backup_manager.component_statuses.get(
+            scope=Scope.UNIT
+        )
+        status = next(iter(statuses), None)
+        assert isinstance(status.status, WaitingStatus)
 
     @patch("single_kernel_mongo.managers.backups.BackupManager.set_config_options")
     @patch("single_kernel_mongo.managers.backups.BackupManager.resync_config_options")
     @patch("ops.framework.EventBase.defer")
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.active", return_value=True)
-    @patch("single_kernel_mongo.managers.backups.BackupManager.get_status")
+    @patch("single_kernel_mongo.managers.backups.BackupManager.compute_statuses")
     def test_s3_credentials_pbm_busy(
         self, pbm_status, service, defer, resync, _set_config_options
     ):
@@ -380,7 +424,11 @@ class TestMongoBackups(unittest.TestCase):
         )
 
         defer.assert_called()
-        self.assertTrue(isinstance(self.harness.charm.unit.status, WaitingStatus))
+        statuses = self.harness.charm.operator.backup_manager.component_statuses.get(
+            scope=Scope.UNIT
+        )
+        status = next(iter(statuses), None)
+        assert isinstance(status.status, WaitingStatus)
 
     @patch("single_kernel_mongo.managers.backups.BackupManager.set_config_options")
     @patch("single_kernel_mongo.managers.backups.BackupManager.resync_config_options")
@@ -418,11 +466,15 @@ class TestMongoBackups(unittest.TestCase):
         )
 
         defer.assert_not_called()
-        self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
+        statuses = self.harness.charm.operator.backup_manager.component_statuses.get(
+            scope=Scope.UNIT
+        )
+        status = next(iter(statuses), None)
+        assert isinstance(status.status, BlockedStatus)
 
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.active", return_value=True)
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.run_bin_command")
-    @patch("single_kernel_mongo.managers.backups.BackupManager.get_status")
+    @patch("single_kernel_mongo.managers.backups.BackupManager.compute_statuses")
     def test_backup_failed(self, pbm_status, pbm_command, service):
         """Verifies backup is fails if the pbm command failed."""
         pbm_command.side_effect = WorkloadExecError(
@@ -432,7 +484,7 @@ class TestMongoBackups(unittest.TestCase):
             stderr="",
         )
 
-        pbm_status.return_value = ActiveStatus("")
+        pbm_status.return_value = [StatusObject(status=ActiveStatus(""))]
 
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
         with pytest.raises(ActionFailed):
@@ -447,6 +499,7 @@ class TestMongoBackups(unittest.TestCase):
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.run_bin_command")
     def test_backup_list_syncing(self, pbm_command, service):
         """Verifies backup list is deferred if more time is needed to resync."""
+        self.harness.charm.operator.state.db_initialised = True
         service.return_value = True
 
         pbm_command.return_value = (
@@ -475,10 +528,10 @@ class TestMongoBackups(unittest.TestCase):
 
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.active", return_value=True)
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.run_bin_command")
-    @patch("single_kernel_mongo.managers.backups.BackupManager.get_status")
+    @patch("single_kernel_mongo.managers.backups.BackupManager.compute_statuses")
     def test_backup_list_failed(self, pbm_status, pbm_command, service):
         """Verifies backup list fails if the pbm command fails."""
-        pbm_status.return_value = ActiveStatus("")
+        pbm_status.return_value = [StatusObject(status=ActiveStatus(""))]
 
         pbm_command.side_effect = WorkloadExecError(
             cmd="/usr/bin/pbm list",
@@ -553,6 +606,7 @@ class TestMongoBackups(unittest.TestCase):
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.run_bin_command")
     def test_restore_syncing(self, pbm_command, service):
         """Verifies restore is deferred if more time is needed to resync."""
+        self.harness.charm.operator.state.db_initialised = True
         pbm_command.return_value = (
             '{"running":{"type":"resync","opID":"64f5cc22a73b330c3880e3b2"}}'
         )
@@ -565,6 +619,7 @@ class TestMongoBackups(unittest.TestCase):
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.run_bin_command")
     def test_restore_running_backup(self, pbm_command, service):
         """Verifies restore is fails if another backup is already running."""
+        self.harness.charm.operator.state.db_initialised = True
         pbm_command.return_value = (
             'Currently running:\n====\nSnapshot backup "2023-08-21T13:08:22Z"'
         )
@@ -574,10 +629,10 @@ class TestMongoBackups(unittest.TestCase):
 
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.active", return_value=True)
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.run_bin_command")
-    @patch("single_kernel_mongo.managers.backups.BackupManager.get_status")
+    @patch("single_kernel_mongo.managers.backups.BackupManager.compute_statuses")
     def test_restore_wrong_cred(self, pbm_status, pbm_command, service):
         """Verifies restore is fails if the credentials are incorrect."""
-        pbm_status.return_value = ActiveStatus("")
+        pbm_status.return_value = [StatusObject(status=ActiveStatus(""))]
 
         pbm_command.side_effect = WorkloadExecError(
             cmd="/usr/bin/pbm list",
@@ -592,11 +647,11 @@ class TestMongoBackups(unittest.TestCase):
 
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.active", return_value=True)
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.run_bin_command")
-    @patch("single_kernel_mongo.managers.backups.BackupManager.get_status")
+    @patch("single_kernel_mongo.managers.backups.BackupManager.compute_statuses")
     @patch("single_kernel_mongo.managers.backups.BackupManager._needs_provided_remap_arguments")
     def test_restore_failed(self, remap, pbm_status, pbm_command, service):
         """Verifies restore is fails if the pbm command failed."""
-        pbm_status.return_value = ActiveStatus("")
+        pbm_status.return_value = [StatusObject(status=ActiveStatus(""))]
 
         pbm_command.side_effect = WorkloadExecError(
             cmd="/usr/bin/pbm restore", return_code=1, stdout="failed", stderr=""
@@ -671,21 +726,22 @@ class TestMongoBackups(unittest.TestCase):
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.run_bin_command")
     def test_get_pbm_status_backup(self, run_pbm_command, service, *unused):
         """Tests that when pbm running a backup that pbm is in maintenance state."""
+        self.harness.charm.operator.state.db_initialised = True
         relation_id = self.harness.add_relation(RELATION_NAME, "s3-integrator")
         self.harness.add_relation_unit(relation_id, "s3-integrator/0")
 
         run_pbm_command.return_value = '{"running":{"type":"backup","name":"2023-09-04T12:15:58Z","startTS":1693829759,"status":"oplog backup","opID":"64f5ca7e777e294530289465"}}'
-        self.assertTrue(
-            isinstance(
-                self.harness.charm.operator.backup_manager.get_status(),
-                MaintenanceStatus,
-            )
+        statuses = self.harness.charm.operator.backup_manager.compute_statuses(scope=Scope.UNIT)
+        status = next(iter(statuses), None)
+        assert status.status == MaintenanceStatus(
+            "Backup started/running, backup id: '2023-09-04T12:15:58Z'"
         )
 
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.active", return_value=True)
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.run_bin_command")
     def test_backup_syncing(self, run_pbm_command, service):
         """Verifies backup is deferred if more time is needed to resync."""
+        self.harness.charm.operator.state.db_initialised = True
         run_pbm_command.return_value = (
             '{"running":{"type":"resync","opID":"64f5cc22a73b330c3880e3b2"}}'
         )
@@ -698,6 +754,7 @@ class TestMongoBackups(unittest.TestCase):
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.run_bin_command")
     def test_backup_running_backup(self, run_pbm_command, service):
         """Verifies backup is fails if another backup is already running."""
+        self.harness.charm.operator.state.db_initialised = True
         run_pbm_command.return_value = (
             'Currently running:\n====\nSnapshot backup "2023-08-21T13:08:22Z"'
         )

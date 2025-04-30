@@ -1,14 +1,13 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 import unittest
-from dataclasses import asdict
 from unittest import mock
 from unittest.mock import patch
 
 from ops.model import ActiveStatus, BlockedStatus, StatusBase, WaitingStatus
 from ops.testing import Harness
 from parameterized import parameterized
-from single_kernel_mongo.status import Statuses
+from single_kernel_mongo.config.literals import Scope
 
 from charm import MongoDBVMCharm
 
@@ -22,94 +21,6 @@ class TestCharm(unittest.TestCase):
         self.harness = Harness(MongoDBVMCharm)
         self.addCleanup(self.harness.cleanup)
         self.harness.begin()
-
-    def test_are_all_units_ready_for_upgrade(self) -> None:
-        """Verify that status handler returns the correct status."""
-        # case 1: all juju units are ready for upgrade
-        goal_state = {"units": {"unit_0": {"status": "active"}}}
-        get_mismatched_revsion = mock.Mock()
-        get_mismatched_revsion.return_value = None
-        run_mock = mock.Mock()
-        run_mock._run.return_value = goal_state
-        self.harness.charm.model._backend = run_mock
-        self.harness.charm.operator.cluster_version_checker.get_cluster_mismatched_revision_status = (
-            get_mismatched_revsion
-        )
-
-        assert self.harness.charm.operator.upgrade_manager.are_all_units_ready_for_upgrade()
-
-        # case 2: not all juju units are ready for upgrade
-        goal_state = {"units": {"unit_0": {"status": "active"}, "unit_1": {"status": "blocked"}}}
-        run_mock = mock.Mock()
-        run_mock._run.return_value = goal_state
-        self.harness.charm.model._backend = run_mock
-
-        assert not self.harness.charm.operator.upgrade_manager.are_all_units_ready_for_upgrade()
-
-    @parameterized.expand(
-        [
-            [
-                BlockedStatus("Invalid"),
-                ActiveStatus(),
-                ActiveStatus(),
-                ActiveStatus(),
-                "mongodb",
-            ],
-            [
-                WaitingStatus("Waiting"),
-                ActiveStatus(),
-                ActiveStatus(),
-                ActiveStatus(),
-                "mongodb",
-            ],
-            [
-                ActiveStatus(),
-                BlockedStatus("Invalid"),
-                ActiveStatus(),
-                ActiveStatus(),
-                "shard",
-            ],
-            [
-                ActiveStatus(),
-                WaitingStatus("Waiting"),
-                ActiveStatus(),
-                ActiveStatus(),
-                "shard",
-            ],
-            [
-                ActiveStatus(),
-                None,
-                BlockedStatus("Invalid"),
-                ActiveStatus(),
-                "config_server",
-            ],
-            [
-                ActiveStatus(),
-                None,
-                WaitingStatus("Waiting"),
-                ActiveStatus(),
-                "config_server",
-            ],
-            [ActiveStatus(), None, None, BlockedStatus("Invalid"), "pbm"],
-            [ActiveStatus(), None, None, WaitingStatus("Waiting"), "pbm"],
-            [ActiveStatus(), None, None, None, "mongodb"],
-            [ActiveStatus(), ActiveStatus(), ActiveStatus(), ActiveStatus(), "mongodb"],
-        ]
-    )
-    def test_prioritize_status(
-        self,
-        mongodb_status: StatusBase,
-        shard_status: StatusBase | None,
-        config_server_status: StatusBase | None,
-        pbm_status: StatusBase | None,
-        expected_index: int,
-    ):
-        """Tests different cases of statuses for prioritize_status."""
-        statuses = Statuses(mongodb_status, shard_status, config_server_status, pbm_status)
-        assert (
-            self.harness.charm.status_manager.prioritize_statuses(statuses)
-            == asdict(statuses)[expected_index]
-        )
 
     @parameterized.expand(
         [
@@ -170,6 +81,7 @@ class TestCharm(unittest.TestCase):
             valid_s3_integration_mock
         )
 
-        self.harness.charm.operator.pass_status_basic_checks()
+        statuses = self.harness.charm.operator.compute_statuses(scope=Scope.UNIT)
+        status = next(iter(statuses), None)
 
-        assert self.harness.charm.unit.status == expected_status or ActiveStatus("")
+        assert status.status == expected_status or ActiveStatus("")
