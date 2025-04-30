@@ -450,7 +450,7 @@ async def check_all_units_blocked_with_status(
         ), f"unit {unit.name} not in blocked state, in {unit.workload_status.value}"
         if status:
             assert (
-                unit.workload_status.message == status
+                status in unit.workload_status.message
             ), f"unit {unit.name} not in blocked state, in {unit.workload_status.value}"
 
 

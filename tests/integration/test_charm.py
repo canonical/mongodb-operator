@@ -441,7 +441,7 @@ async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
 
     # kill the mongod process on the replica set primary unit to force a re-election
     for unit, message in unit_messages.items():
-        if message == "Primary":
+        if message == "Primary.":
             target_unit = unit
 
     await kill_unit_process(ops_test, target_unit, kill_code="SIGKILL")
