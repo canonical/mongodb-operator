@@ -428,7 +428,7 @@ async def test_exactly_one_primary_reported_by_juju(ops_test: OpsTest) -> None:
         """Confirms there is only one replica set primary unit reported by juju."""
         count = 0
         for value in unit_messages:
-            if unit_messages[value] == "Primary":
+            if unit_messages[value] == "Primary.":
                 count += 1
 
         assert count == 1, f"Juju is expected to report one primary not {count} primaries"
