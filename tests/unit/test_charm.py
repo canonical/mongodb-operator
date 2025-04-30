@@ -159,8 +159,7 @@ class TestCharm(unittest.TestCase):
         self.harness.charm.on.install.emit()
         patched_os_config.assert_called_once_with(OS_REQUIREMENTS)
 
-    @patch("single_kernel_mongo.status.StatusManager.process_and_share_statuses")
-    def test_app_hosts(self, *unused):
+    def test_app_hosts(self):
         rel_id = self.harness.charm.model.get_relation("database-peers").id
         self.harness.add_relation_unit(rel_id, "mongodb/1")
         self.harness.update_relation_data(rel_id, "mongodb/1", PEER_ADDR)
@@ -712,12 +711,11 @@ class TestCharm(unittest.TestCase):
             self.harness.charm.operator.state.secrets.remove(Scope.APP, "monitor-password")
 
     @parameterized.expand([(Scope.APP), (Scope.UNIT)])
-    @patch("single_kernel_mongo.status.StatusManager.process_and_share_statuses")
     @patch("single_kernel_mongo.managers.config.BackupConfigManager.configure_and_restart")
     @patch(
         "single_kernel_mongo.managers.config.MongoDBExporterConfigManager.configure_and_restart"
     )
-    def test_on_secret_changed(self, scope, connect_exporter, connect_backup, *unused):
+    def test_on_secret_changed(self, scope, connect_exporter, connect_backup):
         """NOTE: currently ops.testing seems to allow for non-leader to set secrets too!"""
         secret = self.harness.charm.operator.state.secrets.set("new-secret", "bla", scope)
         secret = self.harness.charm.model.get_secret(label=secret.label)
