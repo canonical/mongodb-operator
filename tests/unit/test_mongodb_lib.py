@@ -63,7 +63,7 @@ class TestMongo(unittest.TestCase):
             with self.assertRaises(expected_raise):
                 with MongoConnection(config) as mongo:
                     mock_client.return_value.admin.command.side_effect = exception
-                    mongo.init_replset()
+                    mongo.init_replset(host="test")
 
             # verify we close connection
             (mock_client.return_value.close).assert_called()

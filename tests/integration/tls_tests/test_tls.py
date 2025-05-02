@@ -51,7 +51,12 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         )
 
     config = {"ca-common-name": "Test CA"}
-    await ops_test.model.deploy(TLS_CERTIFICATES_APP_NAME, channel="stable", config=config)
+    await ops_test.model.deploy(
+        TLS_CERTIFICATES_APP_NAME,
+        channel="latest/stable",
+        config=config,
+        base="ubuntu@22.04",
+    )
     await ops_test.model.wait_for_idle(
         apps=[TLS_CERTIFICATES_APP_NAME], status="active", timeout=DEPLOYMENT_TIMEOUT
     )
@@ -63,7 +68,9 @@ async def test_enable_tls(ops_test: OpsTest) -> None:
     """Verify each unit has TLS enabled after relating to the TLS application."""
     # Relate it to the MongoDB to enable TLS.
     app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
-    await ops_test.model.integrate(app_name, TLS_CERTIFICATES_APP_NAME)
+    await ops_test.model.integrate(
+        f"{app_name}:certificates", f"{TLS_CERTIFICATES_APP_NAME}:certificates"
+    )
 
     await ops_test.model.wait_for_idle(status="active", timeout=1000, idle_period=60)
 

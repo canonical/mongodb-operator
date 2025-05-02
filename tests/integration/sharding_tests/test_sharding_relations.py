@@ -58,7 +58,7 @@ async def test_build_and_deploy(
         MONGOS_APP_NAME,
         channel="6/edge",
     )
-    await ops_test.model.deploy(CERTS_APP_NAME, channel="stable")
+    await ops_test.model.deploy(CERTS_APP_NAME, channel="latest/stable", base="ubuntu@22.04")
     await ops_test.model.deploy(S3_APP_NAME, channel="edge")
 
     # TODO: Future PR, once data integrator works with mongos charm deploy that charm instead of
@@ -307,8 +307,8 @@ async def test_config_server_tls_replication_relation(ops_test: OpsTest) -> None
     """Verifies that using a replica as a shard fails even when TLS is integrated."""
     # attempt to add a shard to a replication deployment as a config server.
     await ops_test.model.integrate(
-        f"{REPLICATION_APP_NAME}",
-        f"{CERTS_APP_NAME}",
+        f"{REPLICATION_APP_NAME}:{CERT_REL_NAME}",
+        f"{CERTS_APP_NAME}:{CERT_REL_NAME}",
     )
 
     await ops_test.model.integrate(
