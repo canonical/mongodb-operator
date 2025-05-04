@@ -1,0 +1,68 @@
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb/0 [idle] active: Primary
+  mongodb/1 [idle] active: 
+  mongodb/2 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb/0 [idle] active: 
+  mongodb/1 [idle] active: 
+  mongodb/2 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb/0 [idle] active: 
+  mongodb/1 [idle] active: 
+  mongodb/2 [idle] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.6.1    unsupported  01:50:29Z
+
+App                       Version  Status  Scale  Charm                     Channel        Rev  Exposed  Message
+mongodb                   6.0.6    active      3  mongodb                                    0  no       
+self-signed-certificates           active      1  self-signed-certificates  latest/stable  264  no       
+
+Unit                         Workload  Agent  Machine  Public address  Ports      Message
+mongodb/0*                   active    idle   0        10.88.20.165    27017/tcp  
+mongodb/1                    active    idle   1        10.88.20.202    27017/tcp  
+mongodb/2                    active    idle   2        10.88.20.78     27017/tcp  
+self-signed-certificates/0*  active    idle   3        10.88.20.135               
+
+Machine  State    Address       Inst id        Base          AZ  Message
+0        started  10.88.20.165  juju-c4d766-0  ubuntu@22.04      Running
+1        started  10.88.20.202  juju-c4d766-1  ubuntu@22.04      Running
+2        started  10.88.20.78   juju-c4d766-2  ubuntu@22.04      Running
+3        started  10.88.20.135  juju-c4d766-3  ubuntu@22.04      Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+machine-0: 01:32:19 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 01:32:19 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-0: 01:32:19 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-2: 01:32:23 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 01:32:23 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-2: 01:32:23 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-1: 01:32:25 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 01:32:25 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-1: 01:32:25 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-0: 01:32:43 ERROR unit.mongodb/0.juju-log Unable to set params: ['vm.max_map_count']
+unit-mongodb-0: 01:32:43 ERROR unit.mongodb/0.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+unit-mongodb-2: 01:32:48 ERROR unit.mongodb/2.juju-log Unable to set params: ['vm.max_map_count']
+unit-mongodb-2: 01:32:48 ERROR unit.mongodb/2.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+unit-mongodb-1: 01:32:49 ERROR unit.mongodb/1.juju-log Unable to set params: ['vm.max_map_count']
+unit-mongodb-1: 01:32:49 ERROR unit.mongodb/1.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+machine-3: 01:36:04 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 01:36:04 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-self-signed-certificates-0: 01:36:04 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-0: 01:36:35 ERROR unit.mongodb/0.juju-log certificates:3: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-mongodb-1: 01:36:35 ERROR unit.mongodb/1.juju-log certificates:3: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-mongodb-2: 01:36:35 ERROR unit.mongodb/2.juju-log certificates:3: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-mongodb-2: 01:36:36 ERROR unit.mongodb/2.juju-log certificates:3: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-mongodb-1: 01:36:36 ERROR unit.mongodb/1.juju-log certificates:3: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-mongodb-0: 01:36:36 ERROR unit.mongodb/0.juju-log certificates:3: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-mongodb-0: 01:37:20 ERROR unit.mongodb/0.juju-log database-peers:0: Not reconfiguring: error=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6816c4cfe43f1111a181a4df, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.88.20.165', 27017) server_type: RSSecondary, rtt: 0.0019715310000947284>, <ServerDescription ('10.88.20.202', 27017) server_type: RSSecondary, rtt: 0.0010522399999217669>, <ServerDescription ('10.88.20.78', 27017) server_type: RSSecondary, rtt: 0.0007639549999112205>]>
+unit-mongodb-0: 01:37:24 ERROR unit.mongodb/0.juju-log database-peers:0: Not reconfiguring: error=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6816c4d32d73f8242917777e, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.88.20.165', 27017) server_type: RSSecondary, rtt: 0.0007199529999297738>, <ServerDescription ('10.88.20.202', 27017) server_type: RSSecondary, rtt: 0.0012045700000271609>, <ServerDescription ('10.88.20.78', 27017) server_type: RSSecondary, rtt: 0.0007710679999490822>]>
+unit-mongodb-0: 01:37:25 ERROR unit.mongodb/0.juju-log database-peers:0: Not reconfiguring: error=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6816c4d42d73f8242917777f, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.88.20.165', 27017) server_type: RSSecondary, rtt: 0.0008159650000152396>, <ServerDescription ('10.88.20.202', 27017) server_type: RSSecondary, rtt: 0.0011646440000276925>, <ServerDescription ('10.88.20.78', 27017) server_type: RSSecondary, rtt: 0.000938185999984853>]>
+unit-mongodb-0: 01:40:03 ERROR unit.mongodb/0.juju-log database-peers:0: Not reconfiguring: error=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6816c57266ca9c00c6937899, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.88.20.165', 27017) server_type: RSSecondary, rtt: 0.0023688720000336616>, <ServerDescription ('10.88.20.202', 27017) server_type: RSSecondary, rtt: 0.002040507000060643>, <ServerDescription ('10.88.20.78', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('6816c564838624c7d69819a1'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 2036}")>]>
+unit-mongodb-0: 01:44:41 ERROR unit.mongodb/0.juju-log database-peers:0: Not reconfiguring: error=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6816c68894448725b15dcf64, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.88.20.165', 27017) server_type: RSSecondary, rtt: 0.0009641229999033385>, <ServerDescription ('10.88.20.202', 27017) server_type: RSSecondary, rtt: 0.0012313910001466866>, <ServerDescription ('10.88.20.78', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('10.88.20.78:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)')>]>
+unit-mongodb-0: 01:44:45 ERROR unit.mongodb/0.juju-log database-peers:0: Not reconfiguring: error=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6816c68c6630188c49b05f66, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.88.20.165', 27017) server_type: RSSecondary, rtt: 0.0008570850000069186>, <ServerDescription ('10.88.20.202', 27017) server_type: RSSecondary, rtt: 0.0020527500000753207>, <ServerDescription ('10.88.20.78', 27017) server_type: RSSecondary, rtt: 0.0013566550001087307>]>
+unit-mongodb-0: 01:44:47 ERROR unit.mongodb/0.juju-log database-peers:0: Not reconfiguring: error=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6816c68d6630188c49b05f67, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.88.20.165', 27017) server_type: RSSecondary, rtt: 0.0017843690000063361>, <ServerDescription ('10.88.20.202', 27017) server_type: RSSecondary, rtt: 0.0007840279999982158>, <ServerDescription ('10.88.20.78', 27017) server_type: RSSecondary, rtt: 0.0013169809999453719>]>
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
