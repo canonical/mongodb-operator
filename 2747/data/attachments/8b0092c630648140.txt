@@ -1,0 +1,173 @@
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server/0 [idle] active: 
+  config-server/1 [idle] active: 
+  config-server/2 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server/0 [executing] waiting: Waiting for shards to upgrade/downgrade to revision 1+61537e1-dirty-locally built.
+  config-server/1 [executing] active: 
+  config-server/2 [executing] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server/0 [idle] waiting: Waiting for shards to upgrade/downgrade to revision 1+61537e1-dirty-locally built.
+  config-server/1 [idle] active: 
+  config-server/2 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server/0 [idle] waiting: Waiting for shards to upgrade/downgrade to revision 1+61537e1-dirty-locally built.
+  config-server/1 [idle] active: 
+  config-server/2 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server/0 [idle] waiting: Waiting for shards to upgrade/downgrade to revision 1+61537e1-dirty-locally built.
+  config-server/1 [idle] active: 
+  config-server/2 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server/0 [idle] waiting: Waiting for shards to upgrade/downgrade to revision 1+61537e1-dirty-locally built.
+  config-server/1 [idle] active: 
+  config-server/2 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server/0 [idle] waiting: Waiting for shards to upgrade/downgrade to revision 1+61537e1-dirty-locally built.
+  config-server/1 [idle] active: 
+  config-server/2 [idle] active: 
+  shard-one/0 [idle] blocked: Charm revision (214) is not up-to date with config-server (1+61537e1-dirty-locally built).
+  shard-one/1 [idle] blocked: Charm revision (214) is not up-to date with config-server (1+61537e1-dirty-locally built).
+  shard-one/2 [idle] blocked: Charm revision (214) is not up-to date with config-server (1+61537e1-dirty-locally built).
+  shard-two/0 [idle] blocked: Charm revision (214) is not up-to date with config-server (1+61537e1-dirty-locally built).
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server/0 [executing] active: 
+  config-server/1 [executing] active: 
+  config-server/2 [executing] active: 
+  shard-one/0 [executing] blocked: Charm revision (214) is not up-to date with config-server (1+61537e1-dirty-locally built).
+  shard-one/1 [executing] blocked: Charm revision (214) is not up-to date with config-server (1+61537e1-dirty-locally built).
+  shard-two/0 [executing] blocked: Charm revision (214) is not up-to date with config-server (1+61537e1-dirty-locally built).
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server/0 [idle] active: 
+  config-server/1 [idle] active: 
+  config-server/2 [idle] active: 
+  shard-one/0 [executing] blocked: Charm revision (214) is not up-to date with config-server (1+61537e1-dirty-locally built).
+  shard-one/1 [executing] blocked: Charm revision (214) is not up-to date with config-server (1+61537e1-dirty-locally built).
+  shard-one/2 [executing] waiting: Waiting for primary re-election.
+  shard-two/0 [idle] blocked: Charm revision (214) is not up-to date with config-server (1+61537e1-dirty-locally built).
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server/0 [idle] active: 
+  config-server/1 [idle] active: 
+  config-server/2 [idle] active: 
+  shard-one/0 [idle] active: Primary
+  shard-one/1 [executing] blocked: Charm revision (214) is not up-to date with config-server (1+61537e1-dirty-locally built).
+  shard-one/2 [idle] waiting: Waiting for primary re-election.
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server/0 [idle] active: 
+  config-server/1 [idle] active: 
+  config-server/2 [idle] active: 
+  shard-one/1 [idle] blocked: Charm revision (214) is not up-to date with config-server (1+61537e1-dirty-locally built).
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-one/0 [idle] active: Primary
+  shard-one/1 [idle] blocked: Charm revision (214) is not up-to date with config-server (1+61537e1-dirty-locally built).
+  shard-one/2 [idle] waiting: Waiting for primary re-election.
+  shard-two/0 [idle] blocked: Charm revision (214) is not up-to date with config-server (1+61537e1-dirty-locally built).
+  config-server/0 [idle] active: 
+  config-server/1 [idle] active: 
+  config-server/2 [idle] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.6.1    unsupported  01:54:31Z
+
+App            Version  Status  Scale  Charm    Channel  Rev  Exposed  Message
+config-server  6.0.6    active      3  mongodb  6/edge   214  no       
+shard-one      6.0.6    active      3  mongodb  6/edge   214  no       
+shard-two      6.0.6    active      1  mongodb  6/edge   214  no       
+
+Unit              Workload  Agent  Machine  Public address  Ports            Message
+config-server/0*  active    idle   0        10.193.39.130   27017-27018/tcp  
+config-server/1   active    idle   1        10.193.39.214   27017-27018/tcp  
+config-server/2   active    idle   2        10.193.39.30    27017-27018/tcp  
+shard-one/0       active    idle   3        10.193.39.18    27017/tcp        Primary
+shard-one/1*      blocked   idle   4        10.193.39.124   27017/tcp        Charm revision (214) is not up-to date with config-server (1+61537e1-dirty-locally built).
+shard-one/2       waiting   idle   5        10.193.39.225   27017/tcp        Waiting for primary re-election.
+shard-two/0*      blocked   idle   6        10.193.39.172   27017/tcp        Charm revision (214) is not up-to date with config-server (1+61537e1-dirty-locally built).
+
+Machine  State    Address        Inst id        Base          AZ  Message
+0        started  10.193.39.130  juju-68b904-0  ubuntu@22.04      Running
+1        started  10.193.39.214  juju-68b904-1  ubuntu@22.04      Running
+2        started  10.193.39.30   juju-68b904-2  ubuntu@22.04      Running
+3        started  10.193.39.18   juju-68b904-3  ubuntu@22.04      Running
+4        started  10.193.39.124  juju-68b904-4  ubuntu@22.04      Running
+5        started  10.193.39.225  juju-68b904-5  ubuntu@22.04      Running
+6        started  10.193.39.172  juju-68b904-6  ubuntu@22.04      Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+machine-0: 01:35:40 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 01:35:40 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-0: 01:35:40 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-4: 01:35:43 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-4: 01:35:43 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-1: 01:35:43 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-2: 01:35:55 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 01:35:55 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-2: 01:35:55 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-6: 01:36:09 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-6: 01:36:09 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-two-0: 01:36:09 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-5: 01:36:12 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-5: 01:36:12 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-2: 01:36:12 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-1: 01:36:17 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 01:36:17 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-1: 01:36:17 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-config-server-0: 01:36:24 ERROR unit.config-server/0.juju-log Unable to set params: ['vm.max_map_count']
+unit-config-server-0: 01:36:24 ERROR unit.config-server/0.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+machine-3: 01:36:32 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 01:36:32 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-0: 01:36:32 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-shard-two-0: 01:36:54 ERROR unit.shard-two/0.juju-log Unable to set params: ['vm.max_map_count']
+unit-shard-two-0: 01:36:54 ERROR unit.shard-two/0.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+unit-shard-one-2: 01:36:57 ERROR unit.shard-one/2.juju-log Unable to set params: ['vm.max_map_count']
+unit-shard-one-2: 01:36:57 ERROR unit.shard-one/2.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+unit-config-server-1: 01:37:00 ERROR unit.config-server/1.juju-log Unable to set params: ['vm.max_map_count']
+unit-config-server-1: 01:37:00 ERROR unit.config-server/1.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+unit-shard-one-2: 01:37:09 ERROR unit.shard-one/2.juju-log Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-shard-one-0: 01:37:11 ERROR unit.shard-one/0.juju-log Unable to set params: ['vm.max_map_count']
+unit-shard-one-0: 01:37:12 ERROR unit.shard-one/0.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+unit-shard-one-2: 01:37:14 ERROR unit.shard-one/2.juju-log upgrade-version-a:4: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-shard-one-2: 01:37:16 ERROR unit.shard-one/2.juju-log database-peers:5: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-shard-one-2: 01:37:18 ERROR unit.shard-one/2.juju-log database-peers:5: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-shard-one-2: 01:37:20 ERROR unit.shard-one/2.juju-log upgrade-version-a:4: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-shard-one-2: 01:37:22 ERROR unit.shard-one/2.juju-log ldap-peers:3: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-shard-one-0: 01:37:23 ERROR unit.shard-one/0.juju-log Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-shard-one-2: 01:37:24 ERROR unit.shard-one/2.juju-log ldap-peers:3: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-shard-one-0: 01:37:25 ERROR unit.shard-one/0.juju-log upgrade-version-a:4: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-shard-one-0: 01:37:27 ERROR unit.shard-one/0.juju-log database-peers:5: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-shard-one-0: 01:37:29 ERROR unit.shard-one/0.juju-log ldap-peers:3: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-shard-one-0: 01:37:31 ERROR unit.shard-one/0.juju-log database-peers:5: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-shard-one-0: 01:37:33 ERROR unit.shard-one/0.juju-log upgrade-version-a:4: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-shard-one-0: 01:37:35 ERROR unit.shard-one/0.juju-log ldap-peers:3: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-shard-one-1: 01:38:37 ERROR unit.shard-one/1.juju-log Unable to set params: ['vm.max_map_count']
+unit-shard-one-1: 01:38:37 ERROR unit.shard-one/1.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+unit-shard-one-0: 01:38:39 ERROR unit.shard-one/0.juju-log upgrade-version-a:4: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-shard-one-2: 01:38:39 ERROR unit.shard-one/2.juju-log upgrade-version-a:4: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-shard-one-0: 01:38:41 ERROR unit.shard-one/0.juju-log database-peers:5: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-shard-one-2: 01:38:41 ERROR unit.shard-one/2.juju-log upgrade-version-a:4: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-shard-one-0: 01:38:43 ERROR unit.shard-one/0.juju-log database-peers:5: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-shard-one-2: 01:38:44 ERROR unit.shard-one/2.juju-log upgrade-version-a:4: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-shard-one-0: 01:38:45 ERROR unit.shard-one/0.juju-log ldap-peers:3: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-config-server-2: 01:38:54 ERROR unit.config-server/2.juju-log Unable to set params: ['vm.max_map_count']
+unit-config-server-2: 01:38:54 ERROR unit.config-server/2.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+unit-shard-one-1: 01:41:03 ERROR unit.shard-one/1.juju-log sharding:9: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 683a5e2eef13db75cb6a74ce, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.193.39.124', 27017) server_type: RSSecondary, rtt: 0.006858743999828221>, <ServerDescription ('10.193.39.18', 27017) server_type: RSSecondary, rtt: 0.0007581260001643386>, <ServerDescription ('10.193.39.225', 27017) server_type: RSSecondary, rtt: 0.0032073549998585804>]>
+unit-shard-one-1: 01:41:08 ERROR unit.shard-one/1.juju-log sharding:9: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 683a5e32ef13db75cb6a74cf, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.193.39.124', 27017) server_type: RSSecondary, rtt: 0.0009300679998887063>, <ServerDescription ('10.193.39.18', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('683a5e28604cc94ecf623ce1'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 10877}")>, <ServerDescription ('10.193.39.225', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('683a5e2a6324344e826f7740'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 12951}")>]>
+unit-shard-one-1: 01:41:12 ERROR unit.shard-one/1.juju-log sharding:9: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 683a5e37ef13db75cb6a74d0, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.193.39.124', 27017) server_type: RSSecondary, rtt: 0.0012681510002039431>, <ServerDescription ('10.193.39.18', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('683a5e28604cc94ecf623ce1'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 6676}")>, <ServerDescription ('10.193.39.225', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('683a5e2a6324344e826f7740'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 8714}")>]>
+unit-shard-one-1: 01:41:16 ERROR unit.shard-one/1.juju-log sharding:9: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 683a5e3bef13db75cb6a74d1, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.193.39.124', 27017) server_type: RSSecondary, rtt: 0.0011098479999418487>, <ServerDescription ('10.193.39.18', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('683a5e28604cc94ecf623ce1'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 2429}")>, <ServerDescription ('10.193.39.225', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('683a5e2a6324344e826f7740'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 4505}")>]>
+unit-shard-one-1: 01:41:20 ERROR unit.shard-one/1.juju-log sharding:9: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 683a5e3fef13db75cb6a74d2, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.193.39.124', 27017) server_type: RSSecondary, rtt: 0.0007072569999309053>, <ServerDescription ('10.193.39.18', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('10.193.39.18:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)')>, <ServerDescription ('10.193.39.225', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('683a5e2a6324344e826f7740'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 257}")>]>
+unit-shard-one-1: 01:41:24 ERROR unit.shard-one/1.juju-log sharding:9: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 683a5e43ef13db75cb6a74d3, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.193.39.124', 27017) server_type: RSSecondary, rtt: 0.0006846660000974225>, <ServerDescription ('10.193.39.18', 27017) server_type: RSSecondary, rtt: 0.0018963659999826632>, <ServerDescription ('10.193.39.225', 27017) server_type: RSSecondary, rtt: 0.0009193270000196208>]>
+unit-shard-one-1: 01:41:29 ERROR unit.shard-one/1.juju-log sharding:9: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 683a5e48ef13db75cb6a74d4, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.193.39.124', 27017) server_type: RSSecondary, rtt: 0.0012383000000681932>, <ServerDescription ('10.193.39.18', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('683a5e3f58471aaf8cbb8050'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 14969}")>, <ServerDescription ('10.193.39.225', 27017) server_type: RSSecondary, rtt: 0.0017962049998914154>]>
+unit-shard-one-1: 01:41:33 ERROR unit.shard-one/1.juju-log sharding:9: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 683a5e4cef13db75cb6a74d5, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.193.39.124', 27017) server_type: RSSecondary, rtt: 0.001189608999993652>, <ServerDescription ('10.193.39.18', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('683a5e3f58471aaf8cbb8050'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 10238}")>, <ServerDescription ('10.193.39.225', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('683a5e410866801172340429'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 12295}")>]>
+unit-shard-one-1: 01:41:37 ERROR unit.shard-one/1.juju-log sharding:9: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 683a5e50ef13db75cb6a74d6, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.193.39.124', 27017) server_type: RSSecondary, rtt: 0.0017161539999506203>, <ServerDescription ('10.193.39.18', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('683a5e3f58471aaf8cbb8050'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 6002}")>, <ServerDescription ('10.193.39.225', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('683a5e410866801172340429'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 8059}")>]>
+unit-shard-one-1: 01:41:42 ERROR unit.shard-one/1.juju-log sharding:9: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 683a5e55ef13db75cb6a74d7, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.193.39.124', 27017) server_type: RSSecondary, rtt: 0.001119780000180981>, <ServerDescription ('10.193.39.18', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('683a5e3f58471aaf8cbb8050'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 1763}")>, <ServerDescription ('10.193.39.225', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('683a5e410866801172340429'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 3819}")>]>
+unit-shard-one-1: 01:41:46 ERROR unit.shard-one/1.juju-log sharding:9: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 683a5e59ef13db75cb6a74d8, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.193.39.124', 27017) server_type: RSSecondary, rtt: 0.0015723219999017601>, <ServerDescription ('10.193.39.18', 27017) server_type: RSSecondary, rtt: 0.0005489049999596318>, <ServerDescription ('10.193.39.225', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('683a5e410866801172340429'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 139}")>]>
+unit-shard-one-1: 01:41:50 ERROR unit.shard-one/1.juju-log sharding:9: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 683a5e5def13db75cb6a74d9, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.193.39.124', 27017) server_type: RSSecondary, rtt: 0.0006465459998707956>, <ServerDescription ('10.193.39.18', 27017) server_type: RSSecondary, rtt: 0.0011914789999991626>, <ServerDescription ('10.193.39.225', 27017) server_type: RSSecondary, rtt: 0.001281500999994023>]>
+unit-shard-one-1: 01:42:21 ERROR unit.shard-one/1.juju-log sharding:9: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 683a5e7c1f9b60084baf915e, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.193.39.124', 27017) server_type: RSSecondary, rtt: 0.0008039860003918875>, <ServerDescription ('10.193.39.18', 27017) server_type: RSSecondary, rtt: 0.0011353579998285568>, <ServerDescription ('10.193.39.225', 27017) server_type: RSSecondary, rtt: 0.0010132180000255175>]>
+unit-shard-one-1: 01:52:36 ERROR unit.shard-one/1.juju-log sharding:9: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 683a60e303c546bef937046e, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.193.39.124', 27017) server_type: RSSecondary, rtt: 0.0015197039997474349>, <ServerDescription ('10.193.39.18', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('683a60deded5cf3953d815f8'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 13698, 'lastCommittedOpTime': Timestamp(0, 0), '$clusterTime': {'clusterTime': Timestamp(1748656352, 1), 'signature': {'hash': b'\\xbe\\x1a\\x11l\\x0e~y\\xeaW\\xb8r\\x98U&\\x8favD\\x8e\\xea', 'keyId': 7510417767858700291}}, 'operationTime': Timestamp(1748656334, 3)}")>, <ServerDescription ('10.193.39.225', 27017) server_type: RSSecondary, rtt: 0.0011691810000229452>]>
+unit-shard-one-1: 01:52:40 ERROR unit.shard-one/1.juju-log sharding:9: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 683a60e703c546bef937046f, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.193.39.124', 27017) server_type: RSSecondary, rtt: 0.0012614420002137194>, <ServerDescription ('10.193.39.18', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('683a60deded5cf3953d815f8'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 9448, 'lastCommittedOpTime': Timestamp(0, 0), '$clusterTime': {'clusterTime': Timestamp(1748656352, 1), 'signature': {'hash': b'\\xbe\\x1a\\x11l\\x0e~y\\xeaW\\xb8r\\x98U&\\x8favD\\x8e\\xea', 'keyId': 7510417767858700291}}, 'operationTime': Timestamp(1748656334, 3)}")>, <ServerDescription ('10.193.39.225', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('683a60dcdc1617083beb58d0'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 13557, 'lastCommittedOpTime': Timestamp(0, 0), '$clusterTime': {'clusterTime': Timestamp(1748656352, 1), 'signature': {'hash': b'\\xbe\\x1a\\x11l\\x0e~y\\xeaW\\xb8r\\x98U&\\x8favD\\x8e\\xea', 'keyId': 7510417767858700291}}, 'operationTime': Timestamp(1748656334, 3)}")>]>
+unit-shard-one-1: 01:52:45 ERROR unit.shard-one/1.juju-log sharding:9: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 683a60eb03c546bef9370470, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.193.39.124', 27017) server_type: RSSecondary, rtt: 0.00099529099998108>, <ServerDescription ('10.193.39.18', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('683a60deded5cf3953d815f8'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 5229, 'lastCommittedOpTime': Timestamp(0, 0), '$clusterTime': {'clusterTime': Timestamp(1748656352, 1), 'signature': {'hash': b'\\xbe\\x1a\\x11l\\x0e~y\\xeaW\\xb8r\\x98U&\\x8favD\\x8e\\xea', 'keyId': 7510417767858700291}}, 'operationTime': Timestamp(1748656334, 3)}")>, <ServerDescription ('10.193.39.225', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('683a60dcdc1617083beb58d0'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 9826, 'lastCommittedOpTime': Timestamp(0, 0), '$clusterTime': {'clusterTime': Timestamp(1748656352, 1), 'signature': {'hash': b'\\xbe\\x1a\\x11l\\x0e~y\\xeaW\\xb8r\\x98U&\\x8favD\\x8e\\xea', 'keyId': 7510417767858700291}}, 'operationTime': Timestamp(1748656334, 3)}")>]>
+unit-shard-one-1: 01:52:49 ERROR unit.shard-one/1.juju-log sharding:9: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 683a60f003c546bef9370471, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.193.39.124', 27017) server_type: RSSecondary, rtt: 0.0009665389998190221>, <ServerDescription ('10.193.39.18', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('683a60deded5cf3953d815f8'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 966, 'lastCommittedOpTime': Timestamp(0, 0), '$clusterTime': {'clusterTime': Timestamp(1748656352, 1), 'signature': {'hash': b'\\xbe\\x1a\\x11l\\x0e~y\\xeaW\\xb8r\\x98U&\\x8favD\\x8e\\xea', 'keyId': 7510417767858700291}}, 'operationTime': Timestamp(1748656334, 3)}")>, <ServerDescription ('10.193.39.225', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('683a60dcdc1617083beb58d0'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 5575, 'lastCommittedOpTime': Timestamp(0, 0), '$clusterTime': {'clusterTime': Timestamp(1748656352, 1), 'signature': {'hash': b'\\xbe\\x1a\\x11l\\x0e~y\\xeaW\\xb8r\\x98U&\\x8favD\\x8e\\xea', 'keyId': 7510417767858700291}}, 'operationTime': Timestamp(1748656334, 3)}")>]>
+unit-shard-one-1: 01:52:53 ERROR unit.shard-one/1.juju-log sharding:9: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 683a60f403c546bef9370472, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.193.39.124', 27017) server_type: RSSecondary, rtt: 0.0007592290001412038>, <ServerDescription ('10.193.39.18', 27017) server_type: RSSecondary, rtt: 0.0022265220000008412>, <ServerDescription ('10.193.39.225', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('683a60dcdc1617083beb58d0'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 1318, 'lastCommittedOpTime': Timestamp(0, 0), '$clusterTime': {'clusterTime': Timestamp(1748656372, 1), 'signature': {'hash': b'\\xfd\\x16\\xb41[\\xfa1\\x0c\\x8a,\\xb0E\\xf8(\\x86Q\\xda\\x05\\xb7\\xff', 'keyId': 7510417767858700291}}, 'operationTime': Timestamp(1748656334, 3)}")>]>
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
