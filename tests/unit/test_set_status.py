@@ -81,7 +81,7 @@ class TestCharm(unittest.TestCase):
             valid_s3_integration_mock
         )
 
-        statuses = self.harness.charm.operator.compute_statuses(scope=Scope.UNIT)
+        statuses = self.harness.charm.operator.get_statuses(scope=Scope.UNIT, recompute=True)
         status = next(iter(statuses), None)
 
         assert status.status == expected_status or ActiveStatus("")

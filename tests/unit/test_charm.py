@@ -310,9 +310,11 @@ class TestCharm(unittest.TestCase):
         init_replset.assert_called()
         init_admin.assert_not_called()
 
-        statuses = self.harness.charm.operator.component_statuses.get(scope=Scope.UNIT)
+        statuses = self.harness.charm.operator.state.statuses.get(
+            scope=Scope.UNIT, component="mongod"
+        )
         status = next(iter(statuses), None)
-        assert isinstance(status.status, WaitingStatus)
+        assert status.status == "waiting"
 
     @pytest.mark.usefixtures("mock_fs_interactions")
     @parameterized.expand(
@@ -323,11 +325,11 @@ class TestCharm(unittest.TestCase):
         ]
     )
     @patch(
-        "single_kernel_mongo.managers.mongodb_operator.MongoDBOperator.compute_statuses",
+        "single_kernel_mongo.managers.mongodb_operator.MongoDBOperator.get_statuses",
         return_value=[],
     )
-    @patch("single_kernel_mongo.managers.backups.BackupManager.compute_statuses")
-    @patch("single_kernel_mongo.managers.mongo.MongoManager.compute_statuses")
+    @patch("single_kernel_mongo.managers.backups.BackupManager.get_statuses")
+    @patch("single_kernel_mongo.managers.mongo.MongoManager.get_statuses")
     def test_update_status_pbm_error(
         self,
         pbm_status,
@@ -343,8 +345,12 @@ class TestCharm(unittest.TestCase):
         mongodb_status = ActiveStatus("mongodb")
         self.harness.add_relation(S3_RELATION_NAME, "s3-integrator")
 
-        get_pbm_status.return_value = [StatusObject(status=pbm_status)]
-        get_mongodb_status.return_value = [StatusObject(status=mongodb_status)]
+        get_pbm_status.return_value = [
+            StatusObject(status=pbm_status.name, message=pbm_status.message)
+        ]
+        get_mongodb_status.return_value = [
+            StatusObject(status=mongodb_status.name, message=mongodb_status.message)
+        ]
 
         self.harness.run_action("status-detail", {"recompute": True})
 
@@ -354,8 +360,8 @@ class TestCharm(unittest.TestCase):
         assert pbm_status.message in self.harness.model.unit.status.message
 
     @pytest.mark.usefixtures("mock_fs_interactions")
-    @patch("single_kernel_mongo.managers.backups.BackupManager.compute_statuses")
-    @patch("single_kernel_mongo.managers.mongo.MongoManager.compute_statuses")
+    @patch("single_kernel_mongo.managers.backups.BackupManager.get_statuses")
+    @patch("single_kernel_mongo.managers.mongo.MongoManager.get_statuses")
     def test_update_status_pbm_and_mongodb_ready(
         self,
         get_mongodb_status,
@@ -368,8 +374,8 @@ class TestCharm(unittest.TestCase):
 
         self.harness.add_relation(S3_RELATION_NAME, "s3-integrator")
 
-        get_pbm_status.return_value = [StatusObject(status=ActiveStatus("pbm"))]
-        get_mongodb_status.return_value = [StatusObject(status=ActiveStatus("mongodb"))]
+        get_pbm_status.return_value = [StatusObject(status="active", message="pbm")]
+        get_mongodb_status.return_value = [StatusObject(status="active", message="mongodb")]
         self.harness.run_action("status-detail", {"recompute": True})
 
         self.harness.evaluate_status()
@@ -377,7 +383,7 @@ class TestCharm(unittest.TestCase):
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus("mongodb"))
 
     @pytest.mark.usefixtures("mock_fs_interactions")
-    @patch("single_kernel_mongo.managers.mongo.MongoManager.compute_statuses")
+    @patch("single_kernel_mongo.managers.mongo.MongoManager.get_statuses")
     def test_update_status_no_s3(
         self,
         get_mongodb_status,
@@ -387,7 +393,7 @@ class TestCharm(unittest.TestCase):
         self.harness.set_leader(True)
         self.harness.charm.operator.state.db_initialised = True
 
-        get_mongodb_status.return_value = [StatusObject(status=ActiveStatus("mongodb"))]
+        get_mongodb_status.return_value = [StatusObject(status="active", message="mongodb")]
         self.harness.run_action("status-detail", {"recompute": True})
 
         self.harness.evaluate_status()
@@ -395,7 +401,7 @@ class TestCharm(unittest.TestCase):
 
     @pytest.mark.usefixtures("mock_fs_interactions")
     @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.get_replset_status")
-    @patch("single_kernel_mongo.managers.backups.BackupManager.compute_statuses")
+    @patch("single_kernel_mongo.managers.backups.BackupManager.get_statuses")
     def test_update_status_primary(
         self,
         get_pbm_status,
@@ -406,7 +412,7 @@ class TestCharm(unittest.TestCase):
         self.harness.set_leader(True)
         self.harness.charm.operator.state.db_initialised = True
 
-        get_pbm_status.return_value = [StatusObject(status=ActiveStatus(""))]
+        get_pbm_status.return_value = [StatusObject(status="active", message="")]
 
         self.harness.set_leader(False)
         get_replset_status.return_value = {"10.0.0.10": "PRIMARY"}
@@ -417,7 +423,7 @@ class TestCharm(unittest.TestCase):
 
     @pytest.mark.usefixtures("mock_fs_interactions")
     @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.get_replset_status")
-    @patch("single_kernel_mongo.managers.backups.BackupManager.compute_statuses")
+    @patch("single_kernel_mongo.managers.backups.BackupManager.get_statuses")
     def test_update_status_secondary(
         self,
         get_pbm_status,
@@ -427,7 +433,7 @@ class TestCharm(unittest.TestCase):
         # assume leader has already initialised the replica set
         self.harness.set_leader(True)
         self.harness.charm.operator.state.db_initialised = True
-        get_pbm_status.return_value = [StatusObject(status=ActiveStatus(""))]
+        get_pbm_status.return_value = [StatusObject(status="active", message="")]
 
         self.harness.set_leader(False)
         get_replset_status.return_value = {"10.0.0.10": "SECONDARY"}
@@ -450,10 +456,10 @@ class TestCharm(unittest.TestCase):
     )
     @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.get_replset_status")
     @patch(
-        "single_kernel_mongo.managers.mongodb_operator.MongoDBOperator.compute_statuses",
+        "single_kernel_mongo.managers.mongodb_operator.MongoDBOperator.get_statuses",
         return_value=[],
     )
-    @patch("single_kernel_mongo.managers.backups.BackupManager.compute_statuses")
+    @patch("single_kernel_mongo.managers.backups.BackupManager.get_statuses")
     def test_update_status_additional_messages(
         self,
         replset_status,
@@ -466,7 +472,7 @@ class TestCharm(unittest.TestCase):
         # assume leader has already initialised the replica set
         self.harness.set_leader(True)
         self.harness.charm.operator.state.db_initialised = True
-        get_pbm_status.return_value = [StatusObject(status=ActiveStatus(""))]
+        get_pbm_status.return_value = [StatusObject(status="active", message="")]
 
         # Case 1: Unit has not been added to replica set yet
         self.harness.set_leader(False)
@@ -583,11 +589,11 @@ class TestCharm(unittest.TestCase):
         run.assert_called_once()
 
     @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.set_user_password")
-    @patch("single_kernel_mongo.managers.backups.BackupManager.compute_statuses")
+    @patch("single_kernel_mongo.managers.backups.BackupManager.get_statuses")
     def test_set_password(self, pbm_status, *unused):
         """Tests that a new admin password is generated and is returned to the user."""
         self.harness.set_leader(True)
-        pbm_status.return_value = [StatusObject(status=ActiveStatus("pbm"))]
+        pbm_status.return_value = [StatusObject(status="active", message="pbm")]
         original_password = self.harness.charm.operator.state.secrets.get_for_key(
             Scope.APP, "operator-password"
         )
@@ -600,11 +606,11 @@ class TestCharm(unittest.TestCase):
         self.assertNotEqual(original_password, new_password)
 
     @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.set_user_password")
-    @patch("single_kernel_mongo.managers.backups.BackupManager.compute_statuses")
+    @patch("single_kernel_mongo.managers.backups.BackupManager.get_statuses")
     def test_set_password_provided(self, pbm_status, *unused):
         """Tests that a given password is set as the new mongodb password."""
         self.harness.set_leader(True)
-        pbm_status.return_value = [StatusObject(status=ActiveStatus("pbm"))]
+        pbm_status.return_value = [StatusObject(status="active", message="pbm")]
         output = self.harness.run_action("set-password", {"password": "canonical123"})
         new_password = self.harness.charm.operator.state.secrets.get_for_key(
             Scope.APP, "operator-password"
@@ -616,11 +622,11 @@ class TestCharm(unittest.TestCase):
         assert output.results["secret-id"]
 
     @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.set_user_password")
-    @patch("single_kernel_mongo.managers.backups.BackupManager.compute_statuses")
+    @patch("single_kernel_mongo.managers.backups.BackupManager.get_statuses")
     def test_set_password_failure(self, pbm_status, set_user_password):
         """Tests failure to reset password does not update app data and failure is reported."""
         self.harness.set_leader(True)
-        pbm_status.return_value = [StatusObject(status=ActiveStatus("pbm"))]
+        pbm_status.return_value = [StatusObject(status="active", message="pbm")]
         original_password = self.harness.charm.operator.state.secrets.get_for_key(
             Scope.APP, "operator-password"
         )
@@ -796,12 +802,12 @@ class TestCharm(unittest.TestCase):
         output = self.harness.run_action("get-password", {"username": "monitor"})
         assert output.results["password"]
 
-    @patch("single_kernel_mongo.managers.backups.BackupManager.compute_statuses")
+    @patch("single_kernel_mongo.managers.backups.BackupManager.get_statuses")
     def test_set_backup_password_pbm_busy(self, pbm_status):
         """Tests changes to passwords fail when pbm is restoring/backing up."""
         self.harness.set_leader(True)
 
-        pbm_status.return_value = [StatusObject(status=MaintenanceStatus("pbm"))]
+        pbm_status.return_value = [StatusObject(status="maintenance", message="pbm")]
         for user in [BackupUser, MonitorUser, OperatorUser]:
             original_password = self.harness.charm.operator.state.get_user_password(user)
             with pytest.raises(ActionFailed):
