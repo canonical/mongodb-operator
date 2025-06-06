@@ -1,0 +1,72 @@
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  application/0 [idle] active: received database credentials of the second database
+  application/1 [idle] active: received database credentials of the second database
+  another-database/0 [idle] active: Primary
+  mongodb/2 [executing] active: Primary
+  mongodb/3 [executing] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.6.1    unsupported  02:07:51Z
+
+App                  Version  Status  Scale  Charm        Channel  Rev  Exposed  Message
+another-application           active      1  application             1  no       received database credentials of the first database
+another-database     6.0.6    active      1  mongodb                 0  no       
+application                   active      2  application             0  no       received database credentials of the second database
+mongodb              6.0.6    active      2  mongodb                 1  no       
+
+Unit                    Workload  Agent  Machine  Public address  Ports      Message
+another-application/0*  active    idle   7        10.33.219.72               received database credentials of the first database
+another-database/0*     active    idle   2        10.33.219.15    27017/tcp  Primary
+application/0           active    idle   0        10.33.219.194              received database credentials of the second database
+application/1*          active    idle   1        10.33.219.27               received database credentials of the second database
+mongodb/2               active    idle   5        10.33.219.115   27017/tcp  Primary
+mongodb/3*              active    idle   6        10.33.219.192   27017/tcp  
+
+Machine  State    Address        Inst id        Base          AZ  Message
+0        started  10.33.219.194  juju-1a4ad1-0  ubuntu@20.04      Running
+1        started  10.33.219.27   juju-1a4ad1-1  ubuntu@20.04      Running
+2        started  10.33.219.15   juju-1a4ad1-2  ubuntu@22.04      Running
+5        started  10.33.219.115  juju-1a4ad1-5  ubuntu@22.04      Running
+6        started  10.33.219.192  juju-1a4ad1-6  ubuntu@22.04      Running
+7        started  10.33.219.72   juju-1a4ad1-7  ubuntu@20.04      Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+machine-1: 01:48:40 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 01:48:40 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-application-1: 01:48:41 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-0: 01:50:00 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 01:50:00 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-application-0: 01:50:00 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-4: 01:50:33 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-4: 01:50:33 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-1: 01:50:34 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-3: 01:50:41 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 01:50:41 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-0: 01:50:41 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-1: 01:51:51 ERROR unit.mongodb/1.juju-log Unable to set params: ['vm.max_map_count']
+unit-mongodb-1: 01:51:51 ERROR unit.mongodb/1.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+unit-mongodb-0: 01:52:01 ERROR unit.mongodb/0.juju-log Unable to set params: ['vm.max_map_count']
+unit-mongodb-0: 01:52:02 ERROR unit.mongodb/0.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+machine-2: 01:53:44 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 01:53:44 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-another-database-0: 01:53:44 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-another-database-0: 01:54:31 ERROR unit.another-database/0.juju-log Unable to set params: ['vm.max_map_count']
+unit-another-database-0: 01:54:31 ERROR unit.another-database/0.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+machine-5: 01:58:19 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-5: 01:58:19 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-2: 01:58:19 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-6: 01:58:23 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-6: 01:58:23 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-3: 01:58:23 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-2: 01:58:57 ERROR unit.mongodb/2.juju-log Unable to set params: ['vm.max_map_count']
+unit-mongodb-2: 01:58:57 ERROR unit.mongodb/2.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+unit-mongodb-3: 01:59:02 ERROR unit.mongodb/3.juju-log Unable to set params: ['vm.max_map_count']
+unit-mongodb-3: 01:59:02 ERROR unit.mongodb/3.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+machine-7: 02:04:36 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-7: 02:04:36 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-another-application-0: 02:04:36 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-application-0: 02:07:30 ERROR juju.worker.dependency "uniter" manifold worker returned unexpected error: relation scope id "0123f37a-c458-491b-8a2a-6aec411a4ad1:r#6#mongodb": settings 0123f37a-c458-491b-8a2a-6aec411a4ad1:r#6#mongodb not found (not found)
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
