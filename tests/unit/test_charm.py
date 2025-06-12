@@ -102,7 +102,6 @@ class TestCharm(unittest.TestCase):
                 "single_kernel_mongo.core.vm_workload.VMWorkload.start",
                 side_effect=WorkloadServiceError,
             ),
-            pytest.raises(WorkloadServiceError),
         ):
             self.harness.charm.on.start.emit()
 
@@ -135,8 +134,10 @@ class TestCharm(unittest.TestCase):
         self.harness.set_leader(True)
 
         self.harness.charm.workload.exec = mock_exec
-        with pytest.raises(WorkloadExecError):
-            self.harness.charm.on.start.emit()
+        self.harness.charm.on.start.emit()
+        self.harness.evaluate_status()
+
+        self.assertTrue(isinstance(self.harness.charm.unit.status, MaintenanceStatus))
 
     def test_install_snap_packages_failure(
         self,
@@ -296,7 +297,7 @@ class TestCharm(unittest.TestCase):
         "single_kernel_mongo.managers.mongo.MongoManager.initialise_operator_user",
     )
     @pytest.mark.usefixtures("mock_fs_interactions")
-    def test_initialise_replica_failure_leads_to_waiting_state(
+    def test_initialise_replica_failure_leads_to_blocked_state(
         self,
         exception,
         init_admin,
@@ -314,7 +315,7 @@ class TestCharm(unittest.TestCase):
             scope=Scope.UNIT, component="mongod"
         )
         status = next(iter(statuses), None)
-        assert status.status == "waiting"
+        assert status.status == "blocked"
 
     @pytest.mark.usefixtures("mock_fs_interactions")
     @parameterized.expand(
