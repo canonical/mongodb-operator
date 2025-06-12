@@ -264,7 +264,7 @@ async def test_shard_mongos_relation(ops_test: OpsTest) -> None:
     await wait_for_mongodb_units_blocked(
         ops_test,
         SHARD_ONE_APP_NAME,
-        status="Relation to mongos not supported, config role must be config-server",
+        status="Relation to mongos not supported",
         timeout=300,
     )
 
