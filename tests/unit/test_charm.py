@@ -146,7 +146,7 @@ class TestCharm(unittest.TestCase):
         with (
             patch(
                 "single_kernel_mongo.core.vm_workload.VMWorkload.install",
-                return_value=False,
+                side_effect=WorkloadNotReadyError,
             ),
             pytest.raises(WorkloadNotReadyError),
         ):
