@@ -1,0 +1,78 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.6.1    unsupported  02:53:12Z
+
+App                 Version  Status   Scale  Charm    Channel  Rev  Exposed  Message
+another-database-a           waiting    0/1  mongodb             1  no       waiting for machine
+mongodb             6.0.6    active       3  mongodb             0  no       
+
+Unit                  Workload  Agent       Machine  Public address  Ports      Message
+another-database-a/0  waiting   allocating  6        10.192.33.110              waiting for machine
+mongodb/2             active    idle        2        10.192.33.249   27017/tcp  Primary
+mongodb/3             active    idle        3        10.192.33.74    27017/tcp  
+mongodb/4*            active    idle        4        10.192.33.224   27017/tcp  
+
+Machine  State    Address        Inst id        Base          AZ  Message
+2        started  10.192.33.249  juju-ec8616-2  ubuntu@22.04      Running
+3        started  10.192.33.74   juju-ec8616-3  ubuntu@22.04      Running
+4        started  10.192.33.224  juju-ec8616-4  ubuntu@22.04      Running
+6        pending  10.192.33.110  juju-ec8616-6  ubuntu@22.04      Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+machine-1: 01:50:10 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 01:50:10 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-1: 01:50:10 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-2: 01:50:29 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 01:50:29 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-2: 01:50:29 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-2: 01:50:57 ERROR unit.mongodb/2.juju-log Unable to set params: ['vm.max_map_count']
+unit-mongodb-2: 01:50:57 ERROR unit.mongodb/2.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+unit-mongodb-2: 01:51:07 ERROR unit.mongodb/2.juju-log Deferring because of Exception Waiting for leader unit to generate keyfile contents
+machine-0: 01:52:09 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 01:52:09 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-0: 01:52:09 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-0: 01:52:38 ERROR unit.mongodb/0.juju-log Unable to set params: ['vm.max_map_count']
+unit-mongodb-0: 01:52:38 ERROR unit.mongodb/0.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+unit-mongodb-2: 01:52:40 ERROR unit.mongodb/2.juju-log ldap-peers:1: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-mongodb-2: 01:52:42 ERROR unit.mongodb/2.juju-log database-peers:2: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-mongodb-2: 01:52:43 ERROR unit.mongodb/2.juju-log database-peers:2: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-mongodb-2: 01:52:45 ERROR unit.mongodb/2.juju-log ldap-peers:1: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-mongodb-2: 01:52:47 ERROR unit.mongodb/2.juju-log upgrade-version-a:0: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-mongodb-0: 01:52:48 ERROR unit.mongodb/0.juju-log Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-mongodb-2: 01:52:48 ERROR unit.mongodb/2.juju-log upgrade-version-a:0: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-mongodb-0: 01:52:50 ERROR unit.mongodb/0.juju-log ldap-peers:1: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-mongodb-0: 01:52:51 ERROR unit.mongodb/0.juju-log database-peers:2: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-mongodb-0: 01:52:53 ERROR unit.mongodb/0.juju-log ldap-peers:1: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-mongodb-0: 01:52:55 ERROR unit.mongodb/0.juju-log database-peers:2: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-mongodb-0: 01:52:56 ERROR unit.mongodb/0.juju-log upgrade-version-a:0: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-mongodb-0: 01:52:58 ERROR unit.mongodb/0.juju-log upgrade-version-a:0: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-mongodb-2: 01:56:18 ERROR unit.mongodb/2.juju-log Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-mongodb-1: 01:56:49 ERROR unit.mongodb/1.juju-log Unable to set params: ['vm.max_map_count']
+unit-mongodb-1: 01:56:49 ERROR unit.mongodb/1.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+unit-mongodb-2: 01:56:51 ERROR unit.mongodb/2.juju-log database-peers:2: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-mongodb-0: 01:56:51 ERROR unit.mongodb/0.juju-log database-peers:2: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-mongodb-0: 01:56:53 ERROR unit.mongodb/0.juju-log upgrade-version-a:0: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-mongodb-2: 01:56:53 ERROR unit.mongodb/2.juju-log upgrade-version-a:0: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-mongodb-2: 01:56:54 ERROR unit.mongodb/2.juju-log upgrade-version-a:0: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-mongodb-0: 01:56:54 ERROR unit.mongodb/0.juju-log ldap-peers:1: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-mongodb-0: 01:56:56 ERROR unit.mongodb/0.juju-log database-peers:2: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-mongodb-2: 01:56:56 ERROR unit.mongodb/2.juju-log upgrade-version-a:0: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+machine-3: 02:02:48 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 02:02:48 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-3: 02:02:48 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-3: 02:03:18 ERROR unit.mongodb/3.juju-log Unable to set params: ['vm.max_map_count']
+unit-mongodb-3: 02:03:18 ERROR unit.mongodb/3.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+machine-4: 02:09:02 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-4: 02:09:02 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-4: 02:09:02 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-4: 02:09:33 ERROR unit.mongodb/4.juju-log Unable to set params: ['vm.max_map_count']
+unit-mongodb-4: 02:09:33 ERROR unit.mongodb/4.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+machine-5: 02:10:07 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-5: 02:10:07 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-5: 02:10:07 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-mongodb-5: 02:16:26 ERROR unit.mongodb/5.juju-log Unable to set params: ['vm.max_map_count']
+unit-mongodb-5: 02:16:26 ERROR unit.mongodb/5.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
