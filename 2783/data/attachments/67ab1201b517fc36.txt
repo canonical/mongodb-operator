@@ -1,0 +1,101 @@
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  replication/0 [executing] blocked: sharding interface cannot be used by replicas
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.6.1    unsupported  01:46:04Z
+
+App                       Version  Status   Scale  Charm                     Channel        Rev  Exposed  Message
+application                        active       1  application                                0  no       
+application-host                   active       1  application                                0  no       
+config-server-one         6.0.6    active       1  mongodb                                    0  no       
+config-server-two         6.0.6    active       1  mongodb                                    1  no       
+mongos                    6.0.6    active       1  mongos                    6/edge          43  no       
+replication               6.0.6    active       1  mongodb                                    3  no       
+s3-integrator                      blocked      1  s3-integrator             latest/edge    158  no       Missing parameters: ['access-key', 'secret-key']
+self-signed-certificates           active       1  self-signed-certificates  latest/stable  264  no       
+shard                     6.0.6    active       1  mongodb                                    2  no       
+
+Unit                         Workload  Agent  Machine  Public address  Ports            Message
+application-host/0*          active    idle   5        10.155.141.177                   
+  mongos/0*                  waiting   idle            10.155.141.177                   Connecting to config-server
+application/0*               active    idle   7        10.155.141.170                   
+config-server-one/0*         blocked   idle   0        10.155.141.238  27017-27018/tcp  Sharding roles do not support database interface.
+config-server-two/0*         active    idle   1        10.155.141.134  27017-27018/tcp  
+replication/0*               active    idle   6        10.155.141.79   27017/tcp        
+s3-integrator/0*             blocked   idle   4        10.155.141.179                   Missing parameters: ['access-key', 'secret-key']
+self-signed-certificates/0*  active    idle   3        10.155.141.146                   
+shard/0*                     blocked   idle   2        10.155.141.200  27017/tcp        Relation to s3-integrator is not supported, config role must be config-server.
+
+Machine  State    Address         Inst id        Base          AZ  Message
+0        started  10.155.141.238  juju-87ab04-0  ubuntu@22.04      Running
+1        started  10.155.141.134  juju-87ab04-1  ubuntu@22.04      Running
+2        started  10.155.141.200  juju-87ab04-2  ubuntu@22.04      Running
+3        started  10.155.141.146  juju-87ab04-3  ubuntu@22.04      Running
+4        started  10.155.141.179  juju-87ab04-4  ubuntu@22.04      Running
+5        started  10.155.141.177  juju-87ab04-5  ubuntu@22.04      Running
+6        started  10.155.141.79   juju-87ab04-6  ubuntu@22.04      Running
+7        started  10.155.141.170  juju-87ab04-7  ubuntu@20.04      Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+machine-7: 01:38:52 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-7: 01:38:52 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-application-0: 01:38:52 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-0: 01:39:55 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 01:39:55 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-one-0: 01:39:55 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-3: 01:40:01 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 01:40:01 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-self-signed-certificates-0: 01:40:01 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-4: 01:40:10 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-4: 01:40:10 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-s3-integrator-0: 01:40:10 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-2: 01:40:14 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 01:40:14 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-0: 01:40:14 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-config-server-one-0: 01:40:22 ERROR unit.config-server-one/0.juju-log Unable to set params: ['vm.max_map_count']
+unit-config-server-one-0: 01:40:22 ERROR unit.config-server-one/0.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+machine-1: 01:40:34 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 01:40:34 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-two-0: 01:40:34 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-5: 01:40:48 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-5: 01:40:48 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-application-host-0: 01:40:48 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-shard-0: 01:40:48 ERROR unit.shard/0.juju-log Unable to set params: ['vm.max_map_count']
+unit-shard-0: 01:40:48 ERROR unit.shard/0.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+machine-6: 01:41:11 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-6: 01:41:11 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-replication-0: 01:41:11 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-config-server-two-0: 01:41:26 ERROR unit.config-server-two/0.juju-log Unable to set params: ['vm.max_map_count']
+unit-config-server-two-0: 01:41:26 ERROR unit.config-server-two/0.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+unit-replication-0: 01:41:39 ERROR unit.replication/0.juju-log Unable to set params: ['vm.max_map_count']
+unit-replication-0: 01:41:39 ERROR unit.replication/0.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+unit-mongos-0: 01:42:19 ERROR juju.worker.meterstatus error running "meter-status-changed": exit status 2
+unit-config-server-one-0: 01:43:41 ERROR unit.config-server-one/0.juju-log database:19: Charm is in sharding role: MongoDBRoles.CONFIG_SERVER. Does not support database interface.
+unit-config-server-one-0: 01:43:41 ERROR unit.config-server-one/0.juju-log database:19: Charm is in sharding role: MongoDBRoles.CONFIG_SERVER. Does not support database interface.
+unit-shard-0: 01:43:41 ERROR unit.shard/0.juju-log database:18: Charm is in sharding role: MongoDBRoles.SHARD. Does not support database interface.
+unit-shard-0: 01:43:41 ERROR unit.shard/0.juju-log database:18: Charm is in sharding role: MongoDBRoles.SHARD. Does not support database interface.
+unit-shard-0: 01:43:45 ERROR unit.shard/0.juju-log database:18: Charm is in sharding role: MongoDBRoles.SHARD. Does not support database interface.
+unit-config-server-one-0: 01:43:45 ERROR unit.config-server-one/0.juju-log database:19: Charm is in sharding role: MongoDBRoles.CONFIG_SERVER. Does not support database interface.
+unit-shard-0: 01:43:47 ERROR unit.shard/0.juju-log database:18: Charm is in sharding role: MongoDBRoles.SHARD. Does not support database interface.
+unit-config-server-one-0: 01:43:48 ERROR unit.config-server-one/0.juju-log database:19: Charm is in sharding role: MongoDBRoles.CONFIG_SERVER. Does not support database interface.
+unit-replication-0: 01:44:11 ERROR unit.replication/0.juju-log sharding:20: Charm is in replication role: MongoDBRoles.REPLICATION. Does not support RelationNames.SHARDING interface.
+unit-config-server-one-0: 01:44:15 ERROR juju.worker.uniter.context cannot apply changes: granting secrets access: cannot change access to "secret://a994a0df-965b-48bc-8189-ed8f3a87ab04/d19mmrieg06cr5bkj9n0" for "application-replication": cannot grant access to secret in scope of "relation-replication.sharding#config-server-one.config-server" which is not alive
+cannot change access to "secret://a994a0df-965b-48bc-8189-ed8f3a87ab04/d19mmrieg06cr5bkj9ng" for "application-replication": cannot grant access to secret in scope of "relation-replication.sharding#config-server-one.config-server" which is not alive
+unit-config-server-one-0: 01:44:15 ERROR juju.worker.uniter.operation hook "config-server-relation-changed" (via hook dispatching script: dispatch) failed: granting secrets access: cannot change access to "secret://a994a0df-965b-48bc-8189-ed8f3a87ab04/d19mmrieg06cr5bkj9n0" for "application-replication": cannot grant access to secret in scope of "relation-replication.sharding#config-server-one.config-server" which is not alive
+cannot change access to "secret://a994a0df-965b-48bc-8189-ed8f3a87ab04/d19mmrieg06cr5bkj9ng" for "application-replication": cannot grant access to secret in scope of "relation-replication.sharding#config-server-one.config-server" which is not alive
+unit-replication-0: 01:44:15 ERROR unit.replication/0.juju-log sharding:20: Charm is in replication role: MongoDBRoles.REPLICATION. Does not support RelationNames.SHARDING interface.
+unit-replication-0: 01:44:18 ERROR unit.replication/0.juju-log sharding:20: Charm is in replication role: MongoDBRoles.REPLICATION. Does not support RelationNames.SHARDING interface.
+unit-mongos-0: 01:44:44 ERROR unit.mongos/0.juju-log cluster:22: Can't delete secret for relation 16
+unit-replication-0: 01:44:47 ERROR juju.worker.uniter.context cannot apply changes: granting secrets access: cannot change access to "secret://a994a0df-965b-48bc-8189-ed8f3a87ab04/d19mn3ieg06cr5bkj9o0" for "application-mongos": cannot grant access to secret in scope of "relation-mongos.cluster#replication.cluster" which is not alive
+unit-replication-0: 01:44:47 ERROR juju.worker.uniter.operation hook "cluster-relation-broken" (via hook dispatching script: dispatch) failed: granting secrets access: cannot change access to "secret://a994a0df-965b-48bc-8189-ed8f3a87ab04/d19mn3ieg06cr5bkj9o0" for "application-mongos": cannot grant access to secret in scope of "relation-mongos.cluster#replication.cluster" which is not alive
+unit-mongos-0: 01:45:09 ERROR unit.mongos/0.juju-log cluster:23: Can't delete secret for relation 16
+unit-shard-0: 01:45:13 ERROR juju.worker.uniter.context cannot apply changes: granting secrets access: cannot change access to "secret://a994a0df-965b-48bc-8189-ed8f3a87ab04/d19mna2eg06cr5bkj9og" for "application-mongos": cannot grant access to secret in scope of "relation-mongos.cluster#shard.cluster" which is not alive
+unit-shard-0: 01:45:13 ERROR juju.worker.uniter.operation hook "cluster-relation-broken" (via hook dispatching script: dispatch) failed: granting secrets access: cannot change access to "secret://a994a0df-965b-48bc-8189-ed8f3a87ab04/d19mna2eg06cr5bkj9og" for "application-mongos": cannot grant access to secret in scope of "relation-mongos.cluster#shard.cluster" which is not alive
+unit-replication-0: 01:45:29 ERROR unit.replication/0.juju-log certificates:25: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-replication-0: 01:45:29 ERROR unit.replication/0.juju-log certificates:25: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-replication-0: 01:45:35 ERROR unit.replication/0.juju-log sharding:26: Charm is in replication role: MongoDBRoles.REPLICATION. Does not support RelationNames.SHARDING interface.
+unit-replication-0: 01:45:39 ERROR unit.replication/0.juju-log sharding:26: Charm is in replication role: MongoDBRoles.REPLICATION. Does not support RelationNames.SHARDING interface.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
