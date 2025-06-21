@@ -1,0 +1,165 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.6.1    unsupported  01:42:20Z
+
+App               Version  Status  Scale  Charm        Channel  Rev  Exposed  Message
+another-database  6.0.6    active      1  mongodb                 0  no       
+application                active      2  application             0  no       
+mongodb           6.0.6    error       2  mongodb                 1  no       hook failed: "database-peers-relation-changed"
+
+Unit                 Workload     Agent      Machine  Public address  Ports  Message
+another-database/0*  active       executing  2        10.36.223.53           (start) 
+application/0*       active       idle       0        10.36.223.125          
+application/1        active       idle       1        10.36.223.207          
+mongodb/0            error        idle       3        10.36.223.19           hook failed: "database-peers-relation-changed"
+mongodb/1*           maintenance  executing  4        10.36.223.102          (config-changed) Installed MongoDB
+
+Machine  State    Address        Inst id        Base          AZ  Message
+0        started  10.36.223.125  juju-43a41e-0  ubuntu@20.04      Running
+1        started  10.36.223.207  juju-43a41e-1  ubuntu@20.04      Running
+2        started  10.36.223.53   juju-43a41e-2  ubuntu@22.04      Running
+3        started  10.36.223.19   juju-43a41e-3  ubuntu@22.04      Running
+4        started  10.36.223.102  juju-43a41e-4  ubuntu@22.04      Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+machine-0: 01:39:57 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 01:39:57 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-application-0: 01:39:57 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-1: 01:40:49 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 01:40:49 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-application-1: 01:40:49 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-4: 01:41:12 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-4: 01:41:12 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-1: 01:41:12 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-2: 01:41:12 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 01:41:12 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-another-database-0: 01:41:12 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-3: 01:41:20 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 01:41:20 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-0: 01:41:20 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-another-database-0: 01:42:01 ERROR unit.another-database/0.juju-log Unable to set params: ['vm.max_map_count']
+unit-another-database-0: 01:42:01 ERROR unit.another-database/0.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+unit-mongodb-0: 01:42:03 ERROR unit.mongodb/0.juju-log Unable to set params: ['vm.max_map_count']
+unit-mongodb-0: 01:42:03 ERROR unit.mongodb/0.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+unit-mongodb-0: 01:42:11 ERROR unit.mongodb/0.juju-log Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-mongodb-0: 01:42:12 ERROR unit.mongodb/0.juju-log database:6: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-mongodb-0: 01:42:13 ERROR unit.mongodb/0.juju-log database:6: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-mongodb-1: 01:42:13 ERROR unit.mongodb/1.juju-log Unable to set params: ['vm.max_map_count']
+unit-mongodb-1: 01:42:13 ERROR unit.mongodb/1.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+unit-mongodb-0: 01:42:14 ERROR unit.mongodb/0.juju-log database:6: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-mongodb-0: 01:42:16 ERROR unit.mongodb/0.juju-log database:6: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-mongodb-0: 01:42:17 ERROR unit.mongodb/0.juju-log database:6: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-mongodb-0: 01:42:18 ERROR unit.mongodb/0.juju-log database-peers:3: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-mongodb-0: 01:42:19 ERROR unit.mongodb/0.juju-log database-peers:3: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-mongodb-0: 01:42:19 ERROR unit.mongodb/0.juju-log database-peers:3: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/ops/model.py", line 3187, in _run
+    result = subprocess.run(args, **kwargs)  # type: ignore
+  File "/usr/lib/python3.10/subprocess.py", line 526, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '('/var/lib/juju/tools/unit-mongodb-0/secret-get', '--label', 'database-peers.mongodb.app', '--format=json')' returned non-zero exit status 1.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/ops/model.py", line 3552, in secret_get
+    result = self._run('secret-get', *args, return_output=True, use_json=True)
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/ops/model.py", line 3189, in _run
+    raise ModelError(e.stderr) from e
+ops.model.ModelError: ERROR consumer label "database-peers.mongodb.app" not found
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 638, in meta
+    self._secret_meta = self._model.get_secret(label=self.label)
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/ops/model.py", line 291, in get_secret
+    content = self._backend.secret_get(id=id, label=label)
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/ops/model.py", line 3555, in secret_get
+    raise SecretNotFoundError() from e
+ops.model.SecretNotFoundError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/ops/model.py", line 3187, in _run
+    result = subprocess.run(args, **kwargs)  # type: ignore
+  File "/usr/lib/python3.10/subprocess.py", line 526, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '('/var/lib/juju/tools/unit-mongodb-0/secret-get', '--label', 'mongodb.app', '--format=json')' returned non-zero exit status 1.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/src/charm.py", line 25, in <module>
+    main(MongoDBVMCharm)
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/events/lifecycle.py", line 171, in on_relation_changed
+    self.dependent.on_relation_changed()
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/managers/mongodb_operator.py", line 478, in on_relation_changed
+    self.backup_manager.configure_and_restart()
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/managers/config.py", line 131, in configure_and_restart
+    if not self.state.db_initialised:
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/state/charm_state.py", line 410, in db_initialised
+    return self.app_peer_data.db_initialised
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/state/app_peer_state.py", line 100, in db_initialised
+    return json.loads(self.relation_data.get(AppPeerDataKeys.DB_INITIALISED.value, "false"))
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 943, in get
+    if result := self[key]:
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 876, in __getitem__
+    result = self.relation_data.fetch_my_relation_field(self.relation_id, key)
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 1393, in fetch_my_relation_field
+    if relation_data := self.fetch_my_relation_data([relation_id], [field], relation_name):
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 1382, in fetch_my_relation_data
+    data[relation.id] = self._fetch_my_specific_relation_data(relation, fields)
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 532, in wrapper
+    return f(self, *args, **kwargs)
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 2329, in _fetch_my_specific_relation_data
+    self.component, self.secret_fields, relation, fields
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 1966, in secret_fields
+    self.static_secret_fields if self.static_secret_fields else self.current_secret_fields
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 1985, in current_secret_fields
+    if content := self._get_group_secret_contents(relation, group):
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 2316, in _get_group_secret_contents
+    result = super()._get_group_secret_contents(relation, group, secret_fields)
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 1119, in _get_group_secret_contents
+    if (secret := self._get_relation_secret(relation.id, group)) and (
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 504, in wrapper
+    return f(self, *args, **kwargs)
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 2303, in _get_relation_secret
+    return self.secrets.get(
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 808, in get
+    if secret.meta:
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 641, in meta
+    self._legacy_compat_find_secret_by_old_label()
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 555, in wrapper
+    return f(self, *args, **kwargs)
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 676, in _legacy_compat_find_secret_by_old_label
+    self._secret_meta = self._model.get_secret(label=label)
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/ops/model.py", line 291, in get_secret
+    content = self._backend.secret_get(id=id, label=label)
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/ops/model.py", line 3552, in secret_get
+    result = self._run('secret-get', *args, return_output=True, use_json=True)
+  File "/var/lib/juju/agents/unit-mongodb-0/charm/venv/lib/python3.10/site-packages/ops/model.py", line 3189, in _run
+    raise ModelError(e.stderr) from e
+ops.model.ModelError: ERROR permission denied
+
+unit-mongodb-0: 01:42:19 ERROR juju.worker.uniter.operation hook "database-peers-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
