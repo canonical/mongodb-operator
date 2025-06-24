@@ -54,13 +54,22 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         application_name=CONFIG_SERVER_APP_NAME,
     )
     await ops_test.model.deploy(
-        my_charm, num_units=2, config={"role": "shard"}, application_name=SHARD_ONE_APP_NAME
+        my_charm,
+        num_units=2,
+        config={"role": "shard"},
+        application_name=SHARD_ONE_APP_NAME,
     )
     await ops_test.model.deploy(
-        my_charm, num_units=2, config={"role": "shard"}, application_name=SHARD_TWO_APP_NAME
+        my_charm,
+        num_units=2,
+        config={"role": "shard"},
+        application_name=SHARD_TWO_APP_NAME,
     )
     await ops_test.model.deploy(
-        my_charm, num_units=2, config={"role": "shard"}, application_name=SHARD_THREE_APP_NAME
+        my_charm,
+        num_units=2,
+        config={"role": "shard"},
+        application_name=SHARD_THREE_APP_NAME,
     )
 
     await ops_test.model.wait_for_idle(
@@ -140,7 +149,10 @@ async def test_set_operator_password(ops_test: OpsTest):
     # rotate password and verify that no unit goes into error as a result of password rotation
     config_leader_id = await get_leader_id(ops_test, app_name=CONFIG_SERVER_APP_NAME)
     await set_password(
-        ops_test, unit_id=config_leader_id, username=OPERATOR_USERNAME, password=OPERATOR_PASSWORD
+        ops_test,
+        unit_id=config_leader_id,
+        username=OPERATOR_USERNAME,
+        password=OPERATOR_PASSWORD,
     )
     await ops_test.model.wait_for_idle(
         apps=CLUSTER_APPS,
@@ -216,6 +228,7 @@ async def test_sharding(ops_test: OpsTest) -> None:
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_shard_removal(ops_test: OpsTest) -> None:
     """Test shard removal.
 
@@ -276,6 +289,7 @@ async def test_shard_removal(ops_test: OpsTest) -> None:
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_removal_of_non_primary_shard(ops_test: OpsTest):
     """Tests safe removal of a shard that is not primary."""
     # add back a shard so we can safely remove a shard.
@@ -329,6 +343,7 @@ async def test_removal_of_non_primary_shard(ops_test: OpsTest):
 
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_unconventual_shard_removal(ops_test: OpsTest):
     """Tests that removing a shard application safely drains data.
 

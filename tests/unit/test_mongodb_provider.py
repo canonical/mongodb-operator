@@ -4,6 +4,7 @@
 import unittest
 from unittest.mock import patch
 
+from data_platform_helpers.advanced_statuses.utils import as_status
 from ops import BlockedStatus
 from ops.testing import Harness
 from parameterized import parameterized
@@ -30,6 +31,7 @@ class TestMongoProvider(unittest.TestCase):
         self.harness = Harness(MongoDBVMCharm)
         self.harness.begin()
         self.harness.add_relation("database-peers", "mongodb-peers")
+        self.harness.add_relation("status-peers", "mongodb-peers")
         self.harness.set_leader(True)
         self.charm = self.harness.charm
         self.addCleanup(self.harness.cleanup)
@@ -49,7 +51,9 @@ class TestMongoProvider(unittest.TestCase):
         self.harness.add_relation_unit(relation_id, "consumer/0")
         self.harness.update_relation_data(relation_id, "consumer/0", PEER_ADDR)
 
-        assert self.harness.charm.unit.status == BlockedStatus(
+        statuses = self.harness.charm.operator.state.statuses.get(scope="unit", component="mongod")
+        status = next(iter(statuses), None)
+        assert as_status(status) == BlockedStatus(
             "Sharding roles do not support database interface."
         )
         oversee_users.assert_not_called()
