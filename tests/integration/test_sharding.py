@@ -4,7 +4,12 @@
 import pytest
 from pytest_operator.plugin import OpsTest
 
-from .helpers import DEPLOYMENT_TIMEOUT, wait_for_mongodb_units_blocked
+from .helpers import (
+    DEPLOYMENT_TIMEOUT,
+    get_direct_mongo_client,
+    has_correct_shards,
+    wait_for_mongodb_units_blocked,
+)
 
 SHARD_ONE_APP_NAME = "shard-one"
 SHARD_TWO_APP_NAME = "shard-two"
@@ -106,3 +111,12 @@ async def test_cluster_active(ops_test: OpsTest) -> None:
         timeout=TIMEOUT,
         raise_on_error=False,
     )
+    mongos_client = await get_direct_mongo_client(
+        ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True
+    )
+
+    # verify sharded cluster config
+    assert has_correct_shards(
+        mongos_client,
+        expected_shards=[SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME, SHARD_THREE_APP_NAME],
+    ), "Config server did not process config properly"

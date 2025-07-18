@@ -6,9 +6,16 @@ import logging
 import os
 
 import pytest
+from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 
-from .helpers import DEPLOYMENT_TIMEOUT, UNIT_IDS, check_or_scale_app, get_app_name
+from .helpers import (
+    DEPLOYMENT_TIMEOUT,
+    UNIT_IDS,
+    check_or_scale_app,
+    get_address_of_unit,
+    get_app_name,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -34,3 +41,11 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     my_charm = await ops_test.build_charm(".")
     await ops_test.model.deploy(my_charm, num_units=len(UNIT_IDS))
     await ops_test.model.wait_for_idle(timeout=DEPLOYMENT_TIMEOUT, status="active")
+
+
+@pytest.mark.abort_on_fail
+@pytest.mark.parametrize("unit_id", UNIT_IDS)
+async def test_application_is_up(ops_test: OpsTest, unit_id: int):
+    address = await get_address_of_unit(ops_test, unit_id=unit_id)
+    response = MongoClient(address, directConnection=True).admin.command("ping")
+    assert response["ok"] == 1
