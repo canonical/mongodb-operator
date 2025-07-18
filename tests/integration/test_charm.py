@@ -43,6 +43,8 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await ops_test.model.wait_for_idle(timeout=DEPLOYMENT_TIMEOUT, status="active")
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 @pytest.mark.parametrize("unit_id", UNIT_IDS)
 async def test_application_is_up(ops_test: OpsTest, unit_id: int):
