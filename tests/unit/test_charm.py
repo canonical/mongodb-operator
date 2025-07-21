@@ -718,11 +718,12 @@ class TestCharm(unittest.TestCase):
             self.harness.charm.operator.state.secrets.remove(Scope.APP, "monitor-password")
 
     @parameterized.expand([(Scope.APP), (Scope.UNIT)])
+    @patch("single_kernel_mongo.core.vm_workload.VMWorkload.active", return_value=True)
     @patch("single_kernel_mongo.managers.config.BackupConfigManager.configure_and_restart")
     @patch(
         "single_kernel_mongo.managers.config.MongoDBExporterConfigManager.configure_and_restart"
     )
-    def test_on_secret_changed(self, scope, connect_exporter, connect_backup):
+    def test_on_secret_changed(self, scope, connect_exporter, connect_backup, *_unused):
         """NOTE: currently ops.testing seems to allow for non-leader to set secrets too!"""
         secret = self.harness.charm.operator.state.secrets.set("new-secret", "bla", scope)
         secret = self.harness.charm.model.get_secret(label=secret.label)
