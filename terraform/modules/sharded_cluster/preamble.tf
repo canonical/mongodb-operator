@@ -19,6 +19,7 @@ resource "juju_application" "data-integrator" {
   charm {
     name    = "data-integrator"
     channel = "latest/stable"
+    base    = "ubuntu@22.04"
   }
   model      = var.model_name
   depends_on = [null_resource.preamble]
