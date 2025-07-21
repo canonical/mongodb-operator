@@ -4,11 +4,10 @@ requires-poetry = ">=2.0.0"
 
 [tool.poetry.dependencies]
 python = "^3.10.12"
-mongo-charms-single-kernel = "0.0.9"
-ops = "~2.15.0"
+mongo-charms-single-kernel = "0.1.0"
+ops = ">=2.21.0"
 overrides = "^7.7.0"
 pymongo = "^4.7.3"
-tenacity = "^8.2.3"
 pyyaml = "^6.0.1"
 jinja2 = "^3.1.3"
 poetry-core = "^2.0"
@@ -17,7 +16,7 @@ rpds-py = "0.18.0"
 pyOpenSSL = "^24.2.1"
 
 [tool.poetry.group.charm-libs.dependencies]
-ops = "~2.15.0"
+ops = ">=2.21"
 pydantic = "*"  # cos_agent lib
 cryptography = "^42.0.5"  # tls_certificates lib v3
 jsonschema = "^4.22.0"  # tls_certificates lib v3
@@ -49,7 +48,7 @@ black = "^24.4.2"
 isort = "^5.13.2"
 
 [tool.poetry.group.unit.dependencies]
-mongo-charms-single-kernel = "0.0.9"
+mongo-charms-single-kernel = "0.1.0"
 coverage = {extras = ["toml"], version = "^7.5.0"}
 pytest = "^8.1.1"
 pytest-mock = "*"
@@ -58,10 +57,9 @@ pymongo = "^4.7.3"
 juju = "~3.6.0"
 
 [tool.poetry.group.integration.dependencies]
-mongo-charms-single-kernel = "0.0.9"
+mongo-charms-single-kernel = "0.1.0"
 allure-pytest = "^2.13.5"
-ops = "~2.15.0"
-tenacity = "^8.2.3"
+ops = ">=2.21"
 pymongo = "^4.7.3"
 parameterized = "^0.9.0"
 juju = "~3.6.0"

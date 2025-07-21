@@ -3,7 +3,6 @@
 
 import logging
 import unittest
-from unittest import mock
 from unittest.mock import PropertyMock, patch
 
 import pytest
@@ -63,7 +62,9 @@ class TestCharm(unittest.TestCase):
         self.addCleanup(self.harness.cleanup)
         self.harness.begin()
         with self.harness.hooks_disabled():
-            self.harness.add_storage(storage_name="mongodb", count=1, attach=True)
+            self.storage_ids = self.harness.add_storage(
+                storage_name="mongodb", count=1, attach=True
+            )
         self.peer_rel_id = self.harness.add_relation("database-peers", "database-peers")
         self.peer_rel_id_bis = self.harness.add_relation("upgrade-version-a", "upgrade-version-a")
         self.peer_rel_id_ter = self.harness.add_relation("status-peers", "mongodb")
@@ -551,25 +552,6 @@ class TestCharm(unittest.TestCase):
             mock_primary.side_effect = exception
             self.assertEqual(self.harness.charm.operator.primary_unit_name, None)
 
-    @pytest.mark.usefixtures("mock_fs_interactions")
-    @patch(
-        "single_kernel_mongo.utils.mongo_connection.MongoConnection.remove_replset_member",
-    )
-    def test_storage_detaching_failure_does_not_defer(self, remove_replset_member):
-        """Test that failure in removing replica does not defer the hook.
-
-        Deferring Storage Detached hooks can result in un-predicable behavior and while it is
-        technically possible to defer the event, it shouldn't be. This test verifies that no
-        attempt to defer storage detached as made.
-        """
-        exceptions = PYMONGO_EXCEPTIONS
-        exceptions.append(NotReadyError)
-        for exception in exceptions:
-            remove_replset_member.side_effect = exception
-            event = mock.Mock()
-            self.harness.charm.on.mongodb_storage_detaching.emit(mock.Mock())
-            event.defer.assert_not_called()
-
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.run_bin_command")
     def test_start_init_user_after_second_call(self, run):
         """Tests that the creation of the admin user is only performed once.
@@ -718,11 +700,12 @@ class TestCharm(unittest.TestCase):
             self.harness.charm.operator.state.secrets.remove(Scope.APP, "monitor-password")
 
     @parameterized.expand([(Scope.APP), (Scope.UNIT)])
+    @patch("single_kernel_mongo.core.vm_workload.VMWorkload.active", return_value=True)
     @patch("single_kernel_mongo.managers.config.BackupConfigManager.configure_and_restart")
     @patch(
         "single_kernel_mongo.managers.config.MongoDBExporterConfigManager.configure_and_restart"
     )
-    def test_on_secret_changed(self, scope, connect_exporter, connect_backup):
+    def test_on_secret_changed(self, scope, connect_exporter, connect_backup, *_unused):
         """NOTE: currently ops.testing seems to allow for non-leader to set secrets too!"""
         secret = self.harness.charm.operator.state.secrets.set("new-secret", "bla", scope)
         secret = self.harness.charm.model.get_secret(label=secret.label)
@@ -819,3 +802,22 @@ class TestCharm(unittest.TestCase):
     def test_unit_host(self):
         """Tests that get hosts returns the current unit hosts."""
         assert self.harness.charm.operator.state.unit_peer_data.internal_address == "10.0.0.10"
+
+    @pytest.mark.usefixtures("mock_fs_interactions")
+    @patch(
+        "single_kernel_mongo.utils.mongo_connection.MongoConnection.remove_replset_member",
+    )
+    @patch("ops.framework.EventBase.defer")
+    def test_storage_detaching_failure_does_not_defer(self, mocked_defer, remove_replset_member):
+        """Test that failure in removing replica does not defer the hook.
+
+        Deferring Storage Detached hooks can result in un-predicable behavior and while it is
+        technically possible to defer the event, it shouldn't be. This test verifies that no
+        attempt to defer storage detached as made.
+        """
+        exceptions = PYMONGO_EXCEPTIONS
+        exceptions.append(NotReadyError)
+        for exception in exceptions:
+            remove_replset_member.side_effect = exception
+            self.harness.remove_storage(self.storage_ids[0])
+            mocked_defer.assert_not_called()
