@@ -15,7 +15,7 @@ This document explains the processes and practices recommended for contributing 
   - user experience for Juju administrators of this charm.
 - Please help us out in ensuring easy to review branches by rebasing your pull request branch onto the `main` branch. This also avoids merge commits and creates a linear Git commit history.
 - Once the code has been merged on the [repository](https://github.com/canonical/mongo-single-kernel-library/) of the Mongo Single Kernel lib, wait for a new version of the [python package](https://pypi.org/project/mongo-charms-single-kernel/) to be published, and create a PR on this repository that bumps the version of the package.
-- If you added some new interfaces, please don't forget to add them here.
+- If you added some new interfaces, please don't forget to add them here. Likewise, please bump any dependency that you added or updated on the single kernel repository in the file `pyproject.toml`.
 
 ## Testing
 
@@ -58,10 +58,6 @@ juju model-config logging-config="<root>=INFO;unit=DEBUG"
 # Deploy the charm
 juju deploy ./mongodb_ubuntu-20.04-amd64.charm
 ```
-
-## Intended use case
-
-TODO: expand on this section when spec doc is created
 
 
 ## Canonical Contributor Agreement
