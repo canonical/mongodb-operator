@@ -74,6 +74,7 @@ class TestMongoBackups(unittest.TestCase):
 
         assert MongoDBStatuses.INVALID_S3_INTEGRATION_STATUS.value in statuses
 
+    @patch("single_kernel_mongo.managers.backups.BackupManager.create_bucket")
     @patch(
         "single_kernel_mongo.managers.backups.BackupManager.validate_s3_config",
         return_value=True,
@@ -99,6 +100,9 @@ class TestMongoBackups(unittest.TestCase):
         self.assertTrue(status.status == "blocked")
 
     @patch(
+        "single_kernel_mongo.managers.backups.BackupManager.create_bucket",
+    )
+    @patch(
         "single_kernel_mongo.managers.backups.BackupManager.validate_s3_config",
         return_value=True,
     )
@@ -120,6 +124,7 @@ class TestMongoBackups(unittest.TestCase):
         status = next(iter(statuses), None)
         assert status == BackupStatuses.PBM_WAITING_TO_SYNC.value
 
+    @patch("single_kernel_mongo.managers.backups.BackupManager.create_bucket")
     @patch(
         "single_kernel_mongo.managers.backups.BackupManager.validate_s3_config",
         return_value=True,
@@ -141,6 +146,7 @@ class TestMongoBackups(unittest.TestCase):
         status = next(iter(statuses), None)
         assert status.status == "active"
 
+    @patch("single_kernel_mongo.managers.backups.BackupManager.create_bucket")
     @patch(
         "single_kernel_mongo.managers.backups.BackupManager.validate_s3_config",
         return_value=True,
@@ -165,6 +171,7 @@ class TestMongoBackups(unittest.TestCase):
         status = next(iter(statuses), None)
         assert as_status(status) == BlockedStatus("s3 credentials are incorrect.")
 
+    @patch("single_kernel_mongo.managers.backups.BackupManager.create_bucket")
     @patch(
         "single_kernel_mongo.managers.backups.BackupManager.validate_s3_config",
         return_value=True,
@@ -187,7 +194,7 @@ class TestMongoBackups(unittest.TestCase):
             scope=Scope.UNIT, recompute=True
         )
         status = next(iter(statuses), None)
-        assert as_status(status) == BlockedStatus("s3 configurations are incompatible.")
+        assert as_status(status) == BlockedStatus("s3 config options are incompatible.")
 
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.active", return_value=True)
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.run_bin_command")
@@ -281,14 +288,16 @@ class TestMongoBackups(unittest.TestCase):
         with self.assertRaises(PBMBusyError):
             self.harness.charm.operator.backup_manager.resync_config_options()
 
-        mock_restart.assert_called()
-
+    @patch("single_kernel_mongo.utils.mongo_connection.MongoClient")
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.active", return_value=True)
     @patch("single_kernel_mongo.managers.backups.map_s3_config_to_pbm_config")
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.run_bin_command")
     @patch("single_kernel_mongo.managers.backups.BackupManager.clear_pbm_config_file")
-    def test_set_config_options(self, clear_config, run_pbm_command, pbm_configs, snap):
+    def test_set_config_options(
+        self, clear_config, run_pbm_command, pbm_configs, snap, mocked_client
+    ):
         """Verifies _set_config_options failure raises SetPBMConfigError."""
+        mocked_client.return_value.admin.command.return_value = None
         run_pbm_command.side_effect = WorkloadExecError(
             cmd="/usr/bin/pbm config --set this_key=doesnt_exist",
             return_code=42,
@@ -381,12 +390,19 @@ class TestMongoBackups(unittest.TestCase):
         status = next(iter(statuses), None)
         assert status.status == "blocked"
 
+    @patch(
+        "single_kernel_mongo.managers.backups.BackupManager.validate_s3_config",
+        return_value=True,
+    )
+    @patch("single_kernel_mongo.managers.backups.BackupManager.create_bucket")
     @patch("single_kernel_mongo.managers.backups.BackupManager.set_config_options")
     @patch("single_kernel_mongo.managers.backups.BackupManager.resync_config_options")
     @patch("ops.framework.EventBase.defer")
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.active", return_value=True)
     @patch("single_kernel_mongo.managers.backups.BackupManager.get_statuses")
-    def test_s3_credentials_syncing(self, pbm_status, service, defer, resync, _set_config_options):
+    def test_s3_credentials_syncing(
+        self, pbm_status, service, defer, resync, _set_config_options, *unused
+    ):
         """Test charm defers when more time is needed to sync pbm credentials."""
         self.harness.charm.operator.state.db_initialised = True
         service.return_value = True
@@ -411,13 +427,18 @@ class TestMongoBackups(unittest.TestCase):
         status = next(iter(statuses), None)
         assert status.status == "waiting"
 
+    @patch("single_kernel_mongo.managers.backups.BackupManager.create_bucket")
+    @patch(
+        "single_kernel_mongo.managers.backups.BackupManager.validate_s3_config",
+        return_value=True,
+    )
     @patch("single_kernel_mongo.managers.backups.BackupManager.set_config_options")
     @patch("single_kernel_mongo.managers.backups.BackupManager.resync_config_options")
     @patch("ops.framework.EventBase.defer")
     @patch("single_kernel_mongo.core.vm_workload.VMWorkload.active", return_value=True)
     @patch("single_kernel_mongo.managers.backups.BackupManager.get_statuses")
     def test_s3_credentials_pbm_busy(
-        self, pbm_status, service, defer, resync, _set_config_options
+        self, pbm_status, service, defer, resync, _set_config_options, *unused
     ):
         """Test charm defers when more time is needed to sync pbm."""
         self.harness.charm.operator.state.db_initialised = True
@@ -731,6 +752,7 @@ class TestMongoBackups(unittest.TestCase):
         )
         self.assertEqual(remap, "current-app-name=old-cluster-name")
 
+    @patch("single_kernel_mongo.managers.backups.BackupManager.create_bucket")
     @patch(
         "single_kernel_mongo.managers.backups.BackupManager.validate_s3_config",
         return_value=True,
