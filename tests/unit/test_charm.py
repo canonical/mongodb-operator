@@ -120,7 +120,7 @@ class TestCharm(unittest.TestCase):
             self.harness.charm.on.start.emit()
             self.harness.evaluate_status()
 
-            self.assertTrue(isinstance(self.harness.charm.unit.status, MaintenanceStatus))
+            self.assertTrue(isinstance(self.harness.charm.unit.status, WaitingStatus))
 
     @pytest.mark.usefixtures("mock_fs_interactions")
     def test_start_unable_to_open_tcp_moves_to_blocked(
@@ -138,7 +138,7 @@ class TestCharm(unittest.TestCase):
         self.harness.charm.on.start.emit()
         self.harness.evaluate_status()
 
-        self.assertTrue(isinstance(self.harness.charm.unit.status, MaintenanceStatus))
+        self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
 
     def test_install_snap_packages_failure(
         self,
