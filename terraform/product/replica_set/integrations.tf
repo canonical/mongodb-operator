@@ -1,0 +1,122 @@
+# Copyright 2024 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+#--------------------------------------------------------
+# 3. Integrations
+#--------------------------------------------------------
+
+## Same model integrations
+
+resource "juju_integration" "mongodb_grafana_agent_integration" {
+  model = var.mongodb.model
+  application {
+    name = var.mongodb.app_name
+  }
+  application {
+    name = var.grafana_agent.app_name
+  }
+  depends_on = [
+    module.mongodb,
+    juju_application.grafana_agent,
+  ]
+}
+
+resource "juju_integration" "mongodb_tls_same_model_integration" {
+  for_each = local.enable_tls && var.self_signed_certificates.model == var.mongodb.model ? { "integrated" = true } : {}
+
+  model = var.mongodb.model
+  application {
+    name = var.mongodb.app_name
+  }
+  application {
+    name = var.self_signed_certificates["deployed"].app_name
+  }
+  depends_on = [
+    module.mongodb,
+    juju_application.self-signed-certificates["deployed"],
+  ]
+}
+
+resource "juju_integration" "mongodb_s3_same_model_integration" {
+  for_each = var.s3_integrator.model == var.mongodb.model ? { "integrated" = true } : {}
+
+  model = var.mongodb.model
+  application {
+    name = var.mongodb.app_name
+  }
+  application {
+    name = var.s3_integrator.app_name
+  }
+  depends_on = [
+    module.mongodb,
+    juju_application.s3_integrator,
+  ]
+}
+
+resource "juju_integration" "mongodb_data_same_model_integration" {
+  for_each = var.data_integrator.model == var.mongodb.model ? { "integrated" = true } : {}
+  model    = var.mongodb.model
+
+  application {
+    name = var.mongodb.app_name
+  }
+  application {
+    name = var.data_integrator.app_name
+  }
+  depends_on = [
+    module.mongodb,
+    juju_application.data_integrator,
+  ]
+}
+
+## Cross model integrations
+resource "juju_integration" "mongodb_data_cross_model_integration" {
+  for_each = var.data_integrator.model != var.mongodb.model ? { "integrated" = true } : {}
+  model    = var.data_integrator.model
+
+  application {
+    offer_url = juju_offer.mongodb_client_offer["offered"].url
+  }
+  application {
+    name     = var.data_integrator.app_name
+    endpoint = "mongodb"
+  }
+  depends_on = [
+    juju_application.data_integrator,
+    juju_offer.mongodb_client_offer,
+  ]
+}
+
+resource "juju_integration" "mongodb_tls_cross_model_integration" {
+  for_each = local.enable_tls && var.self_signed_certificates.model != var.mongodb.model ? { "integrated" = true } : {}
+  model    = var.mongodb.model
+
+  application {
+    offer_url = juju_offer.tls_provider_offer["offered"].url
+  }
+  application {
+    name     = var.mongodb.app_name
+    endpoint = "certificates"
+  }
+  depends_on = [
+    module.mongodb,
+    juju_offer.tls_provider_offer,
+  ]
+}
+
+resource "juju_integration" "mongodb_s3_cross_model_integration" {
+  for_each = var.s3_integrator.model != var.mongodb.model ? { "integrated" = true } : {}
+  model    = var.mongodb.model
+
+  application {
+    offer_url = juju_offer.s3_integrator_offer["offered"].url
+  }
+  application {
+    name     = var.mongodb.app_name
+    endpoint = "s3-credentials"
+  }
+  depends_on = [
+    module.mongodb,
+    juju_offer.s3_integrator_offer,
+  ]
+}
