@@ -29,7 +29,7 @@ resource "juju_integration" "mongodb_tls_same_model_integration" {
     name = var.mongodb.app_name
   }
   application {
-    name = var.self_signed_certificates["deployed"].app_name
+    name = var.self_signed_certificates.app_name
   }
   depends_on = [
     module.mongodb,
