@@ -57,6 +57,7 @@ resource "juju_integration" "tls_mongo_same_model_integration" {
   model = local.tls_same_model_mongo_apps[count.index].model
   application {
     name = local.tls_same_model_mongo_apps[count.index].app_name
+    endpoint = "certificates"
   }
   application {
     name = var.self_signed_certificates.app_name
