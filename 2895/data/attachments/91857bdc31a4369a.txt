@@ -1,0 +1,166 @@
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/0 [executing] blocked: Missing relation to shard(s).
+  config-server-one/1 [executing] blocked: Missing relation to shard(s).
+  shard-one/0 [executing] blocked: Missing relation to config-server.
+  shard-one/1 [executing] blocked: Missing relation to config-server.
+  shard-two/0 [executing] blocked: Missing relation to config-server.
+  shard-two/1 [executing] blocked: Missing relation to config-server.
+  shard-three/0 [executing] blocked: Missing relation to config-server.
+  shard-three/1 [executing] blocked: Missing relation to config-server.
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/0 [executing] blocked: Missing relation to shard(s).
+  config-server-one/1 [executing] blocked: Missing relation to shard(s).
+  shard-one/0 [executing] maintenance: Adding shard to config-server
+  shard-one/1 [executing] maintenance: Adding shard to config-server
+  shard-two/0 [executing] maintenance: Adding shard to config-server
+  shard-two/1 [executing] maintenance: Adding shard to config-server
+  shard-three/0 [idle] blocked: Charm revision (1+2215c01-dirty-locally ... Run `status-detail`: 0 action required; 1 additional statuses.
+  shard-three/1 [idle] maintenance: Adding shard to config-server
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/0 [executing] active: Primary.
+  config-server-one/1 [executing] blocked: Missing relation to shard(s).
+  shard-one/0 [executing] maintenance: Adding shard to config-server
+  shard-one/1 [executing] active: 
+  shard-two/0 [executing] active: Primary.
+  shard-two/1 [executing] active: 
+  shard-three/0 [idle] blocked: Charm revision (1+2215c01-dirty-locally built) is not up-to date with config-server.
+  shard-three/1 [executing] maintenance: Adding shard to config-server
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/0 [idle] active: Primary.
+  config-server-one/1 [idle] blocked: Missing relation to shard(s).
+  shard-one/0 [executing] active: Primary.
+  shard-one/1 [executing] active: 
+  shard-two/0 [executing] active: Primary.
+  shard-two/1 [executing] active: 
+  shard-three/0 [executing] blocked: Charm revision (1+2215c01-dirty-locally built) is not up-to date with config-server.
+  shard-three/1 [executing] active: Primary.
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/1 [idle] blocked: Missing relation to shard(s).
+  shard-one/0 [executing] active: Primary.
+  shard-one/1 [idle] active: 
+  shard-two/0 [idle] active: Primary.
+  shard-three/0 [idle] blocked: Charm revision (1+2215c01-dirty-locally built) is not up-to date with config-server.
+  shard-three/1 [idle] active: Primary.
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/1 [idle] blocked: Missing relation to shard(s).
+  shard-one/0 [executing] active: Primary.
+  shard-three/0 [idle] blocked: Charm revision (1+2215c01-dirty-locally built) is not up-to date with config-server.
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/1 [idle] blocked: Missing relation to shard(s).
+  shard-three/0 [idle] blocked: Charm revision (1+2215c01-dirty-locally built) is not up-to date with config-server.
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/1 [idle] blocked: Missing relation to shard(s).
+  shard-three/0 [idle] blocked: Charm revision (1+2215c01-dirty-locally built) is not up-to date with config-server.
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/1 [idle] blocked: Missing relation to shard(s).
+  shard-three/0 [idle] blocked: Charm revision (1+2215c01-dirty-locally built) is not up-to date with config-server.
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/1 [idle] blocked: Missing relation to shard(s).
+  shard-three/0 [idle] blocked: Charm revision (1+2215c01-dirty-locally built) is not up-to date with config-server.
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/1 [idle] blocked: Missing relation to shard(s).
+  shard-three/0 [idle] blocked: Charm revision (1+2215c01-dirty-locally built) is not up-to date with config-server.
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.6.1    unsupported  02:00:55Z
+
+App                Version  Status  Scale  Charm    Channel  Rev  Exposed  Message
+config-server-one  6.0.24   active      2  mongodb             0  no       
+shard-one          6.0.24   active      2  mongodb             1  no       
+shard-three        6.0.24   active      2  mongodb             3  no       
+shard-two          6.0.24   active      2  mongodb             2  no       
+
+Unit                  Workload  Agent  Machine  Public address  Ports            Message
+config-server-one/0*  active    idle   0        10.182.34.189   27017-27018/tcp  Primary.
+config-server-one/1   active    idle   1        10.182.34.205   27017-27018/tcp  
+shard-one/0*          active    idle   2        10.182.34.230   27017/tcp        
+shard-one/1           active    idle   3        10.182.34.34    27017/tcp        Primary.
+shard-three/0         active    idle   6        10.182.34.36    27017/tcp        
+shard-three/1*        active    idle   7        10.182.34.245   27017/tcp        Primary.
+shard-two/0*          active    idle   4        10.182.34.46    27017/tcp        Primary.
+shard-two/1           active    idle   5        10.182.34.152   27017/tcp        
+
+Machine  State    Address        Inst id        Base          AZ  Message
+0        started  10.182.34.189  juju-8ce38a-0  ubuntu@22.04      Running
+1        started  10.182.34.205  juju-8ce38a-1  ubuntu@22.04      Running
+2        started  10.182.34.230  juju-8ce38a-2  ubuntu@22.04      Running
+3        started  10.182.34.34   juju-8ce38a-3  ubuntu@22.04      Running
+4        started  10.182.34.46   juju-8ce38a-4  ubuntu@22.04      Running
+5        started  10.182.34.152  juju-8ce38a-5  ubuntu@22.04      Running
+6        started  10.182.34.36   juju-8ce38a-6  ubuntu@22.04      Running
+7        started  10.182.34.245  juju-8ce38a-7  ubuntu@22.04      Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+machine-0: 01:44:58 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 01:44:58 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-one-0: 01:44:58 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-1: 01:45:02 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 01:45:02 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-one-1: 01:45:03 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-2: 01:45:30 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 01:45:30 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 01:45:30 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 01:45:30 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-1: 01:45:30 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-shard-one-0: 01:45:30 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-config-server-one-0: 01:45:55 ERROR unit.config-server-one/0.juju-log Unable to set params: ['vm.max_map_count']
+unit-config-server-one-0: 01:45:55 ERROR unit.config-server-one/0.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+machine-4: 01:45:59 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-4: 01:45:59 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-two-0: 01:45:59 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-config-server-one-1: 01:46:00 ERROR unit.config-server-one/1.juju-log Unable to set params: ['vm.max_map_count']
+unit-config-server-one-1: 01:46:00 ERROR unit.config-server-one/1.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+unit-shard-one-1: 01:46:24 ERROR unit.shard-one/1.juju-log Unable to set params: ['vm.max_map_count']
+unit-shard-one-1: 01:46:24 ERROR unit.shard-one/1.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+machine-7: 01:46:33 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-7: 01:46:33 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-three-1: 01:46:33 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-shard-one-1: 01:46:40 ERROR unit.shard-one/1.juju-log Deferring because of Exception Waiting for leader unit to generate keyfile contents
+machine-5: 01:46:48 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-5: 01:46:48 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-two-1: 01:46:49 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-shard-three-1: 01:47:19 ERROR unit.shard-three/1.juju-log Unable to set params: ['vm.max_map_count']
+unit-shard-three-1: 01:47:19 ERROR unit.shard-three/1.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+machine-6: 01:47:24 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-6: 01:47:24 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-three-0: 01:47:24 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-shard-two-1: 01:47:35 ERROR unit.shard-two/1.juju-log Unable to set params: ['vm.max_map_count']
+unit-shard-two-1: 01:47:35 ERROR unit.shard-two/1.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+unit-shard-two-1: 01:47:50 ERROR unit.shard-two/1.juju-log Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-shard-three-0: 01:48:10 ERROR unit.shard-three/0.juju-log Unable to set params: ['vm.max_map_count']
+unit-shard-three-0: 01:48:10 ERROR unit.shard-three/0.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+unit-shard-two-0: 01:49:02 ERROR unit.shard-two/0.juju-log Unable to set params: ['vm.max_map_count']
+unit-shard-two-0: 01:49:02 ERROR unit.shard-two/0.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+unit-shard-two-1: 01:49:04 ERROR unit.shard-two/1.juju-log status-peers:11: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-shard-two-1: 01:49:06 ERROR unit.shard-two/1.juju-log upgrade-version-a:10: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-shard-two-1: 01:49:08 ERROR unit.shard-two/1.juju-log database-peers:9: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-shard-two-1: 01:49:11 ERROR unit.shard-two/1.juju-log database-peers:9: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-shard-two-1: 01:49:13 ERROR unit.shard-two/1.juju-log ldap-peers:8: Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-shard-one-1: 01:50:51 ERROR unit.shard-one/1.juju-log Deferring because of Exception Waiting for leader unit to generate keyfile contents
+unit-shard-one-0: 01:51:42 ERROR unit.shard-one/0.juju-log Unable to set params: ['vm.max_map_count']
+unit-shard-one-0: 01:51:42 ERROR unit.shard-one/0.juju-log Error setting values on sysctl: Unable to set params: ['vm.max_map_count']
+unit-shard-one-0: 01:55:58 ERROR unit.shard-one/0.juju-log sharding:16: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68ae65adc7966efe904a111c, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.182.34.230', 27017) server_type: RSSecondary, rtt: 0.001435390999631636>, <ServerDescription ('10.182.34.34', 27017) server_type: RSSecondary, rtt: 0.001059288000305969>]>
+unit-shard-one-0: 01:56:02 ERROR unit.shard-one/0.juju-log sharding:16: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68ae65b1c7966efe904a111d, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.182.34.230', 27017) server_type: RSSecondary, rtt: 0.0035686369997165457>, <ServerDescription ('10.182.34.34', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('68ae65aab36c3b912f8fffd6'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 14446}")>]>
+unit-shard-one-0: 01:56:07 ERROR unit.shard-one/0.juju-log sharding:16: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68ae65b5c7966efe904a111e, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.182.34.230', 27017) server_type: RSSecondary, rtt: 0.000891606000095635>, <ServerDescription ('10.182.34.34', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('68ae65aab36c3b912f8fffd6'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 10221}")>]>
+unit-shard-two-0: 01:56:09 ERROR unit.shard-two/0.juju-log sharding:17: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68ae65b87790be8c64b9cd01, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.182.34.152', 27017) server_type: RSSecondary, rtt: 0.0007854570003473782>, <ServerDescription ('10.182.34.46', 27017) server_type: RSSecondary, rtt: 0.0010377789999438392>]>
+unit-shard-one-0: 01:56:11 ERROR unit.shard-one/0.juju-log sharding:16: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68ae65bac7966efe904a111f, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.182.34.230', 27017) server_type: RSSecondary, rtt: 0.00122579000026235>, <ServerDescription ('10.182.34.34', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('68ae65aab36c3b912f8fffd6'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 6009}")>]>
+unit-shard-two-0: 01:56:13 ERROR unit.shard-two/0.juju-log sharding:17: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68ae65bc7790be8c64b9cd02, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.182.34.152', 27017) server_type: RSSecondary, rtt: 0.0013243809999039513>, <ServerDescription ('10.182.34.46', 27017) server_type: RSSecondary, rtt: 0.0013079310001558042>]>
+unit-shard-one-0: 01:56:15 ERROR unit.shard-one/0.juju-log sharding:16: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68ae65bec7966efe904a1120, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.182.34.230', 27017) server_type: RSSecondary, rtt: 0.0011489290000099572>, <ServerDescription ('10.182.34.34', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('68ae65aab36c3b912f8fffd6'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 1803}")>]>
+unit-shard-one-0: 01:56:19 ERROR unit.shard-one/0.juju-log sharding:16: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68ae65c2c7966efe904a1121, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.182.34.230', 27017) server_type: RSSecondary, rtt: 0.0010667690003174357>, <ServerDescription ('10.182.34.34', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('10.182.34.34:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)')>]>
+unit-shard-three-1: 01:56:21 ERROR unit.shard-three/1.juju-log sharding:18: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68ae65c4534be23ff52a1ec7, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.182.34.245', 27017) server_type: RSSecondary, rtt: 0.0015541919997303921>, <ServerDescription ('10.182.34.36', 27017) server_type: RSSecondary, rtt: 0.003143164999983128>]>
+unit-shard-one-0: 01:56:23 ERROR unit.shard-one/0.juju-log sharding:16: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68ae65c6c7966efe904a1122, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.182.34.230', 27017) server_type: RSSecondary, rtt: 0.0010838379998858727>, <ServerDescription ('10.182.34.34', 27017) server_type: RSSecondary, rtt: 0.001330880999830697>]>
+unit-shard-three-1: 01:56:25 ERROR unit.shard-three/1.juju-log sharding:18: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68ae65c8534be23ff52a1ec8, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.182.34.245', 27017) server_type: RSSecondary, rtt: 0.0006136739998510166>, <ServerDescription ('10.182.34.36', 27017) server_type: RSSecondary, rtt: 0.0008898669998416153>]>
+unit-shard-one-0: 01:56:28 ERROR unit.shard-one/0.juju-log sharding:16: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68ae65cac7966efe904a1123, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.182.34.230', 27017) server_type: RSSecondary, rtt: 0.0013985919999868202>, <ServerDescription ('10.182.34.34', 27017) server_type: RSSecondary, rtt: 0.00155975200004832>]>
+unit-shard-two-0: 01:56:47 ERROR unit.shard-two/0.juju-log sharding:17: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68ae65de4c4d75e78adbe0f4, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.182.34.152', 27017) server_type: RSSecondary, rtt: 0.0016480230001434393>, <ServerDescription ('10.182.34.46', 27017) server_type: RSSecondary, rtt: 0.0008459969999421446>]>
+unit-shard-two-0: 01:56:51 ERROR unit.shard-two/0.juju-log sharding:17: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68ae65e24c4d75e78adbe0f5, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.182.34.152', 27017) server_type: RSSecondary, rtt: 0.0018639449999682256>, <ServerDescription ('10.182.34.46', 27017) server_type: RSSecondary, rtt: 0.0017450740001550002>]>
+unit-shard-two-0: 01:56:55 ERROR unit.shard-two/0.juju-log sharding:17: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68ae65e64c4d75e78adbe0f6, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.182.34.152', 27017) server_type: RSSecondary, rtt: 0.0007049730000289856>, <ServerDescription ('10.182.34.46', 27017) server_type: RSSecondary, rtt: 0.0008300225999846589>]>
+unit-shard-one-0: 01:57:02 ERROR unit.shard-one/0.juju-log sharding:16: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68ae65ec953947fccf4e948a, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.182.34.230', 27017) server_type: RSSecondary, rtt: 0.000985898000180896>, <ServerDescription ('10.182.34.34', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('68ae65c1eb6235af632cb425'), 'counter': 6}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 4548, 'lastCommittedOpTime': Timestamp(1756259796, 7), '$clusterTime': {'clusterTime': Timestamp(1756259817, 3), 'signature': {'hash': b'vv\\x023m\\xae\\xc5}\\xb4r\\x81\\xf1t\\x847\\x11\\x07\\xfc\\tP', 'keyId': 7543075737104810010}}, 'operationTime': Timestamp(1756259796, 7)}")>]>
+unit-shard-one-0: 01:57:06 ERROR unit.shard-one/0.juju-log sharding:16: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68ae65f1953947fccf4e948b, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.182.34.230', 27017) server_type: RSSecondary, rtt: 0.0017271040001105575>, <ServerDescription ('10.182.34.34', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('68ae65c1eb6235af632cb425'), 'counter': 6}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 379, 'lastCommittedOpTime': Timestamp(1756259796, 7), '$clusterTime': {'clusterTime': Timestamp(1756259817, 3), 'signature': {'hash': b'vv\\x023m\\xae\\xc5}\\xb4r\\x81\\xf1t\\x847\\x11\\x07\\xfc\\tP', 'keyId': 7543075737104810010}}, 'operationTime': Timestamp(1756259796, 7)}")>]>
+unit-shard-one-0: 01:57:10 ERROR unit.shard-one/0.juju-log sharding:16: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68ae65f5953947fccf4e948c, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.182.34.230', 27017) server_type: RSSecondary, rtt: 0.0014834510002401657>, <ServerDescription ('10.182.34.34', 27017) server_type: RSSecondary, rtt: 0.0027004099997611775>]>
+unit-shard-three-1: 01:57:12 ERROR unit.shard-three/1.juju-log sharding:18: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68ae65f7fc096346fd5b0f47, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.182.34.245', 27017) server_type: RSSecondary, rtt: 0.0012957600001755054>, <ServerDescription ('10.182.34.36', 27017) server_type: RSSecondary, rtt: 0.0013606100001197774>]>
+unit-shard-one-0: 01:57:14 ERROR unit.shard-one/0.juju-log sharding:16: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68ae65f9953947fccf4e948d, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.182.34.230', 27017) server_type: RSSecondary, rtt: 0.0007749360001980676>, <ServerDescription ('10.182.34.34', 27017) server_type: RSSecondary, rtt: 0.0007751259995529836>]>
+unit-shard-three-1: 01:57:16 ERROR unit.shard-three/1.juju-log sharding:18: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68ae65fbfc096346fd5b0f48, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.182.34.245', 27017) server_type: RSSecondary, rtt: 0.0010466480002833123>, <ServerDescription ('10.182.34.36', 27017) server_type: RSSecondary, rtt: 0.0007475649999832967>]>
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
