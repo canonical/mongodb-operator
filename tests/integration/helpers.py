@@ -261,7 +261,7 @@ async def mongodb_uri(
     hosts = [f"{host}:{port}" for host in addresses]
     hosts = ",".join(hosts)
 
-    password = await get_password(ops_test, 0, username=username, app_name=app_name)
+    password = await get_password(ops_test, username=username, app_name=app_name)
 
     return f"mongodb://{username}:{password}@{hosts}/admin"
 
