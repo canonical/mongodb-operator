@@ -55,7 +55,7 @@ class TestMongoBackups(unittest.TestCase):
             scope=Scope.UNIT, component="backup"
         ).root
 
-        assert MongoDBStatuses.INVALID_S3_INTEGRATION_STATUS.value in statuses
+        assert MongoDBStatuses.INVALID_S3_REL.value in statuses
 
     def test_credentials_changed_to_blocked_if_shard(self):
         def is_shard_mock_call(role_name: str):
@@ -72,7 +72,7 @@ class TestMongoBackups(unittest.TestCase):
             scope=Scope.UNIT, component="backup"
         ).root
 
-        assert MongoDBStatuses.INVALID_S3_INTEGRATION_STATUS.value in statuses
+        assert MongoDBStatuses.INVALID_S3_REL.value in statuses
 
     @patch("single_kernel_mongo.managers.backups.BackupManager.create_bucket")
     @patch(
