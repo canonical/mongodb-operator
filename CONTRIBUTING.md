@@ -22,7 +22,6 @@ This document explains the processes and practices recommended for contributing 
 ```shell
 tox run -e format                   # update your code according to linting rules
 tox run -e lint                     # code style
-tox run -e unit                     # unit tests
 
 tox run -e integration --group='1' -m 'not unstable'                      # run all integration tests
 tox run -e integration -- 'tests/integration/test_charm.py' --group='1'   # charm integration tests
