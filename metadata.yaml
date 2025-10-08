@@ -28,9 +28,22 @@ provides:
     interface: config-server
 
 storage:
-  mongodb:
+  archive:
     type: filesystem
-    location: /var/snap/charmed-mongodb/common
+    location: /var/snap/charmed-mongodb/common/archive
+    description: storage for local backup files.
+  data:
+    type: filesystem
+    location: /var/snap/charmed-mongodb/common/var/lib/mongodb
+    description: storage for MongoDB data.
+  logs:
+    type: filesystem
+    location: /var/snap/charmed-mongodb/common/var/log/mongodb
+    description: storage for logfiles.
+  temp:
+    type: filesystem
+    location: /tmp
+    description: Storage mount used for storing temporary tablespaces.
 
 peers:
   database-peers:
