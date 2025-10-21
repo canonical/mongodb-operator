@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 MEDIAN_REELECTION_TIME = 12
 
 
-@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
+@pytest.mark.runner(["self-hosted", "linux", "X64", "noble", "large"])
 @pytest.mark.group(1)
 @pytest.mark.skipif(
     os.environ.get("PYTEST_SKIP_DEPLOY", False),
@@ -43,7 +43,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await ops_test.model.wait_for_idle(timeout=DEPLOYMENT_TIMEOUT, status="active")
 
 
-@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
+@pytest.mark.runner(["self-hosted", "linux", "X64", "noble", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 @pytest.mark.parametrize("unit_id", UNIT_IDS)
