@@ -7,8 +7,8 @@ variable "config_server" {
     app_name          = optional(string, "config-server")
     model             = string
     config            = optional(map(string), { "role" : "config-server" })
-    channel           = optional(string, "6/stable")
-    base              = optional(string, "ubuntu@22.04")
+    channel           = optional(string, "8/edge")
+    base              = optional(string, "ubuntu@24.04")
     revision          = optional(string, null)
     units             = optional(number, 3)
     constraints       = optional(string, "arch=amd64")
@@ -30,8 +30,8 @@ variable "shards" {
     app_name          = string
     model             = string
     config            = optional(map(string), { "role" : "shard" })
-    channel           = optional(string, "6/stable")
-    base              = optional(string, "ubuntu@22.04")
+    channel           = optional(string, "8/edge")
+    base              = optional(string, "ubuntu@24.04")
     revision          = optional(string, null)
     units             = optional(number, 3)
     constraints       = optional(string, "arch=amd64")
@@ -51,12 +51,12 @@ variable "shards" {
 variable "mongos" {
   description = "Configuration for mongos"
   type = object({
-    app_name          = optional(string, "mongos")
-    model             = string
-    config            = optional(map(string), {})
-    channel           = optional(string, "6/stable")
-    base              = optional(string, "ubuntu@22.04")
-    revision          = optional(string, null)
+    app_name = optional(string, "mongos")
+    model    = string
+    config   = optional(map(string), {})
+    channel  = optional(string, "8/edge")
+    base     = optional(string, "ubuntu@24.04")
+    revision = optional(string, null)
   })
 }
 
@@ -86,10 +86,10 @@ variable "self_signed_certificates" {
 variable "grafana_agent" {
   description = "Configuration for the grafana-agent"
   type = object({
-    config            = optional(map(string), {})
-    channel           = optional(string, "1/stable")
-    base              = optional(string, "ubuntu@22.04")
-    revision          = optional(string, null)
+    config   = optional(map(string), {})
+    channel  = optional(string, "1/stable")
+    base     = optional(string, "ubuntu@22.04")
+    revision = optional(string, null)
   })
   default = {}
 }
@@ -128,7 +128,7 @@ variable "data_integrator" {
     model             = string
     config            = optional(map(string), { "database-name" : "test", "extra-user-roles" : "admin" })
     channel           = optional(string, "latest/edge")
-    base              = optional(string, "ubuntu@22.04")
+    base              = optional(string, "ubuntu@24.04")
     revision          = optional(string, null)
     units             = optional(number, 1)
     constraints       = optional(string, "arch=amd64")
