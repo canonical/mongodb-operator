@@ -88,7 +88,7 @@ variable "grafana_agent" {
   type = object({
     config   = optional(map(string), {})
     channel  = optional(string, "1/stable")
-    base     = optional(string, "ubuntu@22.04")
+    base     = optional(string, "ubuntu@24.04")
     revision = optional(string, null)
   })
   default = {}
