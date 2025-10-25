@@ -9,7 +9,7 @@
 
 | Name | Version |
 |------|---------|
-| <a name="provider_juju"></a> [juju](#provider\_juju) | 0.21.0 |
+| <a name="provider_juju"></a> [juju](#provider\_juju) | >= 0.20.0 |
 
 ## Modules
 

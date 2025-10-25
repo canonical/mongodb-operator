@@ -6,11 +6,11 @@ output "app_names" {
   value = merge(
     module.mongodb.app_names,
     {
-      "data_integrator"           : juju_application.data_integrator.name
-      "s3_integrator"             : juju_application.s3_integrator.name
-      "self_signed_certificates"  : var.self_signed_certificates != null ? juju_application.self-signed-certificates["deployed"].name : null
-      "mongos"                    : juju_application.mongos.name
-      "grafana_agent"             : [
+      "data_integrator" : juju_application.data_integrator.name
+      "s3_integrator" : juju_application.s3_integrator.name
+      "self_signed_certificates" : var.self_signed_certificates != null ? juju_application.self-signed-certificates["deployed"].name : null
+      "mongos" : juju_application.mongos.name
+      "grafana_agent" : [
         for i in range(length(local.mongodb_apps)) :
         juju_application.grafana_agent[i].name
       ]
@@ -35,7 +35,8 @@ output "requires" {
   description = "Map of all \"requires\" endpoints"
   value = {
     sharding                  = "sharding"
-    certificates              = "certificates"
+    peer_certificates         = "peer-certificates"
+    client_certificates       = "client-certificates"
     s3_credentials            = "s3-credentials"
     ldap                      = "ldap"
     ldap_certificate_transfer = "ldap-certificate-transfer"
@@ -48,9 +49,9 @@ output "offers" {
   value = merge(
     module.mongodb.offers,
     {
-      "config_server_mongos"  : try(juju_offer.config_server_mongos_offer["offered"].url, null),
-      "tls_provider"          : try(juju_offer.tls_provider_offer["offered"].url, null),
-      "s3_credentials"        : try(juju_offer.s3_integrator_offer["offered"].url, null)
+      "config_server_mongos" : try(juju_offer.config_server_mongos_offer["offered"].url, null),
+      "tls_provider" : try(juju_offer.tls_provider_offer["offered"].url, null),
+      "s3_credentials" : try(juju_offer.s3_integrator_offer["offered"].url, null)
     }
   )
 }
