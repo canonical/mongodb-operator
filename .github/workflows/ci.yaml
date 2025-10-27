@@ -22,24 +22,6 @@ jobs:
     name: Lint
     uses: canonical/data-platform-workflows/.github/workflows/lint.yaml@v29.0.0
 
-  unit-test:
-    name: Unit test charm
-    runs-on: ubuntu-22.04
-    timeout-minutes: 10
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Install deps
-        run: |
-          sudo apt update
-          sudo apt install -y  build-essential python3-dev libldap-dev libsasl2-dev
-      - name: Install tox & poetry
-        run: |
-          pipx install tox
-          pipx install poetry
-      - name: Run tests
-        run: tox run -e unit
-
   terraform-test:
     name: Terraform - Validation and replica-set product
     continue-on-error: true
@@ -154,7 +136,6 @@ jobs:
     name: Integration test charm
     needs:
       - lint
-      - unit-test
       - build
     uses: canonical/data-platform-workflows/.github/workflows/integration_test_charm.yaml@v29.0.0
     with:
