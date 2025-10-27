@@ -7,8 +7,8 @@ variable "mongodb" {
     app_name          = optional(string, "mongodb")
     model             = string
     config            = optional(map(string), { "role" : "replication" })
-    channel           = optional(string, "6/stable")
-    base              = optional(string, "ubuntu@22.04")
+    channel           = optional(string, "8/edge")
+    base              = optional(string, "ubuntu@24.04")
     revision          = optional(string, null)
     units             = optional(number, 3)
     constraints       = optional(string, "arch=amd64")
@@ -44,12 +44,12 @@ variable "self_signed_certificates" {
 variable "grafana_agent" {
   description = "Configuration for the grafana-agent"
   type = object({
-    app_name          = optional(string, "grafana-agent")
-    model             = string
-    config            = optional(map(string), {})
-    channel           = optional(string, "1/stable")
-    base              = optional(string, "ubuntu@22.04")
-    revision          = optional(string, null)
+    app_name = optional(string, "grafana-agent")
+    model    = string
+    config   = optional(map(string), {})
+    channel  = optional(string, "1/stable")
+    base     = optional(string, "ubuntu@24.04")
+    revision = optional(string, null)
   })
 
   validation {

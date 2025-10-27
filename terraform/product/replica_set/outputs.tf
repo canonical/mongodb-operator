@@ -29,7 +29,8 @@ output "requires" {
   description = "Map of all \"requires\" endpoints"
   value = {
     sharding                  = "sharding"
-    certificates              = "certificates"
+    peer_certificates         = "peer-certificates"
+    client_certificates       = "client-certificates"
     s3_credentials            = "s3-credentials"
     ldap                      = "ldap"
     ldap_certificate_transfer = "ldap-certificate-transfer"
@@ -40,8 +41,8 @@ output "requires" {
 output "offers" {
   description = "List of offers URLs."
   value = {
-    mongodb_client  = try(juju_offer.mongodb_client_offer["offered"].url, null)
-    tls_provider    = try(juju_offer.tls_provider_offer["offered"].url, null)
-    s3_credentials  = try(juju_offer.s3_integrator_offer["offered"].url, null)
+    mongodb_client = try(juju_offer.mongodb_client_offer["offered"].url, null)
+    tls_provider   = try(juju_offer.tls_provider_offer["offered"].url, null)
+    s3_credentials = try(juju_offer.s3_integrator_offer["offered"].url, null)
   }
 }
