@@ -24,16 +24,6 @@ restore:
         Optional, a pattern used to remap cluster component names when performing a restore.
         Format of old_config_server_name=new_config_server_name,old_shard_name=new_shard_name
 
-set-tls-private-key:
-  description: Set the privates key, which will be used for certificate signing requests (CSR). Run for each unit separately.
-  params:
-    external-key:
-      type: string
-      description: The content of private key for external communications with clients. Content will be auto-generated if this option is not specified.
-    internal-key:
-      type: string
-      description: The content of private key for internal communications with clients. Content will be auto-generated if this option is not specified.
-
 status-detail:
   description: Gets statuses of the charm
   params:
