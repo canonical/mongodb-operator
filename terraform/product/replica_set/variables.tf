@@ -5,7 +5,7 @@ variable "mongodb" {
   description = "MongoDB app definition"
   type = object({
     app_name          = optional(string, "mongodb")
-    model             = string
+    model_uuid        = string
     config            = optional(map(string), { "role" : "replication" })
     channel           = optional(string, "8/edge")
     base              = optional(string, "ubuntu@24.04")
@@ -23,7 +23,7 @@ variable "self_signed_certificates" {
   description = "Configuration for the self-signed-certificates app"
   type = object({
     app_name          = optional(string, "self-signed-certificates")
-    model             = string
+    model_uuid        = string
     config            = optional(map(string), { "ca-common-name" : "CA" })
     channel           = optional(string, "latest/edge")
     base              = optional(string, "ubuntu@22.04")
@@ -44,16 +44,16 @@ variable "self_signed_certificates" {
 variable "grafana_agent" {
   description = "Configuration for the grafana-agent"
   type = object({
-    app_name = optional(string, "grafana-agent")
-    model    = string
-    config   = optional(map(string), {})
-    channel  = optional(string, "1/stable")
-    base     = optional(string, "ubuntu@24.04")
-    revision = optional(string, null)
+    app_name   = optional(string, "grafana-agent")
+    model_uuid = string
+    config     = optional(map(string), {})
+    channel    = optional(string, "1/stable")
+    base       = optional(string, "ubuntu@24.04")
+    revision   = optional(string, null)
   })
 
   validation {
-    condition     = var.grafana_agent.model == var.mongodb.model
+    condition     = var.grafana_agent.model_uuid == var.mongodb.model_uuid
     error_message = "'grafana-agent' must be deployed in the same model as mongodb."
   }
 }
@@ -63,7 +63,7 @@ variable "s3_integrator" {
   description = "Configuration for the backup integrator"
   type = object({
     app_name          = optional(string, "s3-integrator")
-    model             = string
+    model_uuid        = string
     config            = map(string)
     channel           = optional(string, "latest/edge")
     base              = optional(string, "ubuntu@22.04")
@@ -89,7 +89,7 @@ variable "data_integrator" {
   description = "Configuration for the data-integrator"
   type = object({
     app_name          = optional(string, "data-integrator")
-    model             = string
+    model_uuid        = string
     config            = optional(map(string), { "database-name" : "test", "extra-user-roles" : "admin" })
     channel           = optional(string, "latest/edge")
     base              = optional(string, "ubuntu@22.04")
