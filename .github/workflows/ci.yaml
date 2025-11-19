@@ -81,7 +81,7 @@ jobs:
 
       - name: Terraform deploy - replica-set product module
         run: |
-          MODEL=$(juju show-model test --format=json | jq -r '.["test"].["model-uuid"]')
+          MODEL=$(juju show-model test --format=json | jq -r .["test"].["model-uuid"])
           pushd ./terraform/product/replica_set/
           terraform apply \
             -var="mongodb={\"model_uuid\": \"${MODEL}\"}" \
