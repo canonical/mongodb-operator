@@ -28,7 +28,7 @@ variable "config" {
 }
 
 variable "model_uuid" {
-  description = "Model name"
+  description = "Model UUID"
   type        = string
 }
 
