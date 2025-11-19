@@ -84,11 +84,11 @@ jobs:
           MODEL=$(juju show-model test --format=json | jq -r '.["test"].["model-uuid"]')
           pushd ./terraform/product/replica_set/
           terraform apply \
-            -var='mongodb={"model_uuid": "${MODEL}"}' \
-            -var='self_signed_certificates={"model_uuid": "$MODEL"}' \
-            -var='grafana_agent={"model_uuid": "$MODEL"}' \
-            -var='s3_integrator={"model_uuid": "$MODEL", "config": {"bucket": "test"}}' \
-            -var='data_integrator={"model_uuid": "$MODEL"}' \
+            -var="mongodb={\"model_uuid\": \"${MODEL}\"}" \
+            -var="self_signed_certificates={\"model_uuid\": \"$MODEL\"}" \
+            -var="grafana_agent={\"model_uuid\": \"$MODEL\"}" \
+            -var="s3_integrator={\"model_uuid\": \"$MODEL\", \"config\": {\"bucket\": \"test\"}}" \
+            -var="data_integrator={\"model_uuid\": \"$MODEL\"}" \
             -auto-approve
           popd
 

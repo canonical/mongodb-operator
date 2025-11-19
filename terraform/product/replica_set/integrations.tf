@@ -104,7 +104,7 @@ resource "juju_integration" "mongodb_data_cross_model_integration" {
     juju_application.data_integrator,
     juju_offer.mongodb_client_offer,
   ]
-  model_uuid = var.data_integrator.model
+  model_uuid = var.data_integrator.model_uuid
 }
 
 resource "juju_integration" "mongodb_tls_peer_cross_model_integration" {
