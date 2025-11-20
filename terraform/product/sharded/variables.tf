@@ -5,10 +5,10 @@ variable "config_server" {
   description = "Config server app definition"
   type = object({
     app_name          = optional(string, "config-server")
-    model             = string
+    model_uuid        = string
     config            = optional(map(string), { "role" : "config-server" })
-    channel           = optional(string, "6/stable")
-    base              = optional(string, "ubuntu@22.04")
+    channel           = optional(string, "8-transition/edge")
+    base              = optional(string, "ubuntu@24.04")
     revision          = optional(string, null)
     units             = optional(number, 3)
     constraints       = optional(string, "arch=amd64")
@@ -28,10 +28,10 @@ variable "shards" {
   description = "Shard apps"
   type = list(object({
     app_name          = string
-    model             = string
+    model_uuid        = string
     config            = optional(map(string), { "role" : "shard" })
-    channel           = optional(string, "6/stable")
-    base              = optional(string, "ubuntu@22.04")
+    channel           = optional(string, "8-transition/edge")
+    base              = optional(string, "ubuntu@24.04")
     revision          = optional(string, null)
     units             = optional(number, 3)
     constraints       = optional(string, "arch=amd64")
@@ -51,12 +51,12 @@ variable "shards" {
 variable "mongos" {
   description = "Configuration for mongos"
   type = object({
-    app_name          = optional(string, "mongos")
-    model             = string
-    config            = optional(map(string), {})
-    channel           = optional(string, "6/stable")
-    base              = optional(string, "ubuntu@22.04")
-    revision          = optional(string, null)
+    app_name   = optional(string, "mongos")
+    model_uuid = string
+    config     = optional(map(string), {})
+    channel    = optional(string, "8-transition/edge")
+    base       = optional(string, "ubuntu@24.04")
+    revision   = optional(string, null)
   })
 }
 
@@ -65,7 +65,7 @@ variable "self_signed_certificates" {
   description = "Configuration for the self-signed-certificates app"
   type = object({
     app_name          = optional(string, "self-signed-certificates")
-    model             = string
+    model_uuid        = string
     config            = optional(map(string), { "ca-common-name" : "CA" })
     channel           = optional(string, "latest/edge")
     base              = optional(string, "ubuntu@22.04")
@@ -86,10 +86,10 @@ variable "self_signed_certificates" {
 variable "grafana_agent" {
   description = "Configuration for the grafana-agent"
   type = object({
-    config            = optional(map(string), {})
-    channel           = optional(string, "1/stable")
-    base              = optional(string, "ubuntu@22.04")
-    revision          = optional(string, null)
+    config   = optional(map(string), {})
+    channel  = optional(string, "1/stable")
+    base     = optional(string, "ubuntu@24.04")
+    revision = optional(string, null)
   })
   default = {}
 }
@@ -99,7 +99,7 @@ variable "s3_integrator" {
   description = "Configuration for the backup integrator"
   type = object({
     app_name          = optional(string, "s3-integrator")
-    model             = string
+    model_uuid        = string
     config            = map(string)
     channel           = optional(string, "latest/edge")
     base              = optional(string, "ubuntu@22.04")
@@ -125,10 +125,10 @@ variable "data_integrator" {
   description = "Configuration for the data-integrator"
   type = object({
     app_name          = optional(string, "data-integrator")
-    model             = string
+    model_uuid        = string
     config            = optional(map(string), { "database-name" : "test", "extra-user-roles" : "admin" })
     channel           = optional(string, "latest/edge")
-    base              = optional(string, "ubuntu@22.04")
+    base              = optional(string, "ubuntu@24.04")
     revision          = optional(string, null)
     units             = optional(number, 1)
     constraints       = optional(string, "arch=amd64")
@@ -138,7 +138,7 @@ variable "data_integrator" {
   })
 
   validation {
-    condition     = var.mongos.model == var.data_integrator.model
+    condition     = var.mongos.model_uuid == var.data_integrator.model_uuid
     error_message = "'mongos' and 'data_integrator' should have the same model."
   }
   validation {
