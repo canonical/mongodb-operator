@@ -2,17 +2,17 @@
 # See LICENSE file for licensing details.
 
 locals {
-  enable_tls    = var.self_signed_certificates != null
-  mongodb_apps  = concat([var.config_server], var.shards != null ? var.shards : [])
-  mongo_apps    = concat(local.mongodb_apps, [merge({}, var.mongos)])
+  enable_tls   = var.self_signed_certificates != null
+  mongodb_apps = concat([var.config_server], var.shards != null ? var.shards : [])
+  mongo_apps   = concat(local.mongodb_apps, [merge({}, var.mongos)])
 
   tls_same_model_mongo_apps = [
     for app in local.mongo_apps :
-    app if local.enable_tls && app.model == var.self_signed_certificates.model
+    app if local.enable_tls && app.model_uuid == var.self_signed_certificates.model_uuid
   ]
   tls_cross_model_mongo_apps = [
     for app in local.mongo_apps :
-    app if local.enable_tls && app.model != var.self_signed_certificates.model
+    app if local.enable_tls && app.model_uuid != var.self_signed_certificates.model_uuid
   ]
 }
 
@@ -43,9 +43,9 @@ resource "juju_application" "self-signed-certificates" {
   units             = (var.self_signed_certificates.machines == null || length(var.self_signed_certificates.machines) == 0) ? var.self_signed_certificates.units : null
   machines          = (var.self_signed_certificates.machines == null || length(var.self_signed_certificates.machines) == 0) ? null : var.self_signed_certificates.machines
   config            = var.self_signed_certificates.config
-  model             = var.self_signed_certificates.model
   constraints       = var.self_signed_certificates.constraints
   endpoint_bindings = var.self_signed_certificates.endpoint_bindings
+  model_uuid        = var.self_signed_certificates.model_uuid
 }
 
 # mongos
@@ -57,9 +57,9 @@ resource "juju_application" "mongos" {
     base     = var.mongos.base
   }
 
-  name        = var.mongos.app_name
-  config      = var.mongos.config
-  model       = var.data_integrator.model
+  name       = var.mongos.app_name
+  config     = var.mongos.config
+  model_uuid = var.data_integrator.model_uuid
 }
 
 # grafana-agent
@@ -73,9 +73,9 @@ resource "juju_application" "grafana_agent" {
     base     = var.grafana_agent.base
   }
 
-  name        = "grafana-agent-${local.mongodb_apps[count.index].app_name}"
-  config      = var.grafana_agent.config
-  model       = local.mongodb_apps[count.index].model
+  name       = "grafana-agent-${local.mongodb_apps[count.index].app_name}"
+  config     = var.grafana_agent.config
+  model_uuid = local.mongodb_apps[count.index].model_uuid
 }
 
 # Integrator apps
@@ -91,9 +91,9 @@ resource "juju_application" "data_integrator" {
   units             = (var.data_integrator.machines == null || length(var.data_integrator.machines) == 0) ? var.data_integrator.units : null
   machines          = (var.data_integrator.machines == null || length(var.data_integrator.machines) == 0) ? null : var.data_integrator.machines
   config            = var.data_integrator.config
-  model             = var.data_integrator.model
   constraints       = var.data_integrator.constraints
   endpoint_bindings = var.data_integrator.endpoint_bindings
+  model_uuid        = var.data_integrator.model_uuid
 }
 
 resource "juju_application" "s3_integrator" {
@@ -108,7 +108,7 @@ resource "juju_application" "s3_integrator" {
   units             = (var.s3_integrator.machines == null || length(var.s3_integrator.machines) == 0) ? var.s3_integrator.units : null
   machines          = (var.s3_integrator.machines == null || length(var.s3_integrator.machines) == 0) ? null : var.s3_integrator.machines
   config            = var.s3_integrator.config
-  model             = var.s3_integrator.model
   constraints       = var.s3_integrator.constraints
   endpoint_bindings = var.s3_integrator.endpoint_bindings
+  model_uuid        = var.s3_integrator.model_uuid
 }
