@@ -34,7 +34,7 @@ resource "juju_integration" "mongos_data_integrator_same_model_integration" {
     juju_application.mongos,
     juju_application.data_integrator,
   ]
-  model_uuid = var.data_integrator.model
+  model_uuid = var.data_integrator.model_uuid
 }
 
 resource "juju_integration" "config_server_mongos_same_model_integration" {
@@ -56,7 +56,7 @@ resource "juju_integration" "tls_mongo_same_model_integration" {
 
   model_uuid = local.tls_same_model_mongo_apps[count.index].model_uuid
   application {
-    name     = local.tls_same_model_mongo_apps[count.index].app_name
+    name = local.tls_same_model_mongo_apps[count.index].app_name
   }
   application {
     name = var.self_signed_certificates.app_name
