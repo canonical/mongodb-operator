@@ -9,7 +9,6 @@ resource "juju_application" "mongodb" {
     base     = var.base
   }
   config             = var.config
-  model              = var.model
   name               = var.app_name
   units              = (var.machines == null || length(var.machines) == 0) ? var.units : null
   machines           = (var.machines == null || length(var.machines) == 0) ? null : var.machines
@@ -25,4 +24,5 @@ resource "juju_application" "mongodb" {
       spaces    = try(var.expose.spaces, null)
     }
   }
+  model_uuid = var.model_uuid
 }
