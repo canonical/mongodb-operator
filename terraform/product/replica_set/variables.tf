@@ -48,7 +48,7 @@ variable "grafana_agent" {
     model_uuid = string
     config     = optional(map(string), {})
     channel    = optional(string, "1/stable")
-    base       = optional(string, "ubuntu@22.04")
+    base       = optional(string, "ubuntu@24.04")
     revision   = optional(string, null)
   })
 
@@ -92,7 +92,7 @@ variable "data_integrator" {
     model_uuid        = string
     config            = optional(map(string), { "database-name" : "test", "extra-user-roles" : "admin" })
     channel           = optional(string, "latest/edge")
-    base              = optional(string, "ubuntu@22.04")
+    base              = optional(string, "ubuntu@24.04")
     revision          = optional(string, null)
     units             = optional(number, 1)
     constraints       = optional(string, "arch=amd64")
