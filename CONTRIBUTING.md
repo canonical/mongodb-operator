@@ -55,7 +55,7 @@ juju add-model development
 juju model-config logging-config="<root>=INFO;unit=DEBUG"
 
 # Deploy the charm
-juju deploy ./mongodb_ubuntu-20.04-amd64.charm
+juju deploy ./mongodb_ubuntu-24.04-amd64.charm
 ```
 
 
