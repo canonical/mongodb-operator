@@ -1,0 +1,341 @@
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/0 [idle] blocked: Missing relation to shard(s).
+  config-server-one/1 [executing] blocked: Missing relation to shard(s).
+  shard-one/0 [idle] blocked: Missing relation to config-server.
+  shard-one/1 [executing] blocked: Missing relation to config-server.
+  shard-two/0 [executing] blocked: Missing relation to config-server.
+  shard-two/1 [executing] blocked: Missing relation to config-server.
+  shard-three/0 [executing] blocked: Missing relation to config-server.
+  shard-three/1 [executing] blocked: Missing relation to config-server.
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/0 [executing] blocked: Missing relation to shard(s).
+  config-server-one/1 [executing] blocked: Missing relation to shard(s).
+  shard-one/0 [executing] maintenance: Adding shard to config-server
+  shard-one/1 [executing] maintenance: Adding shard to config-server
+  shard-two/0 [executing] maintenance: Adding shard to config-server
+  shard-two/1 [executing] maintenance: Adding shard to config-server
+  shard-three/0 [executing] maintenance: Adding shard to config-server
+  shard-three/1 [executing] maintenance: Adding shard to config-server
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/0 [executing] blocked: Missing relation to shard(s).
+  config-server-one/1 [executing] blocked: Missing relation to shard(s).
+  shard-one/0 [executing] maintenance: Adding shard to config-server
+  shard-one/1 [executing] maintenance: Adding shard to config-server
+  shard-two/0 [executing] maintenance: Adding shard to config-server
+  shard-two/1 [executing] maintenance: Adding shard to config-server
+  shard-three/0 [executing] maintenance: Adding shard to config-server
+  shard-three/1 [executing] maintenance: Adding shard to config-server
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/0 [executing] maintenance: Adding shard shard-one to config-server...
+  config-server-one/1 [executing] blocked: Missing relation to shard(s).
+  shard-one/0 [executing] active: 
+  shard-one/1 [executing] active: Primary.
+  shard-two/0 [idle] maintenance: Adding shard to config-server
+  shard-two/1 [idle] maintenance: Adding shard to config-server
+  shard-three/0 [idle] maintenance: Adding shard to config-server
+  shard-three/1 [idle] maintenance: Adding shard to config-server
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/0 [executing] active: Primary.
+  config-server-one/1 [executing] blocked: Missing relation to shard(s).
+  shard-one/0 [executing] active: 
+  shard-one/1 [idle] waiting: Waiting for replica set reconfiguration...
+  shard-two/0 [executing] maintenance: Adding shard to config-server
+  shard-two/1 [executing] maintenance: Adding shard to config-server
+  shard-three/0 [executing] maintenance: Adding shard to config-server
+  shard-three/1 [executing] maintenance: Adding shard to config-server
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/0 [executing] maintenance: Adding shard shard-two to config-server...
+  config-server-one/1 [executing] blocked: Missing relation to shard(s).
+  shard-one/0 [executing] active: 
+  shard-one/1 [idle] waiting: Waiting for replica set reconfiguration...
+  shard-two/0 [executing] active: 
+  shard-two/1 [executing] active: Primary.
+  shard-three/0 [executing] active: Primary.
+  shard-three/1 [executing] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/0 [executing] active: Primary.
+  config-server-one/1 [idle] blocked: Missing relation to shard(s).
+  shard-one/1 [idle] waiting: Waiting for replica set reconfiguration...
+  shard-two/0 [idle] active: 
+  shard-two/1 [executing] active: Primary.
+  shard-three/0 [idle] active: Primary.
+  shard-three/1 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/1 [idle] blocked: Missing relation to shard(s).
+  shard-one/1 [idle] waiting: Waiting for replica set reconfiguration...
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/1 [idle] blocked: Missing relation to shard(s).
+  shard-one/1 [idle] waiting: Waiting for replica set reconfiguration...
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/1 [idle] active: 
+  shard-one/1 [idle] waiting: Waiting for replica set reconfiguration...
+  shard-three/0 [idle] active: Primary.
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-one/1 [idle] waiting: Waiting for replica set reconfiguration...
+  shard-two/0 [idle] active: Primary.
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-one/1 [idle] waiting: Waiting for replica set reconfiguration...
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-one/0 [idle] active: 
+  shard-one/1 [idle] active: Primary.
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.6.1    unsupported  01:53:37Z
+
+App                Version  Status  Scale  Charm    Channel  Rev  Exposed  Message
+config-server-one  8.0.10   active      2  mongodb             0  no       
+shard-one          8.0.10   active      2  mongodb             1  no       
+shard-three        8.0.10   active      2  mongodb             3  no       
+shard-two          8.0.10   active      2  mongodb             2  no       
+
+Unit                  Workload  Agent  Machine  Public address  Ports            Message
+config-server-one/0*  active    idle   0        10.48.78.232    27017-27018/tcp  Primary.
+config-server-one/1   active    idle   1        10.48.78.27     27017-27018/tcp  
+shard-one/0           active    idle   2        10.48.78.228    27017/tcp        
+shard-one/1*          active    idle   3        10.48.78.174    27017/tcp        Primary.
+shard-three/0*        active    idle   6        10.48.78.12     27017/tcp        
+shard-three/1         active    idle   7        10.48.78.250    27017/tcp        Primary.
+shard-two/0           active    idle   4        10.48.78.209    27017/tcp        Primary.
+shard-two/1*          active    idle   5        10.48.78.191    27017/tcp        
+
+Machine  State    Address       Inst id        Base          AZ  Message
+0        started  10.48.78.232  juju-7c919b-0  ubuntu@24.04      Running
+1        started  10.48.78.27   juju-7c919b-1  ubuntu@24.04      Running
+2        started  10.48.78.228  juju-7c919b-2  ubuntu@24.04      Running
+3        started  10.48.78.174  juju-7c919b-3  ubuntu@24.04      Running
+4        started  10.48.78.209  juju-7c919b-4  ubuntu@24.04      Running
+5        started  10.48.78.191  juju-7c919b-5  ubuntu@24.04      Running
+6        started  10.48.78.12   juju-7c919b-6  ubuntu@24.04      Running
+7        started  10.48.78.250  juju-7c919b-7  ubuntu@24.04      Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+machine-0: 01:34:52 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 01:34:52 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-one-0: 01:34:53 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-1: 01:35:27 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 01:35:27 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-one-1: 01:35:27 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-3: 01:35:58 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 01:35:58 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-1: 01:35:59 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-2: 01:36:43 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-0: 01:36:44 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-2: 01:36:44 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-one-0: 01:37:00 ERROR unit.config-server-one/0.juju-log single_kernel_mongo.lib.charms.operator_libs_linux.v0.sysctl:Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-config-server-one-0: 01:37:00 ERROR unit.config-server-one/0.juju-log single_kernel_mongo.core.operator:Error setting values on sysctl parameters: Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-config-server-one-0: 01:37:02 ERROR unit.config-server-one/0.juju-log single_kernel_mongo.core.operator:Error setting values on kernel parameters: ('Command [\'systemctl\', \'start\', \'enable-transparent-huge-pages\'] failed with returncode 1. systemctl output:\nJob for enable-transparent-huge-pages.service failed because the control process exited with error code.\nSee "systemctl status enable-transparent-huge-pages.service" and "journalctl -xeu enable-transparent-huge-pages.service" for details.\n',)
+machine-5: 01:37:34 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-5: 01:37:34 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-two-1: 01:37:35 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-config-server-one-1: 01:37:49 ERROR unit.config-server-one/1.juju-log single_kernel_mongo.lib.charms.operator_libs_linux.v0.sysctl:Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-config-server-one-1: 01:37:49 ERROR unit.config-server-one/1.juju-log single_kernel_mongo.core.operator:Error setting values on sysctl parameters: Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-config-server-one-1: 01:37:51 ERROR unit.config-server-one/1.juju-log single_kernel_mongo.core.operator:Error setting values on kernel parameters: ('Command [\'systemctl\', \'start\', \'enable-transparent-huge-pages\'] failed with returncode 1. systemctl output:\nJob for enable-transparent-huge-pages.service failed because the control process exited with error code.\nSee "systemctl status enable-transparent-huge-pages.service" and "journalctl -xeu enable-transparent-huge-pages.service" for details.\n',)
+machine-4: 01:38:20 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-4: 01:38:20 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-two-0: 01:38:21 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-shard-one-1: 01:38:23 ERROR unit.shard-one/1.juju-log single_kernel_mongo.lib.charms.operator_libs_linux.v0.sysctl:Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-shard-one-1: 01:38:23 ERROR unit.shard-one/1.juju-log single_kernel_mongo.core.operator:Error setting values on sysctl parameters: Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-shard-one-1: 01:38:25 ERROR unit.shard-one/1.juju-log single_kernel_mongo.core.operator:Error setting values on kernel parameters: ('Command [\'systemctl\', \'start\', \'enable-transparent-huge-pages\'] failed with returncode 1. systemctl output:\nJob for enable-transparent-huge-pages.service failed because the control process exited with error code.\nSee "systemctl status enable-transparent-huge-pages.service" and "journalctl -xeu enable-transparent-huge-pages.service" for details.\n',)
+unit-shard-one-0: 01:38:57 ERROR unit.shard-one/0.juju-log single_kernel_mongo.lib.charms.operator_libs_linux.v0.sysctl:Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-shard-one-0: 01:38:57 ERROR unit.shard-one/0.juju-log single_kernel_mongo.core.operator:Error setting values on sysctl parameters: Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+machine-6: 01:38:57 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-6: 01:38:57 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-three-0: 01:38:57 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-shard-one-0: 01:38:59 ERROR unit.shard-one/0.juju-log single_kernel_mongo.core.operator:Error setting values on kernel parameters: ('Command [\'systemctl\', \'start\', \'enable-transparent-huge-pages\'] failed with returncode 1. systemctl output:\nJob for enable-transparent-huge-pages.service failed because the control process exited with error code.\nSee "systemctl status enable-transparent-huge-pages.service" and "journalctl -xeu enable-transparent-huge-pages.service" for details.\n',)
+unit-shard-two-1: 01:39:41 ERROR unit.shard-two/1.juju-log single_kernel_mongo.lib.charms.operator_libs_linux.v0.sysctl:Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-shard-two-1: 01:39:41 ERROR unit.shard-two/1.juju-log single_kernel_mongo.core.operator:Error setting values on sysctl parameters: Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-shard-two-1: 01:39:42 ERROR unit.shard-two/1.juju-log single_kernel_mongo.core.operator:Error setting values on kernel parameters: ('Command [\'systemctl\', \'start\', \'enable-transparent-huge-pages\'] failed with returncode 1. systemctl output:\nJob for enable-transparent-huge-pages.service failed because the control process exited with error code.\nSee "systemctl status enable-transparent-huge-pages.service" and "journalctl -xeu enable-transparent-huge-pages.service" for details.\n',)
+machine-7: 01:39:44 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-7: 01:39:44 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-three-1: 01:39:44 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-shard-two-0: 01:40:16 ERROR unit.shard-two/0.juju-log single_kernel_mongo.lib.charms.operator_libs_linux.v0.sysctl:Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-shard-two-0: 01:40:16 ERROR unit.shard-two/0.juju-log single_kernel_mongo.core.operator:Error setting values on sysctl parameters: Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-shard-two-0: 01:40:17 ERROR unit.shard-two/0.juju-log single_kernel_mongo.core.operator:Error setting values on kernel parameters: ('Command [\'systemctl\', \'start\', \'enable-transparent-huge-pages\'] failed with returncode 1. systemctl output:\nJob for enable-transparent-huge-pages.service failed because the control process exited with error code.\nSee "systemctl status enable-transparent-huge-pages.service" and "journalctl -xeu enable-transparent-huge-pages.service" for details.\n',)
+unit-shard-three-0: 01:40:51 ERROR unit.shard-three/0.juju-log single_kernel_mongo.lib.charms.operator_libs_linux.v0.sysctl:Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-shard-three-0: 01:40:51 ERROR unit.shard-three/0.juju-log single_kernel_mongo.core.operator:Error setting values on sysctl parameters: Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-shard-three-0: 01:40:53 ERROR unit.shard-three/0.juju-log single_kernel_mongo.core.operator:Error setting values on kernel parameters: ('Command [\'systemctl\', \'start\', \'enable-transparent-huge-pages\'] failed with returncode 1. systemctl output:\nJob for enable-transparent-huge-pages.service failed because the control process exited with error code.\nSee "systemctl status enable-transparent-huge-pages.service" and "journalctl -xeu enable-transparent-huge-pages.service" for details.\n',)
+unit-shard-three-1: 01:41:31 ERROR unit.shard-three/1.juju-log single_kernel_mongo.lib.charms.operator_libs_linux.v0.sysctl:Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-shard-three-1: 01:41:31 ERROR unit.shard-three/1.juju-log single_kernel_mongo.core.operator:Error setting values on sysctl parameters: Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-shard-three-1: 01:41:33 ERROR unit.shard-three/1.juju-log single_kernel_mongo.core.operator:Error setting values on kernel parameters: ('Command [\'systemctl\', \'start\', \'enable-transparent-huge-pages\'] failed with returncode 1. systemctl output:\nJob for enable-transparent-huge-pages.service failed because the control process exited with error code.\nSee "systemctl status enable-transparent-huge-pages.service" and "journalctl -xeu enable-transparent-huge-pages.service" for details.\n',)
+unit-config-server-one-0: 01:45:03 ERROR unit.config-server-one/0.juju-log status-peers:0: root:Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-config-server-one-0/charm/venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "/var/lib/juju/agents/unit-config-server-one-0/charm/venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 250, in handle_request
+    resp = self._pool.handle_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-0/charm/venv/lib/python3.12/site-packages/httpcore/_sync/connection_pool.py", line 256, in handle_request
+    raise exc from None
+  File "/var/lib/juju/agents/unit-config-server-one-0/charm/venv/lib/python3.12/site-packages/httpcore/_sync/connection_pool.py", line 236, in handle_request
+    response = connection.handle_request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-0/charm/venv/lib/python3.12/site-packages/httpcore/_sync/connection.py", line 103, in handle_request
+    return self._connection.handle_request(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-0/charm/venv/lib/python3.12/site-packages/httpcore/_sync/http11.py", line 136, in handle_request
+    raise exc
+  File "/var/lib/juju/agents/unit-config-server-one-0/charm/venv/lib/python3.12/site-packages/httpcore/_sync/http11.py", line 106, in handle_request
+    ) = self._receive_response_headers(**kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-0/charm/venv/lib/python3.12/site-packages/httpcore/_sync/http11.py", line 177, in _receive_response_headers
+    event = self._receive_event(timeout=timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-0/charm/venv/lib/python3.12/site-packages/httpcore/_sync/http11.py", line 217, in _receive_event
+    data = self._network_stream.read(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-0/charm/venv/lib/python3.12/site-packages/httpcore/_backends/sync.py", line 126, in read
+    with map_exceptions(exc_map):
+  File "/usr/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/var/lib/juju/agents/unit-config-server-one-0/charm/venv/lib/python3.12/site-packages/httpcore/_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ReadTimeout: timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-config-server-one-0/charm/src/charm.py", line 36, in <module>
+    main(MongoDBVMCharm)
+  File "/var/lib/juju/agents/unit-config-server-one-0/charm/venv/lib/python3.12/site-packages/ops/main.py", line 39, in main
+    return _main.main(charm_class=charm_class, use_juju_for_storage=use_juju_for_storage)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-0/charm/venv/lib/python3.12/site-packages/ops/_main.py", line 472, in main
+    manager = _Manager(charm_class, use_juju_for_storage=use_juju_for_storage)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-0/charm/venv/lib/python3.12/site-packages/ops/_main.py", line 310, in __init__
+    self.charm = self._charm_class(self.framework)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-0/charm/venv/lib/python3.12/site-packages/single_kernel_mongo/abstract_charm.py", line 81, in __init__
+    self.operator = self.operator_type(self)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-0/charm/venv/lib/python3.12/site-packages/single_kernel_mongo/managers/mongodb_operator.py", line 227, in __init__
+    self.refresh = refresh_class(upgrade_backend)  # type: ignore[argument-type]
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-0/charm/venv/lib/python3.12/site-packages/charm_refresh/_main.py", line 3223, in __init__
+    self._update_snap_revision(raise_if_not_installed=False)
+  File "/var/lib/juju/agents/unit-config-server-one-0/charm/venv/lib/python3.12/site-packages/charm_refresh/_main.py", line 2143, in _update_snap_revision
+    snap_revision = self._get_installed_snap_revision()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-0/charm/venv/lib/python3.12/site-packages/charm_refresh/_main.py", line 2118, in _get_installed_snap_revision
+    response = client.get(
+               ^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-0/charm/venv/lib/python3.12/site-packages/httpx/_client.py", line 1053, in get
+    return self.request(
+           ^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-0/charm/venv/lib/python3.12/site-packages/httpx/_client.py", line 825, in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-0/charm/venv/lib/python3.12/site-packages/httpx/_client.py", line 914, in send
+    response = self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-0/charm/venv/lib/python3.12/site-packages/httpx/_client.py", line 942, in _send_handling_auth
+    response = self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-0/charm/venv/lib/python3.12/site-packages/httpx/_client.py", line 979, in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-0/charm/venv/lib/python3.12/site-packages/httpx/_client.py", line 1014, in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-0/charm/venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 249, in handle_request
+    with map_httpcore_exceptions():
+  File "/usr/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/var/lib/juju/agents/unit-config-server-one-0/charm/venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ReadTimeout: timed out
+unit-config-server-one-1: 01:45:03 ERROR unit.config-server-one/1.juju-log status-peers:0: root:Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-config-server-one-1/charm/venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "/var/lib/juju/agents/unit-config-server-one-1/charm/venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 250, in handle_request
+    resp = self._pool.handle_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-1/charm/venv/lib/python3.12/site-packages/httpcore/_sync/connection_pool.py", line 256, in handle_request
+    raise exc from None
+  File "/var/lib/juju/agents/unit-config-server-one-1/charm/venv/lib/python3.12/site-packages/httpcore/_sync/connection_pool.py", line 236, in handle_request
+    response = connection.handle_request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-1/charm/venv/lib/python3.12/site-packages/httpcore/_sync/connection.py", line 103, in handle_request
+    return self._connection.handle_request(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-1/charm/venv/lib/python3.12/site-packages/httpcore/_sync/http11.py", line 136, in handle_request
+    raise exc
+  File "/var/lib/juju/agents/unit-config-server-one-1/charm/venv/lib/python3.12/site-packages/httpcore/_sync/http11.py", line 106, in handle_request
+    ) = self._receive_response_headers(**kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-1/charm/venv/lib/python3.12/site-packages/httpcore/_sync/http11.py", line 177, in _receive_response_headers
+    event = self._receive_event(timeout=timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-1/charm/venv/lib/python3.12/site-packages/httpcore/_sync/http11.py", line 217, in _receive_event
+    data = self._network_stream.read(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-1/charm/venv/lib/python3.12/site-packages/httpcore/_backends/sync.py", line 126, in read
+    with map_exceptions(exc_map):
+  File "/usr/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/var/lib/juju/agents/unit-config-server-one-1/charm/venv/lib/python3.12/site-packages/httpcore/_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ReadTimeout: timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-config-server-one-1/charm/src/charm.py", line 36, in <module>
+    main(MongoDBVMCharm)
+  File "/var/lib/juju/agents/unit-config-server-one-1/charm/venv/lib/python3.12/site-packages/ops/main.py", line 39, in main
+    return _main.main(charm_class=charm_class, use_juju_for_storage=use_juju_for_storage)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-1/charm/venv/lib/python3.12/site-packages/ops/_main.py", line 472, in main
+    manager = _Manager(charm_class, use_juju_for_storage=use_juju_for_storage)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-1/charm/venv/lib/python3.12/site-packages/ops/_main.py", line 310, in __init__
+    self.charm = self._charm_class(self.framework)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-1/charm/venv/lib/python3.12/site-packages/single_kernel_mongo/abstract_charm.py", line 81, in __init__
+    self.operator = self.operator_type(self)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-1/charm/venv/lib/python3.12/site-packages/single_kernel_mongo/managers/mongodb_operator.py", line 227, in __init__
+    self.refresh = refresh_class(upgrade_backend)  # type: ignore[argument-type]
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-1/charm/venv/lib/python3.12/site-packages/charm_refresh/_main.py", line 3223, in __init__
+    self._update_snap_revision(raise_if_not_installed=False)
+  File "/var/lib/juju/agents/unit-config-server-one-1/charm/venv/lib/python3.12/site-packages/charm_refresh/_main.py", line 2143, in _update_snap_revision
+    snap_revision = self._get_installed_snap_revision()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-1/charm/venv/lib/python3.12/site-packages/charm_refresh/_main.py", line 2118, in _get_installed_snap_revision
+    response = client.get(
+               ^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-1/charm/venv/lib/python3.12/site-packages/httpx/_client.py", line 1053, in get
+    return self.request(
+           ^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-1/charm/venv/lib/python3.12/site-packages/httpx/_client.py", line 825, in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-1/charm/venv/lib/python3.12/site-packages/httpx/_client.py", line 914, in send
+    response = self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-1/charm/venv/lib/python3.12/site-packages/httpx/_client.py", line 942, in _send_handling_auth
+    response = self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-1/charm/venv/lib/python3.12/site-packages/httpx/_client.py", line 979, in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-1/charm/venv/lib/python3.12/site-packages/httpx/_client.py", line 1014, in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-config-server-one-1/charm/venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 249, in handle_request
+    with map_httpcore_exceptions():
+  File "/usr/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/var/lib/juju/agents/unit-config-server-one-1/charm/venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ReadTimeout: timed out
+unit-config-server-one-0: 01:45:04 ERROR juju.worker.uniter.operation hook "status-peers-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-config-server-one-1: 01:45:04 ERROR juju.worker.uniter.operation hook "status-peers-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-one-1: 01:48:52 ERROR unit.shard-one/1.juju-log database-peers:4: single_kernel_mongo.managers.mongodb_operator:Not reconfiguring: error=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6957240350d90246a5cda5ec, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.48.78.174', 27017) server_type: RSSecondary, rtt: 0.0006473429998550273>, <ServerDescription ('10.48.78.228', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('695723e9938fc7aef1f88b98'), 'counter': 6}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 855}")>]>
+unit-config-server-one-0: 01:48:57 ERROR unit.config-server-one/0.juju-log config-server:16: single_kernel_mongo.managers.sharding:Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1767318535, 3), \'signature\': {\'hash\': b\'\\xcc\\xbd\\xc5\\x11\\xd2\\x7f\\xa4\\x13\\xde\\x12AP\\xbci\\xc8S\\x1d\\xfc\\x07\\xb9\', \'keyId\': 7590572895668011024}}, \'operationTime\': Timestamp(1767318535, 3)}')
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
