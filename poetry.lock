@@ -459,7 +459,7 @@ version = "0.1.2"
 description = ""
 optional = false
 python-versions = ">=3.8"
-groups = ["main", "integration"]
+groups = ["main"]
 files = [
     {file = "charm_api-0.1.2-py3-none-any.whl", hash = "sha256:f76806f8d8e1e39ae4a812711350399168cd26b319a01e73a5816ef8fb9f7ed4"},
     {file = "charm_api-0.1.2.tar.gz", hash = "sha256:5d74418a3ffdee189dec1eaf648ba1bd7cff7449c3cdd2334a724e6722204c9d"},
@@ -471,7 +471,7 @@ version = "0.1.1"
 description = ""
 optional = false
 python-versions = ">=3.8"
-groups = ["main", "integration"]
+groups = ["main"]
 files = [
     {file = "charm_json-0.1.1-py3-none-any.whl", hash = "sha256:a3fac62d45821d1a8c14058632e21333ec4e2cd41d0d00d6a73d00fc9a656eef"},
     {file = "charm_json-0.1.1.tar.gz", hash = "sha256:cb2eb24f6135d226ad04b0a17288ca2e027160d8af288083ef701bf4b137154e"},
@@ -486,7 +486,7 @@ version = "3.1.1.2"
 description = "In-place rolling refreshes (upgrades) of stateful charmed applications"
 optional = false
 python-versions = ">=3.8"
-groups = ["main", "integration"]
+groups = ["main"]
 files = [
     {file = "charm_refresh-3.1.1.2-py3-none-any.whl", hash = "sha256:01143532a8021cd0ab9ad9686b73acccc289a8d51881f627575b0f25ab58c7e0"},
     {file = "charm_refresh-3.1.1.2.tar.gz", hash = "sha256:1f0156799d338f2d74f27ed2439ed631a107bf46fe69fc5a5eec4877f48489b6"},
@@ -1549,19 +1549,18 @@ files = [
 
 [[package]]
 name = "mongo-charms-single-kernel"
-version = "1.8.22"
+version = "1.8.5"
 description = "Shared and reusable code for Mongo-related charms"
 optional = false
 python-versions = "<4.0,>=3.10"
 groups = ["main", "integration"]
 files = [
-    {file = "mongo_charms_single_kernel-1.8.22-py3-none-any.whl", hash = "sha256:3d2e381dead393496c9489775afcf37ab63e917916c0a204bac01b47b47c0523"},
-    {file = "mongo_charms_single_kernel-1.8.22.tar.gz", hash = "sha256:d1d05842dd69b9e96e6fa58405b5e39e72a7faf82baac38ab3143bbb8732e3bb"},
+    {file = "mongo_charms_single_kernel-1.8.5-py3-none-any.whl", hash = "sha256:d5c104634fc05be6b044ad6e1eba2c528e4247f62f1d5b7f696d725b5d6f6ce9"},
+    {file = "mongo_charms_single_kernel-1.8.5.tar.gz", hash = "sha256:85f70df2150f0394f7fe570a923f63bfb877d472db2c4f0ef213b5d8b6212826"},
 ]
 
 [package.dependencies]
 boto3 = ">=1.37.12,<1.38.0"
-charm-refresh = ">=3.1.0.2,<4.0.0.0"
 cosl = "*"
 cryptography = "*"
 dacite = ">=1.9.0,<1.10.0"
@@ -2923,7 +2922,7 @@ version = "2.3.0"
 description = "A lil' TOML parser"
 optional = false
 python-versions = ">=3.8"
-groups = ["main", "integration"]
+groups = ["main"]
 files = [
     {file = "tomli-2.3.0-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:88bd15eb972f3664f5ed4b57c1634a97153b4bac4479dcb6a495f41921eb7f45"},
     {file = "tomli-2.3.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:883b1c0d6398a6a9d29b508c331fa56adbcdff647f6ace4dfca0f50e90dfd0ba"},
@@ -3201,4 +3200,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12.0"
-content-hash = "eedec1377d4684a0c9d4e59512676fea89bb9ebfbfd87647bda54bcae6dbe2ba"
+content-hash = "cafcae4f84a1288a26152e3db507b78d2aef11d76fc6ca6eb79cc6d34b0e12fe"
