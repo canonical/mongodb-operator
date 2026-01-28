@@ -9,7 +9,7 @@ concurrency:
 on:
   pull_request:
   schedule:
-    - cron: '53 0 * * *'  # Daily at 00:53 UTC
+    - cron: "53 0 * * *" # Daily at 00:53 UTC
   # Triggered on push to branch "main" by .github/workflows/release.yaml
   workflow_call:
     outputs:
@@ -131,7 +131,7 @@ jobs:
     uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v35.0.4
     with:
       path-to-charm-directory: ${{ matrix.path }}
-      cache: true
+      cache: false
 
   integration-test:
     name: Integration test charm
@@ -142,7 +142,7 @@ jobs:
     with:
       artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
       cloud: lxd
-      juju-agent-version: 3.6.1  # renovate: juju-agent-pin-minor
+      juju-agent-version: 3.6.1 # renovate: juju-agent-pin-minor
       _beta_allure_report: true
     permissions:
       contents: write # Needed for Allure Report beta
