@@ -1,0 +1,166 @@
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/0 [executing] blocked: Missing relation to shard(s).
+  config-server-one/1 [executing] blocked: Missing relation to shard(s).
+  shard-one/0 [executing] blocked: Missing relation to config-server.
+  shard-one/1 [executing] blocked: Missing relation to config-server.
+  shard-two/0 [executing] blocked: Missing relation to config-server.
+  shard-two/1 [executing] blocked: Missing relation to config-server.
+  shard-three/0 [executing] blocked: Missing relation to config-server.
+  shard-three/1 [executing] blocked: Missing relation to config-server.
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/0 [executing] blocked: Missing relation to shard(s).
+  config-server-one/1 [executing] blocked: Missing relation to shard(s).
+  shard-one/0 [executing] maintenance: Adding shard to config-server
+  shard-one/1 [executing] maintenance: Adding shard to config-server
+  shard-two/0 [executing] maintenance: Adding shard to config-server
+  shard-two/1 [executing] maintenance: Adding shard to config-server
+  shard-three/0 [executing] maintenance: Adding shard to config-server
+  shard-three/1 [executing] maintenance: Adding shard to config-server
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/0 [executing] blocked: Missing relation to shard(s).
+  config-server-one/1 [executing] blocked: Missing relation to shard(s).
+  shard-one/0 [executing] maintenance: Adding shard to config-server
+  shard-one/1 [executing] maintenance: Adding shard to config-server
+  shard-two/0 [executing] maintenance: Adding shard to config-server
+  shard-two/1 [executing] maintenance: Adding shard to config-server
+  shard-three/0 [executing] maintenance: Adding shard to config-server
+  shard-three/1 [executing] maintenance: Adding shard to config-server
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/0 [executing] maintenance: Adding shard shard-one to config-server...
+  config-server-one/1 [executing] blocked: Missing relation to shard(s).
+  shard-one/0 [executing] active: Primary.
+  shard-one/1 [executing] active: 
+  shard-two/0 [idle] maintenance: Adding shard to config-server
+  shard-two/1 [idle] maintenance: Adding shard to config-server
+  shard-three/0 [executing] maintenance: Adding shard to config-server
+  shard-three/1 [executing] maintenance: Adding shard to config-server
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/0 [executing] active: Primary.
+  config-server-one/1 [executing] blocked: Missing relation to shard(s).
+  shard-one/0 [executing] waiting: Waiting for replica set reconfiguration...
+  shard-one/1 [executing] active: 
+  shard-two/0 [idle] maintenance: Adding shard to config-server
+  shard-two/1 [idle] maintenance: Adding shard to config-server
+  shard-three/0 [executing] active: 
+  shard-three/1 [executing] active: Primary.
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/0 [executing] active: Primary.
+  config-server-one/1 [idle] blocked: Missing relation to shard(s).
+  shard-one/0 [idle] waiting: Waiting for replica set reconfiguration...
+  shard-one/1 [executing] active: 
+  shard-two/0 [executing] maintenance: Adding shard to config-server
+  shard-two/1 [executing] maintenance: Adding shard to config-server
+  shard-three/0 [idle] active: 
+  shard-three/1 [idle] active: Primary.
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/0 [idle] active: Primary.
+  config-server-one/1 [idle] blocked: Missing relation to shard(s).
+  shard-one/0 [idle] waiting: Waiting for replica set reconfiguration...
+  shard-two/0 [idle] active: Primary.
+  shard-two/1 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/1 [idle] blocked: Missing relation to shard(s).
+  shard-one/0 [idle] waiting: Waiting for replica set reconfiguration...
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/1 [idle] blocked: Missing relation to shard(s).
+  shard-one/0 [idle] waiting: Waiting for replica set reconfiguration...
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/1 [idle] blocked: Missing relation to shard(s).
+  shard-one/0 [idle] waiting: Waiting for replica set reconfiguration...
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/1 [idle] blocked: Missing relation to shard(s).
+  shard-one/0 [idle] waiting: Waiting for replica set reconfiguration...
+  shard-two/1 [idle] active: 
+  shard-three/1 [idle] active: Primary.
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/1 [idle] blocked: Missing relation to shard(s).
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/0 [idle] active: Primary.
+  config-server-one/1 [idle] active: 
+  shard-two/0 [idle] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.6.1    unsupported  02:02:22Z
+
+App                Version  Status  Scale  Charm    Channel  Rev  Exposed  Message
+config-server-one  8.0.10   active      2  mongodb             0  no       
+shard-one          8.0.10   active      2  mongodb             1  no       
+shard-three        8.0.10   active      2  mongodb             3  no       
+shard-two          8.0.10   active      2  mongodb             2  no       
+
+Unit                  Workload  Agent  Machine  Public address  Ports            Message
+config-server-one/0*  active    idle   0        10.183.254.233  27017-27018/tcp  Primary.
+config-server-one/1   active    idle   1        10.183.254.245  27017-27018/tcp  
+shard-one/0*          active    idle   2        10.183.254.165  27017/tcp        Primary.
+shard-one/1           active    idle   3        10.183.254.109  27017/tcp        
+shard-three/0         active    idle   6        10.183.254.223  27017/tcp        Primary.
+shard-three/1*        active    idle   7        10.183.254.99   27017/tcp        
+shard-two/0*          active    idle   4        10.183.254.41   27017/tcp        
+shard-two/1           active    idle   5        10.183.254.189  27017/tcp        Primary.
+
+Machine  State    Address         Inst id        Base          AZ  Message
+0        started  10.183.254.233  juju-29e61b-0  ubuntu@24.04      Running
+1        started  10.183.254.245  juju-29e61b-1  ubuntu@24.04      Running
+2        started  10.183.254.165  juju-29e61b-2  ubuntu@24.04      Running
+3        started  10.183.254.109  juju-29e61b-3  ubuntu@24.04      Running
+4        started  10.183.254.41   juju-29e61b-4  ubuntu@24.04      Running
+5        started  10.183.254.189  juju-29e61b-5  ubuntu@24.04      Running
+6        started  10.183.254.223  juju-29e61b-6  ubuntu@24.04      Running
+7        started  10.183.254.99   juju-29e61b-7  ubuntu@24.04      Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+machine-0: 01:45:16 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 01:45:16 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-one-0: 01:45:17 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-1: 01:45:56 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 01:45:56 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-config-server-one-1: 01:45:56 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-2: 01:46:33 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 01:46:33 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-0: 01:46:34 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+machine-3: 01:47:18 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 01:47:18 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-1: 01:47:19 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-config-server-one-0: 01:47:40 ERROR unit.config-server-one/0.juju-log single_kernel_mongo.lib.charms.operator_libs_linux.v0.sysctl:Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-config-server-one-0: 01:47:40 ERROR unit.config-server-one/0.juju-log single_kernel_mongo.core.operator:Error setting values on sysctl parameters: Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-config-server-one-0: 01:47:42 ERROR unit.config-server-one/0.juju-log single_kernel_mongo.core.operator:Error setting values on kernel parameters: ('Command [\'systemctl\', \'start\', \'enable-transparent-huge-pages\'] failed with returncode 1. systemctl output:\nJob for enable-transparent-huge-pages.service failed because the control process exited with error code.\nSee "systemctl status enable-transparent-huge-pages.service" and "journalctl -xeu enable-transparent-huge-pages.service" for details.\n',)
+unit-config-server-one-1: 01:48:14 ERROR unit.config-server-one/1.juju-log single_kernel_mongo.lib.charms.operator_libs_linux.v0.sysctl:Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-config-server-one-1: 01:48:14 ERROR unit.config-server-one/1.juju-log single_kernel_mongo.core.operator:Error setting values on sysctl parameters: Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+machine-7: 01:48:16 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-7: 01:48:16 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-three-1: 01:48:16 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-config-server-one-1: 01:48:16 ERROR unit.config-server-one/1.juju-log single_kernel_mongo.core.operator:Error setting values on kernel parameters: ('Command [\'systemctl\', \'start\', \'enable-transparent-huge-pages\'] failed with returncode 1. systemctl output:\nJob for enable-transparent-huge-pages.service failed because the control process exited with error code.\nSee "systemctl status enable-transparent-huge-pages.service" and "journalctl -xeu enable-transparent-huge-pages.service" for details.\n',)
+unit-shard-one-0: 01:48:54 ERROR unit.shard-one/0.juju-log single_kernel_mongo.lib.charms.operator_libs_linux.v0.sysctl:Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-shard-one-0: 01:48:54 ERROR unit.shard-one/0.juju-log single_kernel_mongo.core.operator:Error setting values on sysctl parameters: Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-shard-one-0: 01:48:56 ERROR unit.shard-one/0.juju-log single_kernel_mongo.core.operator:Error setting values on kernel parameters: ('Command [\'systemctl\', \'start\', \'enable-transparent-huge-pages\'] failed with returncode 1. systemctl output:\nJob for enable-transparent-huge-pages.service failed because the control process exited with error code.\nSee "systemctl status enable-transparent-huge-pages.service" and "journalctl -xeu enable-transparent-huge-pages.service" for details.\n',)
+machine-6: 01:49:07 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-6: 01:49:07 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-three-0: 01:49:08 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-shard-one-1: 01:49:37 ERROR unit.shard-one/1.juju-log single_kernel_mongo.lib.charms.operator_libs_linux.v0.sysctl:Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-shard-one-1: 01:49:37 ERROR unit.shard-one/1.juju-log single_kernel_mongo.core.operator:Error setting values on sysctl parameters: Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+machine-4: 01:49:39 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-4: 01:49:39 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-one-1: 01:49:39 ERROR unit.shard-one/1.juju-log single_kernel_mongo.core.operator:Error setting values on kernel parameters: ('Command [\'systemctl\', \'start\', \'enable-transparent-huge-pages\'] failed with returncode 1. systemctl output:\nJob for enable-transparent-huge-pages.service failed because the control process exited with error code.\nSee "systemctl status enable-transparent-huge-pages.service" and "journalctl -xeu enable-transparent-huge-pages.service" for details.\n',)
+unit-shard-two-0: 01:49:39 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-shard-three-1: 01:50:18 ERROR unit.shard-three/1.juju-log single_kernel_mongo.lib.charms.operator_libs_linux.v0.sysctl:Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-shard-three-1: 01:50:18 ERROR unit.shard-three/1.juju-log single_kernel_mongo.core.operator:Error setting values on sysctl parameters: Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-shard-three-1: 01:50:19 ERROR unit.shard-three/1.juju-log single_kernel_mongo.core.operator:Error setting values on kernel parameters: ('Command [\'systemctl\', \'start\', \'enable-transparent-huge-pages\'] failed with returncode 1. systemctl output:\nJob for enable-transparent-huge-pages.service failed because the control process exited with error code.\nSee "systemctl status enable-transparent-huge-pages.service" and "journalctl -xeu enable-transparent-huge-pages.service" for details.\n',)
+machine-5: 01:50:26 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-5: 01:50:26 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-shard-two-1: 01:50:26 ERROR juju.worker.meterstatus error running "meter-status-changed": charm missing from disk
+unit-shard-three-0: 01:51:00 ERROR unit.shard-three/0.juju-log single_kernel_mongo.lib.charms.operator_libs_linux.v0.sysctl:Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-shard-three-0: 01:51:00 ERROR unit.shard-three/0.juju-log single_kernel_mongo.core.operator:Error setting values on sysctl parameters: Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-shard-three-0: 01:51:02 ERROR unit.shard-three/0.juju-log single_kernel_mongo.core.operator:Error setting values on kernel parameters: ('Command [\'systemctl\', \'start\', \'enable-transparent-huge-pages\'] failed with returncode 1. systemctl output:\nJob for enable-transparent-huge-pages.service failed because the control process exited with error code.\nSee "systemctl status enable-transparent-huge-pages.service" and "journalctl -xeu enable-transparent-huge-pages.service" for details.\n',)
+unit-shard-two-0: 01:51:34 ERROR unit.shard-two/0.juju-log single_kernel_mongo.lib.charms.operator_libs_linux.v0.sysctl:Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-shard-two-0: 01:51:34 ERROR unit.shard-two/0.juju-log single_kernel_mongo.core.operator:Error setting values on sysctl parameters: Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-shard-two-0: 01:51:35 ERROR unit.shard-two/0.juju-log single_kernel_mongo.core.operator:Error setting values on kernel parameters: ('Command [\'systemctl\', \'start\', \'enable-transparent-huge-pages\'] failed with returncode 1. systemctl output:\nJob for enable-transparent-huge-pages.service failed because the control process exited with error code.\nSee "systemctl status enable-transparent-huge-pages.service" and "journalctl -xeu enable-transparent-huge-pages.service" for details.\n',)
+unit-shard-two-1: 01:52:15 ERROR unit.shard-two/1.juju-log single_kernel_mongo.lib.charms.operator_libs_linux.v0.sysctl:Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-shard-two-1: 01:52:15 ERROR unit.shard-two/1.juju-log single_kernel_mongo.core.operator:Error setting values on sysctl parameters: Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-shard-two-1: 01:52:17 ERROR unit.shard-two/1.juju-log single_kernel_mongo.core.operator:Error setting values on kernel parameters: ('Command [\'systemctl\', \'start\', \'enable-transparent-huge-pages\'] failed with returncode 1. systemctl output:\nJob for enable-transparent-huge-pages.service failed because the control process exited with error code.\nSee "systemctl status enable-transparent-huge-pages.service" and "journalctl -xeu enable-transparent-huge-pages.service" for details.\n',)
+unit-shard-one-0: 01:57:50 ERROR unit.shard-one/0.juju-log database-peers:7: single_kernel_mongo.managers.mongodb_operator:Not reconfiguring: error=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 697d619deb24bc8eab04977d, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.183.254.109', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('697d61886b82efedb3c6b047'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 2800}")>, <ServerDescription ('10.183.254.165', 27017) server_type: RSSecondary, rtt: 0.000711007000063546>]>
+unit-shard-one-0: 01:57:55 ERROR unit.shard-one/0.juju-log status-peers:4: single_kernel_mongo.managers.mongodb_operator:Not reconfiguring: error=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 697d61a2693652c634a41ac7, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('10.183.254.109', 27017) server_type: RSSecondary, rtt: 0.0008123039999645698>, <ServerDescription ('10.183.254.165', 27017) server_type: RSSecondary, rtt: 0.0013129609999396052>]>
+unit-config-server-one-0: 01:57:57 ERROR unit.config-server-one/0.juju-log config-server:16: single_kernel_mongo.managers.sharding:Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1769824675, 5), \'signature\': {\'hash\': b\'\\x18\\x1bej\\x912\\xf2DM\\x95\\xabc\\x89\\x16\\x91\\xfd\\x835\\x02\\x97\', \'keyId\': 7601336972770017286}}, \'operationTime\': Timestamp(1769824675, 5)}')
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
