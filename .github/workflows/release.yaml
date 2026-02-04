@@ -10,20 +10,20 @@ jobs:
     uses: ./.github/workflows/ci.yaml
     secrets: inherit
     permissions:
-      contents: write  # Needed for Allure Report beta
+      contents: write # Needed for Allure Report beta
 
   release:
     name: Release charm
     needs:
       - ci-tests
-    uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v29.0.0
+    uses: canonical/data-platform-workflows/.github/workflows/release_charm_edge.yaml@v35.0.4
     with:
-      channel: 8-transition/edge
+      track: 8-transition/edge
       artifact-prefix: ${{ needs.ci-tests.outputs.artifact-prefix }}
     secrets:
       charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
     permissions:
-      contents: write  # Needed to create git tags
+      contents: write # Needed to create git tags
 
   release-libraries:
     name: Release libraries
