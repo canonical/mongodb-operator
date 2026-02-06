@@ -10,7 +10,7 @@ jobs:
     uses: ./.github/workflows/ci.yaml
     secrets: inherit
     permissions:
-      contents: write  # Needed for Allure Report beta
+      contents: write # Needed to create git tag
 
   release:
     name: Release charm
@@ -23,7 +23,7 @@ jobs:
     secrets:
       charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
     permissions:
-      contents: write  # Needed to create git tags
+      contents: write # Needed to create git tags
 
   release-libraries:
     name: Release libraries
