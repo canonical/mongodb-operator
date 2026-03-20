@@ -148,7 +148,6 @@ jobs:
     with:
       artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
       cloud: lxd
-      juju-agent-version: 3.6.1 # renovate: juju-agent-pin-minor
       _beta_allure_report: true
     permissions:
       contents: write # Needed for Allure Report beta
