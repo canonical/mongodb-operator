@@ -135,7 +135,7 @@ jobs:
     uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v35.0.4
     with:
       path-to-charm-directory: ${{ matrix.path }}
-      cache: false
+      cache: true
     permissions:
       contents: read
 
@@ -148,7 +148,7 @@ jobs:
     with:
       artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
       cloud: lxd
-      juju-agent-version: 3.6.1 # renovate: juju-agent-pin-minor
+      juju-snap-channel: 3.6/stable
       _beta_allure_report: true
     permissions:
       contents: write # Needed for Allure Report beta
