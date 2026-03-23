@@ -1,0 +1,39 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.6.19   unsupported  01:41:13Z
+
+App      Version  Status  Scale  Charm    Channel  Rev  Exposed  Message
+mongodb  8.0.10   active      3  mongodb             0  no       
+
+Unit        Workload  Agent  Machine  Public address  Ports      Message
+mongodb/0*  active    idle   0        10.237.231.199  27017/tcp  Primary.
+mongodb/1   active    idle   1        10.237.231.93   27017/tcp  
+mongodb/2   active    idle   2        10.237.231.132  27017/tcp  
+
+Machine  State    Address         Inst id        Base          AZ             Message
+0        started  10.237.231.199  juju-6cf742-0  ubuntu@24.04  runnervm46oaq  Running
+1        started  10.237.231.93   juju-6cf742-1  ubuntu@24.04  runnervm46oaq  Running
+2        started  10.237.231.132  juju-6cf742-2  ubuntu@24.04  runnervm46oaq  Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+machine-0: 01:36:24 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 01:36:24 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 01:36:38 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 01:36:38 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 01:36:54 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 01:36:54 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-0: 01:37:31 ERROR unit.mongodb/0.juju-log single_kernel_mongo.lib.charms.operator_libs_linux.v0.sysctl:Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-mongodb-0: 01:37:31 ERROR unit.mongodb/0.juju-log single_kernel_mongo.core.operator:Error setting values on sysctl parameters: Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-mongodb-0: 01:37:32 ERROR unit.mongodb/0.juju-log single_kernel_mongo.core.operator:Error setting values on kernel parameters: ('Command [\'systemctl\', \'start\', \'enable-transparent-huge-pages\'] failed with returncode 1. systemctl output:\nJob for enable-transparent-huge-pages.service failed because the control process exited with error code.\nSee "systemctl status enable-transparent-huge-pages.service" and "journalctl -xeu enable-transparent-huge-pages.service" for details.\n',)
+unit-mongodb-2: 01:37:43 ERROR unit.mongodb/2.juju-log single_kernel_mongo.lib.charms.operator_libs_linux.v0.sysctl:Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-mongodb-2: 01:37:43 ERROR unit.mongodb/2.juju-log single_kernel_mongo.core.operator:Error setting values on sysctl parameters: Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-mongodb-2: 01:37:44 ERROR unit.mongodb/2.juju-log single_kernel_mongo.core.operator:Error setting values on kernel parameters: ('Command [\'systemctl\', \'start\', \'enable-transparent-huge-pages\'] failed with returncode 1. systemctl output:\nJob for enable-transparent-huge-pages.service failed because the control process exited with error code.\nSee "systemctl status enable-transparent-huge-pages.service" and "journalctl -xeu enable-transparent-huge-pages.service" for details.\n',)
+unit-mongodb-1: 01:37:50 ERROR unit.mongodb/1.juju-log single_kernel_mongo.lib.charms.operator_libs_linux.v0.sysctl:Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-mongodb-1: 01:37:50 ERROR unit.mongodb/1.juju-log single_kernel_mongo.core.operator:Error setting values on sysctl parameters: Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-mongodb-1: 01:37:51 ERROR unit.mongodb/1.juju-log single_kernel_mongo.core.operator:Error setting values on kernel parameters: ('Command [\'systemctl\', \'start\', \'enable-transparent-huge-pages\'] failed with returncode 1. systemctl output:\nJob for enable-transparent-huge-pages.service failed because the control process exited with error code.\nSee "systemctl status enable-transparent-huge-pages.service" and "journalctl -xeu enable-transparent-huge-pages.service" for details.\n',)
+unit-mongodb-0: 01:39:18 ERROR unit.mongodb/0.juju-log refresh-v-three:2: single_kernel_mongo.managers.mongodb_operator:Not reconfiguring: error=
+unit-mongodb-0: 01:39:19 ERROR unit.mongodb/0.juju-log refresh-v-three:2: single_kernel_mongo.managers.mongodb_operator:Not reconfiguring: error=
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
