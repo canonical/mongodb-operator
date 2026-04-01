@@ -1,0 +1,58 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller           Cloud/Region         Version  SLA          Timestamp
+test   localhost-localhost  localhost/localhost  3.6.20   unsupported  01:38:31Z
+
+App      Version  Status  Scale  Charm    Channel  Rev  Exposed  Message
+mongodb  8.0.10   active    1/3  mongodb             0  no       
+
+Unit        Workload  Agent  Machine  Public address  Ports  Message
+mongodb/0   unknown   lost   0        10.204.246.253         agent lost, see 'juju show-status-log mongodb/0'
+mongodb/1   unknown   lost   1        10.204.246.39          agent lost, see 'juju show-status-log mongodb/1'
+mongodb/2*  error     idle   2        10.204.246.200         hook failed: "refresh-v-three-relation-changed"
+
+Machine  State    Address         Inst id        Base          AZ             Message
+0        down     10.204.246.253  juju-756748-0  ubuntu@24.04  runnervmrg6be  Running
+1        down     10.204.246.39   juju-756748-1  ubuntu@24.04  runnervmrg6be  Running
+2        started  10.204.246.200  juju-756748-2  ubuntu@24.04  runnervmrg6be  Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+machine-0: 01:35:58 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 01:35:58 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 01:36:14 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 01:36:14 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 01:36:27 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 01:36:27 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-mongodb-0: 01:37:05 ERROR unit.mongodb/0.juju-log single_kernel_mongo.lib.charms.operator_libs_linux.v0.sysctl:Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-mongodb-0: 01:37:05 ERROR unit.mongodb/0.juju-log single_kernel_mongo.core.operator:Error setting values on sysctl parameters: Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-mongodb-0: 01:37:05 ERROR unit.mongodb/0.juju-log single_kernel_mongo.core.operator:Error setting values on kernel parameters: ('Command [\'systemctl\', \'start\', \'enable-transparent-huge-pages\'] failed with returncode 1. systemctl output:\nJob for enable-transparent-huge-pages.service failed because the control process exited with error code.\nSee "systemctl status enable-transparent-huge-pages.service" and "journalctl -xeu enable-transparent-huge-pages.service" for details.\n',)
+unit-mongodb-2: 01:37:18 ERROR unit.mongodb/2.juju-log single_kernel_mongo.lib.charms.operator_libs_linux.v0.sysctl:Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-mongodb-2: 01:37:18 ERROR unit.mongodb/2.juju-log single_kernel_mongo.core.operator:Error setting values on sysctl parameters: Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-mongodb-2: 01:37:19 ERROR unit.mongodb/2.juju-log single_kernel_mongo.core.operator:Error setting values on kernel parameters: ('Command [\'systemctl\', \'start\', \'enable-transparent-huge-pages\'] failed with returncode 1. systemctl output:\nJob for enable-transparent-huge-pages.service failed because the control process exited with error code.\nSee "systemctl status enable-transparent-huge-pages.service" and "journalctl -xeu enable-transparent-huge-pages.service" for details.\n',)
+unit-mongodb-1: 01:37:29 ERROR unit.mongodb/1.juju-log single_kernel_mongo.lib.charms.operator_libs_linux.v0.sysctl:Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-mongodb-1: 01:37:29 ERROR unit.mongodb/1.juju-log single_kernel_mongo.core.operator:Error setting values on sysctl parameters: Unable to set params: ['vm.max_map_count', 'vm.overcommit_memory']
+unit-mongodb-1: 01:37:30 ERROR unit.mongodb/1.juju-log single_kernel_mongo.core.operator:Error setting values on kernel parameters: ('Command [\'systemctl\', \'start\', \'enable-transparent-huge-pages\'] failed with returncode 1. systemctl output:\nJob for enable-transparent-huge-pages.service failed because the control process exited with error code.\nSee "systemctl status enable-transparent-huge-pages.service" and "journalctl -xeu enable-transparent-huge-pages.service" for details.\n',)
+machine-2: 01:38:26 ERROR juju.api.watcher error trying to stop watcher: connection is shutdown before send: connection is shut down
+machine-2: 01:38:26 ERROR juju.api.watcher error trying to stop watcher: connection is shutdown before send: connection is shut down
+machine-2: 01:38:26 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: api connection broken unexpectedly
+machine-2: 01:38:26 ERROR juju.api.watcher error trying to stop watcher: connection is shutdown before send: connection is shut down
+machine-2: 01:38:26 ERROR juju.api.watcher error trying to stop watcher: connection is shutdown before send: connection is shut down
+machine-2: 01:38:26 ERROR juju.api.watcher error trying to stop watcher: connection is shutdown before send: connection is shut down
+machine-2: 01:38:26 ERROR juju.api.watcher error trying to stop watcher: connection is shutdown before send: connection is shut down
+machine-2: 01:38:26 ERROR juju.api.watcher error trying to stop watcher: connection is shutdown before send: connection is shut down
+machine-2: 01:38:26 ERROR juju.api.watcher error trying to stop watcher: connection is shutdown before send: connection is shut down
+machine-2: 01:38:26 ERROR juju.api.watcher error trying to stop watcher: connection is shutdown before send: connection is shut down
+machine-2: 01:38:26 ERROR juju.api.watcher error trying to stop watcher: connection is shutdown before send: connection is shut down
+machine-2: 01:38:26 ERROR juju.api.watcher error trying to stop watcher: connection is shutdown before send: connection is shut down
+machine-2: 01:38:26 ERROR juju.api.watcher error trying to stop watcher: connection is shutdown before send: connection is shut down
+machine-2: 01:38:26 ERROR juju.api.watcher error trying to stop watcher: connection is shutdown before send: connection is shut down
+machine-2: 01:38:26 ERROR juju.api.watcher error trying to stop watcher: connection is shutdown before send: connection is shut down
+machine-2: 01:38:26 ERROR juju.api.watcher error trying to stop watcher: connection is shutdown before send: connection is shut down
+machine-2: 01:38:26 ERROR juju.api.watcher error trying to stop watcher: connection is shutdown before send: connection is shut down
+machine-2: 01:38:26 ERROR juju.api.watcher error trying to stop watcher: connection is shutdown before send: connection is shut down
+machine-2: 01:38:26 ERROR juju.api.watcher error trying to stop watcher: connection is shutdown before send: connection is shut down
+machine-2: 01:38:26 ERROR juju.api.watcher error trying to stop watcher: connection is shutdown before send: connection is shut down
+machine-2: 01:38:26 ERROR juju.api.watcher error trying to stop watcher: connection is shutdown before send: connection is shut down
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
