@@ -23,13 +23,12 @@ logger = logging.getLogger(__name__)
 MEDIAN_REELECTION_TIME = 12
 
 
-@pytest.mark.group(1)
 @pytest.mark.skipif(
     os.environ.get("PYTEST_SKIP_DEPLOY", False),
     reason="skipping deploy, model expected to be provided.",
 )
 @pytest.mark.abort_on_fail
-async def test_build_and_deploy(ops_test: OpsTest) -> None:
+async def test_build_and_deploy(ops_test: OpsTest, charm: str) -> None:
     """Build and deploy one unit of MongoDB."""
     # it is possible for users to provide their own cluster for testing. Hence check if there
     # is a pre-existing cluster.
@@ -37,12 +36,10 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     if app_name:
         return await check_or_scale_app(ops_test, app_name, len(UNIT_IDS))
 
-    my_charm = await ops_test.build_charm(".")
-    await ops_test.model.deploy(my_charm, num_units=len(UNIT_IDS))
+    await ops_test.model.deploy(charm, num_units=len(UNIT_IDS))
     await ops_test.model.wait_for_idle(timeout=DEPLOYMENT_TIMEOUT, status="active")
 
 
-@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 @pytest.mark.parametrize("unit_id", UNIT_IDS)
 async def test_application_is_up(ops_test: OpsTest, unit_id: int):
