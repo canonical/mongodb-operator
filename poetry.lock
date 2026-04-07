@@ -17,27 +17,6 @@ allure-python-commons = "2.15.3"
 pytest = ">=4.5.0"
 
 [[package]]
-name = "allure-pytest-collection-report"
-version = "0.1.0"
-description = ""
-optional = false
-python-versions = ">=3.8"
-groups = ["integration"]
-files = []
-develop = false
-
-[package.dependencies]
-allure-pytest = ">=2.13.5"
-pytest = "*"
-
-[package.source]
-type = "git"
-url = "https://github.com/canonical/data-platform-workflows"
-reference = "v35.0.4"
-resolved_reference = "a5b9f86aca2c006ccf44f0f425eb0ff01f0db205"
-subdirectory = "python/pytest_plugins/allure_pytest_collection_report"
-
-[[package]]
 name = "allure-python-commons"
 version = "2.15.3"
 description = "Contains the API for end users as well as helper functions and classes to build Allure adapters for Python test frameworks"
@@ -2541,23 +2520,6 @@ docs = ["sphinx (>=5.3)", "sphinx-rtd-theme (>=1.0)"]
 testing = ["coverage (>=6.2)", "flaky (>=3.5.0)", "hypothesis (>=5.7.1)", "mypy (>=0.931)", "pytest-trio (>=0.7.0)"]
 
 [[package]]
-name = "pytest-github-secrets"
-version = "0.1.0"
-description = ""
-optional = false
-python-versions = ">=3.8"
-groups = ["integration"]
-files = []
-develop = false
-
-[package.source]
-type = "git"
-url = "https://github.com/canonical/data-platform-workflows"
-reference = "v35.0.4"
-resolved_reference = "a5b9f86aca2c006ccf44f0f425eb0ff01f0db205"
-subdirectory = "python/pytest_plugins/github_secrets"
-
-[[package]]
 name = "pytest-mock"
 version = "3.15.1"
 description = "Thin-wrapper around the mock package for easier use with pytest"
@@ -2594,26 +2556,6 @@ juju = "*"
 pytest = "*"
 pytest-asyncio = "<0.23"
 pyyaml = "*"
-
-[[package]]
-name = "pytest-operator-groups"
-version = "0.1.0"
-description = ""
-optional = false
-python-versions = ">=3.8"
-groups = ["integration"]
-files = []
-develop = false
-
-[package.dependencies]
-pytest = "*"
-
-[package.source]
-type = "git"
-url = "https://github.com/canonical/data-platform-workflows"
-reference = "v35.0.4"
-resolved_reference = "a5b9f86aca2c006ccf44f0f425eb0ff01f0db205"
-subdirectory = "python/pytest_plugins/pytest_operator_groups"
 
 [[package]]
 name = "python-dateutil"
@@ -3336,4 +3278,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12.0"
-content-hash = "e1b54f1d4912cb459f2aeedc6013f64874766e8edc802e9b03c9bbc2d2924072"
+content-hash = "17d505c0349860b821e46465c964d1ba154c79ec4ec3ee44b57a31f8387347f3"
