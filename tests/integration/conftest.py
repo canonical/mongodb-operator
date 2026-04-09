@@ -2,25 +2,25 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-import json
-import os
-from pathlib import Path
+from platform import machine
 
-from pytest_operator.plugin import OpsTest
+import pytest
 
 
-def ops_test(ops_test: OpsTest) -> OpsTest:
-    if os.environ.get("CI") == "true":
-        # Running in GitHub Actions; skip build step
-        # (GitHub Actions uses a separate, cached build step. See .github/workflows/ci.yaml)
-        packed_charms = json.loads(os.environ["CI_PACKED_CHARMS"])
+@pytest.fixture(scope="session")
+def arch() -> str:
+    """Fixture to provide the platform architecture for testing."""
+    platforms = {
+        "x86_64": "amd64",
+        "aarch64": "arm64",
+    }
+    return platforms.get(machine(), "amd64")
 
-        async def build_charm(charm_path, bases_index: int = None) -> Path:
-            for charm in packed_charms:
-                if Path(charm_path) == Path(charm["directory_path"]):
-                    if bases_index is None or bases_index == charm["bases_index"]:
-                        return charm["file_path"]
-            raise ValueError(f"Unable to find .charm file for {bases_index=} at {charm_path=}")
 
-        ops_test.build_charm = build_charm
-    return ops_test
+@pytest.fixture
+def charm(arch: str) -> str:
+    """Path to the charm file to use for testing."""
+    # Return str instead of pathlib.Path since python-libjuju's model.deploy(), juju deploy, and
+    # juju bundle files expect local charms to begin with `./` or `/` to distinguish them from
+    # Charmhub charms.
+    return f"./mongodb_ubuntu@22.04-{arch}.charm"
