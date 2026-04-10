@@ -30,32 +30,29 @@ CONFIG_SERVER_REL_NAME = "config-server"
 TIMEOUT = 30 * 60
 
 
-@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
-@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
-async def test_build_and_deploy(ops_test: OpsTest) -> None:
+async def test_build_and_deploy(ops_test: OpsTest, charm: str) -> None:
     """Build and deploy a sharded cluster."""
-    my_charm = await ops_test.build_charm(".")
     await ops_test.model.deploy(
-        my_charm,
+        charm,
         num_units=2,
         config={"role": "config-server"},
         application_name=CONFIG_SERVER_APP_NAME,
     )
     await ops_test.model.deploy(
-        my_charm,
+        charm,
         num_units=2,
         config={"role": "shard"},
         application_name=SHARD_ONE_APP_NAME,
     )
     await ops_test.model.deploy(
-        my_charm,
+        charm,
         num_units=2,
         config={"role": "shard"},
         application_name=SHARD_TWO_APP_NAME,
     )
     await ops_test.model.deploy(
-        my_charm,
+        charm,
         num_units=2,
         config={"role": "shard"},
         application_name=SHARD_THREE_APP_NAME,
@@ -81,8 +78,6 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await wait_for_mongodb_units_blocked(ops_test, SHARD_THREE_APP_NAME, timeout=300)
 
 
-@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
-@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_cluster_active(ops_test: OpsTest) -> None:
     """Tests the integration of cluster components works without error."""
