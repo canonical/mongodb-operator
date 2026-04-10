@@ -1,3 +1,4 @@
+
 name: Release to 8-transition/edge
 
 on:
@@ -6,6 +7,8 @@ on:
       - 8-transition/edge
 
 jobs:
+  
+
   ci-tests:
     uses: ./.github/workflows/ci.yaml
     secrets: inherit
@@ -16,7 +19,7 @@ jobs:
     name: Release charm
     needs:
       - ci-tests
-    uses: canonical/data-platform-workflows/.github/workflows/release_charm_edge.yaml@v35.0.4
+    uses: canonical/data-platform-workflows/.github/workflows/release_charm_edge.yaml@v42.1.0
     with:
       track: 8-transition
       artifact-prefix: ${{ needs.ci-tests.outputs.artifact-prefix }}
