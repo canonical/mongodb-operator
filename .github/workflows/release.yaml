@@ -1,3 +1,4 @@
+
 name: Release to 6/edge
 
 on:
@@ -6,9 +7,11 @@ on:
       - 6/edge
 
 jobs:
+  
+
   ci-tests:
+    
     uses: ./.github/workflows/ci.yaml
-    secrets: inherit
     permissions:
       contents: write # Needed to create git tag
 
@@ -16,13 +19,14 @@ jobs:
     name: Release charm
     needs:
       - ci-tests
-    uses: canonical/data-platform-workflows/.github/workflows/release_charm_edge.yaml@v42.1.0
+    uses: canonical/data-platform-workflows/.github/workflows/release_charm_edge.yaml@v48.0.2
     with:
       track: 6
       artifact-prefix: ${{ needs.ci-tests.outputs.artifact-prefix }}
     secrets:
       charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
     permissions:
+      actions: read # Needed for GitHub API call to get workflow version
       contents: write # Needed to create git tags
 
   release-libraries:
