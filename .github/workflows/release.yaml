@@ -14,6 +14,7 @@ jobs:
     with:
       track: "8"
     permissions:
+      actions: read # Needed for GitHub API call to get workflow version
       contents: write # Needed to create git tag
 
   ci-tests:
