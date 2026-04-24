@@ -144,7 +144,7 @@ jobs:
           charm_name = os.environ["CHARM_NAME"]
           channel = os.environ["CHANNEL"]
 
-          revisions = "\n".join([f"* {architecture}: {revision}" for architecture, revision in revisions.()])
+          revisions = "\n".join([f"* {architecture}: {revision}" for architecture, revision in revisions.items()])
 
           summary = f"""
           Charm {charm_name} has been released to channel {channel}
@@ -156,9 +156,9 @@ jobs:
           """
 
           with open(os.environ["GITHUB_STEP_SUMMARY"], mode="a") as fd:
-          fd.write(summary)
+              fd.write(summary)
         env:
           PIP_VERSION: ${{ needs.push-revision-files.outputs.pip-version }}
           REVISIONS: ${{ needs.release.outputs.charm-revisions }}
-          CHARM_NAME: ${{ steps.charm-name.outputs.charm-name
-          CHANNEL: ${{ github.ref }}
+          CHARM_NAME: ${{ steps.charm-name.outputs.charm-name }}
+          CHANNEL: ${{ github.ref_name }}
