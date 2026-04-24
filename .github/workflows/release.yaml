@@ -75,6 +75,7 @@ jobs:
       - name: Checkout releases
         uses: actions/checkout@v6
         with:
+          persist-credentials: true
           ref: ${{ env.RELEASES_BRANCH }}
           token: ${{ secrets.PAT }}
 
