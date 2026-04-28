@@ -29,22 +29,11 @@ on:
           Must be one of "beta", "candidate", "stable"
         required: true
         type: string
-      charmcraft-snap-revision:
-        description: charmcraft snap revision
-        required: false
-        type: string
-      charmcraft-snap-channel:
-        description: |
-          charmcraft snap channel
-
-          Cannot be used if `charmcraft-snap-revision` input is passed
-        required: false
-        type: string
 
 jobs:
   promote:
     name: Promote charm revisions
-    uses: canonical/data-platform-workflows/.github/workflows/_promote_charms_by_revision.yaml@vXYZ
+    uses: canonical/data-platform-workflows/.github/workflows/_promote_charms_by_revision.yaml@v49.0.1
     with:
       revisions: ${{ inputs.revisions }}
       track: ${{ inputs.track }}
