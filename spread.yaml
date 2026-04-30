@@ -83,7 +83,9 @@ backends:
       sudo systemctl start ssh
 
       # Needed for IS-hosted runners
-      sudo passwd --delete ubuntu
+      sudo passwd --delete runner
+
+      sudo systemctl reload ssh || sudo systemctl restart ssh
 
       ADDRESS localhost
     # HACK: spread does not pass environment variables set on runner
@@ -93,11 +95,14 @@ backends:
       CHARM_UBUNTU_BASE: "$(HOST: echo $CHARM_UBUNTU_BASE)"
       # To install pipx on self-hosted runners
       CONCIERGE_EXTRA_DEBS: pipx,build-essential,python3-dev,libldap-dev,libsasl2-dev
+      # Python 3.12
+      LD_LIBRARY_PATH: "$(HOST: echo $LD_LIBRARY_PATH)"
+      PKG_CONFIG_PATH: "$(HOST: echo $PKG_CONFIG_PATH)"
     systems:
-      - self-hosted-linux-amd64-noble-medium:
-          username: ubuntu
-      - self-hosted-linux-arm64-noble-medium:
-          username: ubuntu
+      - ubuntu-22.04:
+          username: runner
+      - ubuntu-22.04-arm:
+          username: runner
 
 suites:
   tests/spread/:
@@ -109,16 +114,21 @@ kill-timeout: 3h
 environment:
   PATH: $PATH:$(pipx environment --value PIPX_BIN_DIR)
   CONCIERGE_JUJU_CHANNEL: 3.6/stable
+  pythonLocation: "$(HOST: echo $pythonLocation)"
+  PIPX_DEFAULT_PYTHON: "$(HOST: echo $pythonLocation)/bin/python"
 prepare: |
   snap refresh --hold
   chown -R root:root "$SPREAD_PATH"
   cd "$SPREAD_PATH"
   snap install --classic concierge
 
-  # Install charmcraft & pipx (on lxd-vm backend)
   concierge prepare --trace
 
+  # Install pipx (on lxd-vm backend)
   pipx install tox poetry
+  pipx ensurepath
+
+  $(pipx environment --value PIPX_BIN_DIR)/poetry env use $pythonLocation/bin/python
 prepare-each: |
   cd "$SPREAD_PATH"
   # `concierge prepare` needs to be run for each spread job in case Juju version changed
@@ -127,5 +137,8 @@ prepare-each: |
   # Unable to set constraint on all models because of Juju bug:
   # https://bugs.launchpad.net/juju/+bug/2065050
   juju set-model-constraints arch="$(dpkg --print-architecture)"
+
+  #TODO: Remove this when we runners are fixed.
+  $(pipx environment --value PIPX_BIN_DIR)/poetry env use $pythonLocation/bin/python
 
 # Only restore on lxd backend—no need to restore on CI
