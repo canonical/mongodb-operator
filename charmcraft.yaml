@@ -101,3 +101,17 @@ parts:
     stage:
       - LICENSE
       - refresh_versions.toml
+
+  etcdctl:
+    plugin: make
+    source: https://git.launchpad.net/etcd
+    source-type: git
+    source-tag: lp-v3.6.10
+    build-snaps:
+      - go/latest/stable
+    override-build: |
+      set -eux
+      make build
+      install -Dm755 bin/etcdctl "${CRAFT_PART_INSTALL}/usr/bin/etcdctl"
+    prime:
+      - usr/bin/etcdctl
