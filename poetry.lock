@@ -519,14 +519,14 @@ ops = ">=2.19,<4"
 
 [[package]]
 name = "charmlibs-rollingops"
-version = "1.0.0"
+version = "1.0.1"
 description = "The charmlibs.rollingops package."
 optional = false
 python-versions = ">=3.12"
 groups = ["main", "integration"]
 files = [
-    {file = "charmlibs_rollingops-1.0.0-py3-none-any.whl", hash = "sha256:39bcbc0d0705eb1d940296a5cede848d069fd4f20aa77b682d0876271cbe1a2e"},
-    {file = "charmlibs_rollingops-1.0.0.tar.gz", hash = "sha256:a88654f5d048e90a1acc394885e911611d997582d5029ab3506097a820edd5ba"},
+    {file = "charmlibs_rollingops-1.0.1-py3-none-any.whl", hash = "sha256:c58cd9a09f2a90a061a855eaf27bda2812075cebacc83045150d04a2b3ba6300"},
+    {file = "charmlibs_rollingops-1.0.1.tar.gz", hash = "sha256:9ca5c42397bcbd4f9454d98874c3161bb3329a6248ad219d3d49104297ed2337"},
 ]
 
 [package.dependencies]
@@ -1785,14 +1785,14 @@ files = [
 
 [[package]]
 name = "mongo-charms-single-kernel"
-version = "1.8.46"
+version = "1.8.47"
 description = "Shared and reusable code for Mongo-related charms"
 optional = false
 python-versions = "<4.0,>=3.12"
 groups = ["main", "integration"]
 files = [
-    {file = "mongo_charms_single_kernel-1.8.46-py3-none-any.whl", hash = "sha256:fd18b1281d1b0f8a16cb6e74e421010a681fc4948a573fa90810fe00eb5b6e6d"},
-    {file = "mongo_charms_single_kernel-1.8.46.tar.gz", hash = "sha256:2755b72b1929bbfaa6329be0063611fbe9e3bd9bfbef276150a00a0bd7234ffd"},
+    {file = "mongo_charms_single_kernel-1.8.47-py3-none-any.whl", hash = "sha256:d805105f2127dee684a596a3957f6f2778fc1b7db403b9a5039b5a6a2e9107e6"},
+    {file = "mongo_charms_single_kernel-1.8.47.tar.gz", hash = "sha256:f2606e9a0492c2d9bbab43e50d0b2cb834611f05e061c4480a187887849f3612"},
 ]
 
 [package.dependencies]
@@ -1821,6 +1821,7 @@ pytest-interface-tester = ">=3.4.1,<4.0.0"
 python-hcl2 = "*"
 python-ldap = "*"
 pyyaml = ">=6.0.2,<6.1.0"
+shortuuid = ">=1.0.13,<2.0.0"
 tenacity = ">=9.0.0,<9.1.0"
 
 [[package]]
@@ -3597,4 +3598,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12.0"
-content-hash = "f3641d580dc8005bf82a593cbc9fdfd0b6b16e1f620b1a80e01231804a485327"
+content-hash = "8b5cc4bc9782ce3eca4304fd16f40184b5a9e00abfddd023533740272888b041"
