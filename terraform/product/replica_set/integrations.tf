@@ -89,6 +89,23 @@ resource "juju_integration" "mongodb_data_same_model_integration" {
   model_uuid = var.mongodb.model_uuid
 }
 
+resource "juju_integration" "mongodb_etcd_same_model_integration" {
+  for_each = var.charmed_etcd.model_uuid == var.mongodb.model_uuid ? { "integrated" = true } : {}
+
+  application {
+    name = var.mongodb.app_name
+  }
+  application {
+    name = var.charmed_etcd.app_name
+  }
+  depends_on = [
+    module.mongodb,
+    juju_application.charmed_etcd,
+  ]
+  model_uuid = var.mongodb.model_uuid
+}
+
+
 ## Cross model integrations
 resource "juju_integration" "mongodb_data_cross_model_integration" {
   for_each = var.data_integrator.model_uuid != var.mongodb.model_uuid ? { "integrated" = true } : {}

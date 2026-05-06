@@ -62,6 +62,20 @@ resource "juju_application" "grafana_agent" {
   model_uuid = var.grafana_agent.model_uuid
 }
 
+# charmed-etcd
+resource "juju_application" "charmed_etcd" {
+  charm {
+    name     = "charmed-etcd
+    channel  = var.charmed_etcd.channel
+    revision = var.charmed_etcd.revision
+    base     = var.charmed_etcd.base
+  }
+
+  name       = var.charmed_etcd.app_name
+  config     = var.charmed_etcd.config
+  model_uuid = var.charmed_etcd.model_uuid
+}
+
 # Integrator apps
 resource "juju_application" "data_integrator" {
   charm {
