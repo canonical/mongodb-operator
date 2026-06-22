@@ -189,7 +189,7 @@ jobs:
       - name: Juju setup
         run: |
           mkdir -p ~/.local/share/juju
-          sudo --user "$USER" juju bootstrap 'microk8s' --config model-logs-size=10G
+          sg 'lxd' -c "juju bootstrap 'localhost' --config model-logs-size=10G"
           juju model-defaults logging-config='<root>=INFO; unit=DEBUG'
           juju add-model test
 
