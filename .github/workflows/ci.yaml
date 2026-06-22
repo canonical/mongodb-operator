@@ -70,13 +70,11 @@ jobs:
         run: |
           sudo snap install terraform --channel=latest/stable --classic
 
+      - name: Install tox
+        run: pipx install tox
+
       - name: Lint / format / validate TF modules
-        run: |
-          pushd ./terraform
-          for dir in charm/replica_set charm/sharded product/replica_set product/sharded; do
-            (cd "${dir}" && terraform init && terraform fmt && terraform validate)
-          done
-          popd
+        run: tox run -e terraform-lint
 
       - name: run checks - prepare
         run: |
@@ -153,13 +151,11 @@ jobs:
         run: |
           sudo snap install terraform --channel=latest/stable --classic
 
-      - name: Lint / format / validate TF modules
-        run: |
-          pushd ./terraform
-          for dir in charm/replica_set charm/sharded product/replica_set product/sharded; do
-            (cd "${dir}" && terraform init && terraform fmt && terraform validate)
-          done
-          popd
+      - name: Install tox
+        run: pipx install tox
+
+      - name: tox run -e terraform
+        run: tox run -e terraform
 
       - name: run checks - prepare
         run: |

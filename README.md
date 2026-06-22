@@ -20,7 +20,7 @@ It currently supports:
 * Monitoring
 * Audit logging
 
-> Check our official documentation at [Charmhub | Charmed MongoDB](https://charmhub.io/mongodb) for tutorials, guides, explanations, and other resources.
+> Check our official documentation at [Charmed MongoDB](https://documentation.ubuntu.com/charmed-mongodb/8/) for tutorials, guides, explanations, and other resources.
 
 ## Software and releases
 
