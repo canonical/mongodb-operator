@@ -62,14 +62,22 @@ jobs:
       - name: Lint / format / validate TF modules
         run: tox run -e terraform-lint
 
-  terraform-rs-test:
-    name: Terraform - replica-set product module
+  terraform-product-test:
+    name: Terraform - ${{ matrix.product-module }} product module
     needs:
       - terraform-lint
     continue-on-error: true
     runs-on: ubuntu-22.04
     timeout-minutes: 120
     permissions: {}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - product-module: replica-set
+            apply-script: .github/scripts/terraform-apply-replica-set.sh
+          - product-module: sharded
+            apply-script: .github/scripts/terraform-apply-sharded.sh
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6
@@ -113,110 +121,18 @@ jobs:
           mkdir -p ~/.local/share/juju
           sg 'lxd' -c "juju bootstrap 'localhost' --config model-logs-size=10G"
           juju model-defaults logging-config='<root>=INFO; unit=DEBUG'
-          juju add-model test
+          juju add-model "test-${{ matrix.product-module }}"
 
-      - name: Terraform deploy - replica-set product module
-        run: |
-          MODEL=$(juju show-model test | grep "model-uuid" | awk '{split($0, a, ": "); print a[2]}')
-          pushd ./terraform/product/replica_set/
-          terraform init
-          terraform apply \
-            -var="mongodb={\"model_uuid\": \"${MODEL}\"}" \
-            -var="self_signed_certificates={\"model_uuid\": \"$MODEL\"}" \
-            -var="grafana_agent={\"model_uuid\": \"$MODEL\"}" \
-            -var="s3_integrator={\"model_uuid\": \"$MODEL\", \"config\": {\"bucket\": \"test\"}}" \
-            -var="data_integrator={\"model_uuid\": \"$MODEL\"}" \
-            -var="charmed_etcd={\"model_uuid\": \"$MODEL\"}" \
-            -auto-approve
-          popd
+      - name: Terraform deploy - ${{ matrix.product-module }} product module
+        run: bash "${{ matrix.apply-script }}" "test-${{ matrix.product-module }}"
 
       - name: Wait for juju deployment
         run: |
           # TODO - remove this when juju wait-for starts reporting the up to date status
-          until timeout 2m juju wait-for model test --query='life=="alive" && status=="available"'
+          until timeout 2m juju wait-for model "test-${{ matrix.product-module }}" --query='life=="alive" && status=="available"'
           do
             echo "Retrying in 5 seconds..."
-            juju status -m test
-            sleep 5
-          done
-
-  terraform-sharding-test:
-    name: Terraform - sharded cluster product module
-    needs:
-      - terraform-lint
-    continue-on-error: true
-    runs-on: ubuntu-22.04
-    timeout-minutes: 120
-    permissions: {}
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: (GitHub hosted) Free up disk space
-        run: |
-          printf '\nDisk usage before cleanup\n'
-          df --human-readable
-          # Based on https://github.com/actions/runner-images/issues/2840#issuecomment-790492173
-          rm -r /opt/hostedtoolcache/
-          printf '\nDisk usage after cleanup\n'
-          df --human-readable
-
-      - name: (self hosted) Disk usage
-        run: df --human-readable
-
-      - name: Install terraform snap
-        run: |
-          sudo snap install terraform --channel=latest/stable --classic
-
-      - name: run checks - prepare
-        run: |
-          sudo snap install juju --channel=3.6
-
-      - name: LXD setup
-        run: |
-          sudo snap refresh lxd --channel=latest/stable
-          sudo adduser "$USER" 'lxd'
-          # `newgrp` does not work in GitHub Actions; use `sg` instead
-          sg 'lxd' -c "lxd waitready"
-          sg 'lxd' -c "lxd init --auto"
-          sg 'lxd' -c "lxc network set lxdbr0 ipv6.address none"
-          sudo iptables -F FORWARD
-          sudo iptables -P FORWARD ACCEPT
-
-      - name: Juju setup
-        run: |
-          mkdir -p ~/.local/share/juju
-          sg 'lxd' -c "juju bootstrap 'localhost' --config model-logs-size=10G"
-          juju model-defaults logging-config='<root>=INFO; unit=DEBUG'
-          juju add-model test
-
-      - name: Terraform deploy - sharded cluster product module
-        run: |
-          MODEL=$(juju show-model test | grep "model-uuid" | awk '{split($0, a, ": "); print a[2]}')
-          pushd ./terraform/product/sharded/
-          terraform init
-          terraform apply \
-            -var="config_server={\"model_uuid\": \"$MODEL\"}" \
-            -var="shards=[{\"app_name\": \"shard-one\", \"model_uuid\": \"$MODEL\"},{\"app_name\": \"shard-two\", \"model_uuid\": \"$MODEL\"}]" \
-            -var="mongos_k8s={\"model_uuid\": \"$MODEL\"}" \
-            -var="config_server={\"model_uuid\": \"$MODEL\"}" \
-            -var="self_signed_certificates={\"model_uuid\": \"$MODEL\"}" \
-            -var="s3_integrator={\"model_uuid\": \"$MODEL\", \"config\": {\"bucket\": \"test\"}}" \
-            -var="data_integrator={\"model_uuid\": \"$MODEL\"}" \
-            -var="charmed_etcd={\"model_uuid\": \"$MODEL\"}" \
-            -auto-approve
-          popd
-
-      - name: Wait for juju deployment
-        run: |
-          # TODO - remove this when juju wait-for starts reporting the up to date status
-          until timeout 2m juju wait-for model test --query='life=="alive" && status=="available"'
-          do
-            echo "Retrying in 5 seconds..."
-            juju status -m test
+            juju status -m "test-${{ matrix.product-module }}"
             sleep 5
           done
 
