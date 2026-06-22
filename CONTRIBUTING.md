@@ -22,19 +22,14 @@ This document explains the processes and practices recommended for contributing 
 ```shell
 tox run -e format                   # update your code according to linting rules
 tox run -e lint                     # code style
+tox run -e terraform-lint           # lint / format / validate TF modules
 
-tox run -e integration --group='1' -m 'not unstable'                      # run all integration tests
-tox run -e integration -- 'tests/integration/test_charm.py' --group='1'   # charm integration tests
+tox run -e integration -- --model testing                                  # run all integration tests
+tox run -e integration -- 'tests/integration/test_charm.py' --model testing # charm integration tests
 ...
 
 # In general, to run any integration test:
-tox run -e integration -- 'tests/integration/<path_to_test_module>.py' --group='1' # runs <test_module> tests
-```
-
-Testing high availability on a production cluster can be done with:
-
-```shell
-tox run -e integration -- 'tests/integration/ha_tests/test_ha.py' --group='1' --model=<model_name>
+tox run -e integration -- 'tests/integration/<path_to_test_module>.py' --model testing # runs <test_module> tests
 ```
 
 ## Build Charm

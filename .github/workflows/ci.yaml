@@ -41,8 +41,31 @@ jobs:
         run: tox run -e lint
     permissions: {}
 
+  terraform-lint:
+    name: Terraform - Lint / format / validate modules
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions: {}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install terraform snap
+        run: |
+          sudo snap install terraform --channel=latest/stable --classic
+
+      - name: Install tox
+        run: pipx install tox
+
+      - name: Lint / format / validate TF modules
+        run: tox run -e terraform-lint
+
   terraform-rs-test:
-    name: Terraform - Validation and replica-set product module
+    name: Terraform - replica-set product module
+    needs:
+      - terraform-lint
     continue-on-error: true
     runs-on: ubuntu-22.04
     timeout-minutes: 120
@@ -69,12 +92,6 @@ jobs:
       - name: Install terraform snap
         run: |
           sudo snap install terraform --channel=latest/stable --classic
-
-      - name: Install tox
-        run: pipx install tox
-
-      - name: Lint / format / validate TF modules
-        run: tox run -e terraform-lint
 
       - name: run checks - prepare
         run: |
@@ -102,6 +119,7 @@ jobs:
         run: |
           MODEL=$(juju show-model test | grep "model-uuid" | awk '{split($0, a, ": "); print a[2]}')
           pushd ./terraform/product/replica_set/
+          terraform init
           terraform apply \
             -var="mongodb={\"model_uuid\": \"${MODEL}\"}" \
             -var="self_signed_certificates={\"model_uuid\": \"$MODEL\"}" \
@@ -123,7 +141,9 @@ jobs:
           done
 
   terraform-sharding-test:
-    name: Terraform - Validation of sharded cluster product module
+    name: Terraform - sharded cluster product module
+    needs:
+      - terraform-lint
     continue-on-error: true
     runs-on: ubuntu-22.04
     timeout-minutes: 120
@@ -151,12 +171,6 @@ jobs:
         run: |
           sudo snap install terraform --channel=latest/stable --classic
 
-      - name: Install tox
-        run: pipx install tox
-
-      - name: tox run -e terraform
-        run: tox run -e terraform
-
       - name: run checks - prepare
         run: |
           sudo snap install juju --channel=3.6
@@ -183,6 +197,7 @@ jobs:
         run: |
           MODEL=$(juju show-model test | grep "model-uuid" | awk '{split($0, a, ": "); print a[2]}')
           pushd ./terraform/product/sharded/
+          terraform init
           terraform apply \
             -var="config_server={\"model_uuid\": \"$MODEL\"}" \
             -var="shards=[{\"app_name\": \"shard-one\", \"model_uuid\": \"$MODEL\"},{\"app_name\": \"shard-two\", \"model_uuid\": \"$MODEL\"}]" \

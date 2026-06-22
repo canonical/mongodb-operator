@@ -15,10 +15,10 @@ locals {
     app if local.enable_tls && app.model_uuid != var.self_signed_certificates.model_uuid
   ]
 
-  enable_etcd = var.charmed_etcd != null
+  enable_etcd_rollingops = var.charmed_etcd != null
   etcd_same_model_mongo_apps = [
     for app in local.mongo_apps :
-    app if local.enable_etcd && app.model_uuid == var.charmed_etcd.model_uuid
+    app if local.enable_etcd_rollingops && app.model_uuid == var.charmed_etcd.model_uuid
   ]
 }
 

@@ -104,19 +104,21 @@ resource "juju_integration" "s3_config_server_same_model_integration" {
 }
 
 resource "juju_integration" "mongodb_etcd_same_model_integration" {
-  for_each = var.charmed_etcd.model_uuid == var.config_server.model_uuid ? { "integrated" = true } : {}
+  count = length(local.etcd_same_model_mongo_apps)
 
+  model_uuid = local.etcd_same_model_mongo_apps[count.index].model_uuid
   application {
-    name = var.config_server.app_name
+    name     = local.etcd_same_model_mongo_apps[count.index].app_name
+    endpoint = "etcd"
   }
   application {
-    name = var.charmed_etcd.app_name
+    name     = var.charmed_etcd.app_name
+    endpoint = "etcd-client"
   }
   depends_on = [
     module.mongodb,
     juju_application.charmed_etcd,
   ]
-  model_uuid = var.config_server.model_uuid
 }
 
 #--------------------------------------------------------
