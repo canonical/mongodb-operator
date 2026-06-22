@@ -90,17 +90,19 @@ resource "juju_integration" "mongodb_data_same_model_integration" {
 }
 
 resource "juju_integration" "mongodb_etcd_same_model_integration" {
-  for_each = var.charmed_etcd.model_uuid == var.mongodb.model_uuid ? { "integrated" = true } : {}
+  for_each = local.enable_etcd_rollingops && var.charmed_etcd.model_uuid == var.mongodb.model_uuid ? { "integrated" = true } : {}
 
   application {
     name = var.mongodb.app_name
+    endpoint = "etcd"
   }
   application {
     name = var.charmed_etcd.app_name
+    endpoint = "etcd-client"
   }
   depends_on = [
     module.mongodb,
-    juju_application.charmed_etcd,
+    juju_application.charmed_etcd["deployed"],
   ]
   model_uuid = var.mongodb.model_uuid
 }

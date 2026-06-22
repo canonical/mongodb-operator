@@ -86,6 +86,7 @@ resource "juju_application" "grafana_agent" {
 
 # charmed-etcd
 resource "juju_application" "charmed_etcd" {
+  for_each = local.enable_etcd_rollingops ? { "deployed" = true } : {}
   charm {
     name     = "charmed-etcd"
     channel  = var.charmed_etcd.channel

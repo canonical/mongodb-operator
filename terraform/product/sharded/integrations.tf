@@ -117,7 +117,7 @@ resource "juju_integration" "mongodb_etcd_same_model_integration" {
   }
   depends_on = [
     module.mongodb,
-    juju_application.charmed_etcd,
+    juju_application.charmed_etcd["deployed"],
   ]
 }
 

@@ -43,7 +43,7 @@ jobs:
 
   terraform-lint:
     name: Terraform - Lint / format / validate modules
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions: {}
     steps:
@@ -67,7 +67,7 @@ jobs:
     needs:
       - terraform-lint
     continue-on-error: true
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 120
     permissions: {}
     strategy:
