@@ -31,9 +31,11 @@ output "requires" {
     peer_certificates         = "peer-certificates"
     client_certificates       = "client-certificates"
     s3_credentials            = "s3-credentials"
+    gcs_credentials           = "gcs-credentials"
     ldap                      = "ldap"
     ldap_certificate_transfer = "ldap-certificate-transfer"
     etcd                      = "etcd"
+    vault_kv                  = "vault-kv"
   }
 }
 

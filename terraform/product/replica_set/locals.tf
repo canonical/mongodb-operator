@@ -1,0 +1,21 @@
+# Copyright 2026 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+locals {
+  cos_agent_enabled           = var.cos_agent_offer != null ? true : false
+  encryption_at_rest_enabled  = var.vault_kv_offer != null ? true : false
+  etcd_rolling_ops_enabled    = var.etcd_offer != null ? true : false
+  client_certificates_enabled = var.client_certificates_offer != null ? true : false
+  ldap_enabled                = var.ldap_offer != null && var.ldap_certificate_transfer_offer != null ? true : false
+  peer_certificates_enabled   = var.peer_certificates_offer != null ? true : false
+
+  backup_integrations = compact([
+    var.s3_integrator != null ? "s3_integrator" : "",
+    var.gcs_integrator != null ? "gcs_integrator" : "",
+  ])
+
+  ldap_integrations = compact([
+    var.ldap_offer != null ? "ldap_offer" : "",
+    var.ldap_certificate_transfer_offer != null ? "ldap_certificate_transfer_offer" : "",
+  ])
+}

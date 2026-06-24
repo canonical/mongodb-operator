@@ -1,6 +1,4 @@
-# Copyright 2024 Canonical Ltd.
-# See LICENSE file for licensing details.
-# Copyright 2024 Canonical Ltd.
+# Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 variable "app_name" {
@@ -9,22 +7,53 @@ variable "app_name" {
   default     = "mongodb"
 }
 
-variable "channel" {
-  description = "Charm channel"
-  type        = string
-  default     = "8/edge"
-}
-
 variable "base" {
   description = "Charm base (old name: series)"
   type        = string
   default     = "ubuntu@24.04"
 }
 
+variable "channel" {
+  description = "Charm channel"
+  type        = string
+  default     = "8/edge"
+}
+
 variable "config" {
   description = "Map of charm configuration options"
   type        = map(string)
   default     = {}
+}
+
+variable "constraints" {
+  description = "String listing constraints for this application"
+  type        = string
+  default     = "arch=amd64"
+}
+
+variable "endpoint_bindings" {
+  description = "Map of endpoint bindings"
+  type = set(object({
+    space    = string
+    endpoint = optional(string)
+  }))
+  default = []
+}
+
+variable "expose" {
+  description = "Expose the application for external access."
+  type = list(object({
+    cidrs     = optional(string)
+    endpoints = optional(string)
+    spaces    = optional(string)
+  }))
+  default = []
+}
+
+variable "machines" {
+  description = "List of machines for placement"
+  type        = set(string)
+  default     = []
 }
 
 variable "model_uuid" {
@@ -38,43 +67,14 @@ variable "revision" {
   default     = null
 }
 
+variable "storage_directives" {
+  description = "Map of storage directives (constraints) for the juju application"
+  type        = map(string)
+  default     = {}
+}
+
 variable "units" {
   description = "Charm units"
   type        = number
   default     = 3
-}
-
-variable "constraints" {
-  description = "String listing constraints for this application"
-  type        = string
-  default     = "arch=amd64"
-}
-
-variable "machines" {
-  description = "List of machines for placement"
-  type        = set(string)
-  default     = null
-}
-
-variable "storage" {
-  description = "Map of storage used by the application"
-  type        = map(string)
-  default     = {}
-
-  validation {
-    condition     = length(var.storage) == 0 || lookup(var.storage, "count", 0) <= 1
-    error_message = "Only one storage is supported"
-  }
-}
-
-variable "endpoint_bindings" {
-  description = "Map of endpoint bindings"
-  type        = set(map(string))
-  default     = []
-}
-
-variable "expose" {
-  description = "Expose the application for external access."
-  type        = map(string)
-  default     = {}
 }

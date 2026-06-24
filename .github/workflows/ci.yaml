@@ -101,10 +101,6 @@ jobs:
         run: |
           sudo snap install terraform --channel=latest/stable --classic
 
-      - name: run checks - prepare
-        run: |
-          sudo snap install juju --channel=3.6
-
       - name: LXD setup
         run: |
           sudo snap install lxd --channel=latest/stable
@@ -118,6 +114,7 @@ jobs:
 
       - name: Juju setup
         run: |
+          sudo snap install juju --channel=3.6
           mkdir -p ~/.local/share/juju
           sg 'lxd' -c "juju bootstrap 'localhost' --config model-logs-size=10G"
           juju model-defaults logging-config='<root>=INFO; unit=DEBUG'

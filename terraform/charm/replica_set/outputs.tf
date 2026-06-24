@@ -1,11 +1,9 @@
-# Copyright 2024 Canonical Ltd.
+# Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-output "app_names" {
-  description = "Names of of all deployed applications."
-  value = {
-    mongodb = juju_application.mongodb.name
-  }
+output "application" {
+  description = "Object representing the deployed MongoDB application."
+  value       = juju_application.mongodb
 }
 
 
@@ -14,8 +12,8 @@ output "provides" {
   description = "Map of all \"provides\" endpoints"
   value = {
     database      = "database"
-    config_server = "config-server"
     cluster       = "cluster"
+    config_server = "config-server"
     cos_agent     = "cos-agent"
   }
 }
@@ -24,12 +22,14 @@ output "provides" {
 output "requires" {
   description = "Map of all \"requires\" endpoints"
   value = {
-    sharding                  = "sharding"
-    peer_certificates         = "peer-certificates"
     client_certificates       = "client-certificates"
-    s3_credentials            = "s3-credentials"
+    etcd                      = "etcd"
+    gcs_credentials           = "gcs-credentials"
     ldap                      = "ldap"
     ldap_certificate_transfer = "ldap-certificate-transfer"
-    etcd                      = "etcd"
+    peer_certificates         = "peer-certificates"
+    sharding                  = "sharding"
+    s3_credentials            = "s3-credentials"
+    vault_kv                  = "vault-kv"
   }
 }

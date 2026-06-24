@@ -2,14 +2,8 @@
 
 | Name | Version |
 |------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.6 |
-| <a name="requirement_juju"></a> [juju](#requirement\_juju) | >= 0.20.0 |
-
-## Providers
-
-| Name | Version |
-|------|---------|
-| <a name="provider_juju"></a> [juju](#provider\_juju) | 0.23.1 |
+| Terraform | >= 1.6 |
+| Juju provider | ~> 1.0 |
 
 ## Modules
 
@@ -19,29 +13,29 @@ No modules.
 
 | Name | Type |
 |------|------|
-| [juju_application.mongodb](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/application) | resource |
+| `juju_application.mongodb` | [Juju application](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/application) |
 
 ## Inputs
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_app_name"></a> [app\_name](#input\_app\_name) | Application name | `string` | `"mongodb"` | no |
-| <a name="input_base"></a> [base](#input\_base) | Charm base (old name: series) | `string` | `"ubuntu@24.04"` | no |
-| <a name="input_channel"></a> [channel](#input\_channel) | Charm channel | `string` | `"8/edge"` | no |
-| <a name="input_config"></a> [config](#input\_config) | Map of charm configuration options | `map(string)` | `{}` | no |
-| <a name="input_constraints"></a> [constraints](#input\_constraints) | String listing constraints for this application | `string` | `"arch=amd64"` | no |
-| <a name="input_endpoint_bindings"></a> [endpoint\_bindings](#input\_endpoint\_bindings) | Map of endpoint bindings | `set(map(string))` | `[]` | no |
-| <a name="input_expose"></a> [expose](#input\_expose) | Expose the application for external access. | `map(string)` | `{}` | no |
-| <a name="input_machines"></a> [machines](#input\_machines) | List of machines for placement | `set(string)` | `null` | no |
-| <a name="input_model"></a> [model](#input\_model) | Model name | `string` | n/a | yes |
-| <a name="input_revision"></a> [revision](#input\_revision) | Charm revision | `number` | `null` | no |
-| <a name="input_storage"></a> [storage](#input\_storage) | Map of storage used by the application | `map(string)` | `{}` | no |
-| <a name="input_units"></a> [units](#input\_units) | Charm units | `number` | `3` | no |
+| `app_name` | Application name | `string` | `"mongodb"` | no |
+| `base` | Charm base (old name: series) | `string` | `"ubuntu@24.04"` | no |
+| `channel` | Charm channel | `string` | `"8/edge"` | no |
+| `config` | Map of charm configuration options | `map(string)` | `{}` | no |
+| `constraints`       | String listing constraints for this application | `string` | `"arch=amd64"` | no |
+| `endpoint_bindings` | Map of endpoint bindings | `set(object)` | `[]` | no |
+| `expose` | Expose the application for external access. | `list(object)` | `[]` | no |
+| `machines` | List of machines for placement | `set(string)` | `[]` | no |
+| `model_uuid` | Model UUID | `string` | n/a | yes |
+| `revision` | Charm revision | `number` | `null` | no |
+| `storage_directives` | Map of storage used by the application | `map(string)` | `{}` | no |
+| `units` | Charm units | `number` | `3` | no |
 
 ## Outputs
 
 | Name | Description |
 |------|-------------|
-| <a name="output_app_names"></a> [app\_names](#output\_app\_names) | Names of of all deployed applications. |
-| <a name="output_provides"></a> [provides](#output\_provides) | Map of all "provides" endpoints |
-| <a name="output_requires"></a> [requires](#output\_requires) | Map of all "requires" endpoints |
+| `application` | Object representing the deployed MongoDB application |
+| `provides` | Map of all "provides" endpoints |
+| `requires` | Map of all "requires" endpoints |
