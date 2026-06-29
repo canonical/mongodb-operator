@@ -103,7 +103,6 @@ resource "juju_integration" "s3_config_server_same_model_integration" {
   model_uuid = var.config_server.model_uuid
 }
 
-
 #--------------------------------------------------------
 ## Cross model integrations
 

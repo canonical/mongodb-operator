@@ -31,7 +31,7 @@ No modules.
 |------|-------------|------|---------|:--------:|
 | `app_name` | Application name | `string` | `"mongodb"` | no |
 | `base` | Charm base (old name: series) | `string` | `"ubuntu@24.04"` | no |
-| `channel` | Charm channel | `string` | `"8/edge"` | no |
+| `channel` | Charm channel | `string` | `"8/stable"` | no |
 | `config` | Map of charm configuration options | `map(string)` | `{}` | no |
 | `constraints`       | String listing constraints for this application | `string` | `"arch=amd64"` | no |
 | `endpoint_bindings` | Set of endpoint bindings | <pre>set(object({<br/>    space    = string<br/>    endpoint = optional(string)<br/>  }))</pre> | `[]` | no |

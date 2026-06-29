@@ -11,7 +11,7 @@ model="$(juju show-model "${model_name}" | awk -F': ' '/model-uuid/ {print $2}')
 pushd ./terraform/product/replica_set/
 terraform init
 terraform apply \
-  -var="mongodb={\"model_uuid\": \"${model}\"}" \
+  -var="mongodb={\"model_uuid\": \"${model}\", \"channel\": \"8/edge\"}" \
   -var="s3_integrator={\"model_uuid\": \"${model}\", \"config\": {\"bucket\": \"test\"}}" \
   -var="data_integrator={\"model_uuid\": \"${model}\"}" \
   -auto-approve

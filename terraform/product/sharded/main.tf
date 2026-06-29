@@ -78,7 +78,6 @@ resource "juju_application" "grafana_agent" {
   model_uuid = local.mongodb_apps[count.index].model_uuid
 }
 
-
 # Integrator apps
 resource "juju_application" "data_integrator" {
   charm {
