@@ -63,7 +63,7 @@ jobs:
         run: tox run -e terraform-lint
 
   terraform-product-test:
-    name: Terraform - ${{ matrix.product-module }} product module
+    name: Terraform - ${{ matrix.product_module }} product module
     needs:
       - terraform-lint
     continue-on-error: true
@@ -74,10 +74,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - product-module: replica-set
-            apply-script: .github/scripts/terraform-apply-replica-set.sh
-          - product-module: sharded
-            apply-script: .github/scripts/terraform-apply-sharded.sh
+          - product_module: replica-set
+            apply_script: .github/scripts/terraform-apply-replica-set.sh
+          - product_module: sharded
+            apply_script: .github/scripts/terraform-apply-sharded.sh
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6
@@ -118,18 +118,18 @@ jobs:
           mkdir -p ~/.local/share/juju
           sg 'lxd' -c "juju bootstrap 'localhost' --config model-logs-size=10G"
           juju model-defaults logging-config='<root>=INFO; unit=DEBUG'
-          juju add-model "test-${{ matrix.product-module }}"
+          juju add-model "test-${{ matrix.product_module }}"
 
-      - name: Terraform deploy - ${{ matrix.product-module }} product module
-        run: bash "${{ matrix.apply-script }}" "test-${{ matrix.product-module }}"
+      - name: Terraform deploy - ${{ matrix.product_module }} product module
+        run: bash "${{ matrix.apply_script }}" "test-${{ matrix.product_module }}"
 
       - name: Wait for juju deployment
         run: |
           # TODO - remove this when juju wait-for starts reporting the up to date status
-          until timeout 2m juju wait-for model "test-${{ matrix.product-module }}" --query='life=="alive" && status=="available"'
+          until timeout 2m juju wait-for model "test-${{ matrix.product_module }}" --query='life=="alive" && status=="available"'
           do
             echo "Retrying in 5 seconds..."
-            juju status -m "test-${{ matrix.product-module }}"
+            juju status -m "test-${{ matrix.product_module }}"
             sleep 5
           done
 

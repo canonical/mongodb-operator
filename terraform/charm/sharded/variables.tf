@@ -4,18 +4,22 @@
 variable "config_server" {
   description = "Config server app definition"
   type = object({
-    app_name          = string
-    model_uuid        = string
-    config            = optional(map(string), { "role" : "config-server" })
-    channel           = optional(string, "8/edge")
-    base              = optional(string, "ubuntu@24.04")
-    revision          = optional(string, null)
-    units             = optional(number, 3)
-    constraints       = optional(string, "arch=amd64")
-    machines          = optional(set(string), null)
-    storage           = optional(map(string), {})
-    endpoint_bindings = optional(set(map(string)), [])
-    expose            = optional(map(string), {})
+    app_name           = string
+    model_uuid         = string
+    config             = optional(map(string), { "role" : "config-server" })
+    channel            = optional(string, "8/edge")
+    base               = optional(string, "ubuntu@24.04")
+    revision           = optional(string, null)
+    units              = optional(number, 3)
+    constraints        = optional(string, "arch=amd64")
+    machines           = optional(set(string), null)
+    storage_directives = optional(map(string), {})
+    endpoint_bindings  = optional(set(map(string)), [])
+    expose = optional(list(object({
+      cidrs     = optional(string)
+      endpoints = optional(string)
+      spaces    = optional(string)
+    })), [])
   })
 
   validation {
@@ -27,18 +31,22 @@ variable "config_server" {
 variable "shards" {
   description = "Shard apps"
   type = list(object({
-    app_name          = string
-    model_uuid        = string
-    config            = optional(map(string), { "role" : "shard" })
-    channel           = optional(string, "8/edge")
-    base              = optional(string, "ubuntu@24.04")
-    revision          = optional(string, null)
-    units             = optional(number, 3)
-    constraints       = optional(string, "arch=amd64")
-    machines          = optional(set(string), null)
-    storage           = optional(map(string), {})
-    endpoint_bindings = optional(set(map(string)), [])
-    expose            = optional(map(string), {})
+    app_name           = string
+    model_uuid         = string
+    config             = optional(map(string), { "role" : "shard" })
+    channel            = optional(string, "8/edge")
+    base               = optional(string, "ubuntu@24.04")
+    revision           = optional(string, null)
+    units              = optional(number, 3)
+    constraints        = optional(string, "arch=amd64")
+    machines           = optional(set(string), null)
+    storage_directives = optional(map(string), {})
+    endpoint_bindings  = optional(set(map(string)), [])
+    expose = optional(list(object({
+      cidrs     = optional(string)
+      endpoints = optional(string)
+      spaces    = optional(string)
+    })), [])
   }))
   default = []
 

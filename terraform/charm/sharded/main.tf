@@ -29,15 +29,15 @@ module "mongodb_config_server" {
   revision = var.config_server.revision
   base     = var.config_server.base
 
-  app_name          = var.config_server.app_name
-  units             = var.config_server.units
-  machines          = var.config_server.machines
-  config            = merge(var.config_server.config, { "role" : "config-server" })
-  model_uuid        = var.config_server.model_uuid
-  constraints       = var.config_server.constraints
-  storage           = var.config_server.storage
-  endpoint_bindings = var.config_server.endpoint_bindings
-  expose            = var.config_server.expose
+  app_name           = var.config_server.app_name
+  units              = var.config_server.units
+  machines           = var.config_server.machines
+  config             = merge(var.config_server.config, { "role" : "config-server" })
+  model_uuid         = var.config_server.model_uuid
+  constraints        = var.config_server.constraints
+  storage_directives = var.config_server.storage_directives
+  endpoint_bindings  = var.config_server.endpoint_bindings
+  expose             = var.config_server.expose
 }
 
 # shard apps
@@ -49,12 +49,12 @@ module "mongodb_shards" {
   revision = each.value.revision
   base     = each.value.base
 
-  app_name    = each.value.app_name
-  units       = each.value.units
-  machines    = each.value.machines
-  config      = merge(each.value.config, { "role" : "shard" })
-  model_uuid  = each.value.model_uuid
-  constraints = each.value.constraints
-  storage     = each.value.storage
-  expose      = each.value.expose
+  app_name           = each.value.app_name
+  units              = each.value.units
+  machines           = each.value.machines
+  config             = merge(each.value.config, { "role" : "shard" })
+  model_uuid         = each.value.model_uuid
+  constraints        = each.value.constraints
+  storage_directives = each.value.storage_directives
+  expose             = each.value.expose
 }
