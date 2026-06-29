@@ -1,121 +1,27 @@
-# Copyright 2024 Canonical Ltd.
+# Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-variable "mongodb" {
-  description = "MongoDB app definition"
-  type = object({
-    app_name          = optional(string, "mongodb")
-    model_uuid        = string
-    config            = optional(map(string), { "role" : "replication" })
-    channel           = optional(string, "8/edge")
-    base              = optional(string, "ubuntu@24.04")
-    revision          = optional(string, null)
-    units             = optional(number, 3)
-    constraints       = optional(string, "arch=amd64")
-    machines          = optional(set(string), null)
-    storage           = optional(map(string), {})
-    endpoint_bindings = optional(set(map(string)), [])
-    expose            = optional(map(string), {})
-  })
-}
-
-variable "self_signed_certificates" {
-  description = "Configuration for the self-signed-certificates app"
-  type = object({
-    app_name          = optional(string, "self-signed-certificates")
-    model_uuid        = string
-    config            = optional(map(string), { "ca-common-name" : "CA" })
-    channel           = optional(string, "1/stable")
-    base              = optional(string, "ubuntu@24.04")
-    revision          = optional(string, null)
-    units             = optional(number, 1)
-    constraints       = optional(string, "arch=amd64")
-    machines          = optional(set(string), null)
-    storage           = optional(map(string), {})
-    endpoint_bindings = optional(set(map(string)), [])
-  })
-
-  validation {
-    condition     = var.self_signed_certificates == null || var.self_signed_certificates.machines == null || length(var.self_signed_certificates.machines) <= 1
-    error_message = "Machine count should be at most 1"
-  }
-}
-
-variable "grafana_agent" {
-  description = "Configuration for the grafana-agent"
-  type = object({
-    app_name   = optional(string, "grafana-agent")
-    model_uuid = string
-    config     = optional(map(string), {})
-    channel    = optional(string, "1/stable")
-    base       = optional(string, "ubuntu@24.04")
-    revision   = optional(string, null)
-  })
-
-  validation {
-    condition     = var.grafana_agent.model_uuid == var.mongodb.model_uuid
-    error_message = "'grafana-agent' must be deployed in the same model as mongodb."
-  }
-}
-
-variable "charmed_etcd" {
-  description = "Configuration for charmed-etcd"
-  type = object({
-    app_name   = optional(string, "charmed-etcd")
-    model_uuid = string
-    config     = optional(map(string), {})
-    channel    = optional(string, "3.6/stable")
-    base       = optional(string, "ubuntu@24.04")
-    revision   = optional(string, null)
-  })
-
-  validation {
-    condition     = var.charmed_etcd.model_uuid == var.mongodb.model_uuid
-    error_message = "'charmed-etcd' must be deployed in the same model as mongodb."
-  }
-}
-
-# Integrators
-variable "s3_integrator" {
-  description = "Configuration for the backup integrator"
-  type = object({
-    app_name          = optional(string, "s3-integrator")
-    model_uuid        = string
-    config            = map(string)
-    channel           = optional(string, "latest/edge")
-    base              = optional(string, "ubuntu@22.04")
-    revision          = optional(string, null)
-    units             = optional(number, 1)
-    constraints       = optional(string, "arch=amd64")
-    machines          = optional(set(string), null)
-    storage           = optional(map(string), {})
-    endpoint_bindings = optional(set(map(string)), [])
-  })
-
-  validation {
-    condition     = var.s3_integrator.machines == null || length(var.s3_integrator.machines) <= 1
-    error_message = "Machines count should be at most 1"
-  }
-  validation {
-    condition     = var.s3_integrator.units == 1
-    error_message = "Units count should be 1"
-  }
-}
+#--------------------------------------------------------
+# Applications
+#--------------------------------------------------------
 
 variable "data_integrator" {
   description = "Configuration for the data-integrator"
   type = object({
-    app_name          = optional(string, "data-integrator")
-    model_uuid        = string
-    config            = optional(map(string), { "database-name" : "test", "extra-user-roles" : "admin" })
-    channel           = optional(string, "latest/edge")
-    base              = optional(string, "ubuntu@22.04")
-    revision          = optional(string, null)
-    units             = optional(number, 1)
-    constraints       = optional(string, "arch=amd64")
-    machines          = optional(set(string), null)
-    storage           = optional(map(string), {})
-    endpoint_bindings = optional(set(map(string)), [])
+    app_name    = optional(string, "data-integrator")
+    base        = optional(string, "ubuntu@24.04")
+    channel     = optional(string, "latest/stable")
+    config      = optional(map(string), { "database-name" : "test", "extra-user-roles" : "admin" })
+    constraints = optional(string, "arch=amd64")
+    endpoint_bindings = optional(set(object({
+      space    = string
+      endpoint = optional(string)
+    })), [])
+    machines           = optional(set(string), null)
+    model_uuid         = string
+    revision           = optional(number, null)
+    storage_directives = optional(map(string), {})
+    units              = optional(number, 1)
   })
 
   validation {
@@ -133,4 +39,210 @@ variable "data_integrator" {
     )
     error_message = "data-integrator config must contain a non-empty 'database-name' and 'extra-user-roles' must be either 'default' or 'admin'."
   }
+}
+
+variable "gcs_integrator" {
+  description = "Configuration for the GCS backup integrator"
+  type = object({
+    app_name    = optional(string, "gcs-integrator")
+    base        = optional(string, "ubuntu@24.04")
+    channel     = optional(string, "1/stable")
+    config      = map(string)
+    constraints = optional(string, "arch=amd64")
+    endpoint_bindings = optional(set(object({
+      space    = string
+      endpoint = optional(string)
+    })), [])
+    machines           = optional(set(string), null)
+    model_uuid         = string
+    revision           = optional(number, null)
+    storage_directives = optional(map(string), {})
+    units              = optional(number, 1)
+  })
+  default = null
+
+  validation {
+    condition     = try(var.gcs_integrator.machines == null || length(var.gcs_integrator.machines) <= 1, true)
+    error_message = "Machines count should be at most 1"
+  }
+  validation {
+    condition     = try(var.gcs_integrator.units == 1, true)
+    error_message = "Units count should be 1"
+  }
+}
+
+variable "mongodb" {
+  description = "MongoDB app definition"
+  type = object({
+    app_name    = optional(string, "mongodb")
+    base        = optional(string, "ubuntu@24.04")
+    channel     = optional(string, "8/edge")
+    config      = optional(map(string), { "role" : "replication" })
+    constraints = optional(string, "arch=amd64")
+    endpoint_bindings = optional(set(object({
+      space    = string
+      endpoint = optional(string)
+    })), [])
+    expose = optional(list(object({
+      cidrs     = optional(string)
+      endpoints = optional(string)
+      spaces    = optional(string)
+    })), [])
+    machines           = optional(set(string), null)
+    model_uuid         = string
+    revision           = optional(number, null)
+    storage_directives = optional(map(string), {})
+    units              = optional(number, 3)
+  })
+}
+
+
+variable "s3_integrator" {
+  description = "Configuration for the S3 backup integrator"
+  type = object({
+    app_name    = optional(string, "s3-integrator")
+    base        = optional(string, "ubuntu@22.04")
+    channel     = optional(string, "1/stable")
+    config      = map(string)
+    constraints = optional(string, "arch=amd64")
+    endpoint_bindings = optional(set(object({
+      space    = string
+      endpoint = optional(string)
+    })), [])
+    machines           = optional(set(string), null)
+    model_uuid         = string
+    revision           = optional(number, null)
+    storage_directives = optional(map(string), {})
+    units              = optional(number, 1)
+  })
+  default = null
+
+  validation {
+    condition     = try(var.s3_integrator.machines == null || length(var.s3_integrator.machines) <= 1, true)
+    error_message = "Machines count should be at most 1"
+  }
+  validation {
+    condition     = try(var.s3_integrator.units == 1, true)
+    error_message = "Units count should be 1"
+  }
+}
+
+
+#--------------------------------------------------------
+# Integrations
+#--------------------------------------------------------
+
+variable "client_certificates_offer" {
+  description = "Optional client TLS certificates integration target. Use kind = \"endpoint\" with name/endpoint for same-model integrations, or kind = \"offer\" with url for cross-model integrations."
+  type = object({
+    kind     = string
+    name     = optional(string, null)
+    endpoint = optional(string, null)
+    url      = optional(string, null)
+  })
+  default = null
+
+  validation {
+    condition     = var.client_certificates_offer == null || contains(["endpoint", "offer"], var.client_certificates_offer.kind)
+    error_message = "client_certificates_offer.kind must be either \"endpoint\" or \"offer\"."
+  }
+}
+
+variable "cos_agent_offer" {
+  description = "Optional same-model COS agent integration target."
+  type = object({
+    name     = string
+    endpoint = string
+  })
+  default = null
+}
+
+variable "etcd_offer" {
+  description = "Optional etcd integration target for MongoDB rolling operations. Use kind = \"endpoint\" with name/endpoint for same-model integrations, or kind = \"offer\" with url for cross-model integrations."
+  type = object({
+    kind     = string
+    name     = optional(string, null)
+    endpoint = optional(string, null)
+    url      = optional(string, null)
+  })
+  default = null
+
+  validation {
+    condition     = var.etcd_offer == null || contains(["endpoint", "offer"], var.etcd_offer.kind)
+    error_message = "etcd_offer.kind must be either \"endpoint\" or \"offer\"."
+  }
+}
+
+variable "ldap_offer" {
+  description = "Optional LDAP integration target. Must be configured together with ldap_certificate_transfer_offer. Use kind = \"endpoint\" with name/endpoint for same-model integrations, or kind = \"offer\" with url for cross-model integrations."
+  type = object({
+    kind     = string
+    name     = optional(string, null)
+    endpoint = optional(string, null)
+    url      = optional(string, null)
+  })
+  default = null
+
+  validation {
+    condition     = var.ldap_offer == null || contains(["endpoint", "offer"], var.ldap_offer.kind)
+    error_message = "ldap_offer.kind must be either \"endpoint\" or \"offer\"."
+  }
+}
+
+variable "ldap_certificate_transfer_offer" {
+  description = "Optional LDAP certificate transfer integration target. Must be configured together with ldap_offer. Use kind = \"endpoint\" with name/endpoint for same-model integrations, or kind = \"offer\" with url for cross-model integrations."
+  type = object({
+    kind     = string
+    name     = optional(string, null)
+    endpoint = optional(string, null)
+    url      = optional(string, null)
+  })
+  default = null
+
+  validation {
+    condition     = var.ldap_certificate_transfer_offer == null || contains(["endpoint", "offer"], var.ldap_certificate_transfer_offer.kind)
+    error_message = "ldap_certificate_transfer_offer.kind must be either \"endpoint\" or \"offer\"."
+  }
+}
+
+variable "peer_certificates_offer" {
+  description = "Optional peer TLS certificates integration target. Use kind = \"endpoint\" with name/endpoint for same-model integrations, or kind = \"offer\" with url for cross-model integrations."
+  type = object({
+    kind     = string
+    name     = optional(string, null)
+    endpoint = optional(string, null)
+    url      = optional(string, null)
+  })
+  default = null
+
+  validation {
+    condition     = var.peer_certificates_offer == null || contains(["endpoint", "offer"], var.peer_certificates_offer.kind)
+    error_message = "peer_certificates_offer.kind must be either \"endpoint\" or \"offer\"."
+  }
+}
+
+variable "vault_kv_offer" {
+  description = "Optional Vault KV integration target for encryption at rest. Use kind = \"endpoint\" with name/endpoint for same-model integrations, or kind = \"offer\" with url for cross-model integrations."
+  type = object({
+    kind     = string
+    name     = optional(string, null)
+    endpoint = optional(string, null)
+    url      = optional(string, null)
+  })
+  default = null
+
+  validation {
+    condition     = var.vault_kv_offer == null || contains(["endpoint", "offer"], var.vault_kv_offer.kind)
+    error_message = "vault_kv_offer.kind must be either \"endpoint\" or \"offer\"."
+  }
+}
+
+#--------------------------------------------------------
+# Config
+#--------------------------------------------------------
+
+variable "logging_config" {
+  description = "Logging configuration to be used"
+  type        = string
+  default     = "<root>=INFO"
 }

@@ -1,79 +1,50 @@
-# Copyright 2024 Canonical Ltd.
+# Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-locals {
-  enable_tls = var.self_signed_certificates != null
-}
 
 #--------------------------------------------------------
 # 1. DEPLOYMENTS
 #--------------------------------------------------------
 
-# replicaset mongodb app
+# Replica set MongoDB app
 module "mongodb" {
   source = "../../charm/replica_set"
 
-  channel  = var.mongodb.channel
-  revision = var.mongodb.revision
-  base     = var.mongodb.base
-
-  app_name          = var.mongodb.app_name
-  units             = var.mongodb.units
-  machines          = var.mongodb.machines
-  config            = merge(var.mongodb.config, { "role" : "replication" })
-  model_uuid        = var.mongodb.model_uuid
-  constraints       = var.mongodb.constraints
-  storage           = var.mongodb.storage
-  endpoint_bindings = var.mongodb.endpoint_bindings
-  expose            = var.mongodb.expose
+  app_name           = var.mongodb.app_name
+  base               = var.mongodb.base
+  channel            = var.mongodb.channel
+  config             = merge(var.mongodb.config, { "role" : "replication" }, local.encryption_at_rest_enabled ? { "enable-encryption-at-rest" : "true" } : {})
+  constraints        = var.mongodb.constraints
+  endpoint_bindings  = var.mongodb.endpoint_bindings
+  expose             = var.mongodb.expose
+  machines           = var.mongodb.machines
+  model_uuid         = var.mongodb.model_uuid
+  revision           = var.mongodb.revision
+  storage_directives = var.mongodb.storage_directives
+  units              = var.mongodb.units
 }
 
-# self-signed-certificates app
-resource "juju_application" "self-signed-certificates" {
-  for_each = local.enable_tls ? { "deployed" = true } : {}
 
-  charm {
-    name     = "self-signed-certificates"
-    channel  = var.self_signed_certificates.channel
-    revision = var.self_signed_certificates.revision
-    base     = var.self_signed_certificates.base
+resource "terraform_data" "validate_backup_integrations" {
+  input = local.backup_integrations
+
+  lifecycle {
+    precondition {
+      condition     = length(local.backup_integrations) <= 1
+      error_message = "Only one backup integrator can be configured: set either s3_integrator or gcs_integrator, not both."
+    }
   }
-
-  name              = var.self_signed_certificates.app_name
-  units             = (var.self_signed_certificates.machines == null || length(var.self_signed_certificates.machines) == 0) ? var.self_signed_certificates.units : null
-  machines          = (var.self_signed_certificates.machines == null || length(var.self_signed_certificates.machines) == 0) ? null : var.self_signed_certificates.machines
-  config            = var.self_signed_certificates.config
-  constraints       = var.self_signed_certificates.constraints
-  endpoint_bindings = var.self_signed_certificates.endpoint_bindings
-  model_uuid        = var.self_signed_certificates.model_uuid
 }
 
-# grafana-agent
-resource "juju_application" "grafana_agent" {
-  charm {
-    name     = "grafana-agent"
-    channel  = var.grafana_agent.channel
-    revision = var.grafana_agent.revision
-    base     = var.grafana_agent.base
+resource "terraform_data" "validate_ldap_integrations" {
+  input = local.ldap_integrations
+
+  lifecycle {
+    precondition {
+      condition     = length(local.ldap_integrations) == 0 || length(local.ldap_integrations) == 2
+      error_message = "LDAP integrations must be configured together: set both ldap_offer and ldap_certificate_transfer_offer, or neither."
+    }
   }
-
-  name       = var.grafana_agent.app_name
-  config     = var.grafana_agent.config
-  model_uuid = var.grafana_agent.model_uuid
-}
-
-# charmed-etcd
-resource "juju_application" "charmed_etcd" {
-  charm {
-    name     = "charmed-etcd
-    channel  = var.charmed_etcd.channel
-    revision = var.charmed_etcd.revision
-    base     = var.charmed_etcd.base
-  }
-
-  name       = var.charmed_etcd.app_name
-  config     = var.charmed_etcd.config
-  model_uuid = var.charmed_etcd.model_uuid
 }
 
 # Integrator apps
@@ -85,28 +56,52 @@ resource "juju_application" "data_integrator" {
     base     = var.data_integrator.base
   }
 
-  name              = var.data_integrator.app_name
-  units             = (var.data_integrator.machines == null || length(var.data_integrator.machines) == 0) ? var.data_integrator.units : null
-  machines          = (var.data_integrator.machines == null || length(var.data_integrator.machines) == 0) ? null : var.data_integrator.machines
-  config            = var.data_integrator.config
-  constraints       = var.data_integrator.constraints
-  endpoint_bindings = var.data_integrator.endpoint_bindings
-  model_uuid        = var.data_integrator.model_uuid
+  name               = var.data_integrator.app_name
+  config             = var.data_integrator.config
+  constraints        = var.data_integrator.constraints
+  endpoint_bindings  = var.data_integrator.endpoint_bindings
+  machines           = (var.data_integrator.machines == null || length(var.data_integrator.machines) == 0) ? null : var.data_integrator.machines
+  model_uuid         = var.data_integrator.model_uuid
+  storage_directives = var.data_integrator.storage_directives
+  units              = (var.data_integrator.machines == null || length(var.data_integrator.machines) == 0) ? var.data_integrator.units : null
+}
+
+resource "juju_application" "gcs_integrator" {
+  for_each = var.gcs_integrator != null ? { "deployed" = var.gcs_integrator } : {}
+
+  charm {
+    name     = "gcs-integrator"
+    channel  = each.value.channel
+    revision = each.value.revision
+    base     = each.value.base
+  }
+
+  name               = each.value.app_name
+  config             = each.value.config
+  constraints        = each.value.constraints
+  endpoint_bindings  = each.value.endpoint_bindings
+  machines           = (each.value.machines == null || length(each.value.machines) == 0) ? null : each.value.machines
+  model_uuid         = each.value.model_uuid
+  storage_directives = each.value.storage_directives
+  units              = (each.value.machines == null || length(each.value.machines) == 0) ? each.value.units : null
 }
 
 resource "juju_application" "s3_integrator" {
+  for_each = var.s3_integrator != null ? { "deployed" = var.s3_integrator } : {}
+
   charm {
     name     = "s3-integrator"
-    channel  = var.s3_integrator.channel
-    revision = var.s3_integrator.revision
-    base     = var.s3_integrator.base
+    channel  = each.value.channel
+    revision = each.value.revision
+    base     = each.value.base
   }
 
-  name              = var.s3_integrator.app_name
-  units             = (var.s3_integrator.machines == null || length(var.s3_integrator.machines) == 0) ? var.s3_integrator.units : null
-  machines          = (var.s3_integrator.machines == null || length(var.s3_integrator.machines) == 0) ? null : var.s3_integrator.machines
-  config            = var.s3_integrator.config
-  constraints       = var.s3_integrator.constraints
-  endpoint_bindings = var.s3_integrator.endpoint_bindings
-  model_uuid        = var.s3_integrator.model_uuid
+  name               = each.value.app_name
+  config             = each.value.config
+  constraints        = each.value.constraints
+  endpoint_bindings  = each.value.endpoint_bindings
+  machines           = (each.value.machines == null || length(each.value.machines) == 0) ? null : each.value.machines
+  model_uuid         = each.value.model_uuid
+  storage_directives = each.value.storage_directives
+  units              = (each.value.machines == null || length(each.value.machines) == 0) ? each.value.units : null
 }

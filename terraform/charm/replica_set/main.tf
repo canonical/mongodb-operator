@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.
+# Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 resource "juju_application" "mongodb" {
@@ -9,20 +9,21 @@ resource "juju_application" "mongodb" {
     base     = var.base
   }
   config             = var.config
-  name               = var.app_name
-  units              = (var.machines == null || length(var.machines) == 0) ? var.units : null
-  machines           = (var.machines == null || length(var.machines) == 0) ? null : var.machines
   constraints        = var.constraints
-  storage_directives = var.storage
   endpoint_bindings  = var.endpoint_bindings
+  machines           = (var.machines == null || length(var.machines) == 0) ? null : var.machines
+  model_uuid         = var.model_uuid
+  name               = var.app_name
+  storage_directives = var.storage_directives
+  units              = (var.machines == null || length(var.machines) == 0) ? var.units : null
 
   dynamic "expose" {
-    for_each = var.expose != null ? [1] : []
+    for_each = var.expose
+
     content {
-      cidrs     = try(var.expose.cidr, null)
-      endpoints = try(var.expose.endpoints, null)
-      spaces    = try(var.expose.spaces, null)
+      cidrs     = expose.value.cidrs
+      endpoints = expose.value.endpoints
+      spaces    = expose.value.spaces
     }
   }
-  model_uuid = var.model_uuid
 }

@@ -1,176 +1,191 @@
-# Copyright 2024 Canonical Ltd.
+# Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 #--------------------------------------------------------
 # 3. Integrations
 #--------------------------------------------------------
 
-## Same model integrations
+resource "juju_integration" "client_certificates" {
+  count      = local.client_certificates_enabled ? 1 : 0
+  model_uuid = module.mongodb.application.model_uuid
 
-resource "juju_integration" "mongodb_grafana_agent_integration" {
   application {
-    name = var.mongodb.app_name
+    name      = var.client_certificates_offer.kind == "endpoint" ? var.client_certificates_offer.name : null
+    endpoint  = var.client_certificates_offer.kind == "endpoint" ? var.client_certificates_offer.endpoint : null
+    offer_url = var.client_certificates_offer.kind == "offer" ? var.client_certificates_offer.url : null
   }
+
   application {
-    name = var.grafana_agent.app_name
+    name     = module.mongodb.application.name
+    endpoint = module.mongodb.requires["client_certificates"]
   }
-  depends_on = [
-    module.mongodb,
-    juju_application.grafana_agent,
-  ]
-  model_uuid = var.mongodb.model_uuid
+
+  depends_on = [module.mongodb]
 }
 
-resource "juju_integration" "mongodb_tls_peer_same_model_integration" {
-  for_each = local.enable_tls && var.self_signed_certificates.model_uuid == var.mongodb.model_uuid ? { "integrated" = true } : {}
+resource "juju_integration" "cos_agent" {
+  count      = local.cos_agent_enabled ? 1 : 0
+  model_uuid = module.mongodb.application.model_uuid
 
   application {
-    name     = var.mongodb.app_name
-    endpoint = "peer-certificates"
+    name     = var.cos_agent_offer.name
+    endpoint = var.cos_agent_offer.endpoint
   }
+
   application {
-    name     = var.self_signed_certificates.app_name
-    endpoint = "certificates"
+    name     = module.mongodb.application.name
+    endpoint = module.mongodb.provides["cos_agent"]
   }
-  depends_on = [
-    module.mongodb,
-    juju_application.self-signed-certificates["deployed"],
-  ]
-  model_uuid = var.mongodb.model_uuid
+
+  depends_on = [module.mongodb]
 }
 
-resource "juju_integration" "mongodb_tls_client_same_model_integration" {
-  for_each = local.enable_tls && var.self_signed_certificates.model_uuid == var.mongodb.model_uuid ? { "integrated" = true } : {}
+resource "juju_integration" "etcd" {
+  count      = local.etcd_rolling_ops_enabled ? 1 : 0
+  model_uuid = module.mongodb.application.model_uuid
 
   application {
-    name     = var.mongodb.app_name
-    endpoint = "client-certificates"
+    name      = var.etcd_offer.kind == "endpoint" ? var.etcd_offer.name : null
+    endpoint  = var.etcd_offer.kind == "endpoint" ? var.etcd_offer.endpoint : null
+    offer_url = var.etcd_offer.kind == "offer" ? var.etcd_offer.url : null
   }
+
   application {
-    name     = var.self_signed_certificates.app_name
-    endpoint = "certificates"
+    name     = module.mongodb.application.name
+    endpoint = module.mongodb.requires["etcd"]
   }
-  depends_on = [
-    module.mongodb,
-    juju_application.self-signed-certificates["deployed"],
-  ]
-  model_uuid = var.mongodb.model_uuid
+
+  depends_on = [module.mongodb]
 }
 
-resource "juju_integration" "mongodb_s3_same_model_integration" {
-  for_each = var.s3_integrator.model_uuid == var.mongodb.model_uuid ? { "integrated" = true } : {}
+resource "juju_integration" "ldap" {
+  count      = local.ldap_enabled ? 1 : 0
+  model_uuid = module.mongodb.application.model_uuid
 
   application {
-    name = var.mongodb.app_name
+    name      = var.ldap_offer.kind == "endpoint" ? var.ldap_offer.name : null
+    endpoint  = var.ldap_offer.kind == "endpoint" ? var.ldap_offer.endpoint : null
+    offer_url = var.ldap_offer.kind == "offer" ? var.ldap_offer.url : null
   }
+
   application {
-    name = var.s3_integrator.app_name
+    name     = module.mongodb.application.name
+    endpoint = module.mongodb.requires["ldap"]
   }
-  depends_on = [
-    module.mongodb,
-    juju_application.s3_integrator,
-  ]
-  model_uuid = var.mongodb.model_uuid
+
+  depends_on = [module.mongodb]
 }
 
-resource "juju_integration" "mongodb_data_same_model_integration" {
-  for_each = var.data_integrator.model_uuid == var.mongodb.model_uuid ? { "integrated" = true } : {}
+resource "juju_integration" "ldap_certificate_transfer" {
+  count      = local.ldap_enabled ? 1 : 0
+  model_uuid = module.mongodb.application.model_uuid
 
   application {
-    name = var.mongodb.app_name
+    name      = var.ldap_certificate_transfer_offer.kind == "endpoint" ? var.ldap_certificate_transfer_offer.name : null
+    endpoint  = var.ldap_certificate_transfer_offer.kind == "endpoint" ? var.ldap_certificate_transfer_offer.endpoint : null
+    offer_url = var.ldap_certificate_transfer_offer.kind == "offer" ? var.ldap_certificate_transfer_offer.url : null
   }
+
   application {
-    name = var.data_integrator.app_name
+    name     = module.mongodb.application.name
+    endpoint = module.mongodb.requires["ldap_certificate_transfer"]
   }
-  depends_on = [
-    module.mongodb,
-    juju_application.data_integrator,
-  ]
-  model_uuid = var.mongodb.model_uuid
+
+  depends_on = [module.mongodb]
 }
 
-resource "juju_integration" "mongodb_etcd_same_model_integration" {
-  for_each = var.charmed_etcd.model_uuid == var.mongodb.model_uuid ? { "integrated" = true } : {}
+resource "juju_integration" "peer_certificates" {
+  count      = local.peer_certificates_enabled ? 1 : 0
+  model_uuid = module.mongodb.application.model_uuid
 
   application {
-    name = var.mongodb.app_name
+    name      = var.peer_certificates_offer.kind == "endpoint" ? var.peer_certificates_offer.name : null
+    endpoint  = var.peer_certificates_offer.kind == "endpoint" ? var.peer_certificates_offer.endpoint : null
+    offer_url = var.peer_certificates_offer.kind == "offer" ? var.peer_certificates_offer.url : null
   }
+
   application {
-    name = var.charmed_etcd.app_name
+    name     = module.mongodb.application.name
+    endpoint = module.mongodb.requires["peer_certificates"]
   }
-  depends_on = [
-    module.mongodb,
-    juju_application.charmed_etcd,
-  ]
-  model_uuid = var.mongodb.model_uuid
+
+  depends_on = [module.mongodb]
 }
 
-
-## Cross model integrations
-resource "juju_integration" "mongodb_data_cross_model_integration" {
-  for_each = var.data_integrator.model_uuid != var.mongodb.model_uuid ? { "integrated" = true } : {}
+resource "juju_integration" "vault_kv" {
+  count      = local.encryption_at_rest_enabled ? 1 : 0
+  model_uuid = module.mongodb.application.model_uuid
 
   application {
-    offer_url = juju_offer.mongodb_client_offer["offered"].url
+    name      = var.vault_kv_offer.kind == "endpoint" ? var.vault_kv_offer.name : null
+    endpoint  = var.vault_kv_offer.kind == "endpoint" ? var.vault_kv_offer.endpoint : null
+    offer_url = var.vault_kv_offer.kind == "offer" ? var.vault_kv_offer.url : null
+  }
+
+  application {
+    name     = module.mongodb.application.name
+    endpoint = module.mongodb.requires["vault_kv"]
+  }
+
+  depends_on = [module.mongodb]
+}
+
+# Integrator relations
+
+resource "juju_integration" "mongodb_data" {
+  model_uuid = var.data_integrator.model_uuid
+
+  application {
+    name      = var.data_integrator.model_uuid == module.mongodb.application.model_uuid ? module.mongodb.application.name : null
+    endpoint  = var.data_integrator.model_uuid == module.mongodb.application.model_uuid ? module.mongodb.provides["database"] : null
+    offer_url = try(juju_offer.mongodb_client["offered"].url, null)
   }
   application {
     name     = var.data_integrator.app_name
     endpoint = "mongodb"
   }
   depends_on = [
+    module.mongodb,
     juju_application.data_integrator,
-    juju_offer.mongodb_client_offer,
   ]
-  model_uuid = var.data_integrator.model_uuid
 }
 
-resource "juju_integration" "mongodb_tls_peer_cross_model_integration" {
-  for_each = local.enable_tls && var.self_signed_certificates.model_uuid != var.mongodb.model_uuid ? { "integrated" = true } : {}
+resource "juju_integration" "mongodb_s3" {
+  for_each = var.s3_integrator != null ? { "integrated" = var.s3_integrator } : {}
+
+  model_uuid = module.mongodb.application.model_uuid
 
   application {
-    offer_url = juju_offer.tls_provider_offer["offered"].url
+    name     = module.mongodb.application.name
+    endpoint = module.mongodb.requires["s3_credentials"]
   }
   application {
-    name     = var.mongodb.app_name
-    endpoint = "peer-certificates"
+    name      = each.value.model_uuid == module.mongodb.application.model_uuid ? each.value.app_name : null
+    endpoint  = each.value.model_uuid == module.mongodb.application.model_uuid ? "s3-credentials" : null
+    offer_url = try(juju_offer.s3_integrator["offered"].url, null)
   }
   depends_on = [
     module.mongodb,
-    juju_offer.tls_provider_offer,
+    juju_application.s3_integrator["deployed"],
   ]
-  model_uuid = var.mongodb.model_uuid
 }
 
-resource "juju_integration" "mongodb_tls_client_cross_model_integration" {
-  for_each = local.enable_tls && var.self_signed_certificates.model_uuid != var.mongodb.model_uuid ? { "integrated" = true } : {}
+resource "juju_integration" "mongodb_gcs" {
+  for_each = var.gcs_integrator != null ? { "integrated" = var.gcs_integrator } : {}
+
+  model_uuid = module.mongodb.application.model_uuid
 
   application {
-    offer_url = juju_offer.tls_provider_offer["offered"].url
+    name     = module.mongodb.application.name
+    endpoint = module.mongodb.requires["gcs_credentials"]
   }
   application {
-    name     = var.mongodb.app_name
-    endpoint = "client-certificates"
+    name      = each.value.model_uuid == module.mongodb.application.model_uuid ? each.value.app_name : null
+    endpoint  = each.value.model_uuid == module.mongodb.application.model_uuid ? "gcs-credentials" : null
+    offer_url = try(juju_offer.gcs_integrator["offered"].url, null)
   }
   depends_on = [
     module.mongodb,
-    juju_offer.tls_provider_offer,
+    juju_application.gcs_integrator["deployed"],
   ]
-  model_uuid = var.mongodb.model_uuid
-}
-
-resource "juju_integration" "mongodb_s3_cross_model_integration" {
-  for_each = var.s3_integrator.model_uuid != var.mongodb.model_uuid ? { "integrated" = true } : {}
-
-  application {
-    offer_url = juju_offer.s3_integrator_offer["offered"].url
-  }
-  application {
-    name     = var.mongodb.app_name
-    endpoint = "s3-credentials"
-  }
-  depends_on = [
-    module.mongodb,
-    juju_offer.s3_integrator_offer,
-  ]
-  model_uuid = var.mongodb.model_uuid
 }
