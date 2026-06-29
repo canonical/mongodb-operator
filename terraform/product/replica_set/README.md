@@ -3,7 +3,14 @@
 | Name | Version |
 |------|---------|
 | Terraform | >= 1.6 |
-| Juju provider | ~> 1.0 |
+| Juju provider | >= 1.1.1  |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| juju | >= 1.1.1 |
+
 
 ## Module
 
@@ -18,9 +25,9 @@
 | `juju_application.data_integrator` | [Juju application](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/application) | Deploys the data-integrator charm. |
 | `juju_application.s3_integrator` | [Juju application](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/application) | Optionally deploys the S3 integrator charm. Mutually exclusive with `juju_application.gcs_integrator`. |
 | `juju_application.gcs_integrator` | [Juju application](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/application) | Optionally deploys the GCS integrator charm. Mutually exclusive with `juju_application.s3_integrator`. |
+| `juju_integration.client_certificates` | [Juju integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | Relates MongoDB to an optional client TLS certificates target. |
 | `juju_integration.cos_agent` | [Juju integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | Relates MongoDB's `cos-agent` endpoint to a same-model COS agent. |
 | `juju_integration.etcd` | [Juju integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | Relates MongoDB to an optional etcd target. |
-| `juju_integration.client_certificates` | [Juju integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | Relates MongoDB to an optional client TLS certificates target. |
 | `juju_integration.ldap` | [Juju integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | Relates MongoDB to an optional LDAP target. |
 | `juju_integration.ldap_certificate_transfer` | [Juju integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | Relates MongoDB to an optional LDAP certificate transfer target. |
 | `juju_integration.peer_certificates` | [Juju integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | Relates MongoDB to an optional peer TLS certificates target. |
@@ -33,24 +40,26 @@
 | `juju_offer.gcs_integrator` | [Juju offer](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/offer) | Offers the GCS integrator credentials endpoint when GCS is cross-model. |
 | `terraform_data.validate_backup_integrations` | [Terraform data](https://developer.hashicorp.com/terraform/language/resources/terraform-data) | Ensures only one backup integrator is configured. |
 | `terraform_data.validate_ldap_integrations` | [Terraform data](https://developer.hashicorp.com/terraform/language/resources/terraform-data) | Ensures LDAP and LDAP certificate transfer are configured together. |
+| `terraform_data.deployed_at` | [Terraform data](https://developer.hashicorp.com/terraform/language/resources/terraform-data) | Stores the first deployment timestamp for product metadata. |
 
 
 
 ## Inputs
 
-| Name | Description | Required |
-|------|-------------|:--------:|
-| `mongodb` | MongoDB application definition. | yes |
-| `data_integrator` | data-integrator application definition. | yes |
-| `s3_integrator` | Optional S3 backup integrator definition. Mutually exclusive with `gcs_integrator`. | no |
-| `gcs_integrator` | Optional GCS backup integrator definition. Mutually exclusive with `s3_integrator`. | no |
-| `cos_agent_offer` | Optional same-model COS agent endpoint target. | no |
-| `etcd_offer` | Optional etcd integration target. | no |
-| `client_certificates_offer` | Optional client TLS certificates integration target. | no |
-| `ldap_offer` | Optional LDAP integration target. Must be set together with `ldap_certificate_transfer_offer`. | no |
-| `ldap_certificate_transfer_offer` | Optional LDAP certificate transfer target. Must be set together with `ldap_offer`. | no |
-| `peer_certificates_offer` | Optional peer TLS certificates integration target. | no |
-| `vault_kv_offer` | Optional Vault KV integration target for encryption at rest. | no |
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| `mongodb` | MongoDB app definition | <pre>object({<br/>    app_name    = optional(string, "mongodb")<br/>    base        = optional(string, "ubuntu@24.04")<br/>    channel     = optional(string, "8/edge")<br/>    config      = optional(map(string), { "role" : "replication" })<br/>    constraints = optional(string, "arch=amd64")<br/>    endpoint_bindings = optional(set(object({<br/>      space    = string<br/>      endpoint = optional(string)<br/>    })), [])<br/>    expose = optional(list(object({<br/>      cidrs     = optional(string)<br/>      endpoints = optional(string)<br/>      spaces    = optional(string)<br/>    })), [])<br/>    machines           = optional(set(string), null)<br/>    model_uuid         = string<br/>    revision           = optional(number, null)<br/>    storage_directives = optional(map(string), {})<br/>    units              = optional(number, 3)<br/>  })</pre> | n/a | yes |
+| `data_integrator` | Configuration for the data-integrator | <pre>object({<br/>    app_name    = optional(string, "data-integrator")<br/>    base        = optional(string, "ubuntu@24.04")<br/>    channel     = optional(string, "latest/stable")<br/>    config      = optional(map(string), { "database-name" : "test", "extra-user-roles" : "admin" })<br/>    constraints = optional(string, "arch=amd64")<br/>    endpoint_bindings = optional(set(object({<br/>      space    = string<br/>      endpoint = optional(string)<br/>    })), [])<br/>    machines           = optional(set(string), null)<br/>    model_uuid         = string<br/>    revision           = optional(number, null)<br/>    storage_directives = optional(map(string), {})<br/>    units              = optional(number, 1)<br/>  })</pre> | n/a | yes |
+| `s3_integrator` | Configuration for the S3 backup integrator | <pre>object({<br/>    app_name    = optional(string, "s3-integrator")<br/>    base        = optional(string, "ubuntu@22.04")<br/>    channel     = optional(string, "1/stable")<br/>    config      = map(string)<br/>    constraints = optional(string, "arch=amd64")<br/>    endpoint_bindings = optional(set(object({<br/>      space    = string<br/>      endpoint = optional(string)<br/>    })), [])<br/>    machines           = optional(set(string), null)<br/>    model_uuid         = string<br/>    revision           = optional(number, null)<br/>    storage_directives = optional(map(string), {})<br/>    units              = optional(number, 1)<br/>  })</pre> | `null` | no |
+| `gcs_integrator` | Configuration for the GCS backup integrator | <pre>object({<br/>    app_name    = optional(string, "gcs-integrator")<br/>    base        = optional(string, "ubuntu@24.04")<br/>    channel     = optional(string, "1/stable")<br/>    config      = map(string)<br/>    constraints = optional(string, "arch=amd64")<br/>    endpoint_bindings = optional(set(object({<br/>      space    = string<br/>      endpoint = optional(string)<br/>    })), [])<br/>    machines           = optional(set(string), null)<br/>    model_uuid         = string<br/>    revision           = optional(number, null)<br/>    storage_directives = optional(map(string), {})<br/>    units              = optional(number, 1)<br/>  })</pre> | `null` | no |
+| `client_certificates_offer` | Optional client TLS certificates integration target. Use kind = "endpoint" with name/endpoint for same-model integrations, or kind = "offer" with url for cross-model integrations. | <pre>object({<br/>    kind     = string<br/>    name     = optional(string, null)<br/>    endpoint = optional(string, null)<br/>    url      = optional(string, null)<br/>  })</pre> | `null` | no |
+| `cos_agent_offer` | Optional same-model COS agent endpoint target. | <pre>object({<br/>    name     = string<br/>    endpoint = string<br/>  })</pre> | `null` | no |
+| `etcd_offer` | Optional etcd integration target for MongoDB rolling operations. Use kind = "endpoint" with name/endpoint for same-model integrations, or kind = "offer" with url for cross-model integrations. | <pre>object({<br/>    kind     = string<br/>    name     = optional(string, null)<br/>    endpoint = optional(string, null)<br/>    url      = optional(string, null)<br/>  })</pre> | `null` | no |
+| `ldap_offer` | Optional LDAP integration target. Must be configured together with ldap_certificate_transfer_offer. Use kind = "endpoint" with name/endpoint for same-model integrations, or kind = "offer" with url for cross-model integrations. | <pre>object({<br/>    kind     = string<br/>    name     = optional(string, null)<br/>    endpoint = optional(string, null)<br/>    url      = optional(string, null)<br/>  })</pre> | `null` | no |
+| `ldap_certificate_transfer_offer` | Optional LDAP certificate transfer integration target. Must be configured together with ldap_offer. Use kind = "endpoint" with name/endpoint for same-model integrations, or kind = "offer" with url for cross-model integrations. | <pre>object({<br/>    kind     = string<br/>    name     = optional(string, null)<br/>    endpoint = optional(string, null)<br/>    url      = optional(string, null)<br/>  })</pre> | `null` | no |
+| `logging_config` | Logging configuration to be used | `string` | `"<root>=INFO"` | no |
+| `peer_certificates_offer` | Optional peer TLS certificates integration target. Use kind = "endpoint" with name/endpoint for same-model integrations, or kind = "offer" with url for cross-model integrations. | <pre>object({<br/>    kind     = string<br/>    name     = optional(string, null)<br/>    endpoint = optional(string, null)<br/>    url      = optional(string, null)<br/>  })</pre> | `null` | no |
+| `vault_kv_offer` | Optional Vault KV integration target for encryption at rest. Use kind = "endpoint" with name/endpoint for same-model integrations, or kind = "offer" with url for cross-model integrations. | <pre>object({<br/>    kind     = string<br/>    name     = optional(string, null)<br/>    endpoint = optional(string, null)<br/>    url      = optional(string, null)<br/>  })</pre> | `null` | no |
 
 Offer-style integration targets use this shape:
 
@@ -69,7 +78,9 @@ Use `kind = "endpoint"` with `name` and `endpoint` for same-model relations. Use
 
 | Name | Description |
 |------|-------------|
-| `components` | Names of deployed applications. Optional integrators return `null` when omitted. |
+| `components` | Deployed applications. Optional integrators return `null` when omitted. |
+| `metadata` | Metadata of the product deployment. |
+| `models` | Models and deployed components managed by this module, grouped by model role. |
 | `provides` | MongoDB provided endpoint pointers, including `mongodb_database` and `mongodb_cos_agent`. |
-| `requires` | MongoDB required endpoint pointers, including S3 and GCS credentials endpoints. |
+| requires | MongoDB required endpoint pointers, including S3 and GCS credentials endpoints. |
 | `offers` | Cross-model offer URLs created by this module, or `null` when not needed. |

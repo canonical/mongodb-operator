@@ -19,8 +19,8 @@ variable "data_integrator" {
     })), [])
     machines           = optional(set(string), null)
     model_uuid         = string
-    storage_directives = optional(map(string), {})
     revision           = optional(number, null)
+    storage_directives = optional(map(string), {})
     units              = optional(number, 1)
   })
 
@@ -41,6 +41,35 @@ variable "data_integrator" {
   }
 }
 
+variable "gcs_integrator" {
+  description = "Configuration for the GCS backup integrator"
+  type = object({
+    app_name    = optional(string, "gcs-integrator")
+    base        = optional(string, "ubuntu@24.04")
+    channel     = optional(string, "1/stable")
+    config      = map(string)
+    constraints = optional(string, "arch=amd64")
+    endpoint_bindings = optional(set(object({
+      space    = string
+      endpoint = optional(string)
+    })), [])
+    machines           = optional(set(string), null)
+    model_uuid         = string
+    revision           = optional(number, null)
+    storage_directives = optional(map(string), {})
+    units              = optional(number, 1)
+  })
+  default = null
+
+  validation {
+    condition     = try(var.gcs_integrator.machines == null || length(var.gcs_integrator.machines) <= 1, true)
+    error_message = "Machines count should be at most 1"
+  }
+  validation {
+    condition     = try(var.gcs_integrator.units == 1, true)
+    error_message = "Units count should be 1"
+  }
+}
 
 variable "mongodb" {
   description = "MongoDB app definition"
@@ -98,36 +127,6 @@ variable "s3_integrator" {
   }
 }
 
-
-variable "gcs_integrator" {
-  description = "Configuration for the GCS backup integrator"
-  type = object({
-    app_name    = optional(string, "gcs-integrator")
-    base        = optional(string, "ubuntu@24.04")
-    channel     = optional(string, "1/stable")
-    config      = map(string)
-    constraints = optional(string, "arch=amd64")
-    endpoint_bindings = optional(set(object({
-      space    = string
-      endpoint = optional(string)
-    })), [])
-    machines           = optional(set(string), null)
-    model_uuid         = string
-    revision           = optional(string, null)
-    storage_directives = optional(map(string), {})
-    units              = optional(number, 1)
-  })
-  default = null
-
-  validation {
-    condition     = try(var.gcs_integrator.machines == null || length(var.gcs_integrator.machines) <= 1, true)
-    error_message = "Machines count should be at most 1"
-  }
-  validation {
-    condition     = try(var.gcs_integrator.units == 1, true)
-    error_message = "Units count should be 1"
-  }
-}
 
 #--------------------------------------------------------
 # Integrations
@@ -236,4 +235,14 @@ variable "vault_kv_offer" {
     condition     = var.vault_kv_offer == null || contains(["endpoint", "offer"], var.vault_kv_offer.kind)
     error_message = "vault_kv_offer.kind must be either \"endpoint\" or \"offer\"."
   }
+}
+
+#--------------------------------------------------------
+# Config
+#--------------------------------------------------------
+
+variable "logging_config" {
+  description = "Logging configuration to be used"
+  type        = string
+  default     = "<root>=INFO"
 }

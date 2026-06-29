@@ -2,13 +2,70 @@
 # See LICENSE file for licensing details.
 
 output "components" {
-  description = "Names of of all deployed applications."
+  description = "All deployed applications."
   value = {
-    mongodb         = module.mongodb.application.name
-    data_integrator = juju_application.data_integrator.name
-    s3_integrator   = try(juju_application.s3_integrator["deployed"].name, null)
-    gcs_integrator  = try(juju_application.gcs_integrator["deployed"].name, null)
+    mongodb         = module.mongodb.application
+    data_integrator = juju_application.data_integrator
+    s3_integrator   = try(juju_application.s3_integrator["deployed"], null)
+    gcs_integrator  = try(juju_application.gcs_integrator["deployed"], null)
   }
+}
+
+output "models" {
+  description = "Models and deployed components managed by this module."
+  value = merge(
+    {
+      mongodb = {
+        model_uuid = module.mongodb.application.model_uuid
+        components = merge(
+          {
+            mongodb = module.mongodb.application
+          },
+          var.data_integrator.model_uuid == module.mongodb.application.model_uuid ? {
+            data_integrator = juju_application.data_integrator
+          } : {},
+          try(var.s3_integrator.model_uuid == module.mongodb.application.model_uuid ? {
+            s3_integrator = juju_application.s3_integrator["deployed"]
+          } : {}, {}),
+          try(var.gcs_integrator.model_uuid == module.mongodb.application.model_uuid ? {
+            gcs_integrator = juju_application.gcs_integrator["deployed"]
+          } : {}, {})
+        )
+      }
+    },
+    var.data_integrator.model_uuid != module.mongodb.application.model_uuid ? {
+      data_integrator = {
+        model_uuid = var.data_integrator.model_uuid
+        components = merge(
+          {
+            data_integrator = juju_application.data_integrator
+          },
+          try(var.s3_integrator.model_uuid == var.data_integrator.model_uuid ? {
+            s3_integrator = juju_application.s3_integrator["deployed"]
+          } : {}, {}),
+          try(var.gcs_integrator.model_uuid == var.data_integrator.model_uuid ? {
+            gcs_integrator = juju_application.gcs_integrator["deployed"]
+          } : {}, {})
+        )
+      }
+    } : {},
+    try(var.s3_integrator.model_uuid != module.mongodb.application.model_uuid && var.s3_integrator.model_uuid != var.data_integrator.model_uuid ? {
+      s3_integrator = {
+        model_uuid = var.s3_integrator.model_uuid
+        components = {
+          s3_integrator = juju_application.s3_integrator["deployed"]
+        }
+      }
+    } : {}, {}),
+    try(var.gcs_integrator.model_uuid != module.mongodb.application.model_uuid && var.gcs_integrator.model_uuid != var.data_integrator.model_uuid ? {
+      gcs_integrator = {
+        model_uuid = var.gcs_integrator.model_uuid
+        components = {
+          gcs_integrator = juju_application.gcs_integrator["deployed"]
+        }
+      }
+    } : {}, {})
+  )
 }
 
 
@@ -16,14 +73,8 @@ output "components" {
 output "provides" {
   description = "Map of all \"provides\" endpoints"
   value = {
-    mongodb_database = {
-      name     = module.mongodb.application.name
-      endpoint = module.mongodb.provides["database"]
-    }
-    mongodb_cos_agent = {
-      name     = module.mongodb.application.name
-      endpoint = module.mongodb.provides["cos_agent"]
-    }
+    mongodb_database  = module.mongodb.provides["database"]
+    mongodb_cos_agent = module.mongodb.provides["cos_agent"]
   }
 }
 
@@ -31,38 +82,14 @@ output "provides" {
 output "requires" {
   description = "Map of all \"requires\" endpoints"
   value = {
-    mongodb_etcd = {
-      name     = module.mongodb.application.name
-      endpoint = module.mongodb.requires["etcd"]
-    }
-    mongodb_client_certificates = {
-      name     = module.mongodb.application.name
-      endpoint = module.mongodb.requires["client_certificates"]
-    }
-    mongodb_gcs_credentials = {
-      name     = module.mongodb.application.name
-      endpoint = module.mongodb.requires["gcs_credentials"]
-    }
-    mongodb_ldap = {
-      name     = module.mongodb.application.name
-      endpoint = module.mongodb.requires["ldap"]
-    }
-    mongodb_ldap_certificate_transfer = {
-      name     = module.mongodb.application.name
-      endpoint = module.mongodb.requires["ldap_certificate_transfer"]
-    }
-    mongodb_peer_certificates = {
-      name     = module.mongodb.application.name
-      endpoint = module.mongodb.requires["peer_certificates"]
-    }
-    mongodb_s3_credentials = {
-      name     = module.mongodb.application.name
-      endpoint = module.mongodb.requires["s3_credentials"]
-    }
-    mongodb_vault_kv = {
-      name     = module.mongodb.application.name
-      endpoint = module.mongodb.requires["vault_kv"]
-    }
+    mongodb_client_certificates       = module.mongodb.requires["client_certificates"]
+    mongodb_etcd                      = module.mongodb.requires["etcd"]
+    mongodb_gcs_credentials           = module.mongodb.requires["gcs_credentials"]
+    mongodb_ldap                      = module.mongodb.requires["ldap"]
+    mongodb_ldap_certificate_transfer = module.mongodb.requires["ldap_certificate_transfer"]
+    mongodb_peer_certificates         = module.mongodb.requires["peer_certificates"]
+    mongodb_s3_credentials            = module.mongodb.requires["s3_credentials"]
+    mongodb_vault_kv                  = module.mongodb.requires["vault_kv"]
   }
 }
 
@@ -70,8 +97,28 @@ output "requires" {
 output "offers" {
   description = "List of offers URLs."
   value = {
-    mongodb_database           = try(juju_offer.mongodb_client["offered"].url, null)
-    s3_integrator_credentials  = try(juju_offer.s3_integrator["offered"].url, null)
-    gcs_integrator_credentials = try(juju_offer.gcs_integrator["offered"].url, null)
+    mongodb_database = try({
+      kind = "offer"
+      name = module.mongodb.application.name
+      url  = juju_offer.mongodb_client["offered"].url
+    }, null)
+    s3_integrator_credentials = try({
+      kind = "offer"
+      name = juju_application.s3_integrator["deployed"].name
+      url  = juju_offer.s3_integrator["offered"].url
+    }, null)
+    gcs_integrator_credentials = try({
+      kind = "offer"
+      name = juju_application.gcs_integrator["deployed"].name
+      url  = juju_offer.gcs_integrator["offered"].url
+    }, null)
+  }
+}
+
+output "metadata" {
+  description = "Metadata of the product deployment."
+  value = {
+    deployed_at = terraform_data.deployed_at.output
+    updated_at  = timestamp()
   }
 }

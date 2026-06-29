@@ -1,58 +1,63 @@
-# Copyright 2024 Canonical Ltd.
+# Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-locals {
-  enable_tls   = var.self_signed_certificates != null
-  mongodb_apps = concat([var.config_server], var.shards != null ? var.shards : [])
-  mongo_apps   = concat(local.mongodb_apps, [merge({}, var.mongos)])
-
-  tls_same_model_mongo_apps = [
-    for app in local.mongo_apps :
-    app if local.enable_tls && app.model_uuid == var.self_signed_certificates.model_uuid
-  ]
-  tls_cross_model_mongo_apps = [
-    for app in local.mongo_apps :
-    app if local.enable_tls && app.model_uuid != var.self_signed_certificates.model_uuid
-  ]
-
-  enable_etcd_rollingops = var.charmed_etcd != null
-  etcd_same_model_mongo_apps = [
-    for app in local.mongo_apps :
-    app if local.enable_etcd_rollingops && app.model_uuid == var.charmed_etcd.model_uuid
-  ]
-}
 
 #--------------------------------------------------------
 # 1. DEPLOYMENTS
 #--------------------------------------------------------
 
-# replicaset mongodb app
-module "mongodb" {
-  source = "../../charm/sharded"
+# Sharded cluster deployment
+# module "mongodb" {
+#   source = "../../charm/sharded"
+#
+#   config_server = merge(var.config_server, {
+#     config = merge(var.config_server.config, local.enable_encryption_rest ? { "enable-encryption-at-rest" : "true" } : {})
+#   })
+#   shards = var.shards != null ? [
+#     for shard in var.shards :
+#     merge(shard, {
+#       config = merge(shard.config, local.enable_encryption_rest ? { "enable-encryption-at-rest" : "true" } : {})
+#     })
+#   ] : []
+# }
 
-  config_server = var.config_server
-  shards        = var.shards
+# MongoDB config server app
+module "config_server" {
+  source = "../../charm/replica_set"
+
+  app_name           = var.config_server.app_name
+  base               = var.config_server.base
+  channel            = var.config_server.channel
+  config             = merge(var.config_server.config, { "role" : "config-server" }, local.encryption_at_rest_enabled ? { "enable-encryption-at-rest" : "true" } : {})
+  constraints        = var.config_server.constraints
+  endpoint_bindings  = var.config_server.endpoint_bindings
+  expose             = var.config_server.expose
+  machines           = var.config_server.machines
+  model_uuid         = var.config_server.model_uuid
+  revision           = var.config_server.revision
+  storage_directives = var.config_server.storage_directives
+  units              = var.config_server.units
 }
 
-# self-signed-certificates app
-resource "juju_application" "self-signed-certificates" {
-  for_each = local.enable_tls ? { "deployed" = true } : {}
+# Shard apps
+module "shards" {
+  for_each = { for idx, app in local.shards : idx => app if app != null }
+  source   = "../../charm/replica_set"
 
-  charm {
-    name     = "self-signed-certificates"
-    channel  = var.self_signed_certificates.channel
-    revision = var.self_signed_certificates.revision
-    base     = var.self_signed_certificates.base
-  }
-
-  name              = var.self_signed_certificates.app_name
-  units             = (var.self_signed_certificates.machines == null || length(var.self_signed_certificates.machines) == 0) ? var.self_signed_certificates.units : null
-  machines          = (var.self_signed_certificates.machines == null || length(var.self_signed_certificates.machines) == 0) ? null : var.self_signed_certificates.machines
-  config            = var.self_signed_certificates.config
-  constraints       = var.self_signed_certificates.constraints
-  endpoint_bindings = var.self_signed_certificates.endpoint_bindings
-  model_uuid        = var.self_signed_certificates.model_uuid
+  app_name           = each.value.app_name
+  base               = each.value.base
+  channel            = each.value.channel
+  config             = merge(each.value.config, { "role" : "shard" }, local.encryption_at_rest_enabled ? { "enable-encryption-at-rest" : "true" } : {})
+  constraints        = each.value.constraints
+  endpoint_bindings  = each.value.endpoint_bindings
+  expose             = each.value.expose
+  machines           = each.value.machines
+  model_uuid         = each.value.model_uuid
+  revision           = each.value.revision
+  storage_directives = each.value.storage_directives
+  units              = each.value.units
 }
+
 
 # mongos
 resource "juju_application" "mongos" {
@@ -65,38 +70,7 @@ resource "juju_application" "mongos" {
 
   name       = var.mongos.app_name
   config     = var.mongos.config
-  model_uuid = var.data_integrator.model_uuid
-}
-
-# grafana-agent
-resource "juju_application" "grafana_agent" {
-  count = length(local.mongodb_apps)
-
-  charm {
-    name     = "grafana-agent"
-    channel  = var.grafana_agent.channel
-    revision = var.grafana_agent.revision
-    base     = var.grafana_agent.base
-  }
-
-  name       = "grafana-agent-${local.mongodb_apps[count.index].app_name}"
-  config     = var.grafana_agent.config
-  model_uuid = local.mongodb_apps[count.index].model_uuid
-}
-
-# charmed-etcd
-resource "juju_application" "charmed_etcd" {
-  for_each = local.enable_etcd_rollingops ? { "deployed" = true } : {}
-  charm {
-    name     = "charmed-etcd"
-    channel  = var.charmed_etcd.channel
-    revision = var.charmed_etcd.revision
-    base     = var.charmed_etcd.base
-  }
-
-  name       = var.charmed_etcd.app_name
-  config     = var.charmed_etcd.config
-  model_uuid = var.charmed_etcd.model_uuid
+  model_uuid = var.mongos.model_uuid
 }
 
 # Integrator apps
@@ -108,28 +82,52 @@ resource "juju_application" "data_integrator" {
     base     = var.data_integrator.base
   }
 
-  name              = var.data_integrator.app_name
-  units             = (var.data_integrator.machines == null || length(var.data_integrator.machines) == 0) ? var.data_integrator.units : null
-  machines          = (var.data_integrator.machines == null || length(var.data_integrator.machines) == 0) ? null : var.data_integrator.machines
-  config            = var.data_integrator.config
-  constraints       = var.data_integrator.constraints
-  endpoint_bindings = var.data_integrator.endpoint_bindings
-  model_uuid        = var.data_integrator.model_uuid
+  name               = var.data_integrator.app_name
+  config             = var.data_integrator.config
+  constraints        = var.data_integrator.constraints
+  endpoint_bindings  = var.data_integrator.endpoint_bindings
+  machines           = (var.data_integrator.machines == null || length(var.data_integrator.machines) == 0) ? null : var.data_integrator.machines
+  model_uuid         = var.data_integrator.model_uuid
+  storage_directives = var.data_integrator.storage_directives
+  units              = (var.data_integrator.machines == null || length(var.data_integrator.machines) == 0) ? var.data_integrator.units : null
+}
+
+resource "juju_application" "gcs_integrator" {
+  for_each = var.gcs_integrator != null ? { "deployed" = var.gcs_integrator } : {}
+
+  charm {
+    name     = "gcs-integrator"
+    channel  = each.value.channel
+    revision = each.value.revision
+    base     = each.value.base
+  }
+
+  name               = each.value.app_name
+  config             = each.value.config
+  constraints        = each.value.constraints
+  endpoint_bindings  = each.value.endpoint_bindings
+  machines           = (each.value.machines == null || length(each.value.machines) == 0) ? null : each.value.machines
+  model_uuid         = each.value.model_uuid
+  storage_directives = each.value.storage_directives
+  units              = (each.value.machines == null || length(each.value.machines) == 0) ? each.value.units : null
 }
 
 resource "juju_application" "s3_integrator" {
+  for_each = var.s3_integrator != null ? { "deployed" = var.s3_integrator } : {}
+
   charm {
     name     = "s3-integrator"
-    channel  = var.s3_integrator.channel
-    revision = var.s3_integrator.revision
-    base     = var.s3_integrator.base
+    channel  = each.value.channel
+    revision = each.value.revision
+    base     = each.value.base
   }
 
-  name              = var.s3_integrator.app_name
-  units             = (var.s3_integrator.machines == null || length(var.s3_integrator.machines) == 0) ? var.s3_integrator.units : null
-  machines          = (var.s3_integrator.machines == null || length(var.s3_integrator.machines) == 0) ? null : var.s3_integrator.machines
-  config            = var.s3_integrator.config
-  constraints       = var.s3_integrator.constraints
-  endpoint_bindings = var.s3_integrator.endpoint_bindings
-  model_uuid        = var.s3_integrator.model_uuid
+  name               = each.value.app_name
+  config             = each.value.config
+  constraints        = each.value.constraints
+  endpoint_bindings  = each.value.endpoint_bindings
+  machines           = (each.value.machines == null || length(each.value.machines) == 0) ? null : each.value.machines
+  model_uuid         = each.value.model_uuid
+  storage_directives = each.value.storage_directives
+  units              = (each.value.machines == null || length(each.value.machines) == 0) ? each.value.units : null
 }

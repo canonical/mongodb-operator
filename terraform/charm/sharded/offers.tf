@@ -3,7 +3,7 @@
 
 
 #--------------------------------------------------------
-# 2. OFFERS (if cross model)
+# 2. OFFERS (cross model)
 #--------------------------------------------------------
 
 resource "juju_offer" "mongodb_config_server_offer" {
@@ -13,3 +13,14 @@ resource "juju_offer" "mongodb_config_server_offer" {
   endpoints        = ["config-server"]
   model_uuid       = var.config_server.model_uuid
 }
+
+
+resource "juju_offer" "cluster" {
+  
+  application_name = var.config_server.app_name
+  endpoints        = ["cluster"]
+  model_uuid       = var.config_server.model_uuid
+}
+
+# TODO : can COS be cross-model ? 
+

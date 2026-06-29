@@ -5,23 +5,6 @@
 # 3. Integrations
 #--------------------------------------------------------
 
-resource "juju_integration" "cos_agent" {
-  count      = local.cos_agent_enabled ? 1 : 0
-  model_uuid = module.mongodb.application.model_uuid
-
-  application {
-    name     = var.cos_agent_offer.name
-    endpoint = var.cos_agent_offer.endpoint
-  }
-
-  application {
-    name     = module.mongodb.application.name
-    endpoint = module.mongodb.provides["cos_agent"]
-  }
-
-  depends_on = [module.mongodb]
-}
-
 resource "juju_integration" "client_certificates" {
   count      = local.client_certificates_enabled ? 1 : 0
   model_uuid = module.mongodb.application.model_uuid
@@ -35,6 +18,23 @@ resource "juju_integration" "client_certificates" {
   application {
     name     = module.mongodb.application.name
     endpoint = module.mongodb.requires["client_certificates"]
+  }
+
+  depends_on = [module.mongodb]
+}
+
+resource "juju_integration" "cos_agent" {
+  count      = local.cos_agent_enabled ? 1 : 0
+  model_uuid = module.mongodb.application.model_uuid
+
+  application {
+    name     = var.cos_agent_offer.name
+    endpoint = var.cos_agent_offer.endpoint
+  }
+
+  application {
+    name     = module.mongodb.application.name
+    endpoint = module.mongodb.provides["cos_agent"]
   }
 
   depends_on = [module.mongodb]

@@ -1,33 +1,33 @@
-# Copyright 2024 Canonical Ltd.
+# Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 #--------------------------------------------------------
 # 2. Offers
 #--------------------------------------------------------
 
-resource "juju_offer" "config_server_mongos_offer" {
-  for_each = var.config_server.model_uuid != var.mongos.model_uuid ? { "offered" = true } : {}
+resource "juju_offer" "mongodb_client" {
+  for_each = var.data_integrator.model_uuid != module.mongos.application.model_uuid ? { "offered" = true } : {}
 
-  application_name = var.config_server.app_name
-  endpoints        = ["cluster"]
-  depends_on       = [module.mongodb]
-  model_uuid       = var.config_server.model_uuid
+  application_name = each.value.app_name
+  endpoints        = ["mongos"]
+  depends_on       = [juju_application.data_integrator["deployed"]]
+  model_uuid       = each.value.model_uuid
 }
 
-resource "juju_offer" "tls_provider_offer" {
-  for_each = local.enable_tls && length(local.tls_cross_model_mongo_apps) > 0 ? { "offered" = true } : {}
+resource "juju_offer" "s3_integrator" {
+  for_each = try(var.s3_integrator.model_uuid != module.config_server.application.model_uuid, false) ? { "offered" = var.s3_integrator } : {}
 
-  application_name = var.self_signed_certificates.app_name
-  endpoints        = ["certificates"]
-  depends_on       = [juju_application.self-signed-certificates["deployed"]]
-  model_uuid       = var.self_signed_certificates.model_uuid
-}
-
-resource "juju_offer" "s3_integrator_offer" {
-  for_each = var.s3_integrator.model_uuid != var.config_server.model_uuid ? { "offered" = true } : {}
-
-  application_name = var.s3_integrator.app_name
+  application_name = each.value.app_name
   endpoints        = ["s3-credentials"]
-  depends_on       = [juju_application.s3_integrator]
-  model_uuid       = var.s3_integrator.model_uuid
+  depends_on       = [juju_application.s3_integrator["deployed"]]
+  model_uuid       = each.value.model_uuid
+}
+
+resource "juju_offer" "gcs_integrator" {
+  for_each = try(var.gcs_integrator.model_uuid != module.config_server.application.model_uuid, false) ? { "offered" = var.gcs_integrator } : {}
+
+  application_name = each.value.app_name
+  endpoints        = ["gcs-credentials"]
+  depends_on       = [juju_application.gcs_integrator["deployed"]]
+  model_uuid       = each.value.model_uuid
 }

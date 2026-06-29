@@ -1,60 +1,45 @@
-# Copyright 2024 Canonical Ltd.
+# Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-locals {
-  shards = [
-    for app in concat(var.shards != null ? var.shards : []) : app if app != null
-  ]
-
-  shards_in_config_server_model = [
-    for shard in local.shards :
-    shard if shard != null && shard.model_uuid == var.config_server.model_uuid
-  ]
-
-  shards_not_in_config_server_model = [
-    for shard in local.shards :
-    shard if shard != null && shard.model_uuid != var.config_server.model_uuid
-  ]
-}
 
 #--------------------------------------------------------
 # 1. DEPLOYMENTS
 #--------------------------------------------------------
 
 # config server mongodb app
-module "mongodb_config_server" {
+module "config_server" {
   source = "../replica_set"
 
-  channel  = var.config_server.channel
-  revision = var.config_server.revision
-  base     = var.config_server.base
+  app_name           = var.config_server.app_name
+  base               = var.config_server.base
+  channel            = var.config_server.channel
+  config             = merge(var.config_server.config, { "role" : "config-server" })
+  constraints        = var.config_server.constraints
+  endpoint_bindings  = var.config_server.endpoint_bindings
+  expose             = var.config_server.expose
+  machines           = var.config_server.machines
+  model_uuid         = var.config_server.model_uuid
+  revision           = var.config_server.revision
+  storage_directives = var.config_server.storage_directives
+  units              = var.config_server.units
 
-  app_name          = var.config_server.app_name
-  units             = var.config_server.units
-  machines          = var.config_server.machines
-  config            = merge(var.config_server.config, { "role" : "config-server" })
-  model_uuid        = var.config_server.model_uuid
-  constraints       = var.config_server.constraints
-  storage           = var.config_server.storage
-  endpoint_bindings = var.config_server.endpoint_bindings
-  expose            = var.config_server.expose
 }
 
 # shard apps
-module "mongodb_shards" {
+module "shards" {
   for_each = { for idx, app in local.shards : idx => app if app != null }
   source   = "../replica_set"
 
-  channel  = each.value.channel
-  revision = each.value.revision
-  base     = each.value.base
-
-  app_name    = each.value.app_name
-  units       = each.value.units
-  machines    = each.value.machines
-  config      = merge(each.value.config, { "role" : "shard" })
-  model_uuid  = each.value.model_uuid
-  constraints = each.value.constraints
-  storage     = each.value.storage
-  expose      = each.value.expose
+  app_name           = each.value.app_name
+  base               = each.value.base
+  channel            = each.value.channel
+  config             = merge(each.value.config, { "role" : "shard" })
+  constraints        = each.value.constraints
+  endpoint_bindings  = each.value.endpoint_bindings
+  expose             = each.value.expose
+  machines           = each.value.machines
+  model_uuid         = each.value.model_uuid
+  revision           = each.value.revision
+  storage_directives = each.value.storage_directives
+  units              = each.value.units
 }

@@ -19,3 +19,17 @@ locals {
     var.ldap_certificate_transfer_offer != null ? "ldap_certificate_transfer_offer" : "",
   ])
 }
+
+
+resource "terraform_data" "deployed_at" {
+  input = timestamp()
+
+  lifecycle {
+    ignore_changes = [input]
+  }
+}
+
+data "juju_model" "mongodb" {
+  owner = "admin"
+  name  = var.mongodb_model
+}

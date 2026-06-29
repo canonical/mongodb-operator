@@ -1,9 +1,19 @@
+# Terraform module for mongodb-operator
+
+This is a Terraform module facilitating the deployment of the MongoDB charm with [Terraform juju provider](https://github.com/juju/terraform-provider-juju/). For more information, refer to the provider [documentation](https://registry.terraform.io/providers/juju/juju/latest/docs). 
+
 ## Requirements
 
 | Name | Version |
 |------|---------|
 | Terraform | >= 1.6 |
-| Juju provider | ~> 1.0 |
+| Juju provider | >= 1.1.1  |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| juju | >= 1.1.1 |
 
 ## Modules
 
@@ -24,8 +34,8 @@ No modules.
 | `channel` | Charm channel | `string` | `"8/edge"` | no |
 | `config` | Map of charm configuration options | `map(string)` | `{}` | no |
 | `constraints`       | String listing constraints for this application | `string` | `"arch=amd64"` | no |
-| `endpoint_bindings` | Map of endpoint bindings | `set(object)` | `[]` | no |
-| `expose` | Expose the application for external access. | `list(object)` | `[]` | no |
+| `endpoint_bindings` | Set of endpoint bindings | <pre>set(object({<br/>    space    = string<br/>    endpoint = optional(string)<br/>  }))</pre> | `[]` | no |
+| `expose` | Expose the application for external access. | <pre>list(object({<br/>    cidrs     = optional(string)<br/>    endpoints = optional(string)<br/>    spaces    = optional(string)<br/>  }))</pre> | `[]` | no |
 | `machines` | List of machines for placement | `set(string)` | `[]` | no |
 | `model_uuid` | Model UUID | `string` | n/a | yes |
 | `revision` | Charm revision | `number` | `null` | no |

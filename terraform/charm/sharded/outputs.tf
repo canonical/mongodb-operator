@@ -1,13 +1,13 @@
-# Copyright 2024 Canonical Ltd.
+# Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 # Names of deployed applications
-output "app_names" {
-  description = "Names of of all deployed applications."
+output "components" {
+  description = "All deployed applications."
   value = {
-    mongodb_config_server = module.mongodb_config_server.app_names["mongodb"]
+    config_server = module.config_server.application
     shards = [
-      for shard_module in module.mongodb_shards : shard_module.app_names["mongodb"]
+      for shard_module in module.shards : shard_module.application
     ]
   }
 }
@@ -43,6 +43,8 @@ output "requires" {
 output "offers" {
   description = "List of offers URLs."
   value = {
-    mongodb_config_server = try(juju_offer.mongodb_config_server_offer["offered"].url, null)
+    config_server = try(juju_offer.mongodb_config_server_offer["offered"].url, null)
+    config_server_cluster = juju_offer.cluster.url
+    config_server_cos_agent = juju_offer.cos_agent.url
   }
 }
