@@ -12,10 +12,7 @@ pushd ./terraform/product/replica_set/
 terraform init
 terraform apply \
   -var="mongodb={\"model_uuid\": \"${model}\"}" \
-  -var="self_signed_certificates={\"model_uuid\": \"${model}\"}" \
-  -var="grafana_agent={\"model_uuid\": \"${model}\"}" \
   -var="s3_integrator={\"model_uuid\": \"${model}\", \"config\": {\"bucket\": \"test\"}}" \
   -var="data_integrator={\"model_uuid\": \"${model}\"}" \
-  -var="charmed_etcd={\"model_uuid\": \"${model}\"}" \
   -auto-approve
 popd

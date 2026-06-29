@@ -16,8 +16,8 @@ resource "juju_integration" "client_certificates" {
   }
 
   application {
-    name     = module.mongodb.application.name
-    endpoint = module.mongodb.requires["client_certificates"]
+    name     = module.mongodb.requires["client_certificates"].name
+    endpoint = module.mongodb.requires["client_certificates"].endpoint
   }
 
   depends_on = [module.mongodb]
@@ -33,8 +33,8 @@ resource "juju_integration" "cos_agent" {
   }
 
   application {
-    name     = module.mongodb.application.name
-    endpoint = module.mongodb.provides["cos_agent"]
+    name     = module.mongodb.provides["cos_agent"].name
+    endpoint = module.mongodb.provides["cos_agent"].endpoint
   }
 
   depends_on = [module.mongodb]
@@ -51,8 +51,8 @@ resource "juju_integration" "etcd" {
   }
 
   application {
-    name     = module.mongodb.application.name
-    endpoint = module.mongodb.requires["etcd"]
+    name     = module.mongodb.requires["etcd"].name
+    endpoint = module.mongodb.requires["etcd"].endpoint
   }
 
   depends_on = [module.mongodb]
@@ -69,8 +69,8 @@ resource "juju_integration" "ldap" {
   }
 
   application {
-    name     = module.mongodb.application.name
-    endpoint = module.mongodb.requires["ldap"]
+    name     = module.mongodb.requires["ldap"].name
+    endpoint = module.mongodb.requires["ldap"].endpoint
   }
 
   depends_on = [module.mongodb]
@@ -87,8 +87,8 @@ resource "juju_integration" "ldap_certificate_transfer" {
   }
 
   application {
-    name     = module.mongodb.application.name
-    endpoint = module.mongodb.requires["ldap_certificate_transfer"]
+    name     = module.mongodb.requires["ldap_certificate_transfer"].name
+    endpoint = module.mongodb.requires["ldap_certificate_transfer"].endpoint
   }
 
   depends_on = [module.mongodb]
@@ -105,8 +105,8 @@ resource "juju_integration" "peer_certificates" {
   }
 
   application {
-    name     = module.mongodb.application.name
-    endpoint = module.mongodb.requires["peer_certificates"]
+    name     = module.mongodb.requires["peer_certificates"].name
+    endpoint = module.mongodb.requires["peer_certificates"].endpoint
   }
 
   depends_on = [module.mongodb]
@@ -123,8 +123,8 @@ resource "juju_integration" "vault_kv" {
   }
 
   application {
-    name     = module.mongodb.application.name
-    endpoint = module.mongodb.requires["vault_kv"]
+    name     = module.mongodb.requires["vault_kv"].name
+    endpoint = module.mongodb.requires["vault_kv"].endpoint
   }
 
   depends_on = [module.mongodb]
@@ -136,8 +136,8 @@ resource "juju_integration" "mongodb_data" {
   model_uuid = var.data_integrator.model_uuid
 
   application {
-    name      = var.data_integrator.model_uuid == module.mongodb.application.model_uuid ? module.mongodb.application.name : null
-    endpoint  = var.data_integrator.model_uuid == module.mongodb.application.model_uuid ? module.mongodb.provides["database"] : null
+    name      = var.data_integrator.model_uuid == module.mongodb.application.model_uuid ? module.mongodb.provides["database"].name : null
+    endpoint  = var.data_integrator.model_uuid == module.mongodb.application.model_uuid ? module.mongodb.provides["database"].endpoint : null
     offer_url = try(juju_offer.mongodb_client["offered"].url, null)
   }
   application {
@@ -156,8 +156,8 @@ resource "juju_integration" "mongodb_s3" {
   model_uuid = module.mongodb.application.model_uuid
 
   application {
-    name     = module.mongodb.application.name
-    endpoint = module.mongodb.requires["s3_credentials"]
+    name     = module.mongodb.requires["s3_credentials"].name
+    endpoint = module.mongodb.requires["s3_credentials"].endpoint
   }
   application {
     name      = each.value.model_uuid == module.mongodb.application.model_uuid ? each.value.app_name : null
@@ -176,8 +176,8 @@ resource "juju_integration" "mongodb_gcs" {
   model_uuid = module.mongodb.application.model_uuid
 
   application {
-    name     = module.mongodb.application.name
-    endpoint = module.mongodb.requires["gcs_credentials"]
+    name     = module.mongodb.requires["gcs_credentials"].name
+    endpoint = module.mongodb.requires["gcs_credentials"].endpoint
   }
   application {
     name      = each.value.model_uuid == module.mongodb.application.model_uuid ? each.value.app_name : null

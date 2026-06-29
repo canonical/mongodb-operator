@@ -94,23 +94,6 @@ variable "grafana_agent" {
   default = {}
 }
 
-variable "charmed_etcd" {
-  description = "Configuration for charmed-etcd"
-  type = object({
-    app_name   = optional(string, "charmed-etcd")
-    model_uuid = string
-    config     = optional(map(string), {})
-    channel    = optional(string, "3.6/stable")
-    base       = optional(string, "ubuntu@24.04")
-    revision   = optional(string, null)
-  })
-
-  validation {
-    condition     = var.charmed_etcd.model_uuid == var.config_server.model_uuid
-    error_message = "'charmed-etcd' must be deployed in the same model as cluster components."
-  }
-}
-
 # Integrators
 variable "s3_integrator" {
   description = "Configuration for the backup integrator"

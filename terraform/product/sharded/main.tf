@@ -14,12 +14,6 @@ locals {
     for app in local.mongo_apps :
     app if local.enable_tls && app.model_uuid != var.self_signed_certificates.model_uuid
   ]
-
-  enable_etcd = var.charmed_etcd != null
-  etcd_same_model_mongo_apps = [
-    for app in local.mongo_apps :
-    app if local.enable_etcd && app.model_uuid == var.charmed_etcd.model_uuid
-  ]
 }
 
 #--------------------------------------------------------
@@ -84,19 +78,6 @@ resource "juju_application" "grafana_agent" {
   model_uuid = local.mongodb_apps[count.index].model_uuid
 }
 
-# charmed-etcd
-resource "juju_application" "charmed_etcd" {
-  charm {
-    name     = "charmed-etcd
-    channel  = var.charmed_etcd.channel
-    revision = var.charmed_etcd.revision
-    base     = var.charmed_etcd.base
-  }
-
-  name       = var.charmed_etcd.app_name
-  config     = var.charmed_etcd.config
-  model_uuid = var.charmed_etcd.model_uuid
-}
 
 # Integrator apps
 resource "juju_application" "data_integrator" {

@@ -28,8 +28,3 @@ resource "terraform_data" "deployed_at" {
     ignore_changes = [input]
   }
 }
-
-data "juju_model" "mongodb" {
-  owner = "admin"
-  name  = var.mongodb_model
-}

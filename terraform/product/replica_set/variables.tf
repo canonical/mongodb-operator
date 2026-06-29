@@ -146,6 +146,27 @@ variable "client_certificates_offer" {
     condition     = var.client_certificates_offer == null || contains(["endpoint", "offer"], var.client_certificates_offer.kind)
     error_message = "client_certificates_offer.kind must be either \"endpoint\" or \"offer\"."
   }
+
+  validation {
+    condition = (
+      var.client_certificates_offer == null ? true :
+      var.client_certificates_offer.kind == "endpoint" ? (
+        var.client_certificates_offer.name != null && var.client_certificates_offer.name != "" &&
+        var.client_certificates_offer.endpoint != null && var.client_certificates_offer.endpoint != ""
+      ) : true
+    )
+    error_message = "Both 'name' and 'endpoint' attributes must be provided for an in-model integration."
+  }
+
+  validation {
+    condition = (
+      var.client_certificates_offer == null ? true :
+      var.client_certificates_offer.kind == "offer" ? (
+        var.client_certificates_offer.url != null && var.client_certificates_offer.url != ""
+      ) : true
+    )
+    error_message = "The 'url' attribute must be provided for a cross-model integration."
+  }
 }
 
 variable "cos_agent_offer" {
@@ -171,6 +192,27 @@ variable "etcd_offer" {
     condition     = var.etcd_offer == null || contains(["endpoint", "offer"], var.etcd_offer.kind)
     error_message = "etcd_offer.kind must be either \"endpoint\" or \"offer\"."
   }
+
+  validation {
+    condition = (
+      var.etcd_offer == null ? true :
+      var.etcd_offer.kind == "endpoint" ? (
+        var.etcd_offer.name != null && var.etcd_offer.name != "" &&
+        var.etcd_offer.endpoint != null && var.etcd_offer.endpoint != ""
+      ) : true
+    )
+    error_message = "Both 'name' and 'endpoint' attributes must be provided for an in-model integration."
+  }
+
+  validation {
+    condition = (
+      var.etcd_offer == null ? true :
+      var.etcd_offer.kind == "offer" ? (
+        var.etcd_offer.url != null && var.etcd_offer.url != ""
+      ) : true
+    )
+    error_message = "The 'url' attribute must be provided for a cross-model integration."
+  }
 }
 
 variable "ldap_offer" {
@@ -186,6 +228,27 @@ variable "ldap_offer" {
   validation {
     condition     = var.ldap_offer == null || contains(["endpoint", "offer"], var.ldap_offer.kind)
     error_message = "ldap_offer.kind must be either \"endpoint\" or \"offer\"."
+  }
+
+  validation {
+    condition = (
+      var.ldap_offer == null ? true :
+      var.ldap_offer.kind == "endpoint" ? (
+        var.ldap_offer.name != null && var.ldap_offer.name != "" &&
+        var.ldap_offer.endpoint != null && var.ldap_offer.endpoint != ""
+      ) : true
+    )
+    error_message = "Both 'name' and 'endpoint' attributes must be provided for an in-model integration."
+  }
+
+  validation {
+    condition = (
+      var.ldap_offer == null ? true :
+      var.ldap_offer.kind == "offer" ? (
+        var.ldap_offer.url != null && var.ldap_offer.url != ""
+      ) : true
+    )
+    error_message = "The 'url' attribute must be provided for a cross-model integration."
   }
 }
 
@@ -203,6 +266,27 @@ variable "ldap_certificate_transfer_offer" {
     condition     = var.ldap_certificate_transfer_offer == null || contains(["endpoint", "offer"], var.ldap_certificate_transfer_offer.kind)
     error_message = "ldap_certificate_transfer_offer.kind must be either \"endpoint\" or \"offer\"."
   }
+
+  validation {
+    condition = (
+      var.ldap_certificate_transfer_offer == null ? true :
+      var.ldap_certificate_transfer_offer.kind == "endpoint" ? (
+        var.ldap_certificate_transfer_offer.name != null && var.ldap_certificate_transfer_offer.name != "" &&
+        var.ldap_certificate_transfer_offer.endpoint != null && var.ldap_certificate_transfer_offer.endpoint != ""
+      ) : true
+    )
+    error_message = "Both 'name' and 'endpoint' attributes must be provided for an in-model integration."
+  }
+
+  validation {
+    condition = (
+      var.ldap_certificate_transfer_offer == null ? true :
+      var.ldap_certificate_transfer_offer.kind == "offer" ? (
+        var.ldap_certificate_transfer_offer.url != null && var.ldap_certificate_transfer_offer.url != ""
+      ) : true
+    )
+    error_message = "The 'url' attribute must be provided for a cross-model integration."
+  }
 }
 
 variable "peer_certificates_offer" {
@@ -219,6 +303,27 @@ variable "peer_certificates_offer" {
     condition     = var.peer_certificates_offer == null || contains(["endpoint", "offer"], var.peer_certificates_offer.kind)
     error_message = "peer_certificates_offer.kind must be either \"endpoint\" or \"offer\"."
   }
+
+  validation {
+    condition = (
+      var.peer_certificates_offer == null ? true :
+      var.peer_certificates_offer.kind == "endpoint" ? (
+        var.peer_certificates_offer.name != null && var.peer_certificates_offer.name != "" &&
+        var.peer_certificates_offer.endpoint != null && var.peer_certificates_offer.endpoint != ""
+      ) : true
+    )
+    error_message = "Both 'name' and 'endpoint' attributes must be provided for an in-model integration."
+  }
+
+  validation {
+    condition = (
+      var.peer_certificates_offer == null ? true :
+      var.peer_certificates_offer.kind == "offer" ? (
+        var.peer_certificates_offer.url != null && var.peer_certificates_offer.url != ""
+      ) : true
+    )
+    error_message = "The 'url' attribute must be provided for a cross-model integration."
+  }
 }
 
 variable "vault_kv_offer" {
@@ -234,6 +339,27 @@ variable "vault_kv_offer" {
   validation {
     condition     = var.vault_kv_offer == null || contains(["endpoint", "offer"], var.vault_kv_offer.kind)
     error_message = "vault_kv_offer.kind must be either \"endpoint\" or \"offer\"."
+  }
+
+  validation {
+    condition = (
+      var.vault_kv_offer == null ? true :
+      var.vault_kv_offer.kind == "endpoint" ? (
+        var.vault_kv_offer.name != null && var.vault_kv_offer.name != "" &&
+        var.vault_kv_offer.endpoint != null && var.vault_kv_offer.endpoint != ""
+      ) : true
+    )
+    error_message = "Both 'name' and 'endpoint' attributes must be provided for an in-model integration."
+  }
+
+  validation {
+    condition = (
+      var.vault_kv_offer == null ? true :
+      var.vault_kv_offer.kind == "offer" ? (
+        var.vault_kv_offer.url != null && var.vault_kv_offer.url != ""
+      ) : true
+    )
+    error_message = "The 'url' attribute must be provided for a cross-model integration."
   }
 }
 

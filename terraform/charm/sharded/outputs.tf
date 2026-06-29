@@ -33,7 +33,6 @@ output "requires" {
     s3_credentials            = "s3-credentials"
     ldap                      = "ldap"
     ldap_certificate_transfer = "ldap-certificate-transfer"
-    etcd                      = "etcd"
   }
 }
 
