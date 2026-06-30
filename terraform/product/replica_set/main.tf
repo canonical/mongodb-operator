@@ -8,7 +8,7 @@
 
 # Replica set MongoDB app
 module "mongodb" {
-  source = "../../charm/replica_set"
+  source = "../../charm/mongodb"
 
   app_name           = var.mongodb.app_name
   base               = var.mongodb.base

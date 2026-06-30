@@ -16,7 +16,7 @@
 
 | Name | Source | Version |
 |------|--------|---------|
-| mongodb | ../../charm/replica_set | n/a |
+| mongodb | ../../charm/mongodb | n/a |
 
 ## Resources
 

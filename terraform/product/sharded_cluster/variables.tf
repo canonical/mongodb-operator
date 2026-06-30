@@ -115,6 +115,7 @@ variable "mongos" {
     machines = optional(set(string), null)
     revision = optional(number, null)
   })
+  default = {}
 }
 
 variable "shards" {
