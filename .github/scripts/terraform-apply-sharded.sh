@@ -14,8 +14,6 @@ terraform apply \
   -var="config_server={\"model_uuid\": \"${model}\"}" \
   -var="shards=[{\"app_name\": \"shard-one\", \"model_uuid\": \"${model}\"},{\"app_name\": \"shard-two\", \"model_uuid\": \"${model}\"}]" \
   -var="mongos={\"model_uuid\": \"${model}\"}" \
-  -var="config_server={\"model_uuid\": \"${model}\"}" \
-  -var="self_signed_certificates={\"model_uuid\": \"${model}\"}" \
   -var="s3_integrator={\"model_uuid\": \"${model}\", \"config\": {\"bucket\": \"test\"}}" \
   -var="data_integrator={\"model_uuid\": \"${model}\"}" \
   -auto-approve
