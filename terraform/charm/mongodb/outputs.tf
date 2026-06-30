@@ -39,38 +39,47 @@ output "requires" {
   description = "Map of all \"requires\" endpoints"
   value = {
     client_certificates = {
+      kind     = "endpoint"
       name     = juju_application.mongodb.name
       endpoint = "client-certificates"
     }
     etcd = {
+      kind     = "endpoint"
       name     = juju_application.mongodb.name
       endpoint = "etcd"
     }
     gcs_credentials = {
+      kind     = "endpoint"
       name     = juju_application.mongodb.name
       endpoint = "gcs-credentials"
     }
     ldap = {
+      kind     = "endpoint"
       name     = juju_application.mongodb.name
       endpoint = "ldap"
     }
     ldap_certificate_transfer = {
+      kind     = "endpoint"
       name     = juju_application.mongodb.name
       endpoint = "ldap-certificate-transfer"
     }
     peer_certificates = {
+      kind     = "endpoint"
       name     = juju_application.mongodb.name
       endpoint = "peer-certificates"
     }
     sharding = {
+      kind     = "endpoint"
       name     = juju_application.mongodb.name
       endpoint = "sharding"
     }
     s3_credentials = {
+      kind     = "endpoint"
       name     = juju_application.mongodb.name
       endpoint = "s3-credentials"
     }
     vault_kv = {
+      kind     = "endpoint"
       name     = juju_application.mongodb.name
       endpoint = "vault-kv"
     }

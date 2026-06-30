@@ -6,14 +6,14 @@ This is a Terraform module facilitating the deployment of the MongoDB charm with
 
 | Name | Version |
 |------|---------|
-| Terraform | >= 1.6 |
-| Juju provider | >= 1.1.1  |
+| `Terraform` | >= 1.6 |
+| `Juju provider` | ~> 2.0  |
 
 ## Providers
 
 | Name | Version |
 | ---- | ------- |
-| juju | >= 1.1.1 |
+| `juju` | ~> 2.0 |
 
 ## Modules
 

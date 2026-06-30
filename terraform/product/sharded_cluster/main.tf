@@ -6,24 +6,13 @@
 # 1. DEPLOYMENTS
 #--------------------------------------------------------
 
-# Replica set MongoDB app
-module "mongodb" {
-  source = "../../charm/replica_set"
+module "cluster" {
+  source = "../../components/sharded"
 
-  app_name           = var.mongodb.app_name
-  base               = var.mongodb.base
-  channel            = var.mongodb.channel
-  config             = merge(var.mongodb.config, { "role" : "replication" }, local.encryption_at_rest_enabled ? { "enable-encryption-at-rest" : "true" } : {})
-  constraints        = var.mongodb.constraints
-  endpoint_bindings  = var.mongodb.endpoint_bindings
-  expose             = var.mongodb.expose
-  machines           = var.mongodb.machines
-  model_uuid         = var.mongodb.model_uuid
-  revision           = var.mongodb.revision
-  storage_directives = var.mongodb.storage_directives
-  units              = var.mongodb.units
+  config_server = var.config_server
+  mongos        = var.mongos
+  shards        = var.shards
 }
-
 
 resource "terraform_data" "validate_backup_integrations" {
   input = local.backup_integrations
@@ -43,6 +32,44 @@ resource "terraform_data" "validate_ldap_integrations" {
     precondition {
       condition     = length(local.ldap_integrations) == 0 || length(local.ldap_integrations) == 2
       error_message = "LDAP integrations must be configured together: set both ldap_integration and ldap_certificate_transfer_integration, or neither."
+    }
+  }
+}
+
+resource "terraform_data" "validate_cross_model_integration_urls" {
+  input = {
+    client_certificates_cross_model_apps       = local.client_certificates_cross_model_apps
+    etcd_cross_model_apps                      = local.etcd_cross_model_apps
+    ldap_cross_model_apps                      = local.ldap_cross_model_apps
+    ldap_certificate_transfer_cross_model_apps = local.ldap_certificate_transfer_cross_model_apps
+    peer_certificates_cross_model_apps         = local.peer_certificates_cross_model_apps
+    vault_kv_cross_model_apps                  = local.vault_kv_cross_model_apps
+  }
+
+  lifecycle {
+    precondition {
+      condition     = length(local.client_certificates_cross_model_apps) == 0 || try(var.client_certificates_integration.url != null && var.client_certificates_integration.url != "", false)
+      error_message = "client_certificates_integration.url must be provided when client certificates is cross-model from any MongoDB application."
+    }
+    precondition {
+      condition     = length(local.etcd_cross_model_apps) == 0 || try(var.etcd_integration.url != null && var.etcd_integration.url != "", false)
+      error_message = "etcd_integration.url must be provided when etcd is cross-model from any MongoDB application."
+    }
+    precondition {
+      condition     = length(local.ldap_cross_model_apps) == 0 || try(var.ldap_integration.url != null && var.ldap_integration.url != "", false)
+      error_message = "ldap_integration.url must be provided when LDAP is cross-model from the config server or mongos."
+    }
+    precondition {
+      condition     = length(local.ldap_certificate_transfer_cross_model_apps) == 0 || try(var.ldap_certificate_transfer_integration.url != null && var.ldap_certificate_transfer_integration.url != "", false)
+      error_message = "ldap_certificate_transfer_integration.url must be provided when LDAP certificate transfer is cross-model from the config server or mongos."
+    }
+    precondition {
+      condition     = length(local.peer_certificates_cross_model_apps) == 0 || try(var.peer_certificates_integration.url != null && var.peer_certificates_integration.url != "", false)
+      error_message = "peer_certificates_integration.url must be provided when peer certificates is cross-model from any MongoDB application."
+    }
+    precondition {
+      condition     = length(local.vault_kv_cross_model_apps) == 0 || try(var.vault_kv_integration.url != null && var.vault_kv_integration.url != "", false)
+      error_message = "vault_kv_integration.url must be provided when Vault KV is cross-model from any MongoDB application."
     }
   }
 }

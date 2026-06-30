@@ -132,7 +132,7 @@ variable "s3_integrator" {
 # Integrations
 #--------------------------------------------------------
 
-variable "client_certificates_offer" {
+variable "client_certificates_integration" {
   description = "Optional client TLS certificates integration target. Use kind = \"endpoint\" with name/endpoint for same-model integrations, or kind = \"offer\" with url for cross-model integrations."
   type = object({
     kind     = string
@@ -143,16 +143,16 @@ variable "client_certificates_offer" {
   default = null
 
   validation {
-    condition     = var.client_certificates_offer == null || contains(["endpoint", "offer"], var.client_certificates_offer.kind)
-    error_message = "client_certificates_offer.kind must be either \"endpoint\" or \"offer\"."
+    condition     = var.client_certificates_integration == null || contains(["endpoint", "offer"], var.client_certificates_integration.kind)
+    error_message = "client_certificates_integration.kind must be either \"endpoint\" or \"offer\"."
   }
 
   validation {
     condition = (
-      var.client_certificates_offer == null ? true :
-      var.client_certificates_offer.kind == "endpoint" ? (
-        var.client_certificates_offer.name != null && var.client_certificates_offer.name != "" &&
-        var.client_certificates_offer.endpoint != null && var.client_certificates_offer.endpoint != ""
+      var.client_certificates_integration == null ? true :
+      var.client_certificates_integration.kind == "endpoint" ? (
+        var.client_certificates_integration.name != null && var.client_certificates_integration.name != "" &&
+        var.client_certificates_integration.endpoint != null && var.client_certificates_integration.endpoint != ""
       ) : true
     )
     error_message = "Both 'name' and 'endpoint' attributes must be provided for an in-model integration."
@@ -160,16 +160,16 @@ variable "client_certificates_offer" {
 
   validation {
     condition = (
-      var.client_certificates_offer == null ? true :
-      var.client_certificates_offer.kind == "offer" ? (
-        var.client_certificates_offer.url != null && var.client_certificates_offer.url != ""
+      var.client_certificates_integration == null ? true :
+      var.client_certificates_integration.kind == "offer" ? (
+        var.client_certificates_integration.url != null && var.client_certificates_integration.url != ""
       ) : true
     )
     error_message = "The 'url' attribute must be provided for a cross-model integration."
   }
 }
 
-variable "cos_agent_offer" {
+variable "cos_agent_integration" {
   description = "Optional same-model COS agent integration target."
   type = object({
     name     = string
@@ -178,7 +178,7 @@ variable "cos_agent_offer" {
   default = null
 }
 
-variable "etcd_offer" {
+variable "etcd_integration" {
   description = "Optional etcd integration target for MongoDB rolling operations. Use kind = \"endpoint\" with name/endpoint for same-model integrations, or kind = \"offer\" with url for cross-model integrations."
   type = object({
     kind     = string
@@ -189,16 +189,16 @@ variable "etcd_offer" {
   default = null
 
   validation {
-    condition     = var.etcd_offer == null || contains(["endpoint", "offer"], var.etcd_offer.kind)
-    error_message = "etcd_offer.kind must be either \"endpoint\" or \"offer\"."
+    condition     = var.etcd_integration == null || contains(["endpoint", "offer"], var.etcd_integration.kind)
+    error_message = "etcd_integration.kind must be either \"endpoint\" or \"offer\"."
   }
 
   validation {
     condition = (
-      var.etcd_offer == null ? true :
-      var.etcd_offer.kind == "endpoint" ? (
-        var.etcd_offer.name != null && var.etcd_offer.name != "" &&
-        var.etcd_offer.endpoint != null && var.etcd_offer.endpoint != ""
+      var.etcd_integration == null ? true :
+      var.etcd_integration.kind == "endpoint" ? (
+        var.etcd_integration.name != null && var.etcd_integration.name != "" &&
+        var.etcd_integration.endpoint != null && var.etcd_integration.endpoint != ""
       ) : true
     )
     error_message = "Both 'name' and 'endpoint' attributes must be provided for an in-model integration."
@@ -206,17 +206,17 @@ variable "etcd_offer" {
 
   validation {
     condition = (
-      var.etcd_offer == null ? true :
-      var.etcd_offer.kind == "offer" ? (
-        var.etcd_offer.url != null && var.etcd_offer.url != ""
+      var.etcd_integration == null ? true :
+      var.etcd_integration.kind == "offer" ? (
+        var.etcd_integration.url != null && var.etcd_integration.url != ""
       ) : true
     )
     error_message = "The 'url' attribute must be provided for a cross-model integration."
   }
 }
 
-variable "ldap_offer" {
-  description = "Optional LDAP integration target. Must be configured together with ldap_certificate_transfer_offer. Use kind = \"endpoint\" with name/endpoint for same-model integrations, or kind = \"offer\" with url for cross-model integrations."
+variable "ldap_integration" {
+  description = "Optional LDAP integration target. Must be configured together with ldap_certificate_transfer_integration. Use kind = \"endpoint\" with name/endpoint for same-model integrations, or kind = \"offer\" with url for cross-model integrations."
   type = object({
     kind     = string
     name     = optional(string, null)
@@ -226,16 +226,16 @@ variable "ldap_offer" {
   default = null
 
   validation {
-    condition     = var.ldap_offer == null || contains(["endpoint", "offer"], var.ldap_offer.kind)
-    error_message = "ldap_offer.kind must be either \"endpoint\" or \"offer\"."
+    condition     = var.ldap_integration == null || contains(["endpoint", "offer"], var.ldap_integration.kind)
+    error_message = "ldap_integration.kind must be either \"endpoint\" or \"offer\"."
   }
 
   validation {
     condition = (
-      var.ldap_offer == null ? true :
-      var.ldap_offer.kind == "endpoint" ? (
-        var.ldap_offer.name != null && var.ldap_offer.name != "" &&
-        var.ldap_offer.endpoint != null && var.ldap_offer.endpoint != ""
+      var.ldap_integration == null ? true :
+      var.ldap_integration.kind == "endpoint" ? (
+        var.ldap_integration.name != null && var.ldap_integration.name != "" &&
+        var.ldap_integration.endpoint != null && var.ldap_integration.endpoint != ""
       ) : true
     )
     error_message = "Both 'name' and 'endpoint' attributes must be provided for an in-model integration."
@@ -243,17 +243,17 @@ variable "ldap_offer" {
 
   validation {
     condition = (
-      var.ldap_offer == null ? true :
-      var.ldap_offer.kind == "offer" ? (
-        var.ldap_offer.url != null && var.ldap_offer.url != ""
+      var.ldap_integration == null ? true :
+      var.ldap_integration.kind == "offer" ? (
+        var.ldap_integration.url != null && var.ldap_integration.url != ""
       ) : true
     )
     error_message = "The 'url' attribute must be provided for a cross-model integration."
   }
 }
 
-variable "ldap_certificate_transfer_offer" {
-  description = "Optional LDAP certificate transfer integration target. Must be configured together with ldap_offer. Use kind = \"endpoint\" with name/endpoint for same-model integrations, or kind = \"offer\" with url for cross-model integrations."
+variable "ldap_certificate_transfer_integration" {
+  description = "Optional LDAP certificate transfer integration target. Must be configured together with ldap_integration. Use kind = \"endpoint\" with name/endpoint for same-model integrations, or kind = \"offer\" with url for cross-model integrations."
   type = object({
     kind     = string
     name     = optional(string, null)
@@ -263,16 +263,16 @@ variable "ldap_certificate_transfer_offer" {
   default = null
 
   validation {
-    condition     = var.ldap_certificate_transfer_offer == null || contains(["endpoint", "offer"], var.ldap_certificate_transfer_offer.kind)
-    error_message = "ldap_certificate_transfer_offer.kind must be either \"endpoint\" or \"offer\"."
+    condition     = var.ldap_certificate_transfer_integration == null || contains(["endpoint", "offer"], var.ldap_certificate_transfer_integration.kind)
+    error_message = "ldap_certificate_transfer_integration.kind must be either \"endpoint\" or \"offer\"."
   }
 
   validation {
     condition = (
-      var.ldap_certificate_transfer_offer == null ? true :
-      var.ldap_certificate_transfer_offer.kind == "endpoint" ? (
-        var.ldap_certificate_transfer_offer.name != null && var.ldap_certificate_transfer_offer.name != "" &&
-        var.ldap_certificate_transfer_offer.endpoint != null && var.ldap_certificate_transfer_offer.endpoint != ""
+      var.ldap_certificate_transfer_integration == null ? true :
+      var.ldap_certificate_transfer_integration.kind == "endpoint" ? (
+        var.ldap_certificate_transfer_integration.name != null && var.ldap_certificate_transfer_integration.name != "" &&
+        var.ldap_certificate_transfer_integration.endpoint != null && var.ldap_certificate_transfer_integration.endpoint != ""
       ) : true
     )
     error_message = "Both 'name' and 'endpoint' attributes must be provided for an in-model integration."
@@ -280,16 +280,16 @@ variable "ldap_certificate_transfer_offer" {
 
   validation {
     condition = (
-      var.ldap_certificate_transfer_offer == null ? true :
-      var.ldap_certificate_transfer_offer.kind == "offer" ? (
-        var.ldap_certificate_transfer_offer.url != null && var.ldap_certificate_transfer_offer.url != ""
+      var.ldap_certificate_transfer_integration == null ? true :
+      var.ldap_certificate_transfer_integration.kind == "offer" ? (
+        var.ldap_certificate_transfer_integration.url != null && var.ldap_certificate_transfer_integration.url != ""
       ) : true
     )
     error_message = "The 'url' attribute must be provided for a cross-model integration."
   }
 }
 
-variable "peer_certificates_offer" {
+variable "peer_certificates_integration" {
   description = "Optional peer TLS certificates integration target. Use kind = \"endpoint\" with name/endpoint for same-model integrations, or kind = \"offer\" with url for cross-model integrations."
   type = object({
     kind     = string
@@ -300,16 +300,16 @@ variable "peer_certificates_offer" {
   default = null
 
   validation {
-    condition     = var.peer_certificates_offer == null || contains(["endpoint", "offer"], var.peer_certificates_offer.kind)
-    error_message = "peer_certificates_offer.kind must be either \"endpoint\" or \"offer\"."
+    condition     = var.peer_certificates_integration == null || contains(["endpoint", "offer"], var.peer_certificates_integration.kind)
+    error_message = "peer_certificates_integration.kind must be either \"endpoint\" or \"offer\"."
   }
 
   validation {
     condition = (
-      var.peer_certificates_offer == null ? true :
-      var.peer_certificates_offer.kind == "endpoint" ? (
-        var.peer_certificates_offer.name != null && var.peer_certificates_offer.name != "" &&
-        var.peer_certificates_offer.endpoint != null && var.peer_certificates_offer.endpoint != ""
+      var.peer_certificates_integration == null ? true :
+      var.peer_certificates_integration.kind == "endpoint" ? (
+        var.peer_certificates_integration.name != null && var.peer_certificates_integration.name != "" &&
+        var.peer_certificates_integration.endpoint != null && var.peer_certificates_integration.endpoint != ""
       ) : true
     )
     error_message = "Both 'name' and 'endpoint' attributes must be provided for an in-model integration."
@@ -317,16 +317,16 @@ variable "peer_certificates_offer" {
 
   validation {
     condition = (
-      var.peer_certificates_offer == null ? true :
-      var.peer_certificates_offer.kind == "offer" ? (
-        var.peer_certificates_offer.url != null && var.peer_certificates_offer.url != ""
+      var.peer_certificates_integration == null ? true :
+      var.peer_certificates_integration.kind == "offer" ? (
+        var.peer_certificates_integration.url != null && var.peer_certificates_integration.url != ""
       ) : true
     )
     error_message = "The 'url' attribute must be provided for a cross-model integration."
   }
 }
 
-variable "vault_kv_offer" {
+variable "vault_kv_integration" {
   description = "Optional Vault KV integration target for encryption at rest. Use kind = \"endpoint\" with name/endpoint for same-model integrations, or kind = \"offer\" with url for cross-model integrations."
   type = object({
     kind     = string
@@ -337,16 +337,16 @@ variable "vault_kv_offer" {
   default = null
 
   validation {
-    condition     = var.vault_kv_offer == null || contains(["endpoint", "offer"], var.vault_kv_offer.kind)
-    error_message = "vault_kv_offer.kind must be either \"endpoint\" or \"offer\"."
+    condition     = var.vault_kv_integration == null || contains(["endpoint", "offer"], var.vault_kv_integration.kind)
+    error_message = "vault_kv_integration.kind must be either \"endpoint\" or \"offer\"."
   }
 
   validation {
     condition = (
-      var.vault_kv_offer == null ? true :
-      var.vault_kv_offer.kind == "endpoint" ? (
-        var.vault_kv_offer.name != null && var.vault_kv_offer.name != "" &&
-        var.vault_kv_offer.endpoint != null && var.vault_kv_offer.endpoint != ""
+      var.vault_kv_integration == null ? true :
+      var.vault_kv_integration.kind == "endpoint" ? (
+        var.vault_kv_integration.name != null && var.vault_kv_integration.name != "" &&
+        var.vault_kv_integration.endpoint != null && var.vault_kv_integration.endpoint != ""
       ) : true
     )
     error_message = "Both 'name' and 'endpoint' attributes must be provided for an in-model integration."
@@ -354,9 +354,9 @@ variable "vault_kv_offer" {
 
   validation {
     condition = (
-      var.vault_kv_offer == null ? true :
-      var.vault_kv_offer.kind == "offer" ? (
-        var.vault_kv_offer.url != null && var.vault_kv_offer.url != ""
+      var.vault_kv_integration == null ? true :
+      var.vault_kv_integration.kind == "offer" ? (
+        var.vault_kv_integration.url != null && var.vault_kv_integration.url != ""
       ) : true
     )
     error_message = "The 'url' attribute must be provided for a cross-model integration."

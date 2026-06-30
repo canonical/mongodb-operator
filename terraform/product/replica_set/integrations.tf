@@ -10,9 +10,9 @@ resource "juju_integration" "client_certificates" {
   model_uuid = module.mongodb.application.model_uuid
 
   application {
-    name      = var.client_certificates_offer.kind == "endpoint" ? var.client_certificates_offer.name : null
-    endpoint  = var.client_certificates_offer.kind == "endpoint" ? var.client_certificates_offer.endpoint : null
-    offer_url = var.client_certificates_offer.kind == "offer" ? var.client_certificates_offer.url : null
+    name      = var.client_certificates_integration.kind == "endpoint" ? var.client_certificates_integration.name : null
+    endpoint  = var.client_certificates_integration.kind == "endpoint" ? var.client_certificates_integration.endpoint : null
+    offer_url = var.client_certificates_integration.kind == "offer" ? var.client_certificates_integration.url : null
   }
 
   application {
@@ -28,8 +28,8 @@ resource "juju_integration" "cos_agent" {
   model_uuid = module.mongodb.application.model_uuid
 
   application {
-    name     = var.cos_agent_offer.name
-    endpoint = var.cos_agent_offer.endpoint
+    name     = var.cos_agent_integration.name
+    endpoint = var.cos_agent_integration.endpoint
   }
 
   application {
@@ -45,9 +45,9 @@ resource "juju_integration" "etcd" {
   model_uuid = module.mongodb.application.model_uuid
 
   application {
-    name      = var.etcd_offer.kind == "endpoint" ? var.etcd_offer.name : null
-    endpoint  = var.etcd_offer.kind == "endpoint" ? var.etcd_offer.endpoint : null
-    offer_url = var.etcd_offer.kind == "offer" ? var.etcd_offer.url : null
+    name      = var.etcd_integration.kind == "endpoint" ? var.etcd_integration.name : null
+    endpoint  = var.etcd_integration.kind == "endpoint" ? var.etcd_integration.endpoint : null
+    offer_url = var.etcd_integration.kind == "offer" ? var.etcd_integration.url : null
   }
 
   application {
@@ -63,9 +63,9 @@ resource "juju_integration" "ldap" {
   model_uuid = module.mongodb.application.model_uuid
 
   application {
-    name      = var.ldap_offer.kind == "endpoint" ? var.ldap_offer.name : null
-    endpoint  = var.ldap_offer.kind == "endpoint" ? var.ldap_offer.endpoint : null
-    offer_url = var.ldap_offer.kind == "offer" ? var.ldap_offer.url : null
+    name      = var.ldap_integration.kind == "endpoint" ? var.ldap_integration.name : null
+    endpoint  = var.ldap_integration.kind == "endpoint" ? var.ldap_integration.endpoint : null
+    offer_url = var.ldap_integration.kind == "offer" ? var.ldap_integration.url : null
   }
 
   application {
@@ -81,9 +81,9 @@ resource "juju_integration" "ldap_certificate_transfer" {
   model_uuid = module.mongodb.application.model_uuid
 
   application {
-    name      = var.ldap_certificate_transfer_offer.kind == "endpoint" ? var.ldap_certificate_transfer_offer.name : null
-    endpoint  = var.ldap_certificate_transfer_offer.kind == "endpoint" ? var.ldap_certificate_transfer_offer.endpoint : null
-    offer_url = var.ldap_certificate_transfer_offer.kind == "offer" ? var.ldap_certificate_transfer_offer.url : null
+    name      = var.ldap_certificate_transfer_integration.kind == "endpoint" ? var.ldap_certificate_transfer_integration.name : null
+    endpoint  = var.ldap_certificate_transfer_integration.kind == "endpoint" ? var.ldap_certificate_transfer_integration.endpoint : null
+    offer_url = var.ldap_certificate_transfer_integration.kind == "offer" ? var.ldap_certificate_transfer_integration.url : null
   }
 
   application {
@@ -99,9 +99,9 @@ resource "juju_integration" "peer_certificates" {
   model_uuid = module.mongodb.application.model_uuid
 
   application {
-    name      = var.peer_certificates_offer.kind == "endpoint" ? var.peer_certificates_offer.name : null
-    endpoint  = var.peer_certificates_offer.kind == "endpoint" ? var.peer_certificates_offer.endpoint : null
-    offer_url = var.peer_certificates_offer.kind == "offer" ? var.peer_certificates_offer.url : null
+    name      = var.peer_certificates_integration.kind == "endpoint" ? var.peer_certificates_integration.name : null
+    endpoint  = var.peer_certificates_integration.kind == "endpoint" ? var.peer_certificates_integration.endpoint : null
+    offer_url = var.peer_certificates_integration.kind == "offer" ? var.peer_certificates_integration.url : null
   }
 
   application {
@@ -117,9 +117,9 @@ resource "juju_integration" "vault_kv" {
   model_uuid = module.mongodb.application.model_uuid
 
   application {
-    name      = var.vault_kv_offer.kind == "endpoint" ? var.vault_kv_offer.name : null
-    endpoint  = var.vault_kv_offer.kind == "endpoint" ? var.vault_kv_offer.endpoint : null
-    offer_url = var.vault_kv_offer.kind == "offer" ? var.vault_kv_offer.url : null
+    name      = var.vault_kv_integration.kind == "endpoint" ? var.vault_kv_integration.name : null
+    endpoint  = var.vault_kv_integration.kind == "endpoint" ? var.vault_kv_integration.endpoint : null
+    offer_url = var.vault_kv_integration.kind == "offer" ? var.vault_kv_integration.url : null
   }
 
   application {
