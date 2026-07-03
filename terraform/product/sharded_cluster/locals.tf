@@ -142,6 +142,47 @@ locals {
       shard.app_name => module.cluster.requires["shard_${shard_key}_vault_kv"]
     } : {}
   )
+
+  model_components = concat(
+    [
+      {
+        key        = "config_server"
+        model_uuid = module.cluster.components["config_server"].model_uuid
+        value      = module.cluster.components["config_server"]
+      },
+      {
+        key        = "mongos"
+        model_uuid = module.cluster.components["mongos"].model_uuid
+        value      = module.cluster.components["mongos"]
+      },
+      {
+        key        = "data_integrator"
+        model_uuid = juju_application.data_integrator.model_uuid
+        value      = juju_application.data_integrator
+      },
+    ],
+    var.shards != null ? [
+      for shard_key, shard in var.shards : {
+        key        = "shard_${shard_key}"
+        model_uuid = shard.model_uuid
+        value      = module.cluster.components["shards"][shard_key]
+      }
+    ] : [],
+    var.s3_integrator != null ? [
+      {
+        key        = "s3_integrator"
+        model_uuid = module.s3_integrator[0].application.model_uuid
+        value      = module.s3_integrator[0].application
+      }
+    ] : [],
+    var.gcs_integrator != null ? [
+      {
+        key        = "gcs_integrator"
+        model_uuid = juju_application.gcs_integrator["deployed"].model_uuid
+        value      = juju_application.gcs_integrator["deployed"]
+      }
+    ] : []
+  )
 }
 
 resource "terraform_data" "deployed_at" {

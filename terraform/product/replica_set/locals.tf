@@ -18,6 +18,35 @@ locals {
     var.ldap_integration != null ? "ldap_integration" : "",
     var.ldap_certificate_transfer_integration != null ? "ldap_certificate_transfer_integration" : "",
   ])
+
+  model_components = concat(
+    [
+      {
+        key        = "mongodb"
+        model_uuid = module.mongodb.application.model_uuid
+        value      = module.mongodb.application
+      },
+      {
+        key        = "data_integrator"
+        model_uuid = juju_application.data_integrator.model_uuid
+        value      = juju_application.data_integrator
+      },
+    ],
+    var.s3_integrator != null ? [
+      {
+        key        = "s3_integrator"
+        model_uuid = module.s3_integrator[0].application.model_uuid
+        value      = module.s3_integrator[0].application
+      }
+    ] : [],
+    var.gcs_integrator != null ? [
+      {
+        key        = "gcs_integrator"
+        model_uuid = juju_application.gcs_integrator["deployed"].model_uuid
+        value      = juju_application.gcs_integrator["deployed"]
+      }
+    ] : []
+  )
 }
 
 

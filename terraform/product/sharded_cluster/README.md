@@ -103,7 +103,7 @@ cos_agent_integrations = {
 |------|-------------|
 | `components` | Deployed applications. Optional integrators return `null` when omitted. |
 | `app_names` | Names of all deployed applications. Optional integrators return `null` when omitted. |
-| `models` | Models and deployed components managed by this module, grouped by model role. |
+| `models` | Models and deployed components managed by this module, keyed by model UUID. |
 | `metadata` | Metadata of the product deployment. |
 | `provides` | Provided endpoint pointers from the sharded cluster component. |
 | `requires` | Required endpoint pointers from the sharded cluster component. |

@@ -80,7 +80,7 @@ Use `kind = "endpoint"` with `name` and `endpoint` for same-model relations. Use
 |------|-------------|
 | `components` | Deployed applications. Optional integrators return `null` when omitted. |
 | `metadata` | Metadata of the product deployment. |
-| `models` | Models and deployed components managed by this module, grouped by model role. |
+| `models` | Models and deployed components managed by this module, keyed by model UUID. |
 | `provides` | MongoDB provided endpoint pointers, including `mongodb_database` and `mongodb_cos_agent`. |
 | requires | MongoDB required endpoint pointers, including S3 and GCS credentials endpoints. |
 | `offers` | Cross-model offer URLs created by this module, or `null` when not needed. |

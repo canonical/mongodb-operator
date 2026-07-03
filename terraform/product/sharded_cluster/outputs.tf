@@ -15,75 +15,17 @@ output "components" {
 
 output "models" {
   description = "Models and deployed components managed by this module."
-  value = merge(
-    {
-      config_server = {
-        model_uuid = module.cluster.components["config_server"].model_uuid
-        components = merge(
-          {
-            config_server = module.cluster.components["config_server"]
-            mongos        = module.cluster.components["mongos"]
-          },
-          var.shards != null ? {
-            for shard_key, shard in var.shards :
-            "shard_${shard_key}" => module.cluster.components["shards"][shard_key]
-            if shard.model_uuid == module.cluster.components["config_server"].model_uuid
-          } : {},
-          var.data_integrator.model_uuid == module.cluster.components["config_server"].model_uuid ? {
-            data_integrator = juju_application.data_integrator
-          } : {},
-          try(var.s3_integrator.model_uuid == module.cluster.components["config_server"].model_uuid ? {
-            s3_integrator = module.s3_integrator[0].application
-          } : {}, {}),
-          try(var.gcs_integrator.model_uuid == module.cluster.components["config_server"].model_uuid ? {
-            gcs_integrator = juju_application.gcs_integrator["deployed"]
-          } : {}, {})
-        )
-      }
-    },
-    var.shards != null ? {
-      for shard_key, shard in var.shards :
-      "shard_${shard_key}" => {
-        model_uuid = shard.model_uuid
-        components = {
-          "shard_${shard_key}" = module.cluster.components["shards"][shard_key]
-        }
-      }
-      if shard.model_uuid != module.cluster.components["config_server"].model_uuid
-    } : {},
-    var.data_integrator.model_uuid != module.cluster.components["config_server"].model_uuid ? {
-      data_integrator = {
-        model_uuid = var.data_integrator.model_uuid
-        components = merge(
-          {
-            data_integrator = juju_application.data_integrator
-          },
-          try(var.s3_integrator.model_uuid == var.data_integrator.model_uuid ? {
-            s3_integrator = module.s3_integrator[0].application
-          } : {}, {}),
-          try(var.gcs_integrator.model_uuid == var.data_integrator.model_uuid ? {
-            gcs_integrator = juju_application.gcs_integrator["deployed"]
-          } : {}, {})
-        )
-      }
-    } : {},
-    try(var.s3_integrator.model_uuid != module.cluster.components["config_server"].model_uuid && var.s3_integrator.model_uuid != var.data_integrator.model_uuid ? {
-      s3_integrator = {
-        model_uuid = var.s3_integrator.model_uuid
-        components = {
-          s3_integrator = module.s3_integrator[0].application
-        }
-      }
-    } : {}, {}),
-    try(var.gcs_integrator.model_uuid != module.cluster.components["config_server"].model_uuid && var.gcs_integrator.model_uuid != var.data_integrator.model_uuid ? {
-      gcs_integrator = {
-        model_uuid = var.gcs_integrator.model_uuid
-        components = {
-          gcs_integrator = juju_application.gcs_integrator["deployed"]
-        }
-      }
-    } : {}, {})
-  )
+  value = {
+    for model_uuid in distinct([for component in local.model_components : component.model_uuid]) :
+    model_uuid => {
+      model_uuid = model_uuid
+      components = merge([
+        for component in local.model_components :
+        { (component.key) = component.value }
+        if component.model_uuid == model_uuid
+      ]...)
+    }
+  }
 }
 
 output "app_names" {

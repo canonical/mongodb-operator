@@ -13,59 +13,17 @@ output "components" {
 
 output "models" {
   description = "Models and deployed components managed by this module."
-  value = merge(
-    {
-      mongodb = {
-        model_uuid = module.mongodb.application.model_uuid
-        components = merge(
-          {
-            mongodb = module.mongodb.application
-          },
-          var.data_integrator.model_uuid == module.mongodb.application.model_uuid ? {
-            data_integrator = juju_application.data_integrator
-          } : {},
-          try(var.s3_integrator.model_uuid == module.mongodb.application.model_uuid ? {
-            s3_integrator = module.s3_integrator[0].application
-          } : {}, {}),
-          try(var.gcs_integrator.model_uuid == module.mongodb.application.model_uuid ? {
-            gcs_integrator = juju_application.gcs_integrator["deployed"]
-          } : {}, {})
-        )
-      }
-    },
-    var.data_integrator.model_uuid != module.mongodb.application.model_uuid ? {
-      data_integrator = {
-        model_uuid = var.data_integrator.model_uuid
-        components = merge(
-          {
-            data_integrator = juju_application.data_integrator
-          },
-          try(var.s3_integrator.model_uuid == var.data_integrator.model_uuid ? {
-            s3_integrator = module.s3_integrator[0].application
-          } : {}, {}),
-          try(var.gcs_integrator.model_uuid == var.data_integrator.model_uuid ? {
-            gcs_integrator = juju_application.gcs_integrator["deployed"]
-          } : {}, {})
-        )
-      }
-    } : {},
-    try(var.s3_integrator.model_uuid != module.mongodb.application.model_uuid && var.s3_integrator.model_uuid != var.data_integrator.model_uuid ? {
-      s3_integrator = {
-        model_uuid = var.s3_integrator.model_uuid
-        components = {
-          s3_integrator = module.s3_integrator[0].application
-        }
-      }
-    } : {}, {}),
-    try(var.gcs_integrator.model_uuid != module.mongodb.application.model_uuid && var.gcs_integrator.model_uuid != var.data_integrator.model_uuid ? {
-      gcs_integrator = {
-        model_uuid = var.gcs_integrator.model_uuid
-        components = {
-          gcs_integrator = juju_application.gcs_integrator["deployed"]
-        }
-      }
-    } : {}, {})
-  )
+  value = {
+    for model_uuid in distinct([for component in local.model_components : component.model_uuid]) :
+    model_uuid => {
+      model_uuid = model_uuid
+      components = merge([
+        for component in local.model_components :
+        { (component.key) = component.value }
+        if component.model_uuid == model_uuid
+      ]...)
+    }
+  }
 }
 
 

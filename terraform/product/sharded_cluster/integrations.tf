@@ -44,7 +44,6 @@ resource "juju_integration" "mongos_client" {
   depends_on = [
     module.cluster,
     juju_application.data_integrator,
-    juju_offer.mongos_client,
   ]
 }
 
