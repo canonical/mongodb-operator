@@ -151,7 +151,7 @@ resource "juju_integration" "mongodb_data" {
 }
 
 resource "juju_integration" "mongodb_s3" {
-  for_each = var.s3_integrator != null ? { "integrated" = var.s3_integrator } : {}
+  for_each = var.s3_integrator != null ? { "integrated" = true } : {}
 
   model_uuid = module.mongodb.application.model_uuid
 
@@ -160,13 +160,13 @@ resource "juju_integration" "mongodb_s3" {
     endpoint = module.mongodb.requires["s3_credentials"].endpoint
   }
   application {
-    name      = each.value.model_uuid == module.mongodb.application.model_uuid ? each.value.app_name : null
-    endpoint  = each.value.model_uuid == module.mongodb.application.model_uuid ? "s3-credentials" : null
-    offer_url = try(juju_offer.s3_integrator["offered"].url, null)
+    name      = var.s3_integrator.model_uuid == module.mongodb.application.model_uuid ? module.s3_integrator[0].provides.s3_credentials.name : null
+    endpoint  = var.s3_integrator.model_uuid == module.mongodb.application.model_uuid ? module.s3_integrator[0].provides.s3_credentials.endpoint : null
+    offer_url = var.s3_integrator.model_uuid != module.mongodb.application.model_uuid ? module.s3_integrator[0].offers.s3_credentials : null
   }
   depends_on = [
     module.mongodb,
-    juju_application.s3_integrator["deployed"],
+    module.s3_integrator,
   ]
 }
 

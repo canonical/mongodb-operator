@@ -3,7 +3,6 @@
 
 locals {
   client_certificates_enabled = var.client_certificates_integration != null ? true : false
-  cos_agent_enabled           = var.cos_agent_integration != null ? true : false
   encryption_at_rest_enabled  = var.vault_kv_integration != null ? true : false
   etcd_rolling_ops_enabled    = var.etcd_integration != null ? true : false
   gcs_credentials_enabled     = var.gcs_integrator != null ? true : false
@@ -15,6 +14,11 @@ locals {
     [{ app_name = var.config_server.app_name, model_uuid = var.config_server.model_uuid }],
     var.shards != null ? [for shard in var.shards : { app_name = shard.app_name, model_uuid = shard.model_uuid }] : []
   )
+  cos_agent_integrations = var.cos_agent_integrations
+  cos_agent_apps = [
+    for app in local.mongodb_apps :
+    app if contains(keys(local.cos_agent_integrations), app.app_name)
+  ]
   mongo_apps = concat(
     local.mongodb_apps,
     [{ app_name = var.mongos.app_name, model_uuid = var.config_server.model_uuid }]
@@ -87,6 +91,16 @@ locals {
     } : {}
   )
 
+  cos_agent_provides = merge(
+    {
+      (module.cluster.provides["config_server_cos_agent"].name) = module.cluster.provides["config_server_cos_agent"]
+    },
+    var.shards != null ? {
+      for shard_key, shard in var.shards :
+      shard.app_name => module.cluster.provides["shard_${shard_key}_cos_agent"]
+    } : {}
+  )
+
   etcd_requires = merge(
     {
       (module.cluster.requires["config_server_etcd"].name) = module.cluster.requires["config_server_etcd"]
@@ -137,4 +151,3 @@ resource "terraform_data" "deployed_at" {
     ignore_changes = [input]
   }
 }
-

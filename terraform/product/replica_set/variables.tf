@@ -100,27 +100,28 @@ variable "mongodb" {
 variable "s3_integrator" {
   description = "Configuration for the S3 backup integrator"
   type = object({
-    app_name    = optional(string, "s3-integrator")
-    base        = optional(string, "ubuntu@22.04")
-    channel     = optional(string, "1/stable")
-    config      = map(string)
+    app_name = optional(string, "s3-integrator")
+    base     = optional(string, "ubuntu@24.04")
+    channel  = optional(string, "2/stable")
+    config = optional(object({
+      attributes                          = optional(string)
+      bucket                              = optional(string)
+      endpoint                            = optional(string)
+      experimental-delete-older-than-days = optional(number)
+      path                                = optional(string)
+      region                              = optional(string)
+      s3-api-version                      = optional(string)
+      s3-uri-style                        = optional(string)
+      storage-class                       = optional(string)
+      tls-ca-chain                        = optional(string)
+    }), {})
     constraints = optional(string, "arch=amd64")
-    endpoint_bindings = optional(set(object({
-      space    = string
-      endpoint = optional(string)
-    })), [])
-    machines           = optional(set(string), null)
-    model_uuid         = string
-    revision           = optional(number, null)
-    storage_directives = optional(map(string), {})
-    units              = optional(number, 1)
+    model_uuid  = string
+    revision    = optional(number, null)
+    units       = optional(number, 1)
   })
   default = null
 
-  validation {
-    condition     = try(var.s3_integrator.machines == null || length(var.s3_integrator.machines) <= 1, true)
-    error_message = "Machines count should be at most 1"
-  }
   validation {
     condition     = try(var.s3_integrator.units == 1, true)
     error_message = "Units count should be 1"
@@ -366,6 +367,20 @@ variable "vault_kv_integration" {
 #--------------------------------------------------------
 # Config
 #--------------------------------------------------------
+
+variable "s3_access_key" {
+  description = "AWS S3 Access key."
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "s3_secret_key" {
+  description = "AWS S3 Secret key."
+  type        = string
+  sensitive   = true
+  default     = null
+}
 
 variable "logging_config" {
   description = "Logging configuration to be used"

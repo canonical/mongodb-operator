@@ -8,7 +8,7 @@
 
 # config server mongodb app
 module "config_server" {
-  source = "../../charm/mongodb"
+  source = "../../charms/mongodb"
 
   app_name           = var.config_server.app_name
   base               = var.config_server.base
@@ -27,7 +27,7 @@ module "config_server" {
 # shard apps
 module "shards" {
   for_each = { for idx, app in local.shards : idx => app if app != null }
-  source   = "../../charm/mongodb"
+  source   = "../../charms/mongodb"
 
   app_name           = each.value.app_name
   base               = each.value.base

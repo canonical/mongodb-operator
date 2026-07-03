@@ -152,27 +152,29 @@ variable "shards" {
 variable "s3_integrator" {
   description = "Configuration for the S3 backup integrator"
   type = object({
-    app_name    = optional(string, "s3-integrator")
-    base        = optional(string, "ubuntu@22.04")
-    channel     = optional(string, "1/stable")
-    config      = map(string)
+    app_name = optional(string, "s3-integrator")
+    base     = optional(string, "ubuntu@24.04")
+    channel  = optional(string, "2/stable")
+    config = optional(object({
+      attributes                          = optional(string)
+      bucket                              = optional(string)
+      endpoint                            = optional(string)
+      experimental-delete-older-than-days = optional(number)
+      path                                = optional(string)
+      region                              = optional(string)
+      s3-api-version                      = optional(string)
+      s3-uri-style                        = optional(string)
+      storage-class                       = optional(string)
+      tls-ca-chain                        = optional(string)
+      credentials                         = optional(string)
+    }), {})
     constraints = optional(string, "arch=amd64")
-    endpoint_bindings = optional(set(object({
-      space    = string
-      endpoint = optional(string)
-    })), [])
-    machines           = optional(set(string), null)
-    model_uuid         = string
-    revision           = optional(number, null)
-    storage_directives = optional(map(string), {})
-    units              = optional(number, 1)
+    model_uuid  = string
+    revision    = optional(number, null)
+    units       = optional(number, 1)
   })
   default = null
 
-  validation {
-    condition     = try(var.s3_integrator.machines == null || length(var.s3_integrator.machines) <= 1, true)
-    error_message = "Machines count should be at most 1"
-  }
   validation {
     condition     = try(var.s3_integrator.units == 1, true)
     error_message = "Units count should be 1"
@@ -207,13 +209,21 @@ variable "client_certificates_integration" {
   }
 }
 
-variable "cos_agent_integration" {
-  description = "Optional same-model COS agent integration target."
-  type = object({
+variable "cos_agent_integrations" {
+  description = "Optional same-model COS agent integration targets keyed by config server or shard app name. Use one target per principal MongoDB application."
+  type = map(object({
     name     = string
     endpoint = string
-  })
-  default = null
+  }))
+  default = {}
+
+  validation {
+    condition = alltrue([
+      for app_name, integration in var.cos_agent_integrations :
+      integration.name != "" && integration.endpoint != ""
+    ])
+    error_message = "cos_agent_integrations values must include non-empty 'name' and 'endpoint' attributes."
+  }
 }
 
 variable "etcd_integration" {
@@ -330,6 +340,20 @@ variable "vault_kv_integration" {
 #--------------------------------------------------------
 # Config
 #--------------------------------------------------------
+
+variable "s3_access_key" {
+  description = "S3 access key."
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "s3_secret_key" {
+  description = "S3 secret key."
+  type        = string
+  sensitive   = true
+  default     = null
+}
 
 variable "logging_config" {
   description = "Logging configuration to be used"

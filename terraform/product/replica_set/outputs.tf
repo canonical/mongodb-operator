@@ -6,7 +6,7 @@ output "components" {
   value = {
     mongodb         = module.mongodb.application
     data_integrator = juju_application.data_integrator
-    s3_integrator   = try(juju_application.s3_integrator["deployed"], null)
+    s3_integrator   = try(module.s3_integrator[0].application, null)
     gcs_integrator  = try(juju_application.gcs_integrator["deployed"], null)
   }
 }
@@ -25,7 +25,7 @@ output "models" {
             data_integrator = juju_application.data_integrator
           } : {},
           try(var.s3_integrator.model_uuid == module.mongodb.application.model_uuid ? {
-            s3_integrator = juju_application.s3_integrator["deployed"]
+            s3_integrator = module.s3_integrator[0].application
           } : {}, {}),
           try(var.gcs_integrator.model_uuid == module.mongodb.application.model_uuid ? {
             gcs_integrator = juju_application.gcs_integrator["deployed"]
@@ -41,7 +41,7 @@ output "models" {
             data_integrator = juju_application.data_integrator
           },
           try(var.s3_integrator.model_uuid == var.data_integrator.model_uuid ? {
-            s3_integrator = juju_application.s3_integrator["deployed"]
+            s3_integrator = module.s3_integrator[0].application
           } : {}, {}),
           try(var.gcs_integrator.model_uuid == var.data_integrator.model_uuid ? {
             gcs_integrator = juju_application.gcs_integrator["deployed"]
@@ -53,7 +53,7 @@ output "models" {
       s3_integrator = {
         model_uuid = var.s3_integrator.model_uuid
         components = {
-          s3_integrator = juju_application.s3_integrator["deployed"]
+          s3_integrator = module.s3_integrator[0].application
         }
       }
     } : {}, {}),
@@ -104,8 +104,8 @@ output "offers" {
     }, null)
     s3_integrator_credentials = try({
       kind = "offer"
-      name = juju_application.s3_integrator["deployed"].name
-      url  = juju_offer.s3_integrator["offered"].url
+      name = module.s3_integrator[0].application.name
+      url  = module.s3_integrator[0].offers.s3_credentials
     }, null)
     gcs_integrator_credentials = try({
       kind = "offer"

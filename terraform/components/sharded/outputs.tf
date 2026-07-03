@@ -25,11 +25,18 @@ output "app_names" {
 
 output "provides" {
   description = "Map of all \"provides\" endpoints"
-  value = {
-    config_server           = module.config_server.provides["config_server"]
-    config_server_cluster   = module.config_server.provides["cluster"]
-    config_server_cos_agent = module.config_server.provides["cos_agent"]
-  }
+  value = merge(
+    {
+      config_server           = module.config_server.provides["config_server"]
+      config_server_cluster   = module.config_server.provides["cluster"]
+      config_server_cos_agent = module.config_server.provides["cos_agent"]
+    },
+    length(module.shards) > 0 ? merge([
+      for shard_key, shard_module in module.shards : {
+        "shard_${shard_key}_cos_agent" = shard_module.provides["cos_agent"]
+      }
+    ]...) : {}
+  )
 }
 
 output "requires" {

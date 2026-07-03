@@ -9,9 +9,28 @@
 module "cluster" {
   source = "../../components/sharded"
 
-  config_server = var.config_server
-  mongos        = var.mongos
-  shards        = var.shards
+  config_server = merge(
+    var.config_server,
+    {
+      config = merge(
+        var.config_server.config,
+        local.encryption_at_rest_enabled ? { "enable-encryption-at-rest" : "true" } : {}
+      )
+    }
+  )
+  mongos = var.mongos
+  shards = [
+    for shard in var.shards :
+    merge(
+      shard,
+      {
+        config = merge(
+          shard.config,
+          local.encryption_at_rest_enabled ? { "enable-encryption-at-rest" : "true" } : {}
+        )
+      }
+    )
+  ]
 }
 
 resource "terraform_data" "validate_backup_integrations" {
@@ -32,6 +51,20 @@ resource "terraform_data" "validate_ldap_integrations" {
     precondition {
       condition     = length(local.ldap_integrations) == 0 || length(local.ldap_integrations) == 2
       error_message = "LDAP integrations must be configured together: set both ldap_integration and ldap_certificate_transfer_integration, or neither."
+    }
+  }
+}
+
+resource "terraform_data" "validate_cos_agent_integrations" {
+  input = local.cos_agent_integrations
+
+  lifecycle {
+    precondition {
+      condition = alltrue([
+        for app_name, integration in local.cos_agent_integrations :
+        contains([for app in local.mongodb_apps : app.app_name], app_name)
+      ])
+      error_message = "cos_agent_integrations keys must match the app name of the config server or a shard."
     }
   }
 }
@@ -113,22 +146,43 @@ resource "juju_application" "gcs_integrator" {
   units              = (each.value.machines == null || length(each.value.machines) == 0) ? each.value.units : null
 }
 
-resource "juju_application" "s3_integrator" {
-  for_each = var.s3_integrator != null ? { "deployed" = var.s3_integrator } : {}
-
-  charm {
-    name     = "s3-integrator"
-    channel  = each.value.channel
-    revision = each.value.revision
-    base     = each.value.base
+resource "juju_secret" "s3_secret" {
+  count      = var.s3_integrator != null && var.s3_access_key != null && var.s3_secret_key != null ? 1 : 0
+  model_uuid = var.s3_integrator.model_uuid
+  name       = "${var.s3_integrator.app_name}-credentials"
+  value = {
+    access-key = var.s3_access_key
+    secret-key = var.s3_secret_key
   }
+  info = "S3 credentials for ${var.s3_integrator.app_name}"
+}
 
-  name               = each.value.app_name
-  config             = each.value.config
-  constraints        = each.value.constraints
-  endpoint_bindings  = each.value.endpoint_bindings
-  machines           = (each.value.machines == null || length(each.value.machines) == 0) ? null : each.value.machines
-  model_uuid         = each.value.model_uuid
-  storage_directives = each.value.storage_directives
-  units              = (each.value.machines == null || length(each.value.machines) == 0) ? each.value.units : null
+module "s3_integrator" {
+  depends_on = [juju_secret.s3_secret]
+  count      = var.s3_integrator != null ? 1 : 0
+  source     = "../../charms/s3_integrator"
+
+  app_name = var.s3_integrator.app_name
+  base     = var.s3_integrator.base
+  channel  = var.s3_integrator.channel
+  config = merge(
+    var.s3_integrator.config,
+    length(juju_secret.s3_secret) > 0 ? {
+      credentials = juju_secret.s3_secret[0].secret_uri
+    } : {}
+  )
+  constraints = var.s3_integrator.constraints
+  model_uuid  = var.s3_integrator.model_uuid
+  revision    = var.s3_integrator.revision
+  units       = var.s3_integrator.units
+}
+
+resource "juju_access_secret" "s3_secret_access" {
+  depends_on = [juju_secret.s3_secret, module.s3_integrator]
+  count      = length(juju_secret.s3_secret) > 0 ? 1 : 0
+  model_uuid = var.s3_integrator.model_uuid
+  applications = [
+    module.s3_integrator[0].application.name
+  ]
+  secret_id = juju_secret.s3_secret[0].secret_id
 }

@@ -29,7 +29,7 @@
 | `juju_integration.s3_credentials` | [Juju integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | Relates the config server to the optional S3 integrator. |
 | `juju_integration.gcs_credentials` | [Juju integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | Relates the config server to the optional GCS integrator. |
 | `juju_integration.client_certificates` | [Juju integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | Relates MongoDB applications to an optional client TLS certificates target. |
-| `juju_integration.cos_agent` | [Juju integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | Relates the config server's `cos-agent` endpoint to a same-model COS agent. |
+| `juju_integration.cos_agent` | [Juju integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | Relates configured MongoDB applications' `cos-agent` endpoints to same-model COS agents. |
 | `juju_integration.etcd` | [Juju integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | Relates MongoDB applications to an optional etcd target. |
 | `juju_integration.ldap` | [Juju integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | Relates the config server and mongos to an optional LDAP target. |
 | `juju_integration.ldap_certificate_transfer` | [Juju integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | Relates the config server and mongos to an optional LDAP certificate transfer target. |
@@ -39,6 +39,7 @@
 | `juju_offer.s3_credentials` | [Juju offer](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/offer) | Offers the S3 integrator credentials endpoint when S3 is cross-model. |
 | `juju_offer.gcs_credentials` | [Juju offer](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/offer) | Offers the GCS integrator credentials endpoint when GCS is cross-model. |
 | `terraform_data.validate_backup_integrations` | [Terraform data](https://developer.hashicorp.com/terraform/language/resources/terraform-data) | Ensures only one backup integrator is configured. |
+| `terraform_data.validate_cos_agent_integrations` | [Terraform data](https://developer.hashicorp.com/terraform/language/resources/terraform-data) | Ensures COS agent integration keys match MongoDB principal application names. |
 | `terraform_data.validate_ldap_integrations` | [Terraform data](https://developer.hashicorp.com/terraform/language/resources/terraform-data) | Ensures LDAP and LDAP certificate transfer are configured together. |
 | `terraform_data.validate_cross_model_integration_urls` | [Terraform data](https://developer.hashicorp.com/terraform/language/resources/terraform-data) | Ensures optional external integration targets provide an offer URL when cross-model relations are needed. |
 | `terraform_data.deployed_at` | [Terraform data](https://developer.hashicorp.com/terraform/language/resources/terraform-data) | Stores the first deployment timestamp for product metadata. |
@@ -56,7 +57,7 @@
 | `s3_integrator` | Configuration for the S3 backup integrator | <pre>object({<br/>    app_name    = optional(string, "s3-integrator")<br/>    base        = optional(string, "ubuntu@22.04")<br/>    channel     = optional(string, "1/stable")<br/>    config      = map(string)<br/>    constraints = optional(string, "arch=amd64")<br/>    endpoint_bindings = optional(set(object({<br/>      space    = string<br/>      endpoint = optional(string)<br/>    })), [])<br/>    machines           = optional(set(string), null)<br/>    model_uuid         = string<br/>    revision           = optional(number, null)<br/>    storage_directives = optional(map(string), {})<br/>    units              = optional(number, 1)<br/>  })</pre> | `null` | no |
 | `gcs_integrator` | Configuration for the GCS backup integrator | <pre>object({<br/>    app_name    = optional(string, "gcs-integrator")<br/>    base        = optional(string, "ubuntu@24.04")<br/>    channel     = optional(string, "1/stable")<br/>    config      = map(string)<br/>    constraints = optional(string, "arch=amd64")<br/>    endpoint_bindings = optional(set(object({<br/>      space    = string<br/>      endpoint = optional(string)<br/>    })), [])<br/>    machines           = optional(set(string), null)<br/>    model_uuid         = string<br/>    revision           = optional(number, null)<br/>    storage_directives = optional(map(string), {})<br/>    units              = optional(number, 1)<br/>  })</pre> | `null` | no |
 | `client_certificates_integration` | Optional client TLS certificates integration target. | <pre>object({<br/>    name       = optional(string, null)<br/>    endpoint   = optional(string, null)<br/>    model_uuid = optional(string, null)<br/>    url        = optional(string, null)<br/>  })</pre> | `null` | no |
-| `cos_agent_integration` | Optional same-model COS agent integration target. | <pre>object({<br/>    name     = string<br/>    endpoint = string<br/>  })</pre> | `null` | no |
+| `cos_agent_integrations` | Optional same-model COS agent integration targets keyed by config server or shard app name. Use one target per principal MongoDB application. | <pre>map(object({<br/>    name     = string<br/>    endpoint = string<br/>  }))</pre> | `{}` | no |
 | `etcd_integration` | Optional etcd integration target for MongoDB rolling operations. | <pre>object({<br/>    name       = optional(string, null)<br/>    endpoint   = optional(string, null)<br/>    model_uuid = optional(string, null)<br/>    url        = optional(string, null)<br/>  })</pre> | `null` | no |
 | `ldap_integration` | Optional LDAP integration target. Must be configured together with ldap_certificate_transfer_integration. | <pre>object({<br/>    name       = optional(string, null)<br/>    endpoint   = optional(string, null)<br/>    model_uuid = optional(string, null)<br/>    url        = optional(string, null)<br/>  })</pre> | `null` | no |
 | `ldap_certificate_transfer_integration` | Optional LDAP certificate transfer integration target. Must be configured together with ldap_integration. | <pre>object({<br/>    name       = optional(string, null)<br/>    endpoint   = optional(string, null)<br/>    model_uuid = optional(string, null)<br/>    url        = optional(string, null)<br/>  })</pre> | `null` | no |
@@ -76,6 +77,25 @@ Optional integration targets use this shape:
 ```
 
 When an optional integration is configured, `name`, `endpoint`, and `model_uuid` must be non-empty. If the target is cross-model from any MongoDB application that needs it, `url` must contain an offer URL created outside this module.
+
+COS agent integrations are same-model and keyed by the config server or shard app name. Use one subordinate target per principal MongoDB application:
+
+```hcl
+cos_agent_integrations = {
+  "config-server" = {
+    name     = "opentelemetry-collector-config"
+    endpoint = "cos-agent"
+  }
+  "shard-one" = {
+    name     = "opentelemetry-collector-shard-one"
+    endpoint = "cos-agent"
+  }
+  "shard-two" = {
+    name     = "opentelemetry-collector-shard-two"
+    endpoint = "cos-agent"
+  }
+}
+```
 
 ## Outputs
 

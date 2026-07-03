@@ -23,12 +23,3 @@ resource "juju_offer" "mongos_client" {
   depends_on       = [module.cluster, juju_application.data_integrator]
   model_uuid       = juju_application.data_integrator.model_uuid
 }
-
-resource "juju_offer" "s3_credentials" {
-  for_each = try(var.s3_integrator.model_uuid != module.cluster.components["config_server"].model_uuid, false) ? { "offered" = var.s3_integrator } : {}
-
-  application_name = each.value.app_name
-  endpoints        = ["s3-credentials"]
-  depends_on       = [juju_application.s3_integrator["deployed"]]
-  model_uuid       = each.value.model_uuid
-}

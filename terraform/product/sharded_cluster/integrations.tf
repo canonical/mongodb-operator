@@ -49,7 +49,7 @@ resource "juju_integration" "mongos_client" {
 }
 
 resource "juju_integration" "s3_credentials" {
-  for_each   = var.s3_integrator != null ? { "integrated" = var.s3_integrator } : {}
+  for_each   = var.s3_integrator != null ? { "integrated" = true } : {}
   model_uuid = module.cluster.components["config_server"].model_uuid
 
   application {
@@ -58,30 +58,30 @@ resource "juju_integration" "s3_credentials" {
   }
 
   application {
-    name      = each.value.model_uuid == module.cluster.components["config_server"].model_uuid ? each.value.app_name : null
-    endpoint  = each.value.model_uuid == module.cluster.components["config_server"].model_uuid ? "s3-credentials" : null
-    offer_url = try(juju_offer.s3_credentials["offered"].url, null)
+    name      = var.s3_integrator.model_uuid == module.cluster.components["config_server"].model_uuid ? module.s3_integrator[0].provides.s3_credentials.name : null
+    endpoint  = var.s3_integrator.model_uuid == module.cluster.components["config_server"].model_uuid ? module.s3_integrator[0].provides.s3_credentials.endpoint : null
+    offer_url = var.s3_integrator.model_uuid != module.cluster.components["config_server"].model_uuid ? module.s3_integrator[0].offers.s3_credentials : null
   }
 
   depends_on = [
     module.cluster,
-    juju_application.s3_integrator["deployed"],
+    module.s3_integrator,
   ]
 }
 
 # Other apps
 resource "juju_integration" "cos_agent" {
-  count      = local.cos_agent_enabled ? 1 : 0
-  model_uuid = module.cluster.components["config_server"].model_uuid
+  for_each   = { for app in local.cos_agent_apps : app.app_name => app }
+  model_uuid = each.value.model_uuid
 
   application {
-    name     = var.cos_agent_integration.name
-    endpoint = var.cos_agent_integration.endpoint
+    name     = local.cos_agent_integrations[each.key].name
+    endpoint = local.cos_agent_integrations[each.key].endpoint
   }
 
   application {
-    name     = module.cluster.provides["config_server_cos_agent"].name
-    endpoint = module.cluster.provides["config_server_cos_agent"].endpoint
+    name     = local.cos_agent_provides[each.key].name
+    endpoint = local.cos_agent_provides[each.key].endpoint
   }
 
   depends_on = [module.cluster]

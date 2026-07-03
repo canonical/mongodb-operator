@@ -59,6 +59,7 @@ variable "machines" {
 variable "model_uuid" {
   description = "Model UUID"
   type        = string
+  nullable    = false
 }
 
 variable "revision" {

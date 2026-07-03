@@ -8,7 +8,7 @@
 
 # Replica set MongoDB app
 module "mongodb" {
-  source = "../../charm/mongodb"
+  source = "../../charms/mongodb"
 
   app_name           = var.mongodb.app_name
   base               = var.mongodb.base
@@ -86,22 +86,43 @@ resource "juju_application" "gcs_integrator" {
   units              = (each.value.machines == null || length(each.value.machines) == 0) ? each.value.units : null
 }
 
-resource "juju_application" "s3_integrator" {
-  for_each = var.s3_integrator != null ? { "deployed" = var.s3_integrator } : {}
-
-  charm {
-    name     = "s3-integrator"
-    channel  = each.value.channel
-    revision = each.value.revision
-    base     = each.value.base
+resource "juju_secret" "s3_secret" {
+  count      = var.s3_integrator != null ? 1 : 0
+  model_uuid = var.s3_integrator.model_uuid
+  name       = "${var.s3_integrator.app_name}-credentials"
+  value = {
+    secret-key = var.s3_secret_key
+    access-key = var.s3_access_key
   }
+  info = "This is the access key and secret key for the S3 storage"
+}
 
-  name               = each.value.app_name
-  config             = each.value.config
-  constraints        = each.value.constraints
-  endpoint_bindings  = each.value.endpoint_bindings
-  machines           = (each.value.machines == null || length(each.value.machines) == 0) ? null : each.value.machines
-  model_uuid         = each.value.model_uuid
-  storage_directives = each.value.storage_directives
-  units              = (each.value.machines == null || length(each.value.machines) == 0) ? each.value.units : null
+module "s3_integrator" {
+  depends_on = [juju_secret.s3_secret]
+  count      = var.s3_integrator != null ? 1 : 0
+  source     = "../../charms/s3_integrator"
+
+  app_name = var.s3_integrator.app_name
+  base     = var.s3_integrator.base
+  channel  = var.s3_integrator.channel
+  config = merge(
+    var.s3_integrator.config,
+    {
+      credentials = "secret:${juju_secret.s3_secret[0].secret_id}"
+    }
+  )
+  constraints = var.s3_integrator.constraints
+  model_uuid  = var.s3_integrator.model_uuid
+  revision    = var.s3_integrator.revision
+  units       = var.s3_integrator.units
+}
+
+resource "juju_access_secret" "s3_secret_access" {
+  depends_on = [juju_secret.s3_secret, module.s3_integrator]
+  count      = var.s3_integrator != null ? 1 : 0
+  model_uuid = var.s3_integrator.model_uuid
+  applications = [
+    module.s3_integrator[0].application.name
+  ]
+  secret_id = juju_secret.s3_secret[0].secret_id
 }
