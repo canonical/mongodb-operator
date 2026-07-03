@@ -13,12 +13,3 @@ resource "juju_offer" "mongodb_client" {
   depends_on       = [module.mongodb]
   model_uuid       = module.mongodb.application.model_uuid
 }
-
-resource "juju_offer" "gcs_integrator" {
-  for_each = try(var.gcs_integrator.model_uuid != module.mongodb.application.model_uuid, false) ? { "offered" = var.gcs_integrator } : {}
-
-  application_name = each.value.app_name
-  endpoints        = ["gcs-credentials"]
-  depends_on       = [juju_application.gcs_integrator["deployed"]]
-  model_uuid       = each.value.model_uuid
-}

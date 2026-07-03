@@ -48,42 +48,37 @@ resource "terraform_data" "validate_ldap_integrations" {
 }
 
 # Integrator apps
-resource "juju_application" "data_integrator" {
-  charm {
-    name     = "data-integrator"
-    channel  = var.data_integrator.channel
-    revision = var.data_integrator.revision
-    base     = var.data_integrator.base
-  }
+module "data_integrator" {
+  source = "../../charms/data_integrator"
 
-  name               = var.data_integrator.app_name
+  app_name           = var.data_integrator.app_name
+  base               = var.data_integrator.base
+  channel            = var.data_integrator.channel
   config             = var.data_integrator.config
   constraints        = var.data_integrator.constraints
   endpoint_bindings  = var.data_integrator.endpoint_bindings
-  machines           = (var.data_integrator.machines == null || length(var.data_integrator.machines) == 0) ? null : var.data_integrator.machines
+  machines           = var.data_integrator.machines
   model_uuid         = var.data_integrator.model_uuid
+  revision           = var.data_integrator.revision
   storage_directives = var.data_integrator.storage_directives
-  units              = (var.data_integrator.machines == null || length(var.data_integrator.machines) == 0) ? var.data_integrator.units : null
+  units              = var.data_integrator.units
 }
 
-resource "juju_application" "gcs_integrator" {
-  for_each = var.gcs_integrator != null ? { "deployed" = var.gcs_integrator } : {}
+module "gcs_integrator" {
+  count  = var.gcs_integrator != null ? 1 : 0
+  source = "../../charms/gcs_integrator"
 
-  charm {
-    name     = "gcs-integrator"
-    channel  = each.value.channel
-    revision = each.value.revision
-    base     = each.value.base
-  }
-
-  name               = each.value.app_name
-  config             = each.value.config
-  constraints        = each.value.constraints
-  endpoint_bindings  = each.value.endpoint_bindings
-  machines           = (each.value.machines == null || length(each.value.machines) == 0) ? null : each.value.machines
-  model_uuid         = each.value.model_uuid
-  storage_directives = each.value.storage_directives
-  units              = (each.value.machines == null || length(each.value.machines) == 0) ? each.value.units : null
+  app_name           = var.gcs_integrator.app_name
+  base               = var.gcs_integrator.base
+  channel            = var.gcs_integrator.channel
+  config             = var.gcs_integrator.config
+  constraints        = var.gcs_integrator.constraints
+  endpoint_bindings  = var.gcs_integrator.endpoint_bindings
+  machines           = var.gcs_integrator.machines
+  model_uuid         = var.gcs_integrator.model_uuid
+  revision           = var.gcs_integrator.revision
+  storage_directives = var.gcs_integrator.storage_directives
+  units              = var.gcs_integrator.units
 }
 
 resource "juju_secret" "s3_secret" {

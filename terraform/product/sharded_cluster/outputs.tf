@@ -4,11 +4,16 @@
 output "components" {
   description = "All deployed applications."
   value = merge(
-    module.cluster.components,
+    module.config_and_routing.components,
     {
-      data_integrator = juju_application.data_integrator
+      shards = [
+        for shard_module in module.shards : shard_module.application
+      ]
+    },
+    {
+      data_integrator = module.data_integrator.application
       s3_integrator   = try(module.s3_integrator[0].application, null)
-      gcs_integrator  = try(juju_application.gcs_integrator["deployed"], null)
+      gcs_integrator  = try(module.gcs_integrator[0].application, null)
     }
   )
 }
@@ -31,39 +36,55 @@ output "models" {
 output "app_names" {
   description = "Names of of all deployed applications."
   value = merge(
-    module.cluster.app_names,
+    module.config_and_routing.app_names,
     {
-      "data_integrator" : juju_application.data_integrator.name
+      shards = [
+        for shard_module in module.shards : shard_module.application.name
+      ]
+    },
+    {
+      "data_integrator" : module.data_integrator.application.name
       "s3_integrator" : try(module.s3_integrator[0].application.name, null)
-      "gcs_integrator" : try(juju_application.gcs_integrator["deployed"].name, null)
+      "gcs_integrator" : try(module.gcs_integrator[0].application.name, null)
     }
   )
 }
 
 output "provides" {
   description = "Map of all \"provides\" endpoints"
-  value       = module.cluster.provides
+  value = merge(
+    module.config_and_routing.provides,
+    length(module.shards) > 0 ? merge([
+      for shard_key, shard_module in module.shards : {
+        "${local.shards[tonumber(shard_key)].app_name}_cos_agent" = shard_module.provides["cos_agent"]
+      }
+    ]...) : {}
+  )
 }
 
 output "requires" {
   description = "Map of all \"requires\" endpoints"
-  value       = module.cluster.requires
+  value = merge(
+    module.config_and_routing.requires,
+    length(module.shards) > 0 ? merge([
+      for shard_key, shard_module in module.shards : {
+        "${local.shards[tonumber(shard_key)].app_name}_client_certificates" = shard_module.requires["client_certificates"]
+        "${local.shards[tonumber(shard_key)].app_name}_etcd"                = shard_module.requires["etcd"]
+        "${local.shards[tonumber(shard_key)].app_name}_peer_certificates"   = shard_module.requires["peer_certificates"]
+        "${local.shards[tonumber(shard_key)].app_name}_sharding"            = shard_module.requires["sharding"]
+        "${local.shards[tonumber(shard_key)].app_name}_vault_kv"            = shard_module.requires["vault_kv"]
+      }
+    ]...) : {}
+  )
 }
 
 output "offers" {
   description = "Map of all offer endpoints."
   value = merge(
-    module.cluster.offers,
+    module.config_and_routing.offers,
     {
-      gcs_credentials = try({
-        kind = "offer"
-        url  = juju_offer.gcs_credentials["offered"].url
-      }, null)
-      mongos_client = try({
-        kind = "offer"
-        url  = juju_offer.mongos_client["offered"].url
-      }, null)
-      s3_credentials = try(module.s3_integrator[0].offers.s3_credentials, null)
+      gcs_credentials = try(module.gcs_integrator[0].offers.gcs_credentials, null)
+      s3_credentials  = try(module.s3_integrator[0].offers.s3_credentials, null)
     }
   )
 }

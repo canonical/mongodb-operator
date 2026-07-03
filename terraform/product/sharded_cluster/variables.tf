@@ -22,7 +22,7 @@ variable "config_server" {
       endpoints = optional(string)
       spaces    = optional(string)
     })), [])
-    machines           = optional(set(string), null)
+    machines           = optional(set(string), [])
     model_uuid         = string
     revision           = optional(number, null)
     storage_directives = optional(map(string), {})
@@ -32,6 +32,11 @@ variable "config_server" {
   validation {
     condition     = var.config_server.config["role"] == "config-server"
     error_message = "Config option: 'role' must be set to 'config-server'."
+  }
+
+  validation {
+    condition     = var.config_server.base == "ubuntu@24.04"
+    error_message = "Config server base must be 'ubuntu@24.04'."
   }
 }
 
@@ -47,12 +52,17 @@ variable "data_integrator" {
       space    = string
       endpoint = optional(string)
     })), [])
-    machines           = optional(set(string), null)
+    machines           = optional(set(string), [])
     model_uuid         = string
     revision           = optional(number, null)
     storage_directives = optional(map(string), {})
     units              = optional(number, 1)
   })
+
+  validation {
+    condition     = var.config_server.model_uuid == var.data_integrator.model_uuid
+    error_message = "'mongos' and 'data_integrator' should have the same model_uuid."
+  }
 
   validation {
     condition     = var.data_integrator.machines == null || length(var.data_integrator.machines) <= 1
@@ -112,10 +122,14 @@ variable "mongos" {
       space    = string
       endpoint = optional(string)
     })), [])
-    machines = optional(set(string), null)
     revision = optional(number, null)
   })
   default = {}
+
+  validation {
+    condition     = var.mongos.base == "ubuntu@24.04"
+    error_message = "mongos base must be 'ubuntu@24.04'."
+  }
 }
 
 variable "shards" {
@@ -135,7 +149,7 @@ variable "shards" {
       endpoints = optional(string)
       spaces    = optional(string)
     })), [])
-    machines           = optional(set(string), null)
+    machines           = optional(set(string), [])
     model_uuid         = string
     revision           = optional(number, null)
     storage_directives = optional(map(string), {})
@@ -146,6 +160,11 @@ variable "shards" {
   validation {
     condition     = alltrue([for shard in var.shards : (shard.config["role"] == "shard")])
     error_message = "Config option: 'role' must be set to 'shard' in all shard objects."
+  }
+
+  validation {
+    condition     = alltrue([for shard in var.shards : shard.base == "ubuntu@24.04"])
+    error_message = "All shard bases must be 'ubuntu@24.04'."
   }
 }
 

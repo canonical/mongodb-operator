@@ -5,65 +5,86 @@
 # 3. Integrations
 #--------------------------------------------------------
 
-# Integrators
-resource "juju_integration" "gcs_credentials" {
-  for_each   = var.gcs_integrator != null ? { "integrated" = var.gcs_integrator } : {}
-  model_uuid = module.cluster.components["config_server"].model_uuid
+# Shards
+resource "juju_integration" "config_server_shards" {
+  for_each   = tomap({ for shard_key, shard in local.shards : shard_key => shard })
+  model_uuid = each.value.model_uuid
 
   application {
-    name     = module.cluster.requires["config_server_gcs_credentials"].name
-    endpoint = module.cluster.requires["config_server_gcs_credentials"].endpoint
+    name      = each.value.model_uuid == module.config_and_routing.components["config_server"].model_uuid ? module.config_and_routing.provides["config_server"].name : null
+    endpoint  = each.value.model_uuid == module.config_and_routing.components["config_server"].model_uuid ? module.config_and_routing.provides["config_server"].endpoint : null
+    offer_url = each.value.model_uuid != module.config_and_routing.components["config_server"].model_uuid ? module.config_and_routing.offers["config_server"].url : null
   }
 
   application {
-    name      = each.value.model_uuid == module.cluster.components["config_server"].model_uuid ? each.value.app_name : null
-    endpoint  = each.value.model_uuid == module.cluster.components["config_server"].model_uuid ? "gcs-credentials" : null
-    offer_url = try(juju_offer.gcs_credentials["offered"].url, null)
+    name     = module.shards[each.key].requires["sharding"].name
+    endpoint = module.shards[each.key].requires["sharding"].endpoint
   }
 
   depends_on = [
-    module.cluster,
-    juju_application.gcs_integrator["deployed"],
+    module.config_and_routing,
+    module.shards,
+  ]
+}
+
+# Integrators
+resource "juju_integration" "gcs_credentials" {
+  for_each   = var.gcs_integrator != null ? { "integrated" = true } : {}
+  model_uuid = module.config_and_routing.components["config_server"].model_uuid
+
+  application {
+    name     = module.config_and_routing.requires["config_server_gcs_credentials"].name
+    endpoint = module.config_and_routing.requires["config_server_gcs_credentials"].endpoint
+  }
+
+  application {
+    name      = var.gcs_integrator.model_uuid == module.config_and_routing.components["config_server"].model_uuid ? module.gcs_integrator[0].provides.gcs_credentials.name : null
+    endpoint  = var.gcs_integrator.model_uuid == module.config_and_routing.components["config_server"].model_uuid ? module.gcs_integrator[0].provides.gcs_credentials.endpoint : null
+    offer_url = var.gcs_integrator.model_uuid != module.config_and_routing.components["config_server"].model_uuid ? module.gcs_integrator[0].offers.gcs_credentials.url : null
+  }
+
+  depends_on = [
+    module.config_and_routing,
+    module.gcs_integrator,
   ]
 }
 
 resource "juju_integration" "mongos_client" {
-  model_uuid = module.cluster.components["mongos"].model_uuid
+  model_uuid = module.config_and_routing.components["mongos"].model_uuid
 
   application {
-    name     = module.cluster.requires["mongos_proxy"].name
-    endpoint = module.cluster.requires["mongos_proxy"].endpoint
+    name     = module.config_and_routing.requires["mongos_proxy"].name
+    endpoint = module.config_and_routing.requires["mongos_proxy"].endpoint
   }
 
   application {
-    name      = juju_application.data_integrator.model_uuid == module.cluster.components["mongos"].model_uuid ? juju_application.data_integrator.name : null
-    endpoint  = juju_application.data_integrator.model_uuid == module.cluster.components["mongos"].model_uuid ? "mongos" : null
-    offer_url = try(juju_offer.mongos_client["offered"].url, null)
+    name     = module.data_integrator.application.name
+    endpoint = "mongos"
   }
 
   depends_on = [
-    module.cluster,
-    juju_application.data_integrator,
+    module.config_and_routing,
+    module.data_integrator,
   ]
 }
 
 resource "juju_integration" "s3_credentials" {
   for_each   = var.s3_integrator != null ? { "integrated" = true } : {}
-  model_uuid = module.cluster.components["config_server"].model_uuid
+  model_uuid = module.config_and_routing.components["config_server"].model_uuid
 
   application {
-    name     = module.cluster.requires["config_server_s3_credentials"].name
-    endpoint = module.cluster.requires["config_server_s3_credentials"].endpoint
+    name     = module.config_and_routing.requires["config_server_s3_credentials"].name
+    endpoint = module.config_and_routing.requires["config_server_s3_credentials"].endpoint
   }
 
   application {
-    name      = var.s3_integrator.model_uuid == module.cluster.components["config_server"].model_uuid ? module.s3_integrator[0].provides.s3_credentials.name : null
-    endpoint  = var.s3_integrator.model_uuid == module.cluster.components["config_server"].model_uuid ? module.s3_integrator[0].provides.s3_credentials.endpoint : null
-    offer_url = var.s3_integrator.model_uuid != module.cluster.components["config_server"].model_uuid ? module.s3_integrator[0].offers.s3_credentials.url : null
+    name      = var.s3_integrator.model_uuid == module.config_and_routing.components["config_server"].model_uuid ? module.s3_integrator[0].provides.s3_credentials.name : null
+    endpoint  = var.s3_integrator.model_uuid == module.config_and_routing.components["config_server"].model_uuid ? module.s3_integrator[0].provides.s3_credentials.endpoint : null
+    offer_url = var.s3_integrator.model_uuid != module.config_and_routing.components["config_server"].model_uuid ? module.s3_integrator[0].offers.s3_credentials.url : null
   }
 
   depends_on = [
-    module.cluster,
+    module.config_and_routing,
     module.s3_integrator,
   ]
 }
@@ -83,7 +104,7 @@ resource "juju_integration" "cos_agent" {
     endpoint = local.cos_agent_provides[each.key].endpoint
   }
 
-  depends_on = [module.cluster]
+  depends_on = [module.config_and_routing]
 }
 
 resource "juju_integration" "client_certificates" {
@@ -101,7 +122,7 @@ resource "juju_integration" "client_certificates" {
     endpoint = local.client_certificates_requires[each.value.app_name].endpoint
   }
 
-  depends_on = [module.cluster]
+  depends_on = [module.config_and_routing]
 }
 
 resource "juju_integration" "etcd" {
@@ -119,7 +140,7 @@ resource "juju_integration" "etcd" {
     endpoint = local.etcd_requires[each.value.app_name].endpoint
   }
 
-  depends_on = [module.cluster]
+  depends_on = [module.config_and_routing]
 }
 
 resource "juju_integration" "ldap" {
@@ -137,7 +158,7 @@ resource "juju_integration" "ldap" {
     endpoint = local.ldap_requires[each.value.app_name].endpoint
   }
 
-  depends_on = [module.cluster]
+  depends_on = [module.config_and_routing]
 }
 
 resource "juju_integration" "ldap_certificate_transfer" {
@@ -155,7 +176,7 @@ resource "juju_integration" "ldap_certificate_transfer" {
     endpoint = local.ldap_certificate_transfer_requires[each.value.app_name].endpoint
   }
 
-  depends_on = [module.cluster]
+  depends_on = [module.config_and_routing]
 }
 
 resource "juju_integration" "peer_certificates" {
@@ -173,7 +194,7 @@ resource "juju_integration" "peer_certificates" {
     endpoint = local.peer_certificates_requires[each.value.app_name].endpoint
   }
 
-  depends_on = [module.cluster]
+  depends_on = [module.config_and_routing]
 }
 
 resource "juju_integration" "vault_kv" {
@@ -191,5 +212,5 @@ resource "juju_integration" "vault_kv" {
     endpoint = local.vault_kv_requires[each.value.app_name].endpoint
   }
 
-  depends_on = [module.cluster]
+  depends_on = [module.config_and_routing]
 }

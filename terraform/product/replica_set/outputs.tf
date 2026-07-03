@@ -5,9 +5,9 @@ output "components" {
   description = "All deployed applications."
   value = {
     mongodb         = module.mongodb.application
-    data_integrator = juju_application.data_integrator
+    data_integrator = module.data_integrator.application
     s3_integrator   = try(module.s3_integrator[0].application, null)
-    gcs_integrator  = try(juju_application.gcs_integrator["deployed"], null)
+    gcs_integrator  = try(module.gcs_integrator[0].application, null)
   }
 }
 
@@ -66,11 +66,12 @@ output "offers" {
         name = module.s3_integrator[0].application.name
       }
     ), null)
-    gcs_integrator_credentials = try({
-      kind = "offer"
-      name = juju_application.gcs_integrator["deployed"].name
-      url  = juju_offer.gcs_integrator["offered"].url
-    }, null)
+    gcs_integrator_credentials = try(merge(
+      module.gcs_integrator[0].offers.gcs_credentials,
+      {
+        name = module.gcs_integrator[0].application.name
+      }
+    ), null)
   }
 }
 

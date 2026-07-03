@@ -141,12 +141,12 @@ resource "juju_integration" "mongodb_data" {
     offer_url = try(juju_offer.mongodb_client["offered"].url, null)
   }
   application {
-    name     = var.data_integrator.app_name
+    name     = module.data_integrator.application.name
     endpoint = "mongodb"
   }
   depends_on = [
     module.mongodb,
-    juju_application.data_integrator,
+    module.data_integrator,
   ]
 }
 
@@ -171,7 +171,7 @@ resource "juju_integration" "mongodb_s3" {
 }
 
 resource "juju_integration" "mongodb_gcs" {
-  for_each = var.gcs_integrator != null ? { "integrated" = var.gcs_integrator } : {}
+  for_each = var.gcs_integrator != null ? { "integrated" = true } : {}
 
   model_uuid = module.mongodb.application.model_uuid
 
@@ -180,12 +180,12 @@ resource "juju_integration" "mongodb_gcs" {
     endpoint = module.mongodb.requires["gcs_credentials"].endpoint
   }
   application {
-    name      = each.value.model_uuid == module.mongodb.application.model_uuid ? each.value.app_name : null
-    endpoint  = each.value.model_uuid == module.mongodb.application.model_uuid ? "gcs-credentials" : null
-    offer_url = try(juju_offer.gcs_integrator["offered"].url, null)
+    name      = var.gcs_integrator.model_uuid == module.mongodb.application.model_uuid ? module.gcs_integrator[0].provides.gcs_credentials.name : null
+    endpoint  = var.gcs_integrator.model_uuid == module.mongodb.application.model_uuid ? module.gcs_integrator[0].provides.gcs_credentials.endpoint : null
+    offer_url = var.gcs_integrator.model_uuid != module.mongodb.application.model_uuid ? module.gcs_integrator[0].offers.gcs_credentials.url : null
   }
   depends_on = [
     module.mongodb,
-    juju_application.gcs_integrator["deployed"],
+    module.gcs_integrator,
   ]
 }

@@ -10,9 +10,13 @@ locals {
   peer_certificates_enabled   = var.peer_certificates_integration != null ? true : false
   s3_credentials_enabled      = var.s3_integrator != null ? true : false
 
+  shards = [
+    for app in coalesce(var.shards, []) : app if app != null
+  ]
+
   mongodb_apps = concat(
     [{ app_name = var.config_server.app_name, model_uuid = var.config_server.model_uuid }],
-    var.shards != null ? [for shard in var.shards : { app_name = shard.app_name, model_uuid = shard.model_uuid }] : []
+    [for shard in local.shards : { app_name = shard.app_name, model_uuid = shard.model_uuid }]
   )
   cos_agent_integrations = var.cos_agent_integrations
   cos_agent_apps = [
@@ -82,64 +86,64 @@ locals {
 
   client_certificates_requires = merge(
     {
-      (module.cluster.requires["config_server_client_certificates"].name) = module.cluster.requires["config_server_client_certificates"]
-      (module.cluster.requires["mongos_client_certificates"].name)        = module.cluster.requires["mongos_client_certificates"]
+      (module.config_and_routing.requires["config_server_client_certificates"].name) = module.config_and_routing.requires["config_server_client_certificates"]
+      (module.config_and_routing.requires["mongos_client_certificates"].name)        = module.config_and_routing.requires["mongos_client_certificates"]
     },
-    var.shards != null ? {
-      for shard_key, shard in var.shards :
-      shard.app_name => module.cluster.requires["shard_${shard_key}_client_certificates"]
+    length(local.shards) > 0 ? {
+      for shard_key, shard in local.shards :
+      shard.app_name => module.shards[shard_key].requires["client_certificates"]
     } : {}
   )
 
   cos_agent_provides = merge(
     {
-      (module.cluster.provides["config_server_cos_agent"].name) = module.cluster.provides["config_server_cos_agent"]
+      (module.config_and_routing.provides["config_server_cos_agent"].name) = module.config_and_routing.provides["config_server_cos_agent"]
     },
-    var.shards != null ? {
-      for shard_key, shard in var.shards :
-      shard.app_name => module.cluster.provides["shard_${shard_key}_cos_agent"]
+    length(local.shards) > 0 ? {
+      for shard_key, shard in local.shards :
+      shard.app_name => module.shards[shard_key].provides["cos_agent"]
     } : {}
   )
 
   etcd_requires = merge(
     {
-      (module.cluster.requires["config_server_etcd"].name) = module.cluster.requires["config_server_etcd"]
-      (module.cluster.requires["mongos_etcd"].name)        = module.cluster.requires["mongos_etcd"]
+      (module.config_and_routing.requires["config_server_etcd"].name) = module.config_and_routing.requires["config_server_etcd"]
+      (module.config_and_routing.requires["mongos_etcd"].name)        = module.config_and_routing.requires["mongos_etcd"]
     },
-    var.shards != null ? {
-      for shard_key, shard in var.shards :
-      shard.app_name => module.cluster.requires["shard_${shard_key}_etcd"]
+    length(local.shards) > 0 ? {
+      for shard_key, shard in local.shards :
+      shard.app_name => module.shards[shard_key].requires["etcd"]
     } : {}
   )
 
   ldap_requires = {
-    (module.cluster.requires["config_server_ldap"].name) = module.cluster.requires["config_server_ldap"]
-    (module.cluster.requires["mongos_ldap"].name)        = module.cluster.requires["mongos_ldap"]
+    (module.config_and_routing.requires["config_server_ldap"].name) = module.config_and_routing.requires["config_server_ldap"]
+    (module.config_and_routing.requires["mongos_ldap"].name)        = module.config_and_routing.requires["mongos_ldap"]
   }
 
   ldap_certificate_transfer_requires = {
-    (module.cluster.requires["config_server_ldap_certificate_transfer"].name) = module.cluster.requires["config_server_ldap_certificate_transfer"]
-    (module.cluster.requires["mongos_ldap_certificate_transfer"].name)        = module.cluster.requires["mongos_ldap_certificate_transfer"]
+    (module.config_and_routing.requires["config_server_ldap_certificate_transfer"].name) = module.config_and_routing.requires["config_server_ldap_certificate_transfer"]
+    (module.config_and_routing.requires["mongos_ldap_certificate_transfer"].name)        = module.config_and_routing.requires["mongos_ldap_certificate_transfer"]
   }
 
   peer_certificates_requires = merge(
     {
-      (module.cluster.requires["config_server_peer_certificates"].name) = module.cluster.requires["config_server_peer_certificates"]
-      (module.cluster.requires["mongos_peer_certificates"].name)        = module.cluster.requires["mongos_peer_certificates"]
+      (module.config_and_routing.requires["config_server_peer_certificates"].name) = module.config_and_routing.requires["config_server_peer_certificates"]
+      (module.config_and_routing.requires["mongos_peer_certificates"].name)        = module.config_and_routing.requires["mongos_peer_certificates"]
     },
-    var.shards != null ? {
-      for shard_key, shard in var.shards :
-      shard.app_name => module.cluster.requires["shard_${shard_key}_peer_certificates"]
+    length(local.shards) > 0 ? {
+      for shard_key, shard in local.shards :
+      shard.app_name => module.shards[shard_key].requires["peer_certificates"]
     } : {}
   )
 
   vault_kv_requires = merge(
     {
-      (module.cluster.requires["config_server_vault_kv"].name) = module.cluster.requires["config_server_vault_kv"]
+      (module.config_and_routing.requires["config_server_vault_kv"].name) = module.config_and_routing.requires["config_server_vault_kv"]
     },
-    var.shards != null ? {
-      for shard_key, shard in var.shards :
-      shard.app_name => module.cluster.requires["shard_${shard_key}_vault_kv"]
+    length(local.shards) > 0 ? {
+      for shard_key, shard in local.shards :
+      shard.app_name => module.shards[shard_key].requires["vault_kv"]
     } : {}
   )
 
@@ -147,25 +151,25 @@ locals {
     [
       {
         key        = "config_server"
-        model_uuid = module.cluster.components["config_server"].model_uuid
-        value      = module.cluster.components["config_server"]
+        model_uuid = module.config_and_routing.components["config_server"].model_uuid
+        value      = module.config_and_routing.components["config_server"]
       },
       {
         key        = "mongos"
-        model_uuid = module.cluster.components["mongos"].model_uuid
-        value      = module.cluster.components["mongos"]
+        model_uuid = module.config_and_routing.components["mongos"].model_uuid
+        value      = module.config_and_routing.components["mongos"]
       },
       {
         key        = "data_integrator"
-        model_uuid = juju_application.data_integrator.model_uuid
-        value      = juju_application.data_integrator
+        model_uuid = module.data_integrator.application.model_uuid
+        value      = module.data_integrator.application
       },
     ],
-    var.shards != null ? [
-      for shard_key, shard in var.shards : {
+    length(local.shards) > 0 ? [
+      for shard_key, shard in local.shards : {
         key        = "shard_${shard_key}"
         model_uuid = shard.model_uuid
-        value      = module.cluster.components["shards"][shard_key]
+        value      = module.shards[shard_key].application
       }
     ] : [],
     var.s3_integrator != null ? [
@@ -178,8 +182,8 @@ locals {
     var.gcs_integrator != null ? [
       {
         key        = "gcs_integrator"
-        model_uuid = juju_application.gcs_integrator["deployed"].model_uuid
-        value      = juju_application.gcs_integrator["deployed"]
+        model_uuid = module.gcs_integrator[0].application.model_uuid
+        value      = module.gcs_integrator[0].application
       }
     ] : []
   )

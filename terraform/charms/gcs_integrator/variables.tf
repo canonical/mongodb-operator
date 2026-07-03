@@ -2,33 +2,36 @@
 # See LICENSE file for licensing details.
 
 variable "app_name" {
-  description = "Application name"
+  description = "Name to give the deployed application."
   type        = string
-  default     = "mongodb"
+  default     = "gcs-integrator"
+  nullable    = false
 }
 
 variable "base" {
-  description = "The operating system on which to deploy. E.g. ubuntu@24.04.)"
+  description = "The operating system on which to deploy. E.g. ubuntu@24.04."
   type        = string
-  default     = "ubuntu@24.04"
+  default     = null
 }
 
 variable "channel" {
-  description = "Charm channel"
+  description = "Channel of the charm."
   type        = string
-  default     = "8/stable"
+  default     = "1/stable"
+  nullable    = false
 }
 
 variable "config" {
-  description = "Map of charm configuration options"
+  description = "Map for configuration options."
   type        = map(string)
   default     = {}
 }
 
+
 variable "constraints" {
-  description = "String listing constraints for this application"
+  description = "String listing constraints for this application."
   type        = string
-  default     = "arch=amd64"
+  default     = null
 }
 
 variable "endpoint_bindings" {
@@ -40,16 +43,6 @@ variable "endpoint_bindings" {
   default = []
 }
 
-variable "expose" {
-  description = "Expose the application for external access."
-  type = list(object({
-    cidrs     = optional(string)
-    endpoints = optional(string)
-    spaces    = optional(string)
-  }))
-  default = []
-}
-
 variable "machines" {
   description = "List of machines for placement"
   type        = set(string)
@@ -57,15 +50,9 @@ variable "machines" {
 }
 
 variable "model_uuid" {
-  description = "Model UUID"
+  description = "Reference to an existing model uuid."
   type        = string
   nullable    = false
-}
-
-variable "revision" {
-  description = "Charm revision"
-  type        = number
-  default     = null
 }
 
 variable "storage_directives" {
@@ -74,8 +61,14 @@ variable "storage_directives" {
   default     = {}
 }
 
-variable "units" {
-  description = "Charm units"
+variable "revision" {
+  description = "Revision number of the charm."
   type        = number
-  default     = 3
+  default     = null
+}
+
+variable "units" {
+  description = "Unit count."
+  type        = number
+  default     = 1
 }

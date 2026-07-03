@@ -16,16 +16,18 @@
 
 | Name | Source | Version |
 |------|--------|---------|
-| `cluster` | ../../components/sharded | n/a |
+| `config_and_routing` | ../../components/sharded | n/a |
+| `data_integrator` | ../../charms/data_integrator | n/a |
+| `gcs_integrator` | ../../charms/gcs_integrator | n/a |
+| `shards` | ../../charms/mongodb | n/a |
 
 ## Resources
 
 | Name | Type | Description |
 |------|------|-------------|
-| `juju_application.data_integrator` | [Juju application](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/application) | Deploys the data-integrator charm. |
-| `juju_application.s3_integrator` | [Juju application](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/application) | Optionally deploys the S3 integrator charm. Mutually exclusive with `juju_application.gcs_integrator`. |
-| `juju_application.gcs_integrator` | [Juju application](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/application) | Optionally deploys the GCS integrator charm. Mutually exclusive with `juju_application.s3_integrator`. |
-| `juju_integration.mongos_client` | [Juju integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | Relates data-integrator to mongos, using an offer when cross-model. |
+| `juju_application.s3_integrator` | [Juju application](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/application) | Optionally deploys the S3 integrator charm. Mutually exclusive with `module.gcs_integrator`. |
+| `juju_integration.config_server_shards` | [Juju integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | Relates shards to the config server, using a direct endpoint for same-model shards and an offer for cross-model shards. |
+| `juju_integration.mongos_client` | [Juju integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | Relates data-integrator to mongos in the config server model. |
 | `juju_integration.s3_credentials` | [Juju integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | Relates the config server to the optional S3 integrator. |
 | `juju_integration.gcs_credentials` | [Juju integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | Relates the config server to the optional GCS integrator. |
 | `juju_integration.client_certificates` | [Juju integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | Relates MongoDB applications to an optional client TLS certificates target. |
@@ -35,9 +37,7 @@
 | `juju_integration.ldap_certificate_transfer` | [Juju integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | Relates the config server and mongos to an optional LDAP certificate transfer target. |
 | `juju_integration.peer_certificates` | [Juju integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | Relates MongoDB applications to an optional peer TLS certificates target. |
 | `juju_integration.vault_kv` | [Juju integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | Relates MongoDB applications to an optional Vault KV target for encryption at rest. |
-| `juju_offer.mongos_client` | [Juju offer](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/offer) | Offers data-integrator's `mongos` endpoint when data-integrator is cross-model from mongos. |
 | `juju_offer.s3_credentials` | [Juju offer](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/offer) | Offers the S3 integrator credentials endpoint when S3 is cross-model. |
-| `juju_offer.gcs_credentials` | [Juju offer](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/offer) | Offers the GCS integrator credentials endpoint when GCS is cross-model. |
 | `terraform_data.validate_backup_integrations` | [Terraform data](https://developer.hashicorp.com/terraform/language/resources/terraform-data) | Ensures only one backup integrator is configured. |
 | `terraform_data.validate_cos_agent_integrations` | [Terraform data](https://developer.hashicorp.com/terraform/language/resources/terraform-data) | Ensures COS agent integration keys match MongoDB principal application names. |
 | `terraform_data.validate_ldap_integrations` | [Terraform data](https://developer.hashicorp.com/terraform/language/resources/terraform-data) | Ensures LDAP and LDAP certificate transfer are configured together. |
@@ -105,6 +105,6 @@ cos_agent_integrations = {
 | `app_names` | Names of all deployed applications. Optional integrators return `null` when omitted. |
 | `models` | Models and deployed components managed by this module, keyed by model UUID. |
 | `metadata` | Metadata of the product deployment. |
-| `provides` | Provided endpoint pointers from the sharded cluster component. |
-| `requires` | Required endpoint pointers from the sharded cluster component. |
-| `offers` | Cross-model offer endpoints created for product-owned applications and by the sharded cluster component, or `null` when not needed. |
+| `provides` | Provided endpoint pointers from the sharded control plane and shards. |
+| `requires` | Required endpoint pointers from the sharded control plane and shards. |
+| `offers` | Cross-model offer endpoints created for product-owned applications, or `null` when not needed. |

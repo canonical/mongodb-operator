@@ -28,8 +28,8 @@ locals {
       },
       {
         key        = "data_integrator"
-        model_uuid = juju_application.data_integrator.model_uuid
-        value      = juju_application.data_integrator
+        model_uuid = module.data_integrator.application.model_uuid
+        value      = module.data_integrator.application
       },
     ],
     var.s3_integrator != null ? [
@@ -42,8 +42,8 @@ locals {
     var.gcs_integrator != null ? [
       {
         key        = "gcs_integrator"
-        model_uuid = juju_application.gcs_integrator["deployed"].model_uuid
-        value      = juju_application.gcs_integrator["deployed"]
+        model_uuid = module.gcs_integrator[0].application.model_uuid
+        value      = module.gcs_integrator[0].application
       }
     ] : []
   )
