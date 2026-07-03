@@ -9,7 +9,10 @@ output "application" {
 output "offers" {
   description = "Map of all offers exposed by the single charm."
   value = {
-    s3_credentials = juju_offer.s3_credentials.url
+    s3_credentials = {
+      kind = "offer"
+      url  = juju_offer.s3_credentials.url
+    }
   }
 }
 

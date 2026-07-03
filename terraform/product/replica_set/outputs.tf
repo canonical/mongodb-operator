@@ -102,11 +102,12 @@ output "offers" {
       name = module.mongodb.application.name
       url  = juju_offer.mongodb_client["offered"].url
     }, null)
-    s3_integrator_credentials = try({
-      kind = "offer"
-      name = module.s3_integrator[0].application.name
-      url  = module.s3_integrator[0].offers.s3_credentials
-    }, null)
+    s3_integrator_credentials = try(merge(
+      module.s3_integrator[0].offers.s3_credentials,
+      {
+        name = module.s3_integrator[0].application.name
+      }
+    ), null)
     gcs_integrator_credentials = try({
       kind = "offer"
       name = juju_application.gcs_integrator["deployed"].name

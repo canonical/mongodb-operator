@@ -87,14 +87,14 @@ resource "juju_application" "gcs_integrator" {
 }
 
 resource "juju_secret" "s3_secret" {
-  count      = var.s3_integrator != null ? 1 : 0
+  count      = var.s3_integrator != null && var.s3_access_key != null && var.s3_secret_key != null ? 1 : 0
   model_uuid = var.s3_integrator.model_uuid
   name       = "${var.s3_integrator.app_name}-credentials"
   value = {
-    secret-key = var.s3_secret_key
     access-key = var.s3_access_key
+    secret-key = var.s3_secret_key
   }
-  info = "This is the access key and secret key for the S3 storage"
+  info = "S3 credentials for ${var.s3_integrator.app_name}"
 }
 
 module "s3_integrator" {
@@ -107,9 +107,9 @@ module "s3_integrator" {
   channel  = var.s3_integrator.channel
   config = merge(
     var.s3_integrator.config,
-    {
-      credentials = "secret:${juju_secret.s3_secret[0].secret_id}"
-    }
+    length(juju_secret.s3_secret) > 0 ? {
+      credentials = juju_secret.s3_secret[0].secret_uri
+    } : {}
   )
   constraints = var.s3_integrator.constraints
   model_uuid  = var.s3_integrator.model_uuid
@@ -119,7 +119,7 @@ module "s3_integrator" {
 
 resource "juju_access_secret" "s3_secret_access" {
   depends_on = [juju_secret.s3_secret, module.s3_integrator]
-  count      = var.s3_integrator != null ? 1 : 0
+  count      = length(juju_secret.s3_secret) > 0 ? 1 : 0
   model_uuid = var.s3_integrator.model_uuid
   applications = [
     module.s3_integrator[0].application.name

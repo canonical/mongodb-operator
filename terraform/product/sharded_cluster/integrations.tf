@@ -60,7 +60,7 @@ resource "juju_integration" "s3_credentials" {
   application {
     name      = var.s3_integrator.model_uuid == module.cluster.components["config_server"].model_uuid ? module.s3_integrator[0].provides.s3_credentials.name : null
     endpoint  = var.s3_integrator.model_uuid == module.cluster.components["config_server"].model_uuid ? module.s3_integrator[0].provides.s3_credentials.endpoint : null
-    offer_url = var.s3_integrator.model_uuid != module.cluster.components["config_server"].model_uuid ? module.s3_integrator[0].offers.s3_credentials : null
+    offer_url = var.s3_integrator.model_uuid != module.cluster.components["config_server"].model_uuid ? module.s3_integrator[0].offers.s3_credentials.url : null
   }
 
   depends_on = [

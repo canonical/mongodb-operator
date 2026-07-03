@@ -162,7 +162,7 @@ resource "juju_integration" "mongodb_s3" {
   application {
     name      = var.s3_integrator.model_uuid == module.mongodb.application.model_uuid ? module.s3_integrator[0].provides.s3_credentials.name : null
     endpoint  = var.s3_integrator.model_uuid == module.mongodb.application.model_uuid ? module.s3_integrator[0].provides.s3_credentials.endpoint : null
-    offer_url = var.s3_integrator.model_uuid != module.mongodb.application.model_uuid ? module.s3_integrator[0].offers.s3_credentials : null
+    offer_url = var.s3_integrator.model_uuid != module.mongodb.application.model_uuid ? module.s3_integrator[0].offers.s3_credentials.url : null
   }
   depends_on = [
     module.mongodb,

@@ -121,10 +121,7 @@ output "offers" {
         kind = "offer"
         url  = juju_offer.mongos_client["offered"].url
       }, null)
-      s3_credentials = try({
-        kind = "offer"
-        url  = module.s3_integrator[0].offers.s3_credentials
-      }, null)
+      s3_credentials = try(module.s3_integrator[0].offers.s3_credentials, null)
     }
   )
 }

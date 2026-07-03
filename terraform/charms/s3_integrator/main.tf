@@ -16,8 +16,8 @@ resource "juju_application" "s3_integrator" {
 }
 
 resource "juju_offer" "s3_credentials" {
-  name             = "s3-credentials"
   model_uuid       = var.model_uuid
-  application_name = var.app_name
+  application_name = juju_application.s3_integrator.name
   endpoints        = ["s3-credentials"]
+  depends_on       = [juju_application.s3_integrator]
 }
