@@ -136,13 +136,19 @@ module "data_integrator" {
 }
 
 module "gcs_integrator" {
-  count  = var.gcs_integrator != null ? 1 : 0
-  source = "../../charms/gcs_integrator"
+  depends_on = [juju_secret.gcs_secret]
+  count      = var.gcs_integrator != null ? 1 : 0
+  source     = "../../charms/gcs_integrator"
 
-  app_name           = var.gcs_integrator.app_name
-  base               = var.gcs_integrator.base
-  channel            = var.gcs_integrator.channel
-  config             = var.gcs_integrator.config
+  app_name = var.gcs_integrator.app_name
+  base     = var.gcs_integrator.base
+  channel  = var.gcs_integrator.channel
+  config = merge(
+    var.gcs_integrator.config,
+    length(juju_secret.gcs_secret) > 0 ? {
+      credentials = juju_secret.gcs_secret[0].secret_uri
+    } : {}
+  )
   constraints        = var.gcs_integrator.constraints
   endpoint_bindings  = var.gcs_integrator.endpoint_bindings
   machines           = var.gcs_integrator.machines
@@ -150,6 +156,26 @@ module "gcs_integrator" {
   revision           = var.gcs_integrator.revision
   storage_directives = var.gcs_integrator.storage_directives
   units              = var.gcs_integrator.units
+}
+
+resource "juju_secret" "gcs_secret" {
+  count      = var.gcs_integrator != null && var.gcs_secret_key != null ? 1 : 0
+  model_uuid = var.gcs_integrator.model_uuid
+  name       = "${var.gcs_integrator.app_name}-credentials"
+  value = {
+    secret-key = var.gcs_secret_key
+  }
+  info = "GCS credentials for ${var.gcs_integrator.app_name}"
+}
+
+resource "juju_access_secret" "gcs_secret_access" {
+  depends_on = [juju_secret.gcs_secret, module.gcs_integrator]
+  count      = length(juju_secret.gcs_secret) > 0 ? 1 : 0
+  model_uuid = var.gcs_integrator.model_uuid
+  applications = [
+    module.gcs_integrator[0].application.name
+  ]
+  secret_id = juju_secret.gcs_secret[0].secret_id
 }
 
 resource "juju_secret" "s3_secret" {

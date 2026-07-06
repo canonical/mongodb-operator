@@ -84,10 +84,15 @@ variable "data_integrator" {
 variable "gcs_integrator" {
   description = "Configuration for the GCS backup integrator"
   type = object({
-    app_name    = optional(string, "gcs-integrator")
-    base        = optional(string, "ubuntu@24.04")
-    channel     = optional(string, "1/stable")
-    config      = map(string)
+    app_name = optional(string, "gcs-integrator")
+    base     = optional(string, "ubuntu@24.04")
+    channel  = optional(string, "1/stable")
+    config = object({
+      bucket        = optional(string)
+      credentials   = optional(string)
+      path          = optional(string)
+      storage-class = optional(string)
+    })
     constraints = optional(string, "arch=amd64")
     endpoint_bindings = optional(set(object({
       space    = string
@@ -369,6 +374,13 @@ variable "s3_access_key" {
 
 variable "s3_secret_key" {
   description = "S3 secret key."
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "gcs_secret_key" {
+  description = "GCP service-account JSON key for GCS credentials."
   type        = string
   sensitive   = true
   default     = null

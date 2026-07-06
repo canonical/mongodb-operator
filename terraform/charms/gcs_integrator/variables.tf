@@ -22,9 +22,34 @@ variable "channel" {
 }
 
 variable "config" {
-  description = "Map for configuration options."
-  type        = map(string)
-  default     = {}
+  description = "GCS integrator charm configuration options."
+  type = object({
+    bucket        = optional(string)
+    credentials   = optional(string)
+    path          = optional(string)
+    storage-class = optional(string)
+  })
+  default = {}
+
+  validation {
+    condition     = var.config.bucket == null ? true : can(regex("^[a-z0-9-]{3,63}$", var.config.bucket))
+    error_message = "config.bucket must be 3-63 characters and contain only lowercase letters, digits, and hyphens."
+  }
+
+  validation {
+    condition     = var.config.credentials == null ? true : startswith(var.config.credentials, "secret:")
+    error_message = "config.credentials must be a Juju secret URI starting with 'secret:'."
+  }
+
+  validation {
+    condition     = var.config.path == null ? true : length(var.config.path) <= 1024 && !strcontains(var.config.path, "\u0000")
+    error_message = "config.path must be <=1024 characters and must not contain NULL bytes."
+  }
+
+  validation {
+    condition     = var.config["storage-class"] == null ? true : contains(["STANDARD", "NEARLINE", "COLDLINE", "ARCHIVE"], var.config["storage-class"])
+    error_message = "config.storage-class must be one of STANDARD, NEARLINE, COLDLINE, or ARCHIVE."
+  }
 }
 
 
