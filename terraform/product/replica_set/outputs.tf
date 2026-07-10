@@ -26,32 +26,6 @@ output "models" {
   }
 }
 
-
-# Provided integration endpoints
-output "provides" {
-  description = "Map of all \"provides\" endpoints"
-  value = {
-    mongodb_database  = module.mongodb.provides["database"]
-    mongodb_cos_agent = module.mongodb.provides["cos_agent"]
-  }
-}
-
-# Required integration endpoints
-output "requires" {
-  description = "Map of all \"requires\" endpoints"
-  value = {
-    mongodb_client_certificates       = module.mongodb.requires["client_certificates"]
-    mongodb_etcd                      = module.mongodb.requires["etcd"]
-    mongodb_gcs_credentials           = module.mongodb.requires["gcs_credentials"]
-    mongodb_ldap                      = module.mongodb.requires["ldap"]
-    mongodb_ldap_certificate_transfer = module.mongodb.requires["ldap_certificate_transfer"]
-    mongodb_peer_certificates         = module.mongodb.requires["peer_certificates"]
-    mongodb_s3_credentials            = module.mongodb.requires["s3_credentials"]
-    mongodb_vault_kv                  = module.mongodb.requires["vault_kv"]
-  }
-}
-
-# Offers
 output "offers" {
   description = "List of offers URLs."
   value = {
@@ -80,5 +54,27 @@ output "metadata" {
   value = {
     deployed_at = terraform_data.deployed_at.output
     updated_at  = timestamp()
+  }
+}
+
+output "provides" {
+  description = "Map of all \"provides\" endpoints"
+  value = {
+    mongodb_database  = module.mongodb.provides["database"]
+    mongodb_cos_agent = module.mongodb.provides["cos_agent"]
+  }
+}
+
+output "requires" {
+  description = "Map of all \"requires\" endpoints"
+  value = {
+    mongodb_client_certificates       = module.mongodb.requires["client_certificates"]
+    mongodb_etcd                      = module.mongodb.requires["etcd"]
+    mongodb_gcs_credentials           = module.mongodb.requires["gcs_credentials"]
+    mongodb_ldap                      = module.mongodb.requires["ldap"]
+    mongodb_ldap_certificate_transfer = module.mongodb.requires["ldap_certificate_transfer"]
+    mongodb_peer_certificates         = module.mongodb.requires["peer_certificates"]
+    mongodb_s3_credentials            = module.mongodb.requires["s3_credentials"]
+    mongodb_vault_kv                  = module.mongodb.requires["vault_kv"]
   }
 }

@@ -27,3 +27,8 @@ output "provides" {
     }
   }
 }
+
+output "requires" {
+  description = "Map of all \"requires\" endpoints"
+  value       = {}
+}

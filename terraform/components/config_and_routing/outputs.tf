@@ -17,6 +17,16 @@ output "app_names" {
   }
 }
 
+output "offers" {
+  description = "Map of all offer endpoints."
+  value = {
+    config_server = {
+      kind = "offer"
+      url  = juju_offer.config_server.url
+    }
+  }
+}
+
 output "provides" {
   description = "Map of all \"provides\" endpoints"
   value = {
@@ -44,15 +54,5 @@ output "requires" {
     mongos_ldap_certificate_transfer        = module.mongos.requires["ldap_certificate_transfer"]
     mongos_proxy                            = module.mongos.requires["mongos_proxy"]
     mongos_peer_certificates                = module.mongos.requires["peer_certificates"]
-  }
-}
-
-output "offers" {
-  description = "Map of all offer endpoints."
-  value = {
-    config_server = {
-      kind = "offer"
-      url  = juju_offer.config_server.url
-    }
   }
 }

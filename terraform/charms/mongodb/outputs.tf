@@ -6,6 +6,10 @@ output "application" {
   value       = juju_application.mongodb
 }
 
+output "offers" {
+  description = "Map of all offers exposed by the single charm."
+  value       = {}
+}
 
 # Provided integration endpoints
 output "provides" {

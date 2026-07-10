@@ -44,5 +44,6 @@ This is a Terraform module facilitating the deployment of the sharded components
 | `app_names` | Names of all deployed applications. |
 | `components` | All deployed applications, including the config server and mongos. |
 | `offers` | Map of offer endpoints. |
+| `metadata` | Metadata of the product deployment. |
 | `provides` | Map of all "provides" endpoints. |
 | `requires` | Map of all "requires" endpoints. Includes config server and mongos endpoints. |

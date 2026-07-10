@@ -6,6 +6,11 @@ output "application" {
   value       = juju_application.data_integrator
 }
 
+output "offers" {
+  description = "Map of all offers exposed by the single charm."
+  value       = {}
+}
+
 output "provides" {
   description = "Provides endpoints."
   value = {

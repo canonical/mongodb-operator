@@ -58,3 +58,4 @@ No modules.
 | `application` | Object representing the deployed application. |
 | `offers` | Map of all offers exposed by the single charm. |
 | `provides` | Map of all "provides" endpoints. |
+| `requires` | Map of all "requires" endpoints |
