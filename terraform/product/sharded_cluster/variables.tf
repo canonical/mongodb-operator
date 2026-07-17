@@ -5,6 +5,36 @@
 # Applications
 #--------------------------------------------------------
 
+variable "backups_integrator" {
+  description = "Optional configuration for the backup integrator, including the model in which it is deployed."
+  type = object({
+    storage_type = optional(string, "s3")
+    config       = map(string)
+    channel      = optional(string, null)
+    base         = optional(string, "ubuntu@24.04")
+    revision     = optional(number, null)
+    constraints  = optional(string, "arch=amd64")
+    machines     = optional(set(string), [])
+    model_uuid   = string
+  })
+  default = null
+
+  validation {
+    condition     = try(contains(["s3", "gcs"], var.backups_integrator.storage_type), true)
+    error_message = "backups_integrator allows one of the values: 's3', 'gcs' for storage_type."
+  }
+
+  validation {
+    condition     = try(length(var.backups_integrator.machines) <= 1, true)
+    error_message = "Machine count should be at most 1"
+  }
+
+  validation {
+    condition     = try(var.backups_integrator.model_uuid != "", true)
+    error_message = "backups_integrator.model_uuid must not be empty."
+  }
+}
+
 variable "config_server" {
   description = "Config server app definition"
   type = object({
@@ -78,35 +108,6 @@ variable "data_integrator" {
       && contains(["default", "admin"], lookup(var.data_integrator.config, "extra-user-roles", "admin"))
     )
     error_message = "data-integrator config must contain a non-empty 'database-name' and 'extra-user-roles' must be either 'default' or 'admin'."
-  }
-}
-
-variable "backups_integrator" {
-  description = "Configuration for the backup integrator, including the model in which it is deployed."
-  type = object({
-    storage_type = optional(string, "s3")
-    config       = map(string)
-    channel      = optional(string, null)
-    base         = optional(string, "ubuntu@24.04")
-    revision     = optional(number, null)
-    constraints  = optional(string, "arch=amd64")
-    machines     = optional(set(string), [])
-    model_uuid   = string
-  })
-
-  validation {
-    condition     = contains(["s3", "gcs"], var.backups_integrator.storage_type)
-    error_message = "backups_integrator allows one of the values: 's3', 'gcs' for storage_type."
-  }
-
-  validation {
-    condition     = length(var.backups_integrator.machines) <= 1
-    error_message = "Machine count should be at most 1"
-  }
-
-  validation {
-    condition     = var.backups_integrator.model_uuid != ""
-    error_message = "backups_integrator.model_uuid must not be empty."
   }
 }
 

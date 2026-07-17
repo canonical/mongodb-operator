@@ -29,7 +29,7 @@ resource "juju_integration" "config_server_shards" {
 
 # Integrators
 resource "juju_integration" "gcs_credentials" {
-  for_each   = var.backups_integrator.storage_type == "gcs" ? { "integrated" = true } : {}
+  for_each   = local.gcs_credentials_enabled ? { "integrated" = true } : {}
   model_uuid = module.config_and_routing.components["config_server"].model_uuid
 
   application {
@@ -69,7 +69,7 @@ resource "juju_integration" "mongos_client" {
 }
 
 resource "juju_integration" "s3_credentials" {
-  for_each   = var.backups_integrator.storage_type == "s3" ? { "integrated" = true } : {}
+  for_each   = local.s3_credentials_enabled ? { "integrated" = true } : {}
   model_uuid = module.config_and_routing.components["config_server"].model_uuid
 
   application {

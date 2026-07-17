@@ -151,7 +151,7 @@ resource "juju_integration" "mongodb_data" {
 }
 
 resource "juju_integration" "mongodb_s3" {
-  for_each = var.backups_integrator.storage_type == "s3" ? { "integrated" = true } : {}
+  for_each = local.s3_integrator_enabled ? { "integrated" = true } : {}
 
   model_uuid = module.mongodb.application.model_uuid
 
@@ -171,7 +171,7 @@ resource "juju_integration" "mongodb_s3" {
 }
 
 resource "juju_integration" "mongodb_gcs" {
-  for_each = var.backups_integrator.storage_type == "gcs" ? { "integrated" = true } : {}
+  for_each = local.gcs_integrator_enabled ? { "integrated" = true } : {}
 
   model_uuid = module.mongodb.application.model_uuid
 

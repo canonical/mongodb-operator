@@ -186,7 +186,7 @@ module "data_integrator" {
 
 module "gcs_integrator" {
   depends_on = [juju_secret.gcs_secret]
-  count      = var.backups_integrator.storage_type == "gcs" ? 1 : 0
+  count      = local.gcs_credentials_enabled ? 1 : 0
   source     = "../../charms/gcs_integrator"
 
   app_name = "gcs-integrator"
@@ -206,7 +206,7 @@ module "gcs_integrator" {
 }
 
 resource "juju_secret" "gcs_secret" {
-  count      = var.backups_integrator.storage_type == "gcs" && var.gcs_secret_key != null ? 1 : 0
+  count      = local.gcs_credentials_enabled && var.gcs_secret_key != null ? 1 : 0
   model_uuid = var.backups_integrator.model_uuid
   name       = "gcs-integrator-credentials"
   value = {
@@ -226,7 +226,7 @@ resource "juju_access_secret" "gcs_secret_access" {
 }
 
 resource "juju_secret" "s3_secret" {
-  count      = var.backups_integrator.storage_type == "s3" && var.s3_access_key != null && var.s3_secret_key != null ? 1 : 0
+  count      = local.s3_credentials_enabled && var.s3_access_key != null && var.s3_secret_key != null ? 1 : 0
   model_uuid = var.backups_integrator.model_uuid
   name       = "s3-integrator-credentials"
   value = {
@@ -238,7 +238,7 @@ resource "juju_secret" "s3_secret" {
 
 module "s3_integrator" {
   depends_on = [juju_secret.s3_secret]
-  count      = var.backups_integrator.storage_type == "s3" ? 1 : 0
+  count      = local.s3_credentials_enabled ? 1 : 0
   source     = "../../charms/s3_integrator"
 
   app_name = "s3-integrator"

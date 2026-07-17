@@ -2,14 +2,14 @@
 # See LICENSE file for licensing details.
 
 locals {
-  backups_integrator_channel  = coalesce(var.backups_integrator.channel, var.backups_integrator.storage_type == "s3" ? "2/stable" : "1/stable")
+  backups_integrator_channel  = var.backups_integrator != null ? coalesce(var.backups_integrator.channel, var.backups_integrator.storage_type == "s3" ? "2/stable" : "1/stable") : null
   client_certificates_enabled = var.client_certificates_integration != null ? true : false
   encryption_at_rest_enabled  = var.vault_kv_integration != null ? true : false
   etcd_rolling_ops_enabled    = var.etcd_integration != null ? true : false
-  gcs_credentials_enabled     = var.backups_integrator.storage_type == "gcs"
+  gcs_credentials_enabled     = try(var.backups_integrator.storage_type == "gcs", false)
   ldap_enabled                = var.ldap_integration != null && var.ldap_certificate_transfer_integration != null ? true : false
   peer_certificates_enabled   = var.peer_certificates_integration != null ? true : false
-  s3_credentials_enabled      = var.backups_integrator.storage_type == "s3"
+  s3_credentials_enabled      = try(var.backups_integrator.storage_type == "s3", false)
 
   shards = [
     for app in coalesce(var.shards, []) : app if app != null
@@ -179,14 +179,14 @@ locals {
         value      = module.shards[shard_key].application
       }
     ] : [],
-    var.backups_integrator.storage_type == "s3" ? [
+    local.s3_credentials_enabled ? [
       {
         key        = "s3_integrator"
         model_uuid = module.s3_integrator[0].application.model_uuid
         value      = module.s3_integrator[0].application
       }
     ] : [],
-    var.backups_integrator.storage_type == "gcs" ? [
+    local.gcs_credentials_enabled ? [
       {
         key        = "gcs_integrator"
         model_uuid = module.gcs_integrator[0].application.model_uuid

@@ -2,7 +2,9 @@
 # See LICENSE file for licensing details.
 
 locals {
-  backups_integrator_channel    = coalesce(var.backups_integrator.channel, var.backups_integrator.storage_type == "s3" ? "2/stable" : "1/stable")
+  backups_integrator_channel    = var.backups_integrator != null ? coalesce(var.backups_integrator.channel, var.backups_integrator.storage_type == "s3" ? "2/stable" : "1/stable") : null
+  gcs_integrator_enabled        = try(var.backups_integrator.storage_type == "gcs", false)
+  s3_integrator_enabled         = try(var.backups_integrator.storage_type == "s3", false)
   cos_agent_enabled             = var.cos_agent_integration != null ? true : false
   encryption_at_rest_enabled    = var.vault_kv_integration != null ? true : false
   encryption_at_rest_configured = contains(keys(var.mongodb.config), "enable-encryption-at-rest")
@@ -29,14 +31,14 @@ locals {
         value      = module.data_integrator.application
       },
     ],
-    var.backups_integrator.storage_type == "s3" ? [
+    local.s3_integrator_enabled ? [
       {
         key        = "s3_integrator"
         model_uuid = module.s3_integrator[0].application.model_uuid
         value      = module.s3_integrator[0].application
       }
     ] : [],
-    var.backups_integrator.storage_type == "gcs" ? [
+    local.gcs_integrator_enabled ? [
       {
         key        = "gcs_integrator"
         model_uuid = module.gcs_integrator[0].application.model_uuid
