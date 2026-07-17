@@ -116,3 +116,29 @@ cos_agent_integrations = {
 | `provides` | Provided endpoint pointers from the sharded control plane and shards. |
 | `requires` | Required endpoint pointers from the sharded control plane and shards. |
 | `offers` | Cross-model offer endpoints created for product-owned applications, or `null` when not needed. |
+
+## Configure TLS private keys
+
+The module can configure custom private keys for client-to-server and peer-to-peer TLS on the config server. Set them in a `.tfvars` file using heredocs:
+
+```hcl
+tls_client_private_key = <<-EOT
+-----BEGIN PRIVATE KEY-----
+<config-server client private key contents>
+-----END PRIVATE KEY-----
+EOT
+
+tls_peer_private_key = <<-EOT
+-----BEGIN PRIVATE KEY-----
+<config-server peer private key contents>
+-----END PRIVATE KEY-----
+EOT
+```
+
+Each value must be a valid PEM-encoded private key. For example, generate separate RSA keys with:
+
+```bash
+openssl genrsa -out <private-key-name>.pem 3072
+```
+
+When a key is provided, the module creates a Juju secret containing a `private-key` field in the config-server model, grants only the config-server application access to it, and sets the corresponding `tls-client-private-key` or `tls-peer-private-key` charm configuration to the secret URI. These inputs do not configure mongos or shard applications. When an input is `null`, the module does not create that secret or override that configuration option.
