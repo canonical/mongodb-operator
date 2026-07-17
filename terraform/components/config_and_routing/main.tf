@@ -24,7 +24,7 @@ module "config_server" {
 }
 
 module "mongos" {
-  source = "git::https://github.com/canonical/mongos-operator//terraform?ref=DPE-10295"
+  source = "git::https://github.com/canonical/mongos-operator//terraform?ref=8/edge"
 
   app_name          = var.mongos.app_name
   base              = var.mongos.base

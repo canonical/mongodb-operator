@@ -21,7 +21,7 @@ This is a Terraform module facilitating the deployment of the sharded components
 | Name | Source | Version |
 |------|--------|---------|
 | `config_server` | ../../charms/mongodb | n/a |
-| `mongos` | git::https://github.com/canonical/mongos-operator//terraform?ref=DPE-10295 | n/a |
+| `mongos` | git::https://github.com/canonical/mongos-operator//terraform?ref=8/edge | n/a |
 
 ## Resources
 
