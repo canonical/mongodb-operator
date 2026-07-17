@@ -41,38 +41,27 @@ variable "data_integrator" {
   }
 }
 
-variable "gcs_integrator" {
-  description = "Configuration for the GCS backup integrator"
+variable "backups_integrator" {
+  description = "Configuration for the backup integrator, including the model in which it is deployed."
   type = object({
-    app_name = optional(string, "gcs-integrator")
-    base     = optional(string, "ubuntu@24.04")
-    channel  = optional(string, "1/stable")
-    config = object({
-      bucket        = optional(string)
-      credentials   = optional(string)
-      path          = optional(string)
-      storage-class = optional(string)
-    })
-    constraints = optional(string, "arch=amd64")
-    endpoint_bindings = optional(set(object({
-      space    = string
-      endpoint = optional(string)
-    })), [])
-    machines           = optional(set(string), null)
-    model_uuid         = string
-    revision           = optional(number, null)
-    storage_directives = optional(map(string), {})
-    units              = optional(number, 1)
+    storage_type = optional(string, "s3")
+    config       = map(string)
+    channel      = optional(string, null)
+    base         = optional(string, "ubuntu@24.04")
+    revision     = optional(number, null)
+    constraints  = optional(string, "arch=amd64")
+    machines     = optional(set(string), [])
+    model_uuid   = string
   })
-  default = null
 
   validation {
-    condition     = try(var.gcs_integrator.machines == null || length(var.gcs_integrator.machines) <= 1, true)
-    error_message = "Machines count should be at most 1"
+    condition     = contains(["s3", "gcs"], var.backups_integrator.storage_type)
+    error_message = "backups_integrator allows one of the values: 's3', 'gcs' for storage_type."
   }
+
   validation {
-    condition     = try(var.gcs_integrator.units == 1, true)
-    error_message = "Units count should be 1"
+    condition     = length(var.backups_integrator.machines) <= 1
+    error_message = "Machine count should be at most 1"
   }
 }
 
@@ -99,39 +88,6 @@ variable "mongodb" {
     storage_directives = optional(map(string), {})
     units              = optional(number, 3)
   })
-}
-
-
-variable "s3_integrator" {
-  description = "Configuration for the S3 backup integrator"
-  type = object({
-    app_name = optional(string, "s3-integrator")
-    base     = optional(string, "ubuntu@24.04")
-    channel  = optional(string, "2/stable")
-    config = optional(object({
-      attributes                          = optional(string)
-      bucket                              = optional(string)
-      endpoint                            = optional(string)
-      experimental-delete-older-than-days = optional(number)
-      path                                = optional(string)
-      region                              = optional(string)
-      s3-api-version                      = optional(string)
-      s3-uri-style                        = optional(string)
-      storage-class                       = optional(string)
-      tls-ca-chain                        = optional(string)
-      credentials                         = optional(string)
-    }), {})
-    constraints = optional(string, "arch=amd64")
-    model_uuid  = string
-    revision    = optional(number, null)
-    units       = optional(number, 1)
-  })
-  default = null
-
-  validation {
-    condition     = try(var.s3_integrator.units == 1, true)
-    error_message = "Units count should be 1"
-  }
 }
 
 
@@ -334,7 +290,7 @@ variable "peer_certificates_integration" {
 }
 
 variable "vault_kv_integration" {
-  description = "Optional Vault KV integration target for encryption at rest. Use kind = \"endpoint\" with name/endpoint for same-model integrations, or kind = \"offer\" with url for cross-model integrations."
+  description = "Optional Vault KV integration target for encryption at rest. Must be configured together with mongodb.config[\"enable-encryption-at-rest\"]. Use kind = \"endpoint\" with name/endpoint for same-model integrations, or kind = \"offer\" with url for cross-model integrations."
   type = object({
     kind     = string
     name     = optional(string, null)
@@ -374,6 +330,19 @@ variable "vault_kv_integration" {
 # Config
 #--------------------------------------------------------
 
+variable "logging_config" {
+  description = "Logging configuration to be used"
+  type        = string
+  default     = "<root>=INFO"
+}
+
+variable "gcs_secret_key" {
+  description = "GCP service-account JSON key for GCS credentials."
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
 variable "s3_access_key" {
   description = "AWS S3 Access key."
   type        = string
@@ -388,15 +357,16 @@ variable "s3_secret_key" {
   default     = null
 }
 
-variable "gcs_secret_key" {
-  description = "GCP service-account JSON key for GCS credentials."
+variable "tls_client_private_key" {
+  description = "Private key for client-to-server TLS certificates. When set, the module stores it in a Juju secret and configures MongoDB with the secret URI."
   type        = string
   sensitive   = true
   default     = null
 }
 
-variable "logging_config" {
-  description = "Logging configuration to be used"
+variable "tls_peer_private_key" {
+  description = "Private key for peer-to-peer TLS certificates. When set, the module stores it in a Juju secret and configures MongoDB with the secret URI."
   type        = string
-  default     = "<root>=INFO"
+  sensitive   = true
+  default     = null
 }

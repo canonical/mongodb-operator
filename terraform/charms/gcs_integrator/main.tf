@@ -15,7 +15,7 @@ resource "juju_application" "gcs_integrator" {
   model_uuid         = var.model_uuid
   name               = var.app_name
   storage_directives = var.storage_directives
-  units              = var.units
+  units              = (var.machines == null || length(var.machines) == 0) ? var.units : null
 }
 
 resource "juju_offer" "gcs_credentials" {

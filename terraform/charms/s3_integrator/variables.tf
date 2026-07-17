@@ -52,6 +52,12 @@ variable "model_uuid" {
   nullable    = false
 }
 
+variable "machines" {
+  description = "List of machines for placement"
+  type        = set(string)
+  default     = []
+}
+
 
 variable "revision" {
   description = "Revision number of the charm."

@@ -2,13 +2,14 @@
 # See LICENSE file for licensing details.
 
 locals {
+  backups_integrator_channel  = coalesce(var.backups_integrator.channel, var.backups_integrator.storage_type == "s3" ? "2/stable" : "1/stable")
   client_certificates_enabled = var.client_certificates_integration != null ? true : false
   encryption_at_rest_enabled  = var.vault_kv_integration != null ? true : false
   etcd_rolling_ops_enabled    = var.etcd_integration != null ? true : false
-  gcs_credentials_enabled     = var.gcs_integrator != null ? true : false
+  gcs_credentials_enabled     = var.backups_integrator.storage_type == "gcs"
   ldap_enabled                = var.ldap_integration != null && var.ldap_certificate_transfer_integration != null ? true : false
   peer_certificates_enabled   = var.peer_certificates_integration != null ? true : false
-  s3_credentials_enabled      = var.s3_integrator != null ? true : false
+  s3_credentials_enabled      = var.backups_integrator.storage_type == "s3"
 
   shards = [
     for app in coalesce(var.shards, []) : app if app != null
@@ -31,11 +32,6 @@ locals {
     { app_name = var.config_server.app_name, model_uuid = var.config_server.model_uuid },
     { app_name = var.mongos.app_name, model_uuid = var.config_server.model_uuid },
   ]
-
-  backup_integrations = compact([
-    var.s3_integrator != null ? "s3_integrator" : "",
-    var.gcs_integrator != null ? "gcs_integrator" : "",
-  ])
 
   ldap_integrations = compact([
     var.ldap_integration != null ? "ldap_integration" : "",
@@ -77,10 +73,21 @@ locals {
     app if app.model_uuid != var.peer_certificates_integration.model_uuid
   ] : []
 
-  vault_kv_apps = local.encryption_at_rest_enabled ? local.mongodb_apps : []
+  encryption_at_rest_apps = concat(
+    lookup(var.config_server.config, "enable-encryption-at-rest", "false") == "true" ? [
+      { app_name = var.config_server.app_name, model_uuid = var.config_server.model_uuid }
+    ] : [],
+    [
+      for shard in local.shards :
+      { app_name = shard.app_name, model_uuid = shard.model_uuid }
+      if lookup(shard.config, "enable-encryption-at-rest", "false") == "true"
+    ]
+  )
+
+  vault_kv_apps = local.encryption_at_rest_enabled ? local.encryption_at_rest_apps : []
 
   vault_kv_cross_model_apps = local.encryption_at_rest_enabled ? [
-    for app in local.mongodb_apps :
+    for app in local.vault_kv_apps :
     app if app.model_uuid != var.vault_kv_integration.model_uuid
   ] : []
 
@@ -172,14 +179,14 @@ locals {
         value      = module.shards[shard_key].application
       }
     ] : [],
-    var.s3_integrator != null ? [
+    var.backups_integrator.storage_type == "s3" ? [
       {
         key        = "s3_integrator"
         model_uuid = module.s3_integrator[0].application.model_uuid
         value      = module.s3_integrator[0].application
       }
     ] : [],
-    var.gcs_integrator != null ? [
+    var.backups_integrator.storage_type == "gcs" ? [
       {
         key        = "gcs_integrator"
         model_uuid = module.gcs_integrator[0].application.model_uuid

@@ -9,16 +9,63 @@
 module "config_and_routing" {
   source = "../../components/config_and_routing"
 
+  depends_on = [juju_secret.tls_client_private_key, juju_secret.tls_peer_private_key]
+
   config_server = merge(
     var.config_server,
     {
       config = merge(
         var.config_server.config,
-        local.encryption_at_rest_enabled ? { "enable-encryption-at-rest" : "true" } : {}
+        length(juju_secret.tls_client_private_key) > 0 ? {
+          "tls-client-private-key" = juju_secret.tls_client_private_key[0].secret_uri
+        } : {},
+        length(juju_secret.tls_peer_private_key) > 0 ? {
+          "tls-peer-private-key" = juju_secret.tls_peer_private_key[0].secret_uri
+        } : {}
       )
     }
   )
   mongos = var.mongos
+}
+
+resource "juju_secret" "tls_client_private_key" {
+  count      = var.tls_client_private_key != null ? 1 : 0
+  model_uuid = var.config_server.model_uuid
+  name       = "${var.config_server.app_name}-tls-client-private-key"
+  value = {
+    private-key = var.tls_client_private_key
+  }
+  info = "TLS client private key for ${var.config_server.app_name}"
+}
+
+resource "juju_access_secret" "tls_client_private_key" {
+  depends_on = [juju_secret.tls_client_private_key, module.config_and_routing]
+  count      = length(juju_secret.tls_client_private_key) > 0 ? 1 : 0
+  model_uuid = var.config_server.model_uuid
+  applications = [
+    module.config_and_routing.components["config_server"].name
+  ]
+  secret_id = juju_secret.tls_client_private_key[0].secret_id
+}
+
+resource "juju_secret" "tls_peer_private_key" {
+  count      = var.tls_peer_private_key != null ? 1 : 0
+  model_uuid = var.config_server.model_uuid
+  name       = "${var.config_server.app_name}-tls-peer-private-key"
+  value = {
+    private-key = var.tls_peer_private_key
+  }
+  info = "TLS peer private key for ${var.config_server.app_name}"
+}
+
+resource "juju_access_secret" "tls_peer_private_key" {
+  depends_on = [juju_secret.tls_peer_private_key, module.config_and_routing]
+  count      = length(juju_secret.tls_peer_private_key) > 0 ? 1 : 0
+  model_uuid = var.config_server.model_uuid
+  applications = [
+    module.config_and_routing.components["config_server"].name
+  ]
+  secret_id = juju_secret.tls_peer_private_key[0].secret_id
 }
 
 # shard apps
@@ -31,8 +78,7 @@ module "shards" {
   channel  = each.value.channel
   config = merge(
     each.value.config,
-    { "role" : "shard" },
-    local.encryption_at_rest_enabled ? { "enable-encryption-at-rest" : "true" } : {}
+    { "role" : "shard" }
   )
   constraints        = each.value.constraints
   endpoint_bindings  = each.value.endpoint_bindings
@@ -44,13 +90,16 @@ module "shards" {
   units              = each.value.units
 }
 
-resource "terraform_data" "validate_backup_integrations" {
-  input = local.backup_integrations
+resource "terraform_data" "validate_encryption_at_rest" {
+  input = {
+    encryption_at_rest_apps = local.encryption_at_rest_apps
+    vault_kv_integration    = var.vault_kv_integration
+  }
 
   lifecycle {
     precondition {
-      condition     = length(local.backup_integrations) <= 1
-      error_message = "Only one backup integrator can be configured: set either s3_integrator or gcs_integrator, not both."
+      condition     = (length(local.encryption_at_rest_apps) > 0) == (var.vault_kv_integration != null)
+      error_message = "Encryption at rest must be configured together: provide vault_kv_integration when enable-encryption-at-rest is true for any MongoDB application, or configure neither."
     }
   }
 }
@@ -137,41 +186,39 @@ module "data_integrator" {
 
 module "gcs_integrator" {
   depends_on = [juju_secret.gcs_secret]
-  count      = var.gcs_integrator != null ? 1 : 0
+  count      = var.backups_integrator.storage_type == "gcs" ? 1 : 0
   source     = "../../charms/gcs_integrator"
 
-  app_name = var.gcs_integrator.app_name
-  base     = var.gcs_integrator.base
-  channel  = var.gcs_integrator.channel
+  app_name = "gcs-integrator"
+  base     = var.backups_integrator.base
+  channel  = local.backups_integrator_channel
   config = merge(
-    var.gcs_integrator.config,
+    var.backups_integrator.config,
     length(juju_secret.gcs_secret) > 0 ? {
       credentials = juju_secret.gcs_secret[0].secret_uri
     } : {}
   )
-  constraints        = var.gcs_integrator.constraints
-  endpoint_bindings  = var.gcs_integrator.endpoint_bindings
-  machines           = var.gcs_integrator.machines
-  model_uuid         = var.gcs_integrator.model_uuid
-  revision           = var.gcs_integrator.revision
-  storage_directives = var.gcs_integrator.storage_directives
-  units              = var.gcs_integrator.units
+  constraints = var.backups_integrator.constraints
+  machines    = var.backups_integrator.machines
+  model_uuid  = var.backups_integrator.model_uuid
+  revision    = var.backups_integrator.revision
+  units       = 1
 }
 
 resource "juju_secret" "gcs_secret" {
-  count      = var.gcs_integrator != null && var.gcs_secret_key != null ? 1 : 0
-  model_uuid = var.gcs_integrator.model_uuid
-  name       = "${var.gcs_integrator.app_name}-credentials"
+  count      = var.backups_integrator.storage_type == "gcs" && var.gcs_secret_key != null ? 1 : 0
+  model_uuid = var.backups_integrator.model_uuid
+  name       = "gcs-integrator-credentials"
   value = {
     secret-key = var.gcs_secret_key
   }
-  info = "GCS credentials for ${var.gcs_integrator.app_name}"
+  info = "GCS credentials for gcs-integrator"
 }
 
 resource "juju_access_secret" "gcs_secret_access" {
   depends_on = [juju_secret.gcs_secret, module.gcs_integrator]
   count      = length(juju_secret.gcs_secret) > 0 ? 1 : 0
-  model_uuid = var.gcs_integrator.model_uuid
+  model_uuid = var.backups_integrator.model_uuid
   applications = [
     module.gcs_integrator[0].application.name
   ]
@@ -179,40 +226,41 @@ resource "juju_access_secret" "gcs_secret_access" {
 }
 
 resource "juju_secret" "s3_secret" {
-  count      = var.s3_integrator != null && var.s3_access_key != null && var.s3_secret_key != null ? 1 : 0
-  model_uuid = var.s3_integrator.model_uuid
-  name       = "${var.s3_integrator.app_name}-credentials"
+  count      = var.backups_integrator.storage_type == "s3" && var.s3_access_key != null && var.s3_secret_key != null ? 1 : 0
+  model_uuid = var.backups_integrator.model_uuid
+  name       = "s3-integrator-credentials"
   value = {
     access-key = var.s3_access_key
     secret-key = var.s3_secret_key
   }
-  info = "S3 credentials for ${var.s3_integrator.app_name}"
+  info = "S3 credentials for s3-integrator"
 }
 
 module "s3_integrator" {
   depends_on = [juju_secret.s3_secret]
-  count      = var.s3_integrator != null ? 1 : 0
+  count      = var.backups_integrator.storage_type == "s3" ? 1 : 0
   source     = "../../charms/s3_integrator"
 
-  app_name = var.s3_integrator.app_name
-  base     = var.s3_integrator.base
-  channel  = var.s3_integrator.channel
+  app_name = "s3-integrator"
+  base     = var.backups_integrator.base
+  channel  = local.backups_integrator_channel
   config = merge(
-    var.s3_integrator.config,
+    var.backups_integrator.config,
     length(juju_secret.s3_secret) > 0 ? {
       credentials = juju_secret.s3_secret[0].secret_uri
     } : {}
   )
-  constraints = var.s3_integrator.constraints
-  model_uuid  = var.s3_integrator.model_uuid
-  revision    = var.s3_integrator.revision
-  units       = var.s3_integrator.units
+  constraints = var.backups_integrator.constraints
+  machines    = var.backups_integrator.machines
+  model_uuid  = var.backups_integrator.model_uuid
+  revision    = var.backups_integrator.revision
+  units       = 1
 }
 
 resource "juju_access_secret" "s3_secret_access" {
   depends_on = [juju_secret.s3_secret, module.s3_integrator]
   count      = length(juju_secret.s3_secret) > 0 ? 1 : 0
-  model_uuid = var.s3_integrator.model_uuid
+  model_uuid = var.backups_integrator.model_uuid
   applications = [
     module.s3_integrator[0].application.name
   ]

@@ -151,7 +151,7 @@ resource "juju_integration" "mongodb_data" {
 }
 
 resource "juju_integration" "mongodb_s3" {
-  for_each = var.s3_integrator != null ? { "integrated" = true } : {}
+  for_each = var.backups_integrator.storage_type == "s3" ? { "integrated" = true } : {}
 
   model_uuid = module.mongodb.application.model_uuid
 
@@ -160,9 +160,9 @@ resource "juju_integration" "mongodb_s3" {
     endpoint = module.mongodb.requires["s3_credentials"].endpoint
   }
   application {
-    name      = var.s3_integrator.model_uuid == module.mongodb.application.model_uuid ? module.s3_integrator[0].provides.s3_credentials.name : null
-    endpoint  = var.s3_integrator.model_uuid == module.mongodb.application.model_uuid ? module.s3_integrator[0].provides.s3_credentials.endpoint : null
-    offer_url = var.s3_integrator.model_uuid != module.mongodb.application.model_uuid ? module.s3_integrator[0].offers.s3_credentials.url : null
+    name      = var.backups_integrator.model_uuid == module.mongodb.application.model_uuid ? module.s3_integrator[0].provides.s3_credentials.name : null
+    endpoint  = var.backups_integrator.model_uuid == module.mongodb.application.model_uuid ? module.s3_integrator[0].provides.s3_credentials.endpoint : null
+    offer_url = var.backups_integrator.model_uuid != module.mongodb.application.model_uuid ? module.s3_integrator[0].offers.s3_credentials.url : null
   }
   depends_on = [
     module.mongodb,
@@ -171,7 +171,7 @@ resource "juju_integration" "mongodb_s3" {
 }
 
 resource "juju_integration" "mongodb_gcs" {
-  for_each = var.gcs_integrator != null ? { "integrated" = true } : {}
+  for_each = var.backups_integrator.storage_type == "gcs" ? { "integrated" = true } : {}
 
   model_uuid = module.mongodb.application.model_uuid
 
@@ -180,9 +180,9 @@ resource "juju_integration" "mongodb_gcs" {
     endpoint = module.mongodb.requires["gcs_credentials"].endpoint
   }
   application {
-    name      = var.gcs_integrator.model_uuid == module.mongodb.application.model_uuid ? module.gcs_integrator[0].provides.gcs_credentials.name : null
-    endpoint  = var.gcs_integrator.model_uuid == module.mongodb.application.model_uuid ? module.gcs_integrator[0].provides.gcs_credentials.endpoint : null
-    offer_url = var.gcs_integrator.model_uuid != module.mongodb.application.model_uuid ? module.gcs_integrator[0].offers.gcs_credentials.url : null
+    name      = var.backups_integrator.model_uuid == module.mongodb.application.model_uuid ? module.gcs_integrator[0].provides.gcs_credentials.name : null
+    endpoint  = var.backups_integrator.model_uuid == module.mongodb.application.model_uuid ? module.gcs_integrator[0].provides.gcs_credentials.endpoint : null
+    offer_url = var.backups_integrator.model_uuid != module.mongodb.application.model_uuid ? module.gcs_integrator[0].offers.gcs_credentials.url : null
   }
   depends_on = [
     module.mongodb,

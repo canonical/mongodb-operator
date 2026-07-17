@@ -29,7 +29,7 @@ resource "juju_integration" "config_server_shards" {
 
 # Integrators
 resource "juju_integration" "gcs_credentials" {
-  for_each   = var.gcs_integrator != null ? { "integrated" = true } : {}
+  for_each   = var.backups_integrator.storage_type == "gcs" ? { "integrated" = true } : {}
   model_uuid = module.config_and_routing.components["config_server"].model_uuid
 
   application {
@@ -38,9 +38,9 @@ resource "juju_integration" "gcs_credentials" {
   }
 
   application {
-    name      = var.gcs_integrator.model_uuid == module.config_and_routing.components["config_server"].model_uuid ? module.gcs_integrator[0].provides.gcs_credentials.name : null
-    endpoint  = var.gcs_integrator.model_uuid == module.config_and_routing.components["config_server"].model_uuid ? module.gcs_integrator[0].provides.gcs_credentials.endpoint : null
-    offer_url = var.gcs_integrator.model_uuid != module.config_and_routing.components["config_server"].model_uuid ? module.gcs_integrator[0].offers.gcs_credentials.url : null
+    name      = var.backups_integrator.model_uuid == module.config_and_routing.components["config_server"].model_uuid ? module.gcs_integrator[0].provides.gcs_credentials.name : null
+    endpoint  = var.backups_integrator.model_uuid == module.config_and_routing.components["config_server"].model_uuid ? module.gcs_integrator[0].provides.gcs_credentials.endpoint : null
+    offer_url = var.backups_integrator.model_uuid != module.config_and_routing.components["config_server"].model_uuid ? module.gcs_integrator[0].offers.gcs_credentials.url : null
   }
 
   depends_on = [
@@ -69,7 +69,7 @@ resource "juju_integration" "mongos_client" {
 }
 
 resource "juju_integration" "s3_credentials" {
-  for_each   = var.s3_integrator != null ? { "integrated" = true } : {}
+  for_each   = var.backups_integrator.storage_type == "s3" ? { "integrated" = true } : {}
   model_uuid = module.config_and_routing.components["config_server"].model_uuid
 
   application {
@@ -78,9 +78,9 @@ resource "juju_integration" "s3_credentials" {
   }
 
   application {
-    name      = var.s3_integrator.model_uuid == module.config_and_routing.components["config_server"].model_uuid ? module.s3_integrator[0].provides.s3_credentials.name : null
-    endpoint  = var.s3_integrator.model_uuid == module.config_and_routing.components["config_server"].model_uuid ? module.s3_integrator[0].provides.s3_credentials.endpoint : null
-    offer_url = var.s3_integrator.model_uuid != module.config_and_routing.components["config_server"].model_uuid ? module.s3_integrator[0].offers.s3_credentials.url : null
+    name      = var.backups_integrator.model_uuid == module.config_and_routing.components["config_server"].model_uuid ? module.s3_integrator[0].provides.s3_credentials.name : null
+    endpoint  = var.backups_integrator.model_uuid == module.config_and_routing.components["config_server"].model_uuid ? module.s3_integrator[0].provides.s3_credentials.endpoint : null
+    offer_url = var.backups_integrator.model_uuid != module.config_and_routing.components["config_server"].model_uuid ? module.s3_integrator[0].offers.s3_credentials.url : null
   }
 
   depends_on = [

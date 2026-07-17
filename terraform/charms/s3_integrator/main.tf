@@ -10,9 +10,10 @@ resource "juju_application" "s3_integrator" {
   }
   config      = var.config
   constraints = var.constraints
+  machines    = (var.machines == null || length(var.machines) == 0) ? null : var.machines
   name        = var.app_name
   model_uuid  = var.model_uuid
-  units       = var.units
+  units       = (var.machines == null || length(var.machines) == 0) ? var.units : null
 }
 
 resource "juju_offer" "s3_credentials" {
