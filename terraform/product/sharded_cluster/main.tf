@@ -169,7 +169,7 @@ resource "terraform_data" "validate_cross_model_integration_urls" {
 
 # Integrator apps
 module "data_integrator" {
-  source = "../../charms/data_integrator"
+  source = "git::https://github.com/canonical/data-integrator.git//terraform/charm/data_integrator?ref=main"
 
   app_name           = var.data_integrator.app_name
   base               = var.data_integrator.base
@@ -187,7 +187,7 @@ module "data_integrator" {
 module "gcs_integrator" {
   depends_on = [juju_secret.gcs_secret]
   count      = local.gcs_credentials_enabled ? 1 : 0
-  source     = "../../charms/gcs_integrator"
+  source     = "git::https://github.com/canonical/object-storage-integrator.git//gcs/terraform/charm/gcs_integrator?ref=main"
 
   app_name = "gcs-integrator"
   base     = var.backups_integrator.base
@@ -239,7 +239,7 @@ resource "juju_secret" "s3_secret" {
 module "s3_integrator" {
   depends_on = [juju_secret.s3_secret]
   count      = local.s3_credentials_enabled ? 1 : 0
-  source     = "../../charms/s3_integrator"
+  source     = "git::https://github.com/canonical/object-storage-integrator.git//s3/terraform/charm/s3_integrator?ref=main"
 
   app_name = "s3-integrator"
   base     = var.backups_integrator.base

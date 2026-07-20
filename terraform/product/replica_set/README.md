@@ -16,10 +16,10 @@
 
 | Name | Source | Version |
 |------|--------|---------|
-| `data_integrator` | ../../charms/data_integrator | n/a |
-| `gcs_integrator` | ../../charms/gcs_integrator | n/a |
+| `data_integrator` | git::https://github.com/canonical/data-integrator.git//terraform/charm/data_integrator | main |
+| `gcs_integrator` | git::https://github.com/canonical/object-storage-integrator.git//gcs/terraform/charm/gcs_integrator | main |
 | `mongodb` | ../../charms/mongodb | n/a |
-| `s3_integrator` | ../../charms/s3_integrator | n/a |
+| `s3_integrator` | git::https://github.com/canonical/object-storage-integrator.git//s3/terraform/charm/s3_integrator | main |
 
 ## Resources
 
