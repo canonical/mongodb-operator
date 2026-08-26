@@ -3,6 +3,7 @@
 
 output "components" {
   description = "All deployed applications."
+  sensitive   = true
   value = merge(
     module.config_and_routing.components,
     {
@@ -20,6 +21,7 @@ output "components" {
 
 output "models" {
   description = "Models and deployed components managed by this module."
+  sensitive   = true
   value = {
     for model_uuid in distinct([for component in local.model_components : component.model_uuid]) :
     model_uuid => {

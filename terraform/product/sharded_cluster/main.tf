@@ -16,10 +16,10 @@ module "config_and_routing" {
     {
       config = merge(
         var.config_server.config,
-        length(juju_secret.tls_client_private_key) > 0 ? {
+        var.tls_client_private_key != null ? {
           "tls-client-private-key" = juju_secret.tls_client_private_key[0].secret_uri
         } : {},
-        length(juju_secret.tls_peer_private_key) > 0 ? {
+        var.tls_peer_private_key != null ? {
           "tls-peer-private-key" = juju_secret.tls_peer_private_key[0].secret_uri
         } : {}
       )
@@ -40,7 +40,7 @@ resource "juju_secret" "tls_client_private_key" {
 
 resource "juju_access_secret" "tls_client_private_key" {
   depends_on = [juju_secret.tls_client_private_key, module.config_and_routing]
-  count      = length(juju_secret.tls_client_private_key) > 0 ? 1 : 0
+  count      = var.tls_client_private_key != null ? 1 : 0
   model_uuid = var.config_server.model_uuid
   applications = [
     module.config_and_routing.components["config_server"].name
@@ -60,7 +60,7 @@ resource "juju_secret" "tls_peer_private_key" {
 
 resource "juju_access_secret" "tls_peer_private_key" {
   depends_on = [juju_secret.tls_peer_private_key, module.config_and_routing]
-  count      = length(juju_secret.tls_peer_private_key) > 0 ? 1 : 0
+  count      = var.tls_peer_private_key != null ? 1 : 0
   model_uuid = var.config_server.model_uuid
   applications = [
     module.config_and_routing.components["config_server"].name
@@ -194,7 +194,7 @@ module "gcs_integrator" {
   channel  = local.backups_integrator_channel
   config = merge(
     var.backups_integrator.config,
-    length(juju_secret.gcs_secret) > 0 ? {
+    local.gcs_credentials_enabled && var.gcs_secret_key != null ? {
       credentials = juju_secret.gcs_secret[0].secret_uri
     } : {}
   )
@@ -217,7 +217,7 @@ resource "juju_secret" "gcs_secret" {
 
 resource "juju_access_secret" "gcs_secret_access" {
   depends_on = [juju_secret.gcs_secret, module.gcs_integrator]
-  count      = length(juju_secret.gcs_secret) > 0 ? 1 : 0
+  count      = local.gcs_credentials_enabled && var.gcs_secret_key != null ? 1 : 0
   model_uuid = var.backups_integrator.model_uuid
   applications = [
     module.gcs_integrator[0].application.name
@@ -246,7 +246,7 @@ module "s3_integrator" {
   channel  = local.backups_integrator_channel
   config = merge(
     var.backups_integrator.config,
-    length(juju_secret.s3_secret) > 0 ? {
+    local.s3_credentials_enabled && var.s3_access_key != null && var.s3_secret_key != null ? {
       credentials = juju_secret.s3_secret[0].secret_uri
     } : {}
   )
@@ -259,7 +259,7 @@ module "s3_integrator" {
 
 resource "juju_access_secret" "s3_secret_access" {
   depends_on = [juju_secret.s3_secret, module.s3_integrator]
-  count      = length(juju_secret.s3_secret) > 0 ? 1 : 0
+  count      = local.s3_credentials_enabled && var.s3_access_key != null && var.s3_secret_key != null ? 1 : 0
   model_uuid = var.backups_integrator.model_uuid
   applications = [
     module.s3_integrator[0].application.name
