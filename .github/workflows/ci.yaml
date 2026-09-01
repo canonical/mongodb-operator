@@ -30,7 +30,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Install tox & poetry
@@ -41,15 +41,46 @@ jobs:
         run: tox run -e lint
     permissions: {}
 
-  terraform-test:
-    name: Terraform - Validation and replica-set product
-    continue-on-error: true
-    runs-on: ubuntu-22.04
-    timeout-minutes: 120
+  terraform-lint:
+    name: Terraform - Lint / format / validate modules
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     permissions: {}
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install terraform snap
+        run: |
+          sudo snap install terraform --channel=latest/stable --classic
+
+      - name: Install tox
+        run: pipx install tox
+
+      - name: Lint / format / validate TF modules
+        run: tox run -e terraform-lint
+
+  terraform-product-test:
+    name: Terraform - ${{ matrix.product_module }} product module
+    needs:
+      - terraform-lint
+    continue-on-error: true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    permissions: {}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - product_module: replica-set
+            apply_script: .github/scripts/terraform-apply-replica-set.sh
+          - product_module: sharded
+            apply_script: .github/scripts/terraform-apply-sharded.sh
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -70,21 +101,9 @@ jobs:
         run: |
           sudo snap install terraform --channel=latest/stable --classic
 
-      - name: Lint / format / validate TF modules
-        run: |
-          pushd ./terraform
-          for dir in charm/replica_set charm/sharded product/replica_set product/sharded; do
-            (cd "${dir}" && terraform init && terraform fmt && terraform validate)
-          done
-          popd
-
-      - name: run checks - prepare
-        run: |
-          sudo snap install juju --channel=3.6
-
       - name: LXD setup
         run: |
-          sudo snap refresh lxd --channel=latest/stable
+          sudo snap install lxd --channel=latest/stable
           sudo adduser "$USER" 'lxd'
           # `newgrp` does not work in GitHub Actions; use `sg` instead
           sg 'lxd' -c "lxd waitready"
@@ -95,31 +114,22 @@ jobs:
 
       - name: Juju setup
         run: |
+          sudo snap install juju --channel=3.6
           mkdir -p ~/.local/share/juju
           sg 'lxd' -c "juju bootstrap 'localhost' --config model-logs-size=10G"
           juju model-defaults logging-config='<root>=INFO; unit=DEBUG'
-          juju add-model test
+          juju add-model "test-${{ matrix.product_module }}"
 
-      - name: Terraform deploy - replica-set product module
-        run: |
-          MODEL=$(juju show-model test | grep "model-uuid" | awk '{split($0, a, ": "); print a[2]}')
-          pushd ./terraform/product/replica_set/
-          terraform apply \
-            -var="mongodb={\"model_uuid\": \"${MODEL}\"}" \
-            -var="self_signed_certificates={\"model_uuid\": \"$MODEL\"}" \
-            -var="grafana_agent={\"model_uuid\": \"$MODEL\"}" \
-            -var="s3_integrator={\"model_uuid\": \"$MODEL\", \"config\": {\"bucket\": \"test\"}}" \
-            -var="data_integrator={\"model_uuid\": \"$MODEL\"}" \
-            -auto-approve
-          popd
+      - name: Terraform deploy - ${{ matrix.product_module }} product module
+        run: bash "${{ matrix.apply_script }}" "test-${{ matrix.product_module }}"
 
       - name: Wait for juju deployment
         run: |
           # TODO - remove this when juju wait-for starts reporting the up to date status
-          until timeout 2m juju wait-for model test --query='life=="alive" && status=="available"'
+          until timeout 2m juju wait-for model "test-${{ matrix.product_module }}" --query='life=="alive" && status=="available"'
           do
             echo "Retrying in 5 seconds..."
-            juju status -m test
+            juju status -m "test-${{ matrix.product_module }}"
             sleep 5
           done
 
