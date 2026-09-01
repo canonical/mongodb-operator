@@ -1,104 +1,52 @@
-# Copyright 2024 Canonical Ltd.
+# Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-variable "mongodb" {
-  description = "MongoDB app definition"
-  type = object({
-    app_name          = optional(string, "mongodb")
-    model_uuid        = string
-    config            = optional(map(string), { "role" : "replication" })
-    channel           = optional(string, "6/stable")
-    base              = optional(string, "ubuntu@22.04")
-    revision          = optional(string, null)
-    units             = optional(number, 3)
-    constraints       = optional(string, "arch=amd64")
-    machines          = optional(set(string), null)
-    storage           = optional(map(string), {})
-    endpoint_bindings = optional(set(map(string)), [])
-    expose            = optional(map(string), {})
-  })
-}
+#--------------------------------------------------------
+# Applications
+#--------------------------------------------------------
 
-variable "self_signed_certificates" {
-  description = "Configuration for the self-signed-certificates app"
+variable "backups_integrator" {
+  description = "Optional configuration for the backup integrator, including the model in which it is deployed."
   type = object({
-    app_name          = optional(string, "self-signed-certificates")
-    model_uuid        = string
-    config            = optional(map(string), { "ca-common-name" : "CA" })
-    channel           = optional(string, "latest/edge")
-    base              = optional(string, "ubuntu@22.04")
-    revision          = optional(string, null)
-    units             = optional(number, 1)
-    constraints       = optional(string, "arch=amd64")
-    machines          = optional(set(string), null)
-    storage           = optional(map(string), {})
-    endpoint_bindings = optional(set(map(string)), [])
+    storage_type = optional(string, "s3")
+    config       = map(string)
+    channel      = optional(string, "2/stable")
+    base         = optional(string, "ubuntu@24.04")
+    revision     = optional(number, null)
+    constraints  = optional(string, "arch=amd64")
+    machines     = optional(set(string), [])
+    model_uuid   = string
   })
+  default = null
 
   validation {
-    condition     = var.self_signed_certificates == null || var.self_signed_certificates.machines == null || length(var.self_signed_certificates.machines) <= 1
+    condition     = try(contains(["s3"], var.backups_integrator.storage_type), true)
+    error_message = "backups_integrator only allows 's3' for storage_type."
+  }
+
+  validation {
+    condition     = try(length(var.backups_integrator.machines) <= 1, true)
     error_message = "Machine count should be at most 1"
-  }
-}
-
-variable "grafana_agent" {
-  description = "Configuration for the grafana-agent"
-  type = object({
-    app_name   = optional(string, "grafana-agent")
-    model_uuid = string
-    config     = optional(map(string), {})
-    channel    = optional(string, "1/stable")
-    base       = optional(string, "ubuntu@22.04")
-    revision   = optional(string, null)
-  })
-
-  validation {
-    condition     = var.grafana_agent.model_uuid == var.mongodb.model_uuid
-    error_message = "'grafana-agent' must be deployed in the same model as mongodb."
-  }
-}
-
-# Integrators
-variable "s3_integrator" {
-  description = "Configuration for the backup integrator"
-  type = object({
-    app_name          = optional(string, "s3-integrator")
-    model_uuid        = string
-    config            = map(string)
-    channel           = optional(string, "latest/edge")
-    base              = optional(string, "ubuntu@22.04")
-    revision          = optional(string, null)
-    units             = optional(number, 1)
-    constraints       = optional(string, "arch=amd64")
-    machines          = optional(set(string), null)
-    storage           = optional(map(string), {})
-    endpoint_bindings = optional(set(map(string)), [])
-  })
-
-  validation {
-    condition     = var.s3_integrator.machines == null || length(var.s3_integrator.machines) <= 1
-    error_message = "Machines count should be at most 1"
-  }
-  validation {
-    condition     = var.s3_integrator.units == 1
-    error_message = "Units count should be 1"
   }
 }
 
 variable "data_integrator" {
   description = "Configuration for the data-integrator"
   type = object({
-    app_name          = optional(string, "data-integrator")
-    model_uuid        = string
-    config            = optional(map(string), { "database-name" : "test", "extra-user-roles" : "admin" })
-    channel           = optional(string, "latest/edge")
-    base              = optional(string, "ubuntu@22.04")
-    revision          = optional(string, null)
-    units             = optional(number, 1)
-    constraints       = optional(string, "arch=amd64")
-    machines          = optional(set(string), null)
-    storage           = optional(map(string), {})
-    endpoint_bindings = optional(set(map(string)), [])
+    app_name    = optional(string, "data-integrator")
+    base        = optional(string, "ubuntu@24.04")
+    channel     = optional(string, "latest/stable")
+    config      = optional(map(string), { "database-name" : "test", "extra-user-roles" : "admin" })
+    constraints = optional(string, "arch=amd64")
+    endpoint_bindings = optional(set(object({
+      space    = string
+      endpoint = optional(string)
+    })), [])
+    machines           = optional(set(string), null)
+    model_uuid         = string
+    revision           = optional(number, null)
+    storage_directives = optional(map(string), {})
+    units              = optional(number, 1)
   })
 
   validation {
@@ -116,4 +64,178 @@ variable "data_integrator" {
     )
     error_message = "data-integrator config must contain a non-empty 'database-name' and 'extra-user-roles' must be either 'default' or 'admin'."
   }
+}
+
+variable "mongodb" {
+  description = "MongoDB app definition"
+  type = object({
+    app_name    = optional(string, "mongodb")
+    base        = optional(string, "ubuntu@22.04")
+    channel     = optional(string, "6/edge")
+    config      = optional(map(string), { "role" : "replication" })
+    constraints = optional(string, "arch=amd64")
+    endpoint_bindings = optional(set(object({
+      space    = string
+      endpoint = optional(string)
+    })), [])
+    expose = optional(list(object({
+      cidrs     = optional(string)
+      endpoints = optional(string)
+      spaces    = optional(string)
+    })), [])
+    machines           = optional(set(string), null)
+    model_uuid         = string
+    revision           = optional(number, null)
+    storage_directives = optional(map(string), {})
+    units              = optional(number, 3)
+  })
+}
+
+
+#--------------------------------------------------------
+# Integrations
+#--------------------------------------------------------
+
+variable "certificates_integration" {
+  description = "Optional TLS certificates integration target. Use kind = \"endpoint\" with name/endpoint for same-model integrations, or kind = \"offer\" with url for cross-model integrations."
+  type = object({
+    kind     = string
+    name     = optional(string, null)
+    endpoint = optional(string, null)
+    url      = optional(string, null)
+  })
+  default = null
+
+  validation {
+    condition     = var.certificates_integration == null || contains(["endpoint", "offer"], var.certificates_integration.kind)
+    error_message = "certificates_integration.kind must be either \"endpoint\" or \"offer\"."
+  }
+
+  validation {
+    condition = (
+      var.certificates_integration == null ? true :
+      var.certificates_integration.kind == "endpoint" ? (
+        var.certificates_integration.name != null && var.certificates_integration.name != "" &&
+        var.certificates_integration.endpoint != null && var.certificates_integration.endpoint != ""
+      ) : true
+    )
+    error_message = "Both 'name' and 'endpoint' attributes must be provided for an in-model integration."
+  }
+
+  validation {
+    condition = (
+      var.certificates_integration == null ? true :
+      var.certificates_integration.kind == "offer" ? (
+        var.certificates_integration.url != null && var.certificates_integration.url != ""
+      ) : true
+    )
+    error_message = "The 'url' attribute must be provided for a cross-model integration."
+  }
+}
+
+variable "cos_agent_integration" {
+  description = "Optional same-model COS agent integration target."
+  type = object({
+    name     = string
+    endpoint = string
+  })
+  default = null
+}
+
+variable "ldap_integration" {
+  description = "Optional LDAP integration target. Must be configured together with ldap_certificate_transfer_integration. Use kind = \"endpoint\" with name/endpoint for same-model integrations, or kind = \"offer\" with url for cross-model integrations."
+  type = object({
+    kind     = string
+    name     = optional(string, null)
+    endpoint = optional(string, null)
+    url      = optional(string, null)
+  })
+  default = null
+
+  validation {
+    condition     = var.ldap_integration == null || contains(["endpoint", "offer"], var.ldap_integration.kind)
+    error_message = "ldap_integration.kind must be either \"endpoint\" or \"offer\"."
+  }
+
+  validation {
+    condition = (
+      var.ldap_integration == null ? true :
+      var.ldap_integration.kind == "endpoint" ? (
+        var.ldap_integration.name != null && var.ldap_integration.name != "" &&
+        var.ldap_integration.endpoint != null && var.ldap_integration.endpoint != ""
+      ) : true
+    )
+    error_message = "Both 'name' and 'endpoint' attributes must be provided for an in-model integration."
+  }
+
+  validation {
+    condition = (
+      var.ldap_integration == null ? true :
+      var.ldap_integration.kind == "offer" ? (
+        var.ldap_integration.url != null && var.ldap_integration.url != ""
+      ) : true
+    )
+    error_message = "The 'url' attribute must be provided for a cross-model integration."
+  }
+}
+
+variable "ldap_certificate_transfer_integration" {
+  description = "Optional LDAP certificate transfer integration target. Must be configured together with ldap_integration. Use kind = \"endpoint\" with name/endpoint for same-model integrations, or kind = \"offer\" with url for cross-model integrations."
+  type = object({
+    kind     = string
+    name     = optional(string, null)
+    endpoint = optional(string, null)
+    url      = optional(string, null)
+  })
+  default = null
+
+  validation {
+    condition     = var.ldap_certificate_transfer_integration == null || contains(["endpoint", "offer"], var.ldap_certificate_transfer_integration.kind)
+    error_message = "ldap_certificate_transfer_integration.kind must be either \"endpoint\" or \"offer\"."
+  }
+
+  validation {
+    condition = (
+      var.ldap_certificate_transfer_integration == null ? true :
+      var.ldap_certificate_transfer_integration.kind == "endpoint" ? (
+        var.ldap_certificate_transfer_integration.name != null && var.ldap_certificate_transfer_integration.name != "" &&
+        var.ldap_certificate_transfer_integration.endpoint != null && var.ldap_certificate_transfer_integration.endpoint != ""
+      ) : true
+    )
+    error_message = "Both 'name' and 'endpoint' attributes must be provided for an in-model integration."
+  }
+
+  validation {
+    condition = (
+      var.ldap_certificate_transfer_integration == null ? true :
+      var.ldap_certificate_transfer_integration.kind == "offer" ? (
+        var.ldap_certificate_transfer_integration.url != null && var.ldap_certificate_transfer_integration.url != ""
+      ) : true
+    )
+    error_message = "The 'url' attribute must be provided for a cross-model integration."
+  }
+}
+
+#--------------------------------------------------------
+# Config
+#--------------------------------------------------------
+
+variable "logging_config" {
+  description = "Logging configuration to be used"
+  type        = string
+  default     = "<root>=INFO"
+}
+
+variable "s3_access_key" {
+  description = "AWS S3 Access key."
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "s3_secret_key" {
+  description = "AWS S3 Secret key."
+  type        = string
+  sensitive   = true
+  default     = null
 }
