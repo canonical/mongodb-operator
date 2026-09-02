@@ -6,7 +6,7 @@ variable "config_server" {
   type = object({
     app_name    = string
     base        = optional(string, "ubuntu@22.04")
-    channel     = optional(string, "6/edge")
+    channel     = optional(string, "6/stable")
     config      = optional(map(string), { "role" : "config-server" })
     constraints = optional(string, "arch=amd64")
     endpoint_bindings = optional(set(object({
@@ -41,7 +41,7 @@ variable "mongos" {
   type = object({
     app_name = optional(string, "mongos")
     base     = optional(string, "ubuntu@22.04")
-    channel  = optional(string, "6/edge")
+    channel  = optional(string, "6/stable")
     config   = optional(map(string), {})
     endpoint_bindings = optional(set(object({
       space    = string

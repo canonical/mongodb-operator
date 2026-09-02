@@ -71,7 +71,7 @@ variable "mongodb" {
   type = object({
     app_name    = optional(string, "mongodb")
     base        = optional(string, "ubuntu@22.04")
-    channel     = optional(string, "6/edge")
+    channel     = optional(string, "6/stable")
     config      = optional(map(string), { "role" : "replication" })
     constraints = optional(string, "arch=amd64")
     endpoint_bindings = optional(set(object({

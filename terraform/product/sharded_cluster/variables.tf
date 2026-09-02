@@ -40,7 +40,7 @@ variable "config_server" {
   type = object({
     app_name    = optional(string, "config-server")
     base        = optional(string, "ubuntu@22.04")
-    channel     = optional(string, "6/edge")
+    channel     = optional(string, "6/stable")
     config      = optional(map(string), { "role" : "config-server" })
     constraints = optional(string, "arch=amd64")
     endpoint_bindings = optional(set(object({
@@ -75,7 +75,7 @@ variable "data_integrator" {
   type = object({
     app_name    = optional(string, "data-integrator")
     base        = optional(string, "ubuntu@22.04")
-    channel     = optional(string, "latest/edge")
+    channel     = optional(string, "latest/stable")
     config      = optional(map(string), { "database-name" : "test", "extra-user-roles" : "admin" })
     constraints = optional(string, "arch=amd64")
     endpoint_bindings = optional(set(object({
@@ -120,7 +120,7 @@ variable "mongos" {
   type = object({
     app_name = optional(string, "mongos")
     base     = optional(string, "ubuntu@22.04")
-    channel  = optional(string, "6/edge")
+    channel  = optional(string, "6/stable")
     config   = optional(map(string), {})
     endpoint_bindings = optional(set(object({
       space    = string
@@ -141,7 +141,7 @@ variable "shards" {
   type = list(object({
     app_name    = string
     base        = optional(string, "ubuntu@22.04")
-    channel     = optional(string, "6/edge")
+    channel     = optional(string, "6/stable")
     config      = optional(map(string), { "role" : "shard" })
     constraints = optional(string, "arch=amd64")
     endpoint_bindings = optional(set(object({
