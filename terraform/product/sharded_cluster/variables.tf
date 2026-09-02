@@ -111,7 +111,7 @@ variable "data_integrator" {
   }
   validation {
     condition     = var.data_integrator.base == "ubuntu@22.04"
-    error_message = "Data integrator base must be 'ubuntu@22.04' to match the config-server."
+    error_message = "Data integrator base must be 'ubuntu@22.04' to match mongos."
   }
 }
 
