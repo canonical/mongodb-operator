@@ -74,7 +74,7 @@ variable "data_integrator" {
   description = "Configuration for the data-integrator"
   type = object({
     app_name    = optional(string, "data-integrator")
-    base        = optional(string, "ubuntu@24.04")
+    base        = optional(string, "ubuntu@22.04")
     channel     = optional(string, "latest/edge")
     config      = optional(map(string), { "database-name" : "test", "extra-user-roles" : "admin" })
     constraints = optional(string, "arch=amd64")
@@ -108,6 +108,10 @@ variable "data_integrator" {
       && contains(["default", "admin"], lookup(var.data_integrator.config, "extra-user-roles", "admin"))
     )
     error_message = "data-integrator config must contain a non-empty 'database-name' and 'extra-user-roles' must be either 'default' or 'admin'."
+  }
+  validation {
+    condition     = var.data_integrator.base == "ubuntu@22.04"
+    error_message = "Data integrator base must be 'ubuntu@22.04' to match the config-server."
   }
 }
 
