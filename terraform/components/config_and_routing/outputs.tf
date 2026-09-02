@@ -1,0 +1,52 @@
+# Copyright 2026 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+output "components" {
+  description = "All deployed applications."
+  value = {
+    config_server = module.config_server.application
+    mongos        = module.mongos.application
+  }
+}
+
+output "app_names" {
+  description = "Names of of all deployed applications."
+  value = {
+    config_server = module.config_server.application.name
+    mongos        = module.mongos.application.name
+  }
+}
+
+output "offers" {
+  description = "Map of all offer endpoints."
+  value = {
+    config_server = {
+      kind = "offer"
+      url  = juju_offer.config_server.url
+    }
+  }
+}
+
+output "provides" {
+  description = "Map of all \"provides\" endpoints"
+  value = {
+    config_server           = module.config_server.provides["config_server"]
+    config_server_cluster   = module.config_server.provides["cluster"]
+    config_server_cos_agent = module.config_server.provides["cos_agent"]
+  }
+}
+
+output "requires" {
+  description = "Map of all \"requires\" endpoints"
+  value = {
+    config_server_certificates              = module.config_server.requires["certificates"]
+    config_server_ldap                      = module.config_server.requires["ldap"]
+    config_server_ldap_certificate_transfer = module.config_server.requires["ldap_certificate_transfer"]
+    config_server_s3_credentials            = module.config_server.requires["s3_credentials"]
+    mongos_certificates                     = module.mongos.requires["certificates"]
+    mongos_cluster                          = module.mongos.requires["cluster"]
+    mongos_ldap                             = module.mongos.requires["ldap"]
+    mongos_ldap_certificate_transfer        = module.mongos.requires["ldap_certificate_transfer"]
+    mongos_proxy                            = module.mongos.requires["mongos_proxy"]
+  }
+}
