@@ -20,12 +20,16 @@ series:
 provides:
   database:
     interface: mongodb_client
+    optional: true
   cos-agent:
     interface: cos_agent
+    optional: true
   config-server:
     interface: shards
+    optional: true
   cluster:
     interface: config-server
+    optional: true
 
 storage:
   mongodb:
@@ -52,13 +56,16 @@ requires:
   certificates:
     interface: tls-certificates
     limit: 1
+    optional: true
   s3-credentials:
     interface: s3
     limit: 1
+    optional: true
   sharding:
     interface: shards
     # shards can only relate to one config-server
     limit: 1
+    optional: true
   ldap:
     interface: ldap
     limit: 1
