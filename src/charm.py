@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Charm code for MongoDB service."""
+
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
