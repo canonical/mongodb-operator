@@ -2,14 +2,14 @@
 
 | Name | Version |
 |------|---------|
-| `Terraform` | >= 1.6 |
-| `Juju provider` | ~> 2.0 |
+| `Terraform` | >= 1.11 |
+| `Juju provider` | >= 2.2.1 |
 
 ## Providers
 
 | Name | Version |
 | ---- | ------- |
-| `juju` | ~> 2.0 |
+| `juju` | >= 2.2.1 |
 
 
 ## Module
@@ -60,12 +60,23 @@
 | `etcd_integration` | Optional etcd integration target for MongoDB rolling operations. Use kind = "endpoint" with name/endpoint for same-model integrations, or kind = "offer" with url for cross-model integrations. | <pre>object({<br/>    kind     = string<br/>    name     = optional(string, null)<br/>    endpoint = optional(string, null)<br/>    url      = optional(string, null)<br/>  })</pre> | `null` | no |
 | `ldap_integration` | Optional LDAP integration target. Must be configured together with ldap_certificate_transfer_integration. Use kind = "endpoint" with name/endpoint for same-model integrations, or kind = "offer" with url for cross-model integrations. | <pre>object({<br/>    kind     = string<br/>    name     = optional(string, null)<br/>    endpoint = optional(string, null)<br/>    url      = optional(string, null)<br/>  })</pre> | `null` | no |
 | `ldap_certificate_transfer_integration` | Optional LDAP certificate transfer integration target. Must be configured together with ldap_integration. Use kind = "endpoint" with name/endpoint for same-model integrations, or kind = "offer" with url for cross-model integrations. | <pre>object({<br/>    kind     = string<br/>    name     = optional(string, null)<br/>    endpoint = optional(string, null)<br/>    url      = optional(string, null)<br/>  })</pre> | `null` | no |
-| `gcs_secret_key` | GCP service-account JSON key for GCS credentials. When set, this module creates a Juju secret and passes its URI as `gcs_integrator.config.credentials`. | `string` | `null` | no |
+| `gcs_secret_key` | Ephemeral credential; supply through `TF_VAR_gcs_secret_key` or `-var` at plan and apply. | `string` | `null` | no |
 | `logging_config` | Logging configuration to be used | `string` | `"<root>=INFO"` | no |
 | `peer_certificates_integration` | Optional peer TLS certificates integration target. Use kind = "endpoint" with name/endpoint for same-model integrations, or kind = "offer" with url for cross-model integrations. | <pre>object({<br/>    kind     = string<br/>    name     = optional(string, null)<br/>    endpoint = optional(string, null)<br/>    url      = optional(string, null)<br/>  })</pre> | `null` | no |
-| `tls_client_private_key` | Private key for client-to-server TLS certificates. When set, the module stores it in a Juju secret and configures MongoDB with the secret URI. | `string` | `null` | no |
-| `tls_peer_private_key` | Private key for peer-to-peer TLS certificates. When set, the module stores it in a Juju secret and configures MongoDB with the secret URI. | `string` | `null` | no |
+| `tls_client_private_key` | Ephemeral credential; supply through `TF_VAR_tls_client_private_key` or `-var` at plan and apply. | `string` | `null` | no |
+| `tls_peer_private_key` | Ephemeral credential; supply through `TF_VAR_tls_peer_private_key` or `-var` at plan and apply. | `string` | `null` | no |
 | `vault_kv_integration` | Optional Vault KV integration target for encryption at rest. Must be configured together with mongodb.config["enable-encryption-at-rest"]. Use kind = "endpoint" with name/endpoint for same-model integrations, or kind = "offer" with url for cross-model integrations. | <pre>object({<br/>    kind     = string<br/>    name     = optional(string, null)<br/>    endpoint = optional(string, null)<br/>    url      = optional(string, null)<br/>  })</pre> | `null` | no |
+
+| `s3_access_key` | Ephemeral S3 credential; supply at plan and apply. | `string` | `null` | no |
+| `s3_secret_key` | Ephemeral S3 credential; supply at plan and apply. | `string` | `null` | no |
+| `tls_client_private_key_version` | 0 creates no secret; 1 creates it; increment to rotate. Ignored when `tls_client_private_key_secret_uri` is set. | `number` | `0` | no |
+| `tls_client_private_key_secret_uri` | Existing Juju secret URI; takes priority over the credential and version. | `string` | `null` | no |
+| `tls_peer_private_key_version` | 0 creates no secret; 1 creates it; increment to rotate. Ignored when `tls_peer_private_key_secret_uri` is set. | `number` | `0` | no |
+| `tls_peer_private_key_secret_uri` | Existing Juju secret URI; takes priority over the credential and version. | `string` | `null` | no |
+| `s3_secret_version` | 0 creates no secret; 1 creates it; increment to rotate. Ignored when `s3_secret_uri` is set. | `number` | `0` | no |
+| `s3_secret_uri` | Existing Juju secret URI; takes priority over the credential and version. | `string` | `null` | no |
+| `gcs_secret_version` | 0 creates no secret; 1 creates it; increment to rotate. Ignored when `gcs_secret_uri` is set. | `number` | `0` | no |
+| `gcs_secret_uri` | Existing Juju secret URI; takes priority over the credential and version. | `string` | `null` | no |
 
 Offer-style integration targets use this shape:
 
@@ -91,28 +102,34 @@ Use `kind = "endpoint"` with `name` and `endpoint` for same-model relations. Use
 | requires | MongoDB required endpoint pointers, including S3 and GCS credentials endpoints. |
 | `offers` | Cross-model offer URLs created by this module, or `null` when not needed. |
 
-## Configure TLS private keys
+## Configure secrets
 
-The module can configure custom private keys for client-to-server and peer-to-peer TLS. Set them in a `.tfvars` file using heredocs:
+Credentials are sensitive, ephemeral inputs. Secret resources use write-only values so Terraform omits credentials from state and saved plans. Supply credentials through `TF_VAR_<input>` or `-var` at both plan and apply; avoid credential `.tfvars` files.
 
-```hcl
-tls_client_private_key = <<-EOT
------BEGIN PRIVATE KEY-----
-<client private key contents>
------END PRIVATE KEY-----
-EOT
+| Credential inputs | Version input | Existing secret URI input | Required secret keys |
+| --- | --- | --- | --- |
+| `tls_client_private_key` | `tls_client_private_key_version` | `tls_client_private_key_secret_uri` | `private-key` (PEM) |
+| `tls_peer_private_key` | `tls_peer_private_key_version` | `tls_peer_private_key_secret_uri` | `private-key` (PEM) |
+| `s3_access_key`, `s3_secret_key` | `s3_secret_version` | `s3_secret_uri` | `access-key`, `secret-key` |
+| `gcs_secret_key` | `gcs_secret_version` | `gcs_secret_uri` | `secret-key` (service-account JSON) |
 
-tls_peer_private_key = <<-EOT
------BEGIN PRIVATE KEY-----
-<peer private key contents>
------END PRIVATE KEY-----
-EOT
-```
+Set a version to `1` to create a secret. Increment the version and supply the new credential together to rotate it. Both S3 keys share one version. With an unchanged version, credentials can be omitted for unrelated changes; changing a credential alone does not rotate it. Setting the version back to `0` removes the managed secret and grant. Backup secrets are used only when the matching integrator is enabled.
 
-Each value must be a valid PEM-encoded private key. For example, generate separate RSA keys with:
+For example, with required application inputs already configured:
 
 ```bash
-openssl genrsa -out <private-key-name>.pem 3072
+read -rs -p 'S3 access key: ' TF_VAR_s3_access_key; echo
+read -rs -p 'S3 secret key: ' TF_VAR_s3_secret_key; echo
+export TF_VAR_s3_access_key TF_VAR_s3_secret_key
+terraform plan -var='s3_secret_version=1' -out=tfplan
+terraform apply tfplan
+unset TF_VAR_s3_access_key TF_VAR_s3_secret_key
 ```
 
-When a key is provided, the module creates a Juju secret containing a `private-key` field, grants MongoDB access to it, and sets the corresponding `tls-client-private-key` or `tls-peer-private-key` charm configuration to the secret URI. When an input is `null`, the module does not create that secret or override that configuration option.
+Keep the version in your non-sensitive configuration for subsequent runs. Root modules forwarding credential inputs must also declare them `sensitive = true` and `ephemeral = true`.
+
+An existing secret URI takes priority over the credential and version. The module creates no secret in this mode and grants the consuming application access to the supplied secret. It must be in the consuming application's model and contain the keys listed above. Both `secret:<id>` and `secret://<model-uuid>/<id>` are supported. MongoDB receives TLS URIs through its corresponding charm config options; backup integrators receive them through `credentials`.
+
+### Migration
+
+Previously, providing a credential enabled creation automatically. Set the corresponding version to `1` and supply the credential when migrating an existing managed secret. Existing resource addresses are preserved. Credentials previously written with `value` remain in historical state and saved plans; rotate them and handle retained copies accordingly. When switching to an existing secret URI, Terraform destroys the previously managed secret, so use a separate existing secret.
