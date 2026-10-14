@@ -16,12 +16,12 @@ module "mongodb" {
   config = merge(
     var.mongodb.config,
     { "role" : "replication" },
-    local.use_tls_client_private_key ? {
-      "tls-client-private-key" = local.tls_client_private_key_secret_uri
+    length(juju_secret.tls_client_private_key) > 0 ? {
+      "tls-client-private-key" = juju_secret.tls_client_private_key[0].secret_uri
     } : {},
-    local.use_tls_peer_private_key ? {
-      "tls-peer-private-key" = local.tls_peer_private_key_secret_uri
-    } : {}
+    length(juju_secret.tls_peer_private_key) > 0 ? {
+      "tls-peer-private-key" = juju_secret.tls_peer_private_key[0].secret_uri
+    } : {},
   )
   constraints        = var.mongodb.constraints
   endpoint_bindings  = var.mongodb.endpoint_bindings
@@ -34,47 +34,38 @@ module "mongodb" {
 }
 
 resource "juju_secret" "tls_client_private_key" {
-  count      = local.create_tls_client_private_key ? 1 : 0
-  model_uuid = var.mongodb.model_uuid
-  name       = "${var.mongodb.app_name}-tls-client-private-key"
-  value_wo = {
-    private-key = var.tls_client_private_key
-  }
-  info             = "TLS client private key for ${var.mongodb.app_name}"
+  count            = var.tls_client_private_key_version > 0 ? 1 : 0
+  model_uuid       = var.mongodb.model_uuid
+  name             = "${var.mongodb.app_name}-tls-client-private-key"
+  value_wo         = { "private-key" = var.tls_client_private_key }
   value_wo_version = var.tls_client_private_key_version
+  info             = "TLS client private key for ${var.mongodb.app_name}"
 }
 
 resource "juju_access_secret" "tls_client_private_key" {
-  depends_on = [module.mongodb]
-  count      = local.use_tls_client_private_key ? 1 : 0
-  model_uuid = var.mongodb.model_uuid
-  applications = [
-    module.mongodb.application.name
-  ]
-  secret_id = regex("[^/:]+$", local.tls_client_private_key_secret_uri)
+  count        = length(juju_secret.tls_client_private_key)
+  model_uuid   = var.mongodb.model_uuid
+  applications = [module.mongodb.application.name]
+  secret_id    = juju_secret.tls_client_private_key[0].secret_id
+  depends_on   = [module.mongodb]
 }
 
 resource "juju_secret" "tls_peer_private_key" {
-  count      = local.create_tls_peer_private_key ? 1 : 0
-  model_uuid = var.mongodb.model_uuid
-  name       = "${var.mongodb.app_name}-tls-peer-private-key"
-  value_wo = {
-    private-key = var.tls_peer_private_key
-  }
-  info             = "TLS peer private key for ${var.mongodb.app_name}"
+  count            = var.tls_peer_private_key_version > 0 ? 1 : 0
+  model_uuid       = var.mongodb.model_uuid
+  name             = "${var.mongodb.app_name}-tls-peer-private-key"
+  value_wo         = { "private-key" = var.tls_peer_private_key }
   value_wo_version = var.tls_peer_private_key_version
+  info             = "TLS peer private key for ${var.mongodb.app_name}"
 }
 
 resource "juju_access_secret" "tls_peer_private_key" {
-  depends_on = [module.mongodb]
-  count      = local.use_tls_peer_private_key ? 1 : 0
-  model_uuid = var.mongodb.model_uuid
-  applications = [
-    module.mongodb.application.name
-  ]
-  secret_id = regex("[^/:]+$", local.tls_peer_private_key_secret_uri)
+  count        = length(juju_secret.tls_peer_private_key)
+  model_uuid   = var.mongodb.model_uuid
+  applications = [module.mongodb.application.name]
+  secret_id    = juju_secret.tls_peer_private_key[0].secret_id
+  depends_on   = [module.mongodb]
 }
-
 
 resource "terraform_data" "validate_ldap_integrations" {
   input = local.ldap_integrations
@@ -127,8 +118,8 @@ module "gcs_integrator" {
   channel  = local.backups_integrator_channel
   config = merge(
     var.backups_integrator.config,
-    local.use_gcs_secret ? {
-      credentials = local.gcs_secret_uri
+    local.create_gcs_secret ? {
+      credentials = juju_secret.gcs_secret[0].secret_uri
     } : {}
   )
   constraints = var.backups_integrator.constraints
@@ -139,36 +130,20 @@ module "gcs_integrator" {
 }
 
 resource "juju_secret" "gcs_secret" {
-  count      = local.create_gcs_secret ? 1 : 0
-  model_uuid = var.backups_integrator.model_uuid
-  name       = "gcs-integrator-credentials"
-  value_wo = {
-    secret-key = var.gcs_secret_key
-  }
-  info             = "GCS credentials for gcs-integrator"
+  count            = local.create_gcs_secret ? 1 : 0
+  model_uuid       = var.backups_integrator.model_uuid
+  name             = "gcs-integrator-credentials"
+  value_wo         = { "secret-key" = var.gcs_secret_key }
   value_wo_version = var.gcs_secret_version
+  info             = "GCS credentials for gcs-integrator"
 }
 
 resource "juju_access_secret" "gcs_secret_access" {
-  depends_on = [module.gcs_integrator]
-  count      = local.use_gcs_secret ? 1 : 0
-  model_uuid = var.backups_integrator.model_uuid
-  applications = [
-    module.gcs_integrator[0].application.name
-  ]
-  secret_id = regex("[^/:]+$", local.gcs_secret_uri)
-}
-
-resource "juju_secret" "s3_secret" {
-  count      = local.create_s3_secret ? 1 : 0
-  model_uuid = var.backups_integrator.model_uuid
-  name       = "s3-integrator-credentials"
-  value_wo = {
-    access-key = var.s3_access_key
-    secret-key = var.s3_secret_key
-  }
-  info             = "S3 credentials for s3-integrator"
-  value_wo_version = var.s3_secret_version
+  count        = length(juju_secret.gcs_secret)
+  model_uuid   = var.backups_integrator.model_uuid
+  applications = [module.gcs_integrator[0].application.name]
+  secret_id    = juju_secret.gcs_secret[0].secret_id
+  depends_on   = [module.gcs_integrator]
 }
 
 module "s3_integrator" {
@@ -180,8 +155,8 @@ module "s3_integrator" {
   channel  = local.backups_integrator_channel
   config = merge(
     var.backups_integrator.config,
-    local.use_s3_secret ? {
-      credentials = local.s3_secret_uri
+    local.create_s3_secret ? {
+      credentials = juju_secret.s3_secret[0].secret_uri
     } : {}
   )
   constraints = var.backups_integrator.constraints
@@ -191,12 +166,19 @@ module "s3_integrator" {
   units       = 1
 }
 
+resource "juju_secret" "s3_secret" {
+  count            = local.create_s3_secret ? 1 : 0
+  model_uuid       = var.backups_integrator.model_uuid
+  name             = "s3-integrator-credentials"
+  value_wo         = { "access-key" = var.s3_access_key, "secret-key" = var.s3_secret_key }
+  value_wo_version = var.s3_secret_version
+  info             = "S3 credentials for s3-integrator"
+}
+
 resource "juju_access_secret" "s3_secret_access" {
-  depends_on = [module.s3_integrator]
-  count      = local.use_s3_secret ? 1 : 0
-  model_uuid = var.backups_integrator.model_uuid
-  applications = [
-    module.s3_integrator[0].application.name
-  ]
-  secret_id = regex("[^/:]+$", local.s3_secret_uri)
+  count        = length(juju_secret.s3_secret)
+  model_uuid   = var.backups_integrator.model_uuid
+  applications = [module.s3_integrator[0].application.name]
+  secret_id    = juju_secret.s3_secret[0].secret_id
+  depends_on   = [module.s3_integrator]
 }

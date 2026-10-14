@@ -346,21 +346,16 @@ variable "gcs_secret_key" {
 }
 
 variable "gcs_secret_version" {
-  description = "0 creates no secret. 1 creates it. Increment to rotate. Ignored when gcs_secret_uri is set."
+  description = "0 creates no secret. 1 creates it. Increment to rotate."
   type        = number
   default     = 0
-}
-
-variable "gcs_secret_uri" {
-  description = "URI of an existing Juju secret in the application's model. Takes priority over credentials and gcs_secret_version."
-  type        = string
-  default     = null
 
   validation {
-    condition     = var.gcs_secret_uri == null || startswith(coalesce(var.gcs_secret_uri, "-"), "secret:")
-    error_message = "gcs_secret_uri must be a Juju secret URI starting with 'secret:'."
+    condition     = var.gcs_secret_version == 0 || local.gcs_integrator_enabled
+    error_message = "gcs_secret_version requires backups_integrator.storage_type = \"gcs\"."
   }
 }
+
 
 variable "s3_access_key" {
   description = "S3 access key. Supply through TF_VAR_s3_access_key or -var, at plan and at apply."
@@ -379,21 +374,16 @@ variable "s3_secret_key" {
 }
 
 variable "s3_secret_version" {
-  description = "0 creates no secret. 1 creates it. Increment to rotate. Ignored when s3_secret_uri is set."
+  description = "0 creates no secret. 1 creates it. Increment to rotate."
   type        = number
   default     = 0
-}
-
-variable "s3_secret_uri" {
-  description = "URI of an existing Juju secret in the application's model. Takes priority over credentials and s3_secret_version."
-  type        = string
-  default     = null
 
   validation {
-    condition     = var.s3_secret_uri == null || startswith(coalesce(var.s3_secret_uri, "-"), "secret:")
-    error_message = "s3_secret_uri must be a Juju secret URI starting with 'secret:'."
+    condition     = var.s3_secret_version == 0 || local.s3_integrator_enabled
+    error_message = "s3_secret_version requires backups_integrator.storage_type = \"s3\"."
   }
 }
+
 
 variable "tls_client_private_key" {
   description = "Tls client private key. Supply through TF_VAR_tls_client_private_key or -var, at plan and at apply."
@@ -404,21 +394,11 @@ variable "tls_client_private_key" {
 }
 
 variable "tls_client_private_key_version" {
-  description = "0 creates no secret. 1 creates it. Increment to rotate. Ignored when tls_client_private_key_secret_uri is set."
+  description = "0 creates no secret. 1 creates it. Increment to rotate."
   type        = number
   default     = 0
 }
 
-variable "tls_client_private_key_secret_uri" {
-  description = "URI of an existing Juju secret in the application's model. Takes priority over credentials and tls_client_private_key_version."
-  type        = string
-  default     = null
-
-  validation {
-    condition     = var.tls_client_private_key_secret_uri == null || startswith(coalesce(var.tls_client_private_key_secret_uri, "-"), "secret:")
-    error_message = "tls_client_private_key_secret_uri must be a Juju secret URI starting with 'secret:'."
-  }
-}
 
 variable "tls_peer_private_key" {
   description = "Tls peer private key. Supply through TF_VAR_tls_peer_private_key or -var, at plan and at apply."
@@ -429,18 +409,7 @@ variable "tls_peer_private_key" {
 }
 
 variable "tls_peer_private_key_version" {
-  description = "0 creates no secret. 1 creates it. Increment to rotate. Ignored when tls_peer_private_key_secret_uri is set."
+  description = "0 creates no secret. 1 creates it. Increment to rotate."
   type        = number
   default     = 0
-}
-
-variable "tls_peer_private_key_secret_uri" {
-  description = "URI of an existing Juju secret in the application's model. Takes priority over credentials and tls_peer_private_key_version."
-  type        = string
-  default     = null
-
-  validation {
-    condition     = var.tls_peer_private_key_secret_uri == null || startswith(coalesce(var.tls_peer_private_key_secret_uri, "-"), "secret:")
-    error_message = "tls_peer_private_key_secret_uri must be a Juju secret URI starting with 'secret:'."
-  }
 }

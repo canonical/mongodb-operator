@@ -69,14 +69,10 @@
 
 | `s3_access_key` | Ephemeral S3 credential; supply at plan and apply. | `string` | `null` | no |
 | `s3_secret_key` | Ephemeral S3 credential; supply at plan and apply. | `string` | `null` | no |
-| `tls_client_private_key_version` | 0 creates no secret; 1 creates it; increment to rotate. Ignored when `tls_client_private_key_secret_uri` is set. | `number` | `0` | no |
-| `tls_client_private_key_secret_uri` | Existing Juju secret URI; takes priority over the credential and version. | `string` | `null` | no |
-| `tls_peer_private_key_version` | 0 creates no secret; 1 creates it; increment to rotate. Ignored when `tls_peer_private_key_secret_uri` is set. | `number` | `0` | no |
-| `tls_peer_private_key_secret_uri` | Existing Juju secret URI; takes priority over the credential and version. | `string` | `null` | no |
-| `s3_secret_version` | 0 creates no secret; 1 creates it; increment to rotate. Ignored when `s3_secret_uri` is set. | `number` | `0` | no |
-| `s3_secret_uri` | Existing Juju secret URI; takes priority over the credential and version. | `string` | `null` | no |
-| `gcs_secret_version` | 0 creates no secret; 1 creates it; increment to rotate. Ignored when `gcs_secret_uri` is set. | `number` | `0` | no |
-| `gcs_secret_uri` | Existing Juju secret URI; takes priority over the credential and version. | `string` | `null` | no |
+| `tls_client_private_key_version` | 0 creates no secret; 1 creates it; increment to rotate. | `number` | `0` | no |
+| `tls_peer_private_key_version` | 0 creates no secret; 1 creates it; increment to rotate. | `number` | `0` | no |
+| `s3_secret_version` | 0 creates no secret; 1 creates it; increment to rotate. | `number` | `0` | no |
+| `gcs_secret_version` | 0 creates no secret; 1 creates it; increment to rotate. | `number` | `0` | no |
 
 Offer-style integration targets use this shape:
 
@@ -102,34 +98,68 @@ Use `kind = "endpoint"` with `name` and `endpoint` for same-model relations. Use
 | requires | MongoDB required endpoint pointers, including S3 and GCS credentials endpoints. |
 | `offers` | Cross-model offer URLs created by this module, or `null` when not needed. |
 
-## Configure secrets
+### Sensitive configurations and secrets
 
-Credentials are sensitive, ephemeral inputs. Secret resources use write-only values so Terraform omits credentials from state and saved plans. Supply credentials through `TF_VAR_<input>` or `-var` at both plan and apply; avoid credential `.tfvars` files.
+The module takes TLS private keys and object-store credentials as ephemeral variables and stores them in Juju secrets through the provider's write-only `value_wo` attribute. Terraform sends them to the Juju controller during apply and writes `null` for the write-only value to `terraform.tfstate`. Ephemeral credentials are also omitted from saved plans.
 
-| Credential inputs | Version input | Existing secret URI input | Required secret keys |
-| --- | --- | --- | --- |
-| `tls_client_private_key` | `tls_client_private_key_version` | `tls_client_private_key_secret_uri` | `private-key` (PEM) |
-| `tls_peer_private_key` | `tls_peer_private_key_version` | `tls_peer_private_key_secret_uri` | `private-key` (PEM) |
-| `s3_access_key`, `s3_secret_key` | `s3_secret_version` | `s3_secret_uri` | `access-key`, `secret-key` |
-| `gcs_secret_key` | `gcs_secret_version` | `gcs_secret_uri` | `secret-key` (service-account JSON) |
+Each secret has a version number that controls creation, rotation, and removal. `count` cannot read an ephemeral credential, so the version is the switch. The S3 access key and secret key are fields of one Juju secret and share `s3_secret_version`.
 
-Set a version to `1` to create a secret. Increment the version and supply the new credential together to rotate it. Both S3 keys share one version. With an unchanged version, credentials can be omitted for unrelated changes; changing a credential alone does not rotate it. Setting the version back to `0` removes the managed secret and grant. Backup secrets are used only when the matching integrator is enabled.
+| Version | Credential | Result |
+| --- | --- | --- |
+| `0` (default) | unset | no secret |
+| `1` | set | secret created, revision 1 |
+| `2` | new value | in-place update, revision 2 |
+| `2` (unchanged) | unset | no changes |
+| `0` again | unset | secret and grant destroyed; module stops supplying their URI to charm config |
+| `1` again | set | new secret, revision 1 |
 
-For example, with required application inputs already configured:
+| Credential inputs | Version input | Required secret keys |
+| --- | --- | --- |
+| `tls_client_private_key` | `tls_client_private_key_version` | `private-key` (PEM) |
+| `tls_peer_private_key` | `tls_peer_private_key_version` | `private-key` (PEM) |
+| `s3_access_key`, `s3_secret_key` | `s3_secret_version` | `access-key`, `secret-key` |
+| `gcs_secret_key` | `gcs_secret_version` | `secret-key` (service-account JSON) |
 
-```bash
-read -rs -p 'S3 access key: ' TF_VAR_s3_access_key; echo
-read -rs -p 'S3 secret key: ' TF_VAR_s3_secret_key; echo
-export TF_VAR_s3_access_key TF_VAR_s3_secret_key
-terraform plan -var='s3_secret_version=1' -out=tfplan
-terraform apply tfplan
-unset TF_VAR_s3_access_key TF_VAR_s3_secret_key
+Declare ephemeral variables in the root module and forward them to the product module. For example, with the required application inputs already configured:
+
+```hcl
+# 1. Root module declares an ephemeral variable to receive the environment variable.
+variable "tls_client_private_key" {
+  type      = string
+  sensitive = true
+  ephemeral = true
+  default   = null
+}
+
+# 2. Forward the variable into the product module.
+module "mongodb" {
+  source = "./terraform/product/replica_set"
+
+  tls_client_private_key         = var.tls_client_private_key
+  tls_client_private_key_version = 1
+  # ... required mongodb and data_integrator application inputs ...
+}
 ```
 
-Keep the version in your non-sensitive configuration for subsequent runs. Root modules forwarding credential inputs must also declare them `sensitive = true` and `ephemeral = true`.
+Supply credentials through environment variables or command-line flags, at plan and at apply. Export only the credentials you need, and declare and forward each root variable as shown above:
 
-An existing secret URI takes priority over the credential and version. The module creates no secret in this mode and grants the consuming application access to the supplied secret. It must be in the consuming application's model and contain the keys listed above. Both `secret:<id>` and `secret://<model-uuid>/<id>` are supported. MongoDB receives TLS URIs through its corresponding charm config options; backup integrators receive them through `credentials`.
+```bash
+export TF_VAR_tls_client_private_key="$(cat client-tls.key)"
+export TF_VAR_tls_peer_private_key="$(cat peer-tls.key)"
+export TF_VAR_s3_access_key="..."
+export TF_VAR_s3_secret_key="..."
+export TF_VAR_gcs_secret_key="$(cat service-account.json)"
+
+terraform plan -out=tfplan
+terraform apply tfplan
+```
+
+Keep credentials out of `.tfvars` files. Keep version numbers in your non-sensitive configuration for subsequent runs. Backup credentials require the matching `backups_integrator.storage_type` (`s3` or `gcs`); a nonzero version without the matching integrator is rejected.
+
+To rotate a secret, update the credential in your environment and increment the matching version variable, for example `tls_client_private_key_version = 2`. For S3, supply both keys and increment `s3_secret_version`. Changing a credential without changing the version has no effect and produces no warning. Setting the version back to `0` removes the managed secret and its grant. Terraform only needs the credential on runs that create or rotate the secret. Any other plan or apply works with it unset. Missing credentials during creation or rotation cause the provider to fail at apply.
+
+MongoDB receives the managed TLS secret URIs through its corresponding charm config options; backup integrators receive their managed secret URI through `credentials`.
 
 ### Migration
 
-Previously, providing a credential enabled creation automatically. Set the corresponding version to `1` and supply the credential when migrating an existing managed secret. Existing resource addresses are preserved. Credentials previously written with `value` remain in historical state and saved plans; rotate them and handle retained copies accordingly. When switching to an existing secret URI, Terraform destroys the previously managed secret, so use a separate existing secret.
+Previously, providing a credential enabled creation automatically. Set the corresponding version to `1` and supply the credential when migrating an existing managed secret. Existing resource addresses are preserved. Credentials previously written with `value` remain in historical state and saved plans; rotate them and handle retained copies accordingly.
