@@ -16,11 +16,11 @@ module "mongodb" {
   config = merge(
     var.mongodb.config,
     { "role" : "replication" },
-    length(juju_secret.tls_client_private_key) > 0 ? {
-      "tls-client-private-key" = juju_secret.tls_client_private_key[0].secret_uri
+    local.use_tls_client_private_key ? {
+      "tls-client-private-key" = local.tls_client_private_key_secret_uri
     } : {},
-    length(juju_secret.tls_peer_private_key) > 0 ? {
-      "tls-peer-private-key" = juju_secret.tls_peer_private_key[0].secret_uri
+    local.use_tls_peer_private_key ? {
+      "tls-peer-private-key" = local.tls_peer_private_key_secret_uri
     } : {},
   )
   constraints        = var.mongodb.constraints
@@ -34,7 +34,7 @@ module "mongodb" {
 }
 
 resource "juju_secret" "tls_client_private_key" {
-  count            = var.tls_client_private_key_version > 0 ? 1 : 0
+  count            = local.create_tls_client_private_key ? 1 : 0
   model_uuid       = var.mongodb.model_uuid
   name             = "${var.mongodb.app_name}-tls-client-private-key"
   value_wo         = { "private-key" = var.tls_client_private_key }
@@ -43,15 +43,15 @@ resource "juju_secret" "tls_client_private_key" {
 }
 
 resource "juju_access_secret" "tls_client_private_key" {
-  count        = length(juju_secret.tls_client_private_key)
+  count        = local.use_tls_client_private_key ? 1 : 0
   model_uuid   = var.mongodb.model_uuid
   applications = [module.mongodb.application.name]
-  secret_id    = juju_secret.tls_client_private_key[0].secret_id
+  secret_id    = regex("[^/:]+$", local.tls_client_private_key_secret_uri)
   depends_on   = [module.mongodb]
 }
 
 resource "juju_secret" "tls_peer_private_key" {
-  count            = var.tls_peer_private_key_version > 0 ? 1 : 0
+  count            = local.create_tls_peer_private_key ? 1 : 0
   model_uuid       = var.mongodb.model_uuid
   name             = "${var.mongodb.app_name}-tls-peer-private-key"
   value_wo         = { "private-key" = var.tls_peer_private_key }
@@ -60,10 +60,10 @@ resource "juju_secret" "tls_peer_private_key" {
 }
 
 resource "juju_access_secret" "tls_peer_private_key" {
-  count        = length(juju_secret.tls_peer_private_key)
+  count        = local.use_tls_peer_private_key ? 1 : 0
   model_uuid   = var.mongodb.model_uuid
   applications = [module.mongodb.application.name]
-  secret_id    = juju_secret.tls_peer_private_key[0].secret_id
+  secret_id    = regex("[^/:]+$", local.tls_peer_private_key_secret_uri)
   depends_on   = [module.mongodb]
 }
 
@@ -118,8 +118,8 @@ module "gcs_integrator" {
   channel  = local.backups_integrator_channel
   config = merge(
     var.backups_integrator.config,
-    local.create_gcs_secret ? {
-      credentials = juju_secret.gcs_secret[0].secret_uri
+    local.use_gcs_secret ? {
+      credentials = local.gcs_secret_uri
     } : {}
   )
   constraints = var.backups_integrator.constraints
@@ -139,10 +139,10 @@ resource "juju_secret" "gcs_secret" {
 }
 
 resource "juju_access_secret" "gcs_secret_access" {
-  count        = length(juju_secret.gcs_secret)
+  count        = local.use_gcs_secret ? 1 : 0
   model_uuid   = var.backups_integrator.model_uuid
   applications = [module.gcs_integrator[0].application.name]
-  secret_id    = juju_secret.gcs_secret[0].secret_id
+  secret_id    = regex("[^/:]+$", local.gcs_secret_uri)
   depends_on   = [module.gcs_integrator]
 }
 
@@ -155,8 +155,8 @@ module "s3_integrator" {
   channel  = local.backups_integrator_channel
   config = merge(
     var.backups_integrator.config,
-    local.create_s3_secret ? {
-      credentials = juju_secret.s3_secret[0].secret_uri
+    local.use_s3_secret ? {
+      credentials = local.s3_secret_uri
     } : {}
   )
   constraints = var.backups_integrator.constraints
@@ -176,9 +176,9 @@ resource "juju_secret" "s3_secret" {
 }
 
 resource "juju_access_secret" "s3_secret_access" {
-  count        = length(juju_secret.s3_secret)
+  count        = local.use_s3_secret ? 1 : 0
   model_uuid   = var.backups_integrator.model_uuid
   applications = [module.s3_integrator[0].application.name]
-  secret_id    = juju_secret.s3_secret[0].secret_id
+  secret_id    = regex("[^/:]+$", local.s3_secret_uri)
   depends_on   = [module.s3_integrator]
 }
