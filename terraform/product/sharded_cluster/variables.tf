@@ -334,15 +334,37 @@ variable "logging_config" {
 }
 
 variable "gcs_secret_key" {
-  description = "gcs secret key. Supply through TF_VAR_gcs_secret_key or -var, at plan and at apply."
+  description = "gcs secret key. Supply through TF_VAR_gcs_secret_key or -var, at plan and at apply. Warning: passing credentials through -var may expose them in shell history."
   type        = string
   sensitive   = true
   ephemeral   = true
   default     = null
 }
 
+variable "gcs_secret_version" {
+  description = "0 creates no secret. 1 creates it. Increment to rotate."
+  type        = number
+  default     = 0
+
+  validation {
+    condition     = var.gcs_secret_uri != null || var.gcs_secret_version == 0 || local.gcs_credentials_enabled
+    error_message = "gcs_secret_version (unless gcs_secret_uri is set) requires backups_integrator.storage_type = \"gcs\"."
+  }
+}
+
+variable "gcs_secret_uri" {
+  description = "URI of an existing Juju secret in the consuming application's model. Takes priority over credential inputs and gcs_secret_version."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.gcs_secret_uri == null || startswith(coalesce(var.gcs_secret_uri, "-"), "secret:")
+    error_message = "gcs_secret_uri must be a Juju secret URI starting with 'secret:'."
+  }
+}
+
 variable "s3_access_key" {
-  description = "s3 access key. Supply through TF_VAR_s3_access_key or -var, at plan and at apply."
+  description = "s3 access key. Supply through TF_VAR_s3_access_key or -var, at plan and at apply. Warning: passing credentials through -var may expose them in shell history."
   type        = string
   sensitive   = true
   ephemeral   = true
@@ -350,23 +372,37 @@ variable "s3_access_key" {
 }
 
 variable "s3_secret_key" {
-  description = "s3 secret key. Supply through TF_VAR_s3_secret_key or -var, at plan and at apply."
+  description = "s3 secret key. Supply through TF_VAR_s3_secret_key or -var, at plan and at apply. Warning: passing credentials through -var may expose them in shell history."
   type        = string
   sensitive   = true
   ephemeral   = true
   default     = null
+}
+
+variable "s3_secret_version" {
+  description = "0 creates no secret. 1 creates it. Increment to rotate."
+  type        = number
+  default     = 0
+
+  validation {
+    condition     = var.s3_secret_uri != null || var.s3_secret_version == 0 || local.s3_credentials_enabled
+    error_message = "s3_secret_version (unless s3_secret_uri is set) requires backups_integrator.storage_type = \"s3\"."
+  }
+}
+
+variable "s3_secret_uri" {
+  description = "URI of an existing Juju secret in the consuming application's model. Takes priority over credential inputs and s3_secret_version."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.s3_secret_uri == null || startswith(coalesce(var.s3_secret_uri, "-"), "secret:")
+    error_message = "s3_secret_uri must be a Juju secret URI starting with 'secret:'."
+  }
 }
 
 variable "config_server_tls_client_private_key" {
-  description = "Config-server TLS client private key. Supply through TF_VAR_config_server_tls_client_private_key or -var, at plan and at apply."
-  type        = string
-  sensitive   = true
-  ephemeral   = true
-  default     = null
-}
-
-variable "config_server_tls_peer_private_key" {
-  description = "Config-server TLS peer private key. Supply through TF_VAR_config_server_tls_peer_private_key or -var, at plan and at apply."
+  description = "Config-server TLS client private key. Supply through TF_VAR_config_server_tls_client_private_key or -var, at plan and at apply. Warning: passing credentials through -var may expose them in shell history."
   type        = string
   sensitive   = true
   ephemeral   = true
@@ -379,30 +415,38 @@ variable "config_server_tls_client_private_key_version" {
   default     = 0
 }
 
+variable "config_server_tls_client_private_key_secret_uri" {
+  description = "URI of an existing Juju secret in the consuming application's model. Takes priority over credential inputs and config_server_tls_client_private_key_version."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.config_server_tls_client_private_key_secret_uri == null || startswith(coalesce(var.config_server_tls_client_private_key_secret_uri, "-"), "secret:")
+    error_message = "config_server_tls_client_private_key_secret_uri must be a Juju secret URI starting with 'secret:'."
+  }
+}
+
+variable "config_server_tls_peer_private_key" {
+  description = "Config-server TLS peer private key. Supply through TF_VAR_config_server_tls_peer_private_key or -var, at plan and at apply. Warning: passing credentials through -var may expose them in shell history."
+  type        = string
+  sensitive   = true
+  ephemeral   = true
+  default     = null
+}
+
 variable "config_server_tls_peer_private_key_version" {
   description = "0 creates no secret. 1 creates it. Increment to rotate."
   type        = number
   default     = 0
 }
 
-variable "s3_secret_version" {
-  description = "0 creates no secret. 1 creates it. Increment to rotate."
-  type        = number
-  default     = 0
+variable "config_server_tls_peer_private_key_secret_uri" {
+  description = "URI of an existing Juju secret in the consuming application's model. Takes priority over credential inputs and config_server_tls_peer_private_key_version."
+  type        = string
+  default     = null
 
   validation {
-    condition     = var.s3_secret_version == 0 || local.s3_credentials_enabled
-    error_message = "s3_secret_version requires backups_integrator.storage_type = \"s3\"."
-  }
-}
-
-variable "gcs_secret_version" {
-  description = "0 creates no secret. 1 creates it. Increment to rotate."
-  type        = number
-  default     = 0
-
-  validation {
-    condition     = var.gcs_secret_version == 0 || local.gcs_credentials_enabled
-    error_message = "gcs_secret_version requires backups_integrator.storage_type = \"gcs\"."
+    condition     = var.config_server_tls_peer_private_key_secret_uri == null || startswith(coalesce(var.config_server_tls_peer_private_key_secret_uri, "-"), "secret:")
+    error_message = "config_server_tls_peer_private_key_secret_uri must be a Juju secret URI starting with 'secret:'."
   }
 }
