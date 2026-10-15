@@ -2,6 +2,14 @@
 # See LICENSE file for licensing details.
 
 locals {
+  create_s3_secret = local.s3_integrator_enabled && var.s3_secret_uri == null && var.s3_secret_version > 0
+  use_s3_secret    = local.s3_integrator_enabled && (var.s3_secret_uri != null || local.create_s3_secret)
+  s3_secret_uri    = coalesce(var.s3_secret_uri, one(juju_secret.s3_secret[*].secret_uri), "-")
+
+  create_gcs_secret = local.gcs_integrator_enabled && var.gcs_secret_uri == null && var.gcs_secret_version > 0
+  use_gcs_secret    = local.gcs_integrator_enabled && (var.gcs_secret_uri != null || local.create_gcs_secret)
+  gcs_secret_uri    = coalesce(var.gcs_secret_uri, one(juju_secret.gcs_secret[*].secret_uri), "-")
+
   backups_integrator_channel = var.backups_integrator != null ? coalesce(var.backups_integrator.channel, var.backups_integrator.storage_type == "s3" ? "2/stable" : "1/stable") : null
   gcs_integrator_enabled     = try(var.backups_integrator.storage_type == "gcs", false)
   s3_integrator_enabled      = try(var.backups_integrator.storage_type == "s3", false)
