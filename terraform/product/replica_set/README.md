@@ -107,7 +107,3 @@ Configure the matching `backups_integrator.storage_type` before setting a nonzer
 An existing-secret URI overrides credentials and version. The module creates no secret, grants the matching integrator access, and passes the URI through its `credentials` config. It must exist in that integrator's model and contain the keys listed above. Both `secret:<id>` and `secret://<model-uuid>/<id>` are supported. Secrets are used only when the matching integrator is enabled.
 
 When switching from a managed secret to a URI, use a separate existing secret: Terraform destroys the previously managed secret. The supplied secret's contents and lifecycle remain externally managed.
-
-### Migration
-
-Existing resource addresses are preserved. Previously, supplying credentials enabled creation automatically; now set the matching version to `1` and supply the credentials when migrating. Rotate credentials previously written through `value`; historical state and saved plans may retain them.
