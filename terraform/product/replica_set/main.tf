@@ -58,17 +58,16 @@ module "data_integrator" {
 }
 
 module "gcs_integrator" {
-  depends_on = [juju_secret.gcs_secret]
-  count      = local.gcs_integrator_enabled ? 1 : 0
-  source     = "git::https://github.com/canonical/object-storage-integrator.git//gcs/terraform/charm/gcs_integrator?ref=main"
+  count  = local.gcs_integrator_enabled ? 1 : 0
+  source = "git::https://github.com/canonical/object-storage-integrator.git//gcs/terraform/charm/gcs_integrator?ref=main"
 
   app_name = "gcs-integrator"
   base     = var.backups_integrator.base
   channel  = local.backups_integrator_channel
   config = merge(
     var.backups_integrator.config,
-    local.gcs_integrator_enabled && var.gcs_secret_key != null ? {
-      credentials = juju_secret.gcs_secret[0].secret_uri
+    local.use_gcs_secret ? {
+      credentials = local.gcs_secret_uri
     } : {}
   )
   constraints = var.backups_integrator.constraints
@@ -79,48 +78,42 @@ module "gcs_integrator" {
 }
 
 resource "juju_secret" "gcs_secret" {
-  count      = local.gcs_integrator_enabled && var.gcs_secret_key != null ? 1 : 0
-  model_uuid = var.backups_integrator.model_uuid
-  name       = "gcs-integrator-credentials"
-  value = {
-    secret-key = var.gcs_secret_key
-  }
-  info = "GCS credentials for gcs-integrator"
+  count            = local.create_gcs_secret ? 1 : 0
+  model_uuid       = var.backups_integrator.model_uuid
+  name             = "gcs-integrator-credentials"
+  value_wo         = { secret-key = var.gcs_secret_key }
+  value_wo_version = var.gcs_secret_version
+  info             = "GCS credentials for gcs-integrator"
 }
 
 resource "juju_access_secret" "gcs_secret_access" {
-  depends_on = [juju_secret.gcs_secret, module.gcs_integrator]
-  count      = local.gcs_integrator_enabled && var.gcs_secret_key != null ? 1 : 0
-  model_uuid = var.backups_integrator.model_uuid
-  applications = [
-    module.gcs_integrator[0].application.name
-  ]
-  secret_id = juju_secret.gcs_secret[0].secret_id
+  depends_on   = [module.gcs_integrator]
+  count        = local.use_gcs_secret ? 1 : 0
+  model_uuid   = var.backups_integrator.model_uuid
+  applications = [module.gcs_integrator[0].application.name]
+  secret_id    = regex("[^/:]+$", local.gcs_secret_uri)
 }
 
 resource "juju_secret" "s3_secret" {
-  count      = local.s3_integrator_enabled && var.s3_access_key != null && var.s3_secret_key != null ? 1 : 0
-  model_uuid = var.backups_integrator.model_uuid
-  name       = "s3-integrator-credentials"
-  value = {
-    access-key = var.s3_access_key
-    secret-key = var.s3_secret_key
-  }
-  info = "S3 credentials for s3-integrator"
+  count            = local.create_s3_secret ? 1 : 0
+  model_uuid       = var.backups_integrator.model_uuid
+  name             = "s3-integrator-credentials"
+  value_wo         = { access-key = var.s3_access_key, secret-key = var.s3_secret_key }
+  value_wo_version = var.s3_secret_version
+  info             = "S3 credentials for s3-integrator"
 }
 
 module "s3_integrator" {
-  depends_on = [juju_secret.s3_secret]
-  count      = local.s3_integrator_enabled ? 1 : 0
-  source     = "git::https://github.com/canonical/object-storage-integrator.git//s3/terraform/charm/s3_integrator?ref=main"
+  count  = local.s3_integrator_enabled ? 1 : 0
+  source = "git::https://github.com/canonical/object-storage-integrator.git//s3/terraform/charm/s3_integrator?ref=main"
 
   app_name = "s3-integrator"
   base     = var.backups_integrator.base
   channel  = local.backups_integrator_channel
   config = merge(
     var.backups_integrator.config,
-    local.s3_integrator_enabled && var.s3_access_key != null && var.s3_secret_key != null ? {
-      credentials = juju_secret.s3_secret[0].secret_uri
+    local.use_s3_secret ? {
+      credentials = local.s3_secret_uri
     } : {}
   )
   constraints = var.backups_integrator.constraints
@@ -131,11 +124,9 @@ module "s3_integrator" {
 }
 
 resource "juju_access_secret" "s3_secret_access" {
-  depends_on = [juju_secret.s3_secret, module.s3_integrator]
-  count      = local.s3_integrator_enabled && var.s3_access_key != null && var.s3_secret_key != null ? 1 : 0
-  model_uuid = var.backups_integrator.model_uuid
-  applications = [
-    module.s3_integrator[0].application.name
-  ]
-  secret_id = juju_secret.s3_secret[0].secret_id
+  depends_on   = [module.s3_integrator]
+  count        = local.use_s3_secret ? 1 : 0
+  model_uuid   = var.backups_integrator.model_uuid
+  applications = [module.s3_integrator[0].application.name]
+  secret_id    = regex("[^/:]+$", local.s3_secret_uri)
 }
