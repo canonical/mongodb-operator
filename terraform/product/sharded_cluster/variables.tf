@@ -271,15 +271,39 @@ variable "logging_config" {
 }
 
 variable "s3_access_key" {
-  description = "S3 access key."
+  description = "S3 credential. Supply through TF_VAR_s3_access_key or -var, at plan and at apply. Warning: passing credentials through -var may expose them in shell history."
   type        = string
   sensitive   = true
+  ephemeral   = true
   default     = null
 }
 
 variable "s3_secret_key" {
-  description = "S3 secret key."
+  description = "S3 credential. Supply through TF_VAR_s3_secret_key or -var, at plan and at apply. Warning: passing credentials through -var may expose them in shell history."
   type        = string
   sensitive   = true
+  ephemeral   = true
   default     = null
+}
+
+variable "s3_secret_version" {
+  description = "0 creates no secret. 1 creates it. Increment to rotate both S3 credentials. Ignored when s3_secret_uri is set."
+  type        = number
+  default     = 0
+
+  validation {
+    condition     = var.s3_secret_uri != null || var.s3_secret_version == 0 || local.s3_credentials_enabled
+    error_message = "s3_secret_version requires backups_integrator unless s3_secret_uri is set."
+  }
+}
+
+variable "s3_secret_uri" {
+  description = "URI of an existing Juju secret in the S3 integrator's model containing access-key and secret-key. Takes priority over credentials and s3_secret_version."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.s3_secret_uri == null || startswith(coalesce(var.s3_secret_uri, "-"), "secret:")
+    error_message = "s3_secret_uri must be a Juju secret URI starting with 'secret:'."
+  }
 }
